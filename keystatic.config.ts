@@ -1,9 +1,16 @@
 import { config, fields, collection } from '@keystatic/core';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export default config({
-    storage: {
-        kind: 'local',
-    },
+    storage: isProd
+        ? {
+            kind: 'github',
+            repo: 'oddava/oddava.me',
+        }
+        : {
+            kind: 'local',
+        },
     ui: {
         brand: { name: 'Oddava' },
     },
