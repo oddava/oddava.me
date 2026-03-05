@@ -99,7 +99,7 @@ body {
   flex-direction: column;
 }
 
-.page > main {
+.page>main {
   flex: 1;
   padding-top: var(--space-md);
   padding-bottom: var(--space-xl);
@@ -216,7 +216,10 @@ hr {
 }
 
 /* --- Headings --- */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-body);
   line-height: var(--leading-tight);
   color: var(--color-ink);
@@ -246,6 +249,20 @@ h3 {
 /* --- Homepage --- */
 .intro {
   padding: var(--space-lg) 0;
+  display: flow-root;
+}
+
+.intro-image {
+  float: right;
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-left: var(--space-md);
+  margin-bottom: var(--space-sm);
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .intro p {
@@ -470,6 +487,22 @@ h3 {
 
   .intro {
     padding: var(--space-md) 0;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .intro-image {
+    float: none;
+    display: block;
+    margin: 0 auto var(--space-md) auto;
+    width: 120px;
+    height: 120px;
+  }
+
+  .intro p {
+    margin: 0 auto;
   }
 
   hr {
