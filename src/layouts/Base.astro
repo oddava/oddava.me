@@ -1,0 +1,97 @@
+---
+import '../styles/global.css';
+
+export interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'oddava',
+  description = 'A quiet corner of the internet — writing, thoughts, and links.',
+} = Astro.props;
+
+const pageTitle = title === 'oddava' ? title : `${title} — oddava`;
+---
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content={description} />
+  <title>{pageTitle}</title>
+
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+
+  <link rel="sitemap" href="/sitemap-index.xml" />
+
+  {/* Theme detection — runs before paint to prevent flash */}
+  <script is:inline>
+    (function() {
+      const stored = localStorage.getItem('theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div class="page">
+    <slot name="nav">
+      <nav class="site-nav">
+        <a href="/" class="site-nav__name">oddava</a>
+        <div class="site-nav__links">
+          <a href="/blog">writing</a>
+          <span class="separator">·</span>
+          <a href="/about">about</a>
+          <span class="separator">·</span>
+          <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">dark</button>
+        </div>
+      </nav>
+    </slot>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__links">
+        <a href="https://github.com/oddava" target="_blank" rel="noopener">github</a>
+        <span class="separator">·</span>
+        <a href="https://twitter.com/oddava" target="_blank" rel="noopener">twitter</a>
+        <span class="separator">·</span>
+        <a href="mailto:hello@oddava.me">email</a>
+      </div>
+      <div class="site-footer__colophon">© 2026 oddava</div>
+    </footer>
+  </div>
+
+  {/* Theme toggle logic */}
+  <script is:inline>
+    (function() {
+      const toggle = document.getElementById('theme-toggle');
+      if (!toggle) return;
+
+      function updateLabel() {
+        const current = document.documentElement.getAttribute('data-theme');
+        toggle.textContent = current === 'dark' ? 'light' : 'dark';
+      }
+
+      updateLabel();
+
+      toggle.addEventListener('click', function() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        updateLabel();
+      });
+    })();
+  </script>
+</body>
+</html>
+
