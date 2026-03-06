@@ -18,11 +18,11 @@ export function CellComponent({ cell, onClick, onRightClick }: CellComponentProp
     const getClassName = () => {
         const base = 'cell';
         if (cell.isRevealed) {
-            if (cell.isMine) return `${base} cell--mine`;
-            return `${base} cell--revealed`;
+            if (cell.isMine) return `${base} mine`;
+            return `${base} revealed`;
         }
-        if (cell.isFlagged) return `${base} cell--flagged`;
-        return base;
+        if (cell.isFlagged) return `${base} flagged`;
+        return `${base} hidden`;
     };
 
     return (
