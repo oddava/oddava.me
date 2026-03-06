@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import { useState, useEffect, useCallback } from 'react';
 import type { Cell, GameConfig, GameStatus } from './types';
 import { createBoard, floodFill, checkWin, formatTime } from './logic';

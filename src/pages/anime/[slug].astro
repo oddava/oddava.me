@@ -1,0 +1,65 @@
+---
+export const prerender = true;
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const animeEntries = await getCollection('anime');
+  return animeEntries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const updated = entry.data.updatedAt ?? (entry.data.year ? `${entry.data.year}-01-01` : undefined);
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return 'no date';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+---
+<Base title={entry.data.title} description={`Anime note: ${entry.data.title}`} type="article">
+  <article class="anime-detail">
+    <header class="post-header">
+      <h1>{entry.data.title}</h1>
+      <div class="detail-meta">
+        {entry.data.rating && <span>{entry.data.rating}/10</span>}
+        {entry.data.year && <span>{entry.data.year}</span>}
+        <span>{entry.data.status}</span>
+        {updated && <span>updated {formatDate(updated)}</span>}
+      </div>
+    </header>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <a href="/anime" class="post-back">← back to anime list</a>
+  </article>
+</Base>
+
+<style>
+  .detail-meta {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-ink-faint);
+    text-transform: lowercase;
+  }
+
+  .detail-meta span + span::before {
+    content: '·';
+    margin-right: 0.6rem;
+    color: var(--color-rule);
+  }
+
+</style>
