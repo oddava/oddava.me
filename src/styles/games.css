@@ -21,6 +21,8 @@
   max-width: 600px;
   margin: 0 auto;
   padding: var(--space-md) 0;
+  display: grid;
+  gap: var(--space-lg);
 }
 
 .page-header {
@@ -44,6 +46,11 @@
   border: 1px solid var(--color-rule);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.game-card--compact .game-body {
+  display: flex;
+  justify-content: center;
 }
 
 .game-header {
@@ -290,4 +297,168 @@
   color: var(--color-ink-muted);
   font-family: var(--font-mono);
   text-align: center;
+}
+
+.community-clicker {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  text-align: center;
+}
+
+.community-clicker__lead {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.community-clicker__count {
+  position: relative;
+  min-width: 10ch;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-rule);
+  background: var(--color-surface-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.community-clicker__bursts {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  pointer-events: none;
+}
+
+.community-clicker__confetti {
+  position: absolute;
+  inset: -0.75rem -1.25rem;
+  pointer-events: none;
+}
+
+.community-clicker__confetti-piece {
+  --piece-x: 0px;
+  --piece-y: -50px;
+  --piece-spin: 180deg;
+  --piece-delay: 0ms;
+  --piece-color: var(--color-accent);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.32rem;
+  height: 0.56rem;
+  border-radius: 2px;
+  background: var(--piece-color);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--piece-color) 45%, transparent);
+  opacity: 0;
+  animation: clicker-confetti 740ms cubic-bezier(0.12, 0.73, 0.25, 1) forwards;
+  animation-delay: var(--piece-delay);
+}
+
+.community-clicker__burst {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  animation: clicker-burst 480ms ease-out forwards;
+}
+
+@keyframes clicker-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -26px) scale(1.03);
+  }
+}
+
+@keyframes clicker-confetti {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--piece-x)), calc(-50% + var(--piece-y))) scale(0.9) rotate(var(--piece-spin));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-clicker__burst {
+    animation-duration: 0.01ms;
+  }
+
+  .community-clicker__confetti-piece {
+    animation-duration: 0.01ms;
+  }
+}
+
+.community-clicker__button {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-ink);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: lowercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.community-clicker__button-text,
+.community-clicker__button-sizer {
+  grid-area: 1 / 1;
+}
+
+.community-clicker__button-sizer {
+  visibility: hidden;
+}
+
+.community-clicker__button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.community-clicker__button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.community-clicker__hint {
+  font-size: 0.75rem;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+}
+
+.community-clicker__milestone {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+}
+
+.community-clicker__error {
+  color: #ff7676;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
 }
