@@ -114,7 +114,7 @@ export function CommunityClicker() {
         }, 130);
 
         try {
-            const response = await fetch('/api/clicker', { method: 'POST' });
+            const response = await fetch('/api/clicker?op=hit', { method: 'GET', cache: 'no-store' });
             if (!response.ok) throw new Error('Failed to increment');
             const data = (await response.json()) as ClickerState;
             setCount(data.count);
@@ -173,8 +173,8 @@ export function CommunityClicker() {
                 disabled={isSubmitting}
                 aria-busy={isSubmitting}
             >
-                <span className="community-clicker__button-text">{showSubmittingLabel ? 'counting...' : 'click'}</span>
-                <span className="community-clicker__button-sizer" aria-hidden="true">click</span>
+                <span className="community-clicker__button-text">{showSubmittingLabel ? 'counting...' : 'add one click'}</span>
+                <span className="community-clicker__button-sizer" aria-hidden="true">add one click</span>
             </button>
             {milestone && <p className="community-clicker__milestone">Milestone unlocked: {milestone} clicks!</p>}
             <p className="community-clicker__hint">It refreshes every few seconds, so you can see other visitors click too.</p>

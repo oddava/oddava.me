@@ -72,9 +72,12 @@ function incrementMemoryCount(): number {
     return next;
 }
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ url }) => {
+    const op = url.searchParams.get('op');
+    const shouldIncrement = op === 'hit';
+
     try {
-        const count = await getCount();
+        const count = shouldIncrement ? await incrementCount() : await getCount();
         return new Response(JSON.stringify({ count }), {
             status: 200,
             headers: {
@@ -84,7 +87,7 @@ export const GET: APIRoute = async () => {
         });
     } catch (error) {
         console.error('[clicker] GET failed, using memory fallback', error);
-        const count = getMemoryCount();
+        const count = shouldIncrement ? incrementMemoryCount() : getMemoryCount();
         return new Response(JSON.stringify({ count, fallback: true }), {
             status: 200,
             headers: {
