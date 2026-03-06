@@ -48,5 +48,39 @@ export default config({
                 }),
             },
         }),
+        anime: collection({
+            label: 'Anime',
+            slugField: 'title',
+            path: 'src/content/anime/*',
+            format: { contentField: 'review' },
+            schema: {
+                title: fields.slug({ name: { label: 'Title' } }),
+                year: fields.integer({ label: 'Year' }),
+                rating: fields.integer({ label: 'Rating (1-10)' }),
+                updatedAt: fields.date({
+                    label: 'Updated At',
+                    description: 'Used for chronological ordering in the Explore activity feed.',
+                }),
+                status: fields.select({
+                    label: 'Status',
+                    options: [
+                        { label: 'Watching', value: 'watching' },
+                        { label: 'Completed', value: 'completed' },
+                        { label: 'Dropped', value: 'dropped' },
+                        { label: 'Plan to Watch', value: 'plan-to-watch' },
+                    ],
+                    defaultValue: 'completed',
+                }),
+                review: fields.mdx({
+                    label: 'Review',
+                    options: {
+                        image: {
+                            directory: 'public/images/anime',
+                            publicPath: '/images/anime/',
+                        },
+                    },
+                }),
+            },
+        }),
     },
 });

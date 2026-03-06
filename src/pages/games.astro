@@ -21,7 +21,7 @@ import { Minesweeper } from '../components/games/minesweeper/Minesweeper';
       </div>
       
       <div class="game-body">
-        <Minesweeper client:load initialDifficulty="easy" />
+        <Minesweeper client:only="react" initialDifficulty="easy" />
       </div>
     </article>
 
@@ -31,4 +31,3 @@ import { Minesweeper } from '../components/games/minesweeper/Minesweeper';
     </footer> -->
   </div>
 </Base>
-
