@@ -12,7 +12,18 @@
     }
 
     .site-nav {
+        flex-direction: column;
+        gap: var(--space-sm);
         padding: var(--space-sm) 0;
+    }
+
+    .site-nav__name {
+        font-size: var(--text-xl);
+    }
+
+    .site-nav__links {
+        gap: var(--space-xs);
+        font-size: var(--text-base);
     }
 
     .intro {
