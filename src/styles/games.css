@@ -1,3 +1,22 @@
+:root,
+[data-theme="dark"] {
+  --ms-cell-hidden: #2a2535;
+  --ms-cell-hidden-hover: #342e42;
+  --ms-cell-revealed: #110f16;
+  --ms-grid-gap: #0a090d;
+  --ms-cell-flagged: #2d2540;
+  --ms-cell-mine: #3a1f1f;
+}
+
+[data-theme="light"] {
+  --ms-cell-hidden: #e0dbe8;
+  --ms-cell-hidden-hover: #d4cde0;
+  --ms-cell-revealed: #f5f2f8;
+  --ms-grid-gap: #ccc5d5;
+  --ms-cell-flagged: #ddd5ec;
+  --ms-cell-mine: #f5d5d5;
+}
+
 .games-container {
   max-width: 600px;
   margin: 0 auto;
