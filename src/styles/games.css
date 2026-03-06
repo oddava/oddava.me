@@ -1,0 +1,274 @@
+.games-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-md) 0;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.page-header h1 {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.subtitle {
+  color: var(--color-ink-muted);
+  font-size: var(--text-base);
+}
+
+.game-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.game-header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.game-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.game-title h2 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.tag {
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+}
+
+.game-body {
+  padding: var(--space-md);
+}
+
+.page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Minesweeper Component Styles */
+.minesweeper-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.difficulty-selector {
+  display: flex;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.difficulty-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--color-rule);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: lowercase;
+}
+
+.difficulty-btn:last-child {
+  border-right: none;
+}
+
+.difficulty-btn:hover,
+.difficulty-btn.active {
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.game-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  width: 100%;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-faint);
+  text-transform: lowercase;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1;
+}
+
+.restart-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: lowercase;
+}
+
+.restart-btn:hover {
+  color: var(--color-accent-hover);
+  border-color: var(--color-accent);
+}
+
+.board-wrapper {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  padding: 8px;
+  line-height: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.board-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.board-wrapper::-webkit-scrollbar-track {
+  background: var(--color-surface-raised);
+  border-radius: 3px;
+}
+
+.board-wrapper::-webkit-scrollbar-thumb {
+  background: var(--color-rule);
+  border-radius: 3px;
+}
+
+.board-grid {
+  display: grid;
+  gap: 2px;
+  background: var(--ms-grid-gap, #0a090d);
+  flex-shrink: 0;
+}
+
+.cell {
+  width: 28px;
+  height: 28px;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.08s ease;
+  user-select: none;
+  border: none;
+  outline: none;
+  padding: 0;
+}
+
+.cell.hidden {
+  background: var(--ms-cell-hidden, #2a2535);
+}
+
+.cell.hidden:hover {
+  background: var(--ms-cell-hidden-hover, #342e42);
+}
+
+.cell.revealed {
+  background: var(--ms-cell-revealed, #110f16);
+  cursor: default;
+}
+
+.cell.flagged {
+  background: var(--ms-cell-flagged, #2d2540);
+}
+
+.cell.mine {
+  background: var(--ms-cell-mine, #3a1f1f);
+}
+
+.game-end-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.game-message {
+  padding: var(--space-xs) var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: lowercase;
+  border-radius: 6px;
+}
+
+.game-end-controls .restart-btn {
+  padding: 0.5rem 1.25rem;
+  font-size: var(--text-sm);
+}
+
+.game-message.won {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.game-message.lost {
+  color: #ff6b6b;
+  background: color-mix(in srgb, #ff6b6b 10%, transparent);
+}
+
+.game-hint {
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  text-align: center;
+}

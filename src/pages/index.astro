@@ -1,17 +1,9 @@
 ---
 export const prerender = true;
-import Base from '../layouts/Base.astro';
+import Base from '@layouts/Base.astro';
+import { getPublishedPosts } from '@lib/content';
 
-const allPosts = Object.values(
-  import.meta.glob('../content/blog/*.mdx', { eager: true })
-) as any[];
-
-const posts = allPosts
-  .filter((post: any) => !post.frontmatter.draft)
-  .sort((a: any, b: any) =>
-    new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime()
-  )
-  .slice(0, 5);
+const posts = (await getPublishedPosts()).slice(0, 5);
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -21,15 +13,10 @@ function formatDate(dateStr: string): string {
     day: 'numeric',
   });
 }
-
-function getPostSlug(filepath: string): string {
-  const filename = filepath.split('/').pop() || '';
-  return filename.replace('.mdx', '');
-}
 ---
 <Base title="oddava" description="A quiet corner of the internet.">
   <section class="intro">
-    <img src="https://files.catbox.moe/9lfc65.jpg" class="intro-image" alt="oddava" />
+    <img src="/images/resting-angel.jpg" class="intro-image" alt="oddava" />
     <p>
       Hi, I'm <a href="/about">oddava</a>. I'm curious about all sorts of things, especially AI, art and software engineering. It's really fascinating how these fields are evolving and how they intersect with each other. I'm trying to make sense of it all.
     </p>
@@ -48,13 +35,13 @@ function getPostSlug(filepath: string): string {
     <ul class="post-list">
       {posts.map((post: any) => (
         <li class="post-item">
-          <a href={`/blog/${getPostSlug(post.file)}`} class="post-item__link">
-            <div class="post-item__title">{post.frontmatter.title}</div>
+          <a href={`/blog/${post.id}`} class="post-item__link">
+            <div class="post-item__title">{post.data.title}</div>
             <div class="post-item__meta">
-              <time datetime={post.frontmatter.date}>{formatDate(post.frontmatter.date)}</time>
+              <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
             </div>
-            {post.frontmatter.description && (
-              <div class="post-item__description">{post.frontmatter.description}</div>
+            {post.data.description && (
+              <div class="post-item__description">{post.data.description}</div>
             )}
           </a>
         </li>

@@ -1,16 +1,9 @@
 ---
 export const prerender = true;
 import Base from '../../layouts/Base.astro';
+import { getPublishedPosts } from '../../lib/content';
 
-const allPosts = Object.values(
-  import.meta.glob('../../content/blog/*.mdx', { eager: true })
-) as any[];
-
-const posts = allPosts
-  .filter((post: any) => !post.frontmatter.draft)
-  .sort((a: any, b: any) =>
-    new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime()
-  );
+const posts = await getPublishedPosts();
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -19,11 +12,6 @@ function formatDate(dateStr: string): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-function getPostSlug(filepath: string): string {
-  const filename = filepath.split('/').pop() || '';
-  return filename.replace('.mdx', '');
 }
 ---
 <Base title="writing" description="Things I've written.">
@@ -37,13 +25,13 @@ function getPostSlug(filepath: string): string {
   <ul class="post-list" style="margin-top: var(--space-md);">
     {posts.map((post: any) => (
       <li class="post-item">
-        <a href={`/blog/${getPostSlug(post.file)}`} class="post-item__link">
-          <div class="post-item__title">{post.frontmatter.title}</div>
+        <a href={`/blog/${post.id}`} class="post-item__link">
+          <div class="post-item__title">{post.data.title}</div>
           <div class="post-item__meta">
-            <time datetime={post.frontmatter.date}>{formatDate(post.frontmatter.date)}</time>
+            <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
           </div>
-          {post.frontmatter.description && (
-            <div class="post-item__description">{post.frontmatter.description}</div>
+          {post.data.description && (
+            <div class="post-item__description">{post.data.description}</div>
           )}
         </a>
       </li>
