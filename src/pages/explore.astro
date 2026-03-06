@@ -1,0 +1,176 @@
+---
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+import { getAllAnime } from '../lib/content';
+
+const animeList = await getAllAnime();
+
+const featuredAnime = animeList.slice(0, 4);
+
+const recentActivity = [
+  ...animeList.map((entry) => ({
+    type: 'anime',
+    title: entry.data.title,
+    href: `/anime/${entry.id}`,
+    date: entry.data.updatedAt ?? (entry.data.year ? `${entry.data.year}-01-01` : '1970-01-01'),
+    label: entry.data.status,
+  })),
+]
+  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  .slice(0, 6);
+---
+<Base title="explore" description="Anime notes and discovery in one calm surface.">
+  <header class="explore-header">
+    <h1>explore</h1>
+    <p>anime notes and recent updates in one clean discovery flow.</p>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>anime picks</h2>
+      <a href="/anime">all anime</a>
+    </div>
+    <ul class="stream">
+      {featuredAnime.map((entry) => (
+        <li>
+          <a href={`/anime/${entry.id}`} class="row">
+            <span>{entry.data.title}</span>
+            <span>{entry.data.rating ? `${entry.data.rating}/10` : '—'} · {entry.data.status}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    {featuredAnime.length === 0 && <p class="empty">No anime entries yet.</p>}
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>recent flow</h2>
+    </div>
+    <ul class="stream">
+      {recentActivity.map((item) => (
+        <li>
+          <a href={item.href} class="row">
+            <span class="row-main">
+              <span class={`badge ${item.type}`}>{item.type}</span>
+              <span>{item.title}</span>
+            </span>
+            <span>{item.label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    {recentActivity.length === 0 && <p class="empty">No activity yet.</p>}
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>more</h2>
+    </div>
+    <ul class="stream">
+      <li><a href="/games" class="row"><span>games</span><span>interactive experiments</span></a></li>
+      <li><a href="/about" class="row"><span>about</span><span>the human behind the site</span></a></li>
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .explore-header p {
+    color: var(--color-ink-muted);
+    max-width: 42ch;
+  }
+
+  .group {
+    border-top: 1px solid var(--color-rule);
+    padding-top: var(--space-sm);
+    margin-top: var(--space-md);
+  }
+
+  .group-head h2 {
+    margin: 0 0 0.5rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-ink-faint);
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+  }
+
+  .group-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+  }
+
+  .group-head a {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    text-transform: lowercase;
+  }
+
+  .stream {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .stream li {
+    border-bottom: 1px solid var(--color-rule);
+  }
+
+  .stream li:last-child {
+    border-bottom: none;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+    text-decoration: none;
+    padding: 0.65rem 0;
+    color: var(--color-ink);
+  }
+
+  .row span:last-child {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--color-ink-faint);
+    text-transform: lowercase;
+  }
+
+  .row-main {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.35rem;
+    border: 1px solid var(--color-rule);
+    border-radius: 2px;
+    color: var(--color-ink-faint);
+  }
+
+  .badge.anime {
+    color: #5e78b6;
+  }
+
+  .empty {
+    margin: 0.4rem 0 0 0;
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  @media (max-width: 640px) {
+    .row {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.18rem;
+    }
+  }
+</style>

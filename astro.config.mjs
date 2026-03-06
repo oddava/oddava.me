@@ -6,7 +6,7 @@ import keystatic from '@keystatic/astro';
 import vercel from '@astrojs/vercel';
 
 export default defineConfig({
-  integrations: [react(), keystatic(), mdx()],
+  integrations: [react({ experimental: { jsxImportSource: true } }), keystatic(), mdx()],
   trailingSlash: 'never',
   output: 'server',
   adapter: vercel(),

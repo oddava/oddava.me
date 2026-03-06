@@ -1,0 +1,35 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+import { getAllAnime } from '../../lib/content';
+
+const animeList = await getAllAnime();
+---
+
+<Base title="anime" description="My favorite anime and watch list.">
+  <header class="post-header">
+    <h1>anime</h1>
+    <p class="post-header__meta">thoughts on what I've been watching.</p>
+  </header>
+
+  <ul class="post-list">
+    {animeList.map((anime) => (
+      <li class="post-item">
+        <a href={`/anime/${anime.id}`} class="post-item__link">
+          <div class="post-item__title">{anime.data.title}</div>
+          <div class="post-item__meta">
+            {anime.data.rating && <span>rating: {anime.data.rating}/10</span>}
+            {anime.data.rating && anime.data.year && <span class="separator">·</span>}
+            {anime.data.year && <span>year: {anime.data.year}</span>}
+            <span class="separator">·</span>
+            <span>status: {anime.data.status}</span>
+          </div>
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  {animeList.length === 0 && (
+    <p style="color: var(--color-ink-muted);">Nothing here yet.</p>
+  )}
+</Base>

@@ -1,0 +1,30 @@
+---
+/**
+ * Theme toggle button with interactive logic.
+ */
+---
+<button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+  dark
+</button>
+
+<script is:inline>
+  (function() {
+    const toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+
+    function updateLabel() {
+      const current = document.documentElement.getAttribute('data-theme');
+      toggle.textContent = current === 'dark' ? 'light' : 'dark';
+    }
+
+    updateLabel();
+
+    toggle.addEventListener('click', function() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateLabel();
+    });
+  })();
+</script>
