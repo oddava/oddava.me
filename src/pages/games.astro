@@ -3,6 +3,7 @@ export const prerender = true;
 import Base from '../layouts/Base.astro';
 import "../styles/games.css";
 import { Minesweeper } from '../components/games/minesweeper/Minesweeper';
+import { CommunityClicker } from '../components/games/CommunityClicker';
 ---
 
 <Base title="games" description="A quiet corner for play.">
@@ -22,6 +23,19 @@ import { Minesweeper } from '../components/games/minesweeper/Minesweeper';
       
       <div class="game-body">
         <Minesweeper client:only="react" initialDifficulty="easy" />
+      </div>
+    </article>
+
+    <article class="game-card game-card--compact">
+      <div class="game-header">
+        <div class="game-title">
+          <h2>Clicker</h2>
+          <span class="tag">Shared</span>
+        </div>
+      </div>
+
+      <div class="game-body">
+        <CommunityClicker client:only="react" />
       </div>
     </article>
 
