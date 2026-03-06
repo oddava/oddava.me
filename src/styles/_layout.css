@@ -1,0 +1,111 @@
+/* ===================================================
+   Page Layout — Shell, Navigation, Footer
+   =================================================== */
+
+/* --- Page Layout --- */
+.page {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 var(--page-padding);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.page>main {
+    flex: 1;
+    padding-top: var(--space-md);
+    padding-bottom: var(--space-xl);
+}
+
+/* --- Navigation --- */
+.site-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) 0;
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.site-nav__name {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+}
+
+.site-nav__name:hover {
+    color: var(--color-accent);
+}
+
+.site-nav__links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--text-sm);
+}
+
+.site-nav__links a {
+    color: var(--color-ink-muted);
+    text-decoration: none;
+}
+
+.site-nav__links a:hover {
+    color: var(--color-ink);
+}
+
+.site-nav__links .separator {
+    color: var(--color-ink-faint);
+    user-select: none;
+}
+
+/* --- Theme Toggle --- */
+.theme-toggle {
+    background: none;
+    border: none;
+    color: var(--color-ink-faint);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+.theme-toggle:hover {
+    color: var(--color-ink);
+}
+
+/* --- Footer --- */
+.site-footer {
+    padding: var(--space-lg) 0 var(--space-md);
+    border-top: 1px solid var(--color-rule);
+    font-size: var(--text-sm);
+    color: var(--color-ink-faint);
+}
+
+.site-footer__links {
+    margin-bottom: var(--space-sm);
+}
+
+.site-footer__links a {
+    color: var(--color-ink-muted);
+    text-decoration: none;
+}
+
+.site-footer__links a:hover {
+    color: var(--color-accent);
+}
+
+.site-footer__links .separator {
+    color: var(--color-ink-faint);
+    margin: 0 0.35em;
+    user-select: none;
+}
+
+.site-footer__colophon {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-ink-faint);
+}

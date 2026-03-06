@@ -1,0 +1,23 @@
+/* ===================================================
+   CSS Reset
+   =================================================== */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+}
+
+::selection {
+    background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    color: var(--color-ink);
+}
