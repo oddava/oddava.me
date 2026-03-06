@@ -1,0 +1,62 @@
+/* ===================================================
+   ODDAVA.ME — Custom Properties & Theme Tokens
+   =================================================== */
+
+/* --- Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400;1,7..72,600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* --- Custom Properties --- */
+:root {
+  /* Typography */
+  --font-body: 'Literata', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  --text-sm: 0.875rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  --leading-body: 1.75;
+  --leading-tight: 1.3;
+
+  /* Spacing */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
+
+  /* Layout */
+  --max-width: 38rem;
+  --page-padding: 1.5rem;
+}
+
+/* --- Dark Theme (default) --- */
+:root,
+[data-theme="dark"] {
+  --color-ink: #e8e2f0;
+  --color-ink-muted: #9b93a8;
+  --color-ink-faint: #6b6478;
+  --color-surface: #0f0d13;
+  --color-surface-raised: #181520;
+  --color-accent: #8b7ec8;
+  --color-accent-hover: #a498d9;
+  --color-rule: #2a2535;
+
+  color-scheme: dark;
+}
+
+/* --- Light Theme --- */
+[data-theme="light"] {
+  --color-ink: #1a1525;
+  --color-ink-muted: #5c5468;
+  --color-ink-faint: #8a8298;
+  --color-surface: #faf8fc;
+  --color-surface-raised: #f0ecf5;
+  --color-accent: #6b5cad;
+  --color-accent-hover: #5a4b99;
+  --color-rule: #e0dbe8;
+
+  color-scheme: light;
+}

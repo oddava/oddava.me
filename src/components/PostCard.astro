@@ -1,0 +1,66 @@
+---
+interface Props {
+  data: {
+    title: string;
+    date: string;
+    description?: string;
+  };
+  id: string;
+}
+
+const { data, id } = Astro.props;
+const href = `/blog/${id}`;
+---
+
+<li class="post-item">
+  <a href={href} class="post-link">
+    <article class="post-card">
+      <h3 class="post-title">{data.title}</h3>
+      <time class="post-date" datetime={data.date}>
+        {new Date(data.date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}
+      </time>
+      {data.description && <p class="post-description">{data.description}</p>}
+    </article>
+  </a>
+</li>
+
+<style>
+  .post-item {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .post-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .post-card {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color, #e5e5e5);
+  }
+
+  .post-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .post-date {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-muted, #666);
+    margin-bottom: 0.5rem;
+  }
+
+  .post-description {
+    margin: 0;
+    color: var(--text-muted, #666);
+  }
+</style>

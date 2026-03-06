@@ -1,0 +1,18 @@
+---
+/**
+ * Site navigation bar.
+ * Extracted from Base.astro for independent maintainability.
+ */
+---
+<nav class="site-nav">
+  <a href="/" class="site-nav__name">oddava</a>
+  <div class="site-nav__links">
+    <a href="/blog">writing</a>
+    <span class="separator">·</span>
+    <a href="/about">about</a>
+    <span class="separator">·</span>
+    <a href="/games">games</a>
+    <span class="separator">·</span>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">dark</button>
+  </div>
+</nav>
