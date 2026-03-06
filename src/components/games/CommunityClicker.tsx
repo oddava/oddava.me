@@ -20,15 +20,12 @@ const CONFETTI_COLORS = ['#f6d365', '#fda085', '#a8edea', '#fed6e3', '#89f7fe', 
 
 export function CommunityClicker() {
     const [count, setCount] = useState<number | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showSubmittingLabel, setShowSubmittingLabel] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [bursts, setBursts] = useState<number[]>([]);
     const [confetti, setConfetti] = useState<ConfettiPiece[]>([]);
     const [milestone, setMilestone] = useState<number | null>(null);
     const lastMilestoneRef = useRef<number | null>(null);
     const confettiTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const submittingLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastClickAtRef = useRef(0);
 
     const clearConfetti = () => {
@@ -44,9 +41,6 @@ export function CommunityClicker() {
         return () => {
             if (confettiTimeoutRef.current) {
                 clearTimeout(confettiTimeoutRef.current);
-            }
-            if (submittingLabelTimeoutRef.current) {
-                clearTimeout(submittingLabelTimeoutRef.current);
             }
         };
     }, []);
@@ -105,31 +99,22 @@ export function CommunityClicker() {
 
     const handleClick = async () => {
         const now = Date.now();
-        if (isSubmitting || now - lastClickAtRef.current < 100) return;
+        if (now - lastClickAtRef.current < 120) return;
         lastClickAtRef.current = now;
 
-        setIsSubmitting(true);
-        submittingLabelTimeoutRef.current = setTimeout(() => {
-            setShowSubmittingLabel(true);
-        }, 130);
+        setCount((current) => (current ?? 0) + 1);
+        const burstId = Date.now() + Math.floor(Math.random() * 1000);
+        setBursts((current) => [...current, burstId]);
+        setError(null);
 
         try {
             const response = await fetch('/api/clicker?op=hit', { method: 'GET', cache: 'no-store' });
             if (!response.ok) throw new Error('Failed to increment');
             const data = (await response.json()) as ClickerState;
-            setCount(data.count);
-            const burstId = Date.now() + Math.floor(Math.random() * 1000);
-            setBursts((current) => [...current, burstId]);
-            setError(null);
+            setCount((current) => (current === null ? data.count : Math.max(current, data.count)));
         } catch {
             setError('Could not update click count.');
-        } finally {
-            if (submittingLabelTimeoutRef.current) {
-                clearTimeout(submittingLabelTimeoutRef.current);
-                submittingLabelTimeoutRef.current = null;
-            }
-            setShowSubmittingLabel(false);
-            setIsSubmitting(false);
+            setCount((current) => (current === null ? 0 : Math.max(0, current - 1)));
         }
     };
 
@@ -170,11 +155,9 @@ export function CommunityClicker() {
             <button
                 className="community-clicker__button"
                 onClick={handleClick}
-                disabled={isSubmitting}
-                aria-busy={isSubmitting}
             >
-                <span className="community-clicker__button-text">{showSubmittingLabel ? 'counting...' : 'add one click'}</span>
-                <span className="community-clicker__button-sizer" aria-hidden="true">add one click</span>
+                <span className="community-clicker__button-text">click</span>
+                <span className="community-clicker__button-sizer" aria-hidden="true">click</span>
             </button>
             {milestone && <p className="community-clicker__milestone">Milestone unlocked: {milestone} clicks!</p>}
             <p className="community-clicker__hint">It refreshes every few seconds, so you can see other visitors click too.</p>
