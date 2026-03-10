@@ -5,6 +5,7 @@
     z-index: 50;
     touch-action: none;
     cursor: grab;
+    user-select: none;
 }
 
 .spotify-widget-positioner.dragging {
@@ -170,6 +171,8 @@
     height: 64px;
     border-radius: 6px;
     object-fit: cover;
+    pointer-events: none;
+    -webkit-user-drag: none;
 }
 
 .spotify-widget-info {
