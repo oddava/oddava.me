@@ -94,18 +94,23 @@ export default function SpotifyWidget() {
 
     const progressPercent = displayData?.durationMs ? (currentProgress / displayData.durationMs) * 100 : 0;
 
-    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [pos, setPos] = useState({
+        edgeX: 'left',
+        edgeY: 'bottom',
+        offsetX: 32,
+        offsetY: 32
+    });
     const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [initialPointer, setInitialPointer] = useState({ x: 0, y: 0 });
     const [isMinimized, setIsMinimized] = useState(false);
 
     // Load saved position from local storage
     useEffect(() => {
-        const savedPos = localStorage.getItem('spotify-widget-pos');
+        const savedPos = localStorage.getItem('spotify-widget-pos-v2');
         if (savedPos) {
             try {
-                setPosition(JSON.parse(savedPos));
+                setPos(JSON.parse(savedPos));
             } catch (e) {
                 // ignore
             }
@@ -125,9 +130,15 @@ export default function SpotifyWidget() {
             return;
         }
 
+        const currentTarget = e.currentTarget as HTMLElement;
+        const rect = currentTarget.getBoundingClientRect();
+
         setIsDragging(true);
         setTotalMovement(0);
-        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+        setDragOffset({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        });
         setInitialPointer({ x: e.clientX, y: e.clientY });
     };
 
@@ -150,16 +161,28 @@ export default function SpotifyWidget() {
 
         e.preventDefault();
 
-        const newX = e.clientX - dragStart.x;
-        const newY = e.clientY - dragStart.y;
+        const currentTarget = e.currentTarget as HTMLElement;
+        const rect = currentTarget.getBoundingClientRect();
 
-        const maxRight = window.innerWidth - 50;
-        const maxBottom = window.innerHeight - 50;
+        let left = e.clientX - dragOffset.x;
+        let top = e.clientY - dragOffset.y;
 
-        setPosition({
-            x: Math.max(-window.innerWidth + 100, Math.min(newX, maxRight)),
-            y: Math.max(-window.innerHeight + 100, Math.min(newY, maxBottom))
-        });
+        const maxLeft = window.innerWidth - rect.width - 16;
+        const maxTop = window.innerHeight - rect.height - 16;
+
+        left = Math.max(16, Math.min(left, maxLeft));
+        top = Math.max(16, Math.min(top, maxTop));
+
+        const cx = left + rect.width / 2;
+        const cy = top + rect.height / 2;
+
+        const edgeX = cx > window.innerWidth / 2 ? 'right' : 'left';
+        const edgeY = cy > window.innerHeight / 2 ? 'bottom' : 'top';
+
+        const offsetX = edgeX === 'left' ? left : window.innerWidth - (left + rect.width);
+        const offsetY = edgeY === 'top' ? top : window.innerHeight - (top + rect.height);
+
+        setPos({ edgeX, edgeY, offsetX, offsetY });
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
@@ -170,7 +193,7 @@ export default function SpotifyWidget() {
             }
         } catch (err) { }
 
-        localStorage.setItem('spotify-widget-pos', JSON.stringify(position));
+        localStorage.setItem('spotify-widget-pos-v2', JSON.stringify(pos));
 
         if (totalMovement < 10 && isMinimized) {
             setIsMinimized(false);
@@ -195,15 +218,22 @@ export default function SpotifyWidget() {
         return null;
     }
 
+    const alignmentClasses = `side-${pos.edgeX} side-${pos.edgeY}`;
+
+    const style: React.CSSProperties = {
+        [pos.edgeX]: `${pos.offsetX}px`,
+        [pos.edgeY]: `${pos.offsetY}px`,
+    };
+
     return (
         <div
             className={`spotify-widget-positioner ${isDragging && totalMovement > 10 ? 'dragging' : ''}`}
-            style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+            style={style}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
         >
-            <div className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''}`}>
+            <div className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''} ${alignmentClasses}`}>
 
                 {/* Full View */}
                 <div className="spotify-widget-full-view">
