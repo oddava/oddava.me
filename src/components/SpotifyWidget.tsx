@@ -159,7 +159,9 @@ export default function SpotifyWidget() {
         }
 
         const currentTarget = e.currentTarget as HTMLElement;
-        currentTarget.setPointerCapture(e.pointerId);
+        if (e.pointerType === 'touch') {
+            currentTarget.setPointerCapture(e.pointerId);
+        }
 
         const rect = currentTarget.getBoundingClientRect();
 
