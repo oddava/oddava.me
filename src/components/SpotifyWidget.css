@@ -1,7 +1,5 @@
 .spotify-widget-positioner {
     position: fixed;
-    bottom: 2rem;
-    left: 2rem;
     z-index: 50;
     touch-action: none;
     cursor: grab;
@@ -19,9 +17,56 @@
 
 .spotify-widget-wrapper {
     position: relative;
-    /* transition for entry/exit - Faster & Snappier */
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    width: max-content;
+    height: max-content;
+
+    /* transition for entry/exit */
     transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Anchor points */
+.spotify-widget-wrapper.side-left {
+    left: 0;
+    align-items: flex-start;
+    transform-origin: left;
+}
+
+.spotify-widget-wrapper.side-right {
+    right: 0;
+    align-items: flex-end;
+    transform-origin: right;
+}
+
+.spotify-widget-wrapper.side-top {
+    top: 0;
+    justify-content: flex-start;
+    transform-origin: top;
+}
+
+.spotify-widget-wrapper.side-bottom {
+    bottom: 0;
+    justify-content: flex-end;
+    transform-origin: bottom;
+}
+
+/* Combinations for 2D corners */
+.spotify-widget-wrapper.side-left.side-bottom {
     transform-origin: bottom left;
+}
+
+.spotify-widget-wrapper.side-right.side-bottom {
+    transform-origin: bottom right;
+}
+
+.spotify-widget-wrapper.side-left.side-top {
+    transform-origin: top left;
+}
+
+.spotify-widget-wrapper.side-right.side-top {
+    transform-origin: top right;
 }
 
 .spotify-widget-wrapper.render-hidden {
@@ -30,18 +75,18 @@
 
 .spotify-widget-wrapper.render-entering {
     opacity: 0;
-    transform: scale(0.8) translateY(10px);
+    transform: scale(0.8);
     transition: none;
 }
 
 .spotify-widget-wrapper.render-active {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
 }
 
 .spotify-widget-wrapper.render-exiting {
     opacity: 0;
-    transform: scale(0.9) translateY(4px);
+    transform: scale(0.9);
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
@@ -49,7 +94,32 @@
 .spotify-widget-full-view,
 .spotify-widget-min-view {
     transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
-    transform-origin: bottom left;
+    transform-origin: inherit;
+}
+
+/* Anchorage for absolute views */
+.spotify-widget-wrapper.side-left .spotify-widget-full-view,
+.spotify-widget-wrapper.side-left .spotify-widget-min-view {
+    left: 0;
+    right: auto;
+}
+
+.spotify-widget-wrapper.side-right .spotify-widget-full-view,
+.spotify-widget-wrapper.side-right .spotify-widget-min-view {
+    right: 0;
+    left: auto;
+}
+
+.spotify-widget-wrapper.side-top .spotify-widget-full-view,
+.spotify-widget-wrapper.side-top .spotify-widget-min-view {
+    top: 0;
+    bottom: auto;
+}
+
+.spotify-widget-wrapper.side-bottom .spotify-widget-full-view,
+.spotify-widget-wrapper.side-bottom .spotify-widget-min-view {
+    bottom: 0;
+    top: auto;
 }
 
 /* When full is active (is-minimized is FALSE) */
@@ -62,23 +132,79 @@
 
 .spotify-widget-wrapper:not(.is-minimized) .spotify-widget-min-view {
     position: absolute;
-    bottom: 0;
-    left: 0;
     opacity: 0;
     transform: scale(0.5);
     visibility: hidden;
     pointer-events: none;
 }
 
+.spotify-widget-wrapper.side-left .spotify-widget-min-view {
+    left: 0;
+    right: auto;
+}
+
+.spotify-widget-wrapper.side-right .spotify-widget-min-view {
+    left: auto;
+    right: 0;
+}
+
+.spotify-widget-wrapper.side-bottom .spotify-widget-min-view {
+    bottom: 0;
+    top: auto;
+}
+
+.spotify-widget-wrapper.side-top .spotify-widget-min-view {
+    bottom: auto;
+    top: 0;
+}
+
+.spotify-widget-wrapper.side-left .spotify-widget-full-view {
+    left: 0;
+    right: auto;
+}
+
+.spotify-widget-wrapper.side-right .spotify-widget-full-view {
+    left: auto;
+    right: 0;
+}
+
+.spotify-widget-wrapper.side-bottom .spotify-widget-full-view {
+    bottom: 0;
+    top: auto;
+}
+
+.spotify-widget-wrapper.side-top .spotify-widget-full-view {
+    bottom: auto;
+    top: 0;
+}
+
 /* When min is active (is-minimized is TRUE) */
 .spotify-widget-wrapper.is-minimized .spotify-widget-full-view {
     position: absolute;
-    bottom: 0;
-    left: 0;
     opacity: 0;
     transform: scale(0.9);
     visibility: hidden;
     pointer-events: none;
+}
+
+.spotify-widget-wrapper.is-minimized.side-left .spotify-widget-full-view {
+    left: 0;
+    right: auto;
+}
+
+.spotify-widget-wrapper.is-minimized.side-right .spotify-widget-full-view {
+    left: auto;
+    right: 0;
+}
+
+.spotify-widget-wrapper.is-minimized.side-bottom .spotify-widget-full-view {
+    bottom: 0;
+    top: auto;
+}
+
+.spotify-widget-wrapper.is-minimized.side-top .spotify-widget-full-view {
+    bottom: auto;
+    top: 0;
 }
 
 .spotify-widget-wrapper.is-minimized .spotify-widget-min-view {
