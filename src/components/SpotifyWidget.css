@@ -4,6 +4,7 @@
     touch-action: none;
     cursor: grab;
     user-select: none;
+    will-change: left, right, top, bottom;
 }
 
 .spotify-widget-positioner.dragging {
@@ -13,6 +14,7 @@
 .spotify-widget-positioner.dragging .spotify-widget-wrapper {
     opacity: 0.9;
     pointer-events: none;
+    transition: none !important;
 }
 
 .spotify-widget-wrapper {
@@ -22,6 +24,7 @@
     pointer-events: auto;
     width: max-content;
     height: max-content;
+    touch-action: none;
 
     /* transition for entry/exit */
     transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -374,11 +377,6 @@
 }
 
 @media (max-width: 768px) {
-    .spotify-widget-positioner {
-        bottom: 1rem;
-        left: 1rem;
-    }
-
     .spotify-widget-full-view .spotify-widget-container {
         padding: 6px 10px;
         gap: 8px;

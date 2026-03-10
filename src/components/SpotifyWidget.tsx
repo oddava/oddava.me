@@ -12,6 +12,7 @@ interface SpotifyData {
 }
 
 export default function SpotifyWidget() {
+    const widgetRef = useRef<HTMLDivElement>(null);
     const [data, setData] = useState<SpotifyData>({ isPlaying: false });
     const [loading, setLoading] = useState(true);
     const [currentProgress, setCurrentProgress] = useState(0);
@@ -48,11 +49,7 @@ export default function SpotifyWidget() {
             setDisplayData(data);
             setRenderState(prev => {
                 if (prev === 'hidden' || prev === 'exiting') {
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            setRenderState('active');
-                        });
-                    });
+                    setTimeout(() => setRenderState('active'), 50);
                     return 'entering';
                 }
                 return prev;
@@ -101,25 +98,56 @@ export default function SpotifyWidget() {
         offsetY: 32
     });
     const [isDragging, setIsDragging] = useState(false);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [initialPointer, setInitialPointer] = useState({ x: 0, y: 0 });
+
+    // Refs for performance - avoids useEffect churn
+    const dragOffsetRef = useRef({ x: 0, y: 0 });
+    const initialPointerRef = useRef({ x: 0, y: 0 });
+    const posRef = useRef(pos);
+    const rAFRef = useRef<number | null>(null);
+
+    // Keep posRef in sync for the listener
+    useEffect(() => {
+        posRef.current = pos;
+    }, [pos]);
+
     const [isMinimized, setIsMinimized] = useState(false);
 
-    // Load saved position from local storage
+    // Load saved position and handle responsiveness
     useEffect(() => {
+        const clampPos = (p: typeof pos) => {
+            const newPos = { ...p };
+            if (newPos.offsetX > window.innerWidth - 60) newPos.offsetX = 16;
+            if (newPos.offsetY > window.innerHeight - 60) newPos.offsetY = 16;
+            return newPos;
+        };
+
         const savedPos = localStorage.getItem('spotify-widget-pos-v2');
         if (savedPos) {
             try {
-                setPos(JSON.parse(savedPos));
-            } catch (e) {
-                // ignore
-            }
+                const parsed = clampPos(JSON.parse(savedPos));
+                setPos(parsed);
+                posRef.current = parsed;
+            } catch (e) { /* ignore */ }
+        } else {
+            setPos(prev => clampPos(prev));
         }
+
+        const handleResize = () => {
+            setPos(prev => {
+                const updated = clampPos(prev);
+                posRef.current = updated;
+                return updated;
+            });
+        };
+
+        window.addEventListener('resize', handleResize);
 
         const savedMin = localStorage.getItem('spotify-widget-minimized');
         if (savedMin) {
             setIsMinimized(savedMin === 'true');
         }
+
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const [totalMovement, setTotalMovement] = useState(0);
@@ -131,80 +159,87 @@ export default function SpotifyWidget() {
         }
 
         const currentTarget = e.currentTarget as HTMLElement;
+        currentTarget.setPointerCapture(e.pointerId);
+
         const rect = currentTarget.getBoundingClientRect();
 
         setIsDragging(true);
         setTotalMovement(0);
-        setDragOffset({
+        dragOffsetRef.current = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
-        });
-        setInitialPointer({ x: e.clientX, y: e.clientY });
+        };
+        initialPointerRef.current = { x: e.clientX, y: e.clientY };
     };
 
-    const handlePointerMove = (e: React.PointerEvent) => {
+    useEffect(() => {
         if (!isDragging) return;
 
-        const deltaX = Math.abs(e.clientX - initialPointer.x);
-        const deltaY = Math.abs(e.clientY - initialPointer.y);
-        const newTotal = deltaX + deltaY;
+        const handleMove = (e: PointerEvent) => {
+            if (rAFRef.current) return; // limit to screen refresh rate
 
-        if (newTotal >= 5) {
-            try {
-                if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
-                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-                }
-            } catch (err) { }
-        }
+            rAFRef.current = requestAnimationFrame(() => {
+                rAFRef.current = null;
 
-        setTotalMovement(newTotal);
+                const deltaX = Math.abs(e.clientX - initialPointerRef.current.x);
+                const deltaY = Math.abs(e.clientY - initialPointerRef.current.y);
+                const newTotal = deltaX + deltaY;
+                setTotalMovement(newTotal);
 
-        e.preventDefault();
+                const rect = widgetRef.current?.getBoundingClientRect();
+                if (!rect) return;
 
-        const currentTarget = e.currentTarget as HTMLElement;
-        const rect = currentTarget.getBoundingClientRect();
+                let left = e.clientX - dragOffsetRef.current.x;
+                let top = e.clientY - dragOffsetRef.current.y;
 
-        let left = e.clientX - dragOffset.x;
-        let top = e.clientY - dragOffset.y;
+                const maxLeft = window.innerWidth - rect.width - 16;
+                const maxTop = window.innerHeight - rect.height - 16;
 
-        const maxLeft = window.innerWidth - rect.width - 16;
-        const maxTop = window.innerHeight - rect.height - 16;
+                left = Math.max(16, Math.min(left, maxLeft));
+                top = Math.max(16, Math.min(top, maxTop));
 
-        left = Math.max(16, Math.min(left, maxLeft));
-        top = Math.max(16, Math.min(top, maxTop));
+                const cx = left + rect.width / 2;
+                const cy = top + rect.height / 2;
 
-        const cx = left + rect.width / 2;
-        const cy = top + rect.height / 2;
+                const edgeX = cx > window.innerWidth / 2 ? 'right' : 'left';
+                const edgeY = cy > window.innerHeight / 2 ? 'bottom' : 'top';
 
-        const edgeX = cx > window.innerWidth / 2 ? 'right' : 'left';
-        const edgeY = cy > window.innerHeight / 2 ? 'bottom' : 'top';
+                const offsetX = edgeX === 'left' ? left : window.innerWidth - (left + rect.width);
+                const offsetY = edgeY === 'top' ? top : window.innerHeight - (top + rect.height);
 
-        const offsetX = edgeX === 'left' ? left : window.innerWidth - (left + rect.width);
-        const offsetY = edgeY === 'top' ? top : window.innerHeight - (top + rect.height);
+                setPos({ edgeX, edgeY, offsetX, offsetY });
+            });
+        };
 
-        setPos({ edgeX, edgeY, offsetX, offsetY });
-    };
+        const handleUp = () => {
+            setIsDragging(false);
+            if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+            rAFRef.current = null;
 
-    const handlePointerUp = (e: React.PointerEvent) => {
-        setIsDragging(false);
-        try {
-            if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
-                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+            localStorage.setItem('spotify-widget-pos-v2', JSON.stringify(posRef.current));
+
+            if (totalMovement < 10 && isMinimized) {
+                setIsMinimized(false);
+                localStorage.setItem('spotify-widget-minimized', 'false');
+                preventClickRef.current = true;
+                setTimeout(() => { preventClickRef.current = false; }, 300);
+            } else if (totalMovement >= 10) {
+                preventClickRef.current = true;
+                setTimeout(() => { preventClickRef.current = false; }, 300);
             }
-        } catch (err) { }
+        };
 
-        localStorage.setItem('spotify-widget-pos-v2', JSON.stringify(pos));
+        window.addEventListener('pointermove', handleMove, { passive: true });
+        window.addEventListener('pointerup', handleUp);
+        window.addEventListener('pointercancel', handleUp);
 
-        if (totalMovement < 10 && isMinimized) {
-            setIsMinimized(false);
-            localStorage.setItem('spotify-widget-minimized', 'false');
-            preventClickRef.current = true;
-            setTimeout(() => { preventClickRef.current = false; }, 300);
-        } else if (totalMovement >= 10) {
-            preventClickRef.current = true;
-            setTimeout(() => { preventClickRef.current = false; }, 300);
-        }
-    };
+        return () => {
+            if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+            window.removeEventListener('pointermove', handleMove);
+            window.removeEventListener('pointerup', handleUp);
+            window.removeEventListener('pointercancel', handleUp);
+        };
+    }, [isDragging, isMinimized, totalMovement]);
 
     const toggleMinimize = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -221,17 +256,19 @@ export default function SpotifyWidget() {
     const alignmentClasses = `side-${pos.edgeX} side-${pos.edgeY}`;
 
     const style: React.CSSProperties = {
-        [pos.edgeX]: `${pos.offsetX}px`,
-        [pos.edgeY]: `${pos.offsetY}px`,
+        left: pos.edgeX === 'left' ? `${pos.offsetX}px` : 'auto',
+        right: pos.edgeX === 'right' ? `${pos.offsetX}px` : 'auto',
+        top: pos.edgeY === 'top' ? `${pos.offsetY}px` : 'auto',
+        bottom: pos.edgeY === 'bottom' ? `${pos.offsetY}px` : 'auto',
+        touchAction: 'none'
     };
 
     return (
         <div
+            ref={widgetRef}
             className={`spotify-widget-positioner ${isDragging && totalMovement > 10 ? 'dragging' : ''}`}
             style={style}
             onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
         >
             <div className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''} ${alignmentClasses}`}>
 
