@@ -330,6 +330,7 @@
     max-width: 220px;
     font-weight: 600;
     line-height: var(--leading-tight);
+    text-decoration: none;
 }
 
 .spotify-widget-title:hover {

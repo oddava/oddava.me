@@ -284,18 +284,9 @@ export default function SpotifyWidget() {
                             </svg>
                         </button>
                     </div>
-                    <a
-                        href={displayData.songUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div
                         className="spotify-widget-container"
-                        title="Listening on Spotify"
                         draggable="false"
-                        onClick={(e) => {
-                            if (preventClickRef.current) {
-                                e.preventDefault();
-                            }
-                        }}
                     >
                         <img
                             src={displayData.albumImageUrl}
@@ -306,7 +297,20 @@ export default function SpotifyWidget() {
                         />
                         <div className="spotify-widget-info">
                             <div className="spotify-widget-label">listening to</div>
-                            <div className="spotify-widget-title">{displayData.title}</div>
+                            <a
+                                href={displayData.songUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="spotify-widget-title"
+                                title="Listening on Spotify"
+                                onClick={(e) => {
+                                    if (preventClickRef.current) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                            >
+                                {displayData.title}
+                            </a>
                             <div className="spotify-widget-artist">{displayData.artist}</div>
 
                             {displayData.durationMs && (
@@ -324,7 +328,7 @@ export default function SpotifyWidget() {
                                 </div>
                             )}
                         </div>
-                    </a>
+                    </div>
                 </div>
 
                 {/* Minimized View */}
