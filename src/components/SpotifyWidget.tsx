@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './SpotifyWidget.css';
 
 interface SpotifyData {
@@ -60,6 +60,7 @@ export default function SpotifyWidget() {
     }, []);
 
     const [totalMovement, setTotalMovement] = useState(0);
+    const preventClickRef = useRef(false);
 
     const handlePointerDown = (e: React.PointerEvent) => {
         // Only trigger drag if we aren't clicking a button
@@ -107,6 +108,9 @@ export default function SpotifyWidget() {
         if (totalMovement < 10 && isMinimized) {
             setIsMinimized(false);
             localStorage.setItem('spotify-widget-minimized', 'false');
+            // Prevent the subsequent 'click' event from triggering the link on mobile
+            preventClickRef.current = true;
+            setTimeout(() => { preventClickRef.current = false; }, 300);
         }
     };
 
@@ -164,6 +168,11 @@ export default function SpotifyWidget() {
                 className="spotify-widget-container"
                 title="Listening on Spotify"
                 draggable="false"
+                onClick={(e) => {
+                    if (preventClickRef.current) {
+                        e.preventDefault();
+                    }
+                }}
             >
                 <img
                     src={data.albumImageUrl}
