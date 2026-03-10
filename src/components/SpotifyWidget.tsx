@@ -215,6 +215,7 @@ export default function SpotifyWidget() {
                     src={data.albumImageUrl}
                     alt={data.title}
                     className="spotify-widget-album"
+                    draggable="false"
                 />
                 <div className="spotify-widget-info">
                     <div className="spotify-widget-label">Now Playing</div>
