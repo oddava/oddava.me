@@ -105,6 +105,8 @@
     height: 64px;
     border-radius: 6px;
     object-fit: cover;
+    user-drag: none;
+    -webkit-user-drag: none;
 }
 
 .spotify-widget-info {
