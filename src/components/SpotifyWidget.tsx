@@ -236,7 +236,7 @@ export default function SpotifyWidget() {
                             onDragStart={(e) => e.preventDefault()}
                         />
                         <div className="spotify-widget-info">
-                            <div className="spotify-widget-label">Now Playing</div>
+                            <div className="spotify-widget-label">listening to</div>
                             <div className="spotify-widget-title">{displayData.title}</div>
                             <div className="spotify-widget-artist">{displayData.artist}</div>
 
