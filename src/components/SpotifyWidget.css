@@ -1,27 +1,93 @@
-.spotify-widget-wrapper {
+.spotify-widget-positioner {
     position: fixed;
     bottom: 2rem;
     left: 2rem;
     z-index: 50;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
     touch-action: none;
-    /* Important for pointer drag events */
     cursor: grab;
 }
 
-.spotify-widget-wrapper.dragging {
-    opacity: 0.9;
+.spotify-widget-positioner.dragging {
     cursor: grabbing;
 }
 
-.spotify-widget-wrapper.dragging .spotify-widget-container,
-.spotify-widget-wrapper.dragging .action-btn {
+.spotify-widget-positioner.dragging .spotify-widget-wrapper {
+    opacity: 0.9;
     pointer-events: none;
-    /* Prevent accidental clicks while tearing */
 }
 
+.spotify-widget-wrapper {
+    position: relative;
+    /* transition for entry/exit - Faster & Snappier */
+    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: bottom left;
+}
+
+.spotify-widget-wrapper.render-hidden {
+    display: none;
+}
+
+.spotify-widget-wrapper.render-entering {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+    transition: none;
+}
+
+.spotify-widget-wrapper.render-active {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+.spotify-widget-wrapper.render-exiting {
+    opacity: 0;
+    transform: scale(0.9) translateY(4px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Base views crossfade and scale morphing */
+.spotify-widget-full-view,
+.spotify-widget-min-view {
+    transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
+    transform-origin: bottom left;
+}
+
+/* When full is active (is-minimized is FALSE) */
+.spotify-widget-wrapper:not(.is-minimized) .spotify-widget-full-view {
+    position: relative;
+    opacity: 1;
+    transform: scale(1);
+    visibility: visible;
+}
+
+.spotify-widget-wrapper:not(.is-minimized) .spotify-widget-min-view {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    opacity: 0;
+    transform: scale(0.5);
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* When min is active (is-minimized is TRUE) */
+.spotify-widget-wrapper.is-minimized .spotify-widget-full-view {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    opacity: 0;
+    transform: scale(0.9);
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.spotify-widget-wrapper.is-minimized .spotify-widget-min-view {
+    position: relative;
+    opacity: 1;
+    transform: scale(1);
+    visibility: visible;
+}
+
+/* UI Elements inside */
 .spotify-widget-controls {
     display: flex;
     justify-content: space-between;
@@ -29,6 +95,7 @@
     opacity: 0;
     transition: opacity 0.2s ease;
     width: 100%;
+    margin-bottom: 4px;
 }
 
 .spotify-widget-wrapper:hover .spotify-widget-controls {
@@ -53,10 +120,6 @@
     background: var(--color-rule);
 }
 
-.spotify-widget-drag-handle {
-    cursor: grab;
-}
-
 .spotify-widget-container {
     display: flex;
     align-items: center;
@@ -64,14 +127,36 @@
     text-decoration: none;
     font-family: var(--font-mono);
     color: var(--color-ink);
-    background-color: var(--color-surface-raised);
-    padding: 8px 12px;
+    background-color: color-mix(in srgb, var(--color-surface-raised) 80%, transparent);
     border: 1px solid var(--color-rule);
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    opacity: 0.95;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.spotify-widget-full-view .spotify-widget-container {
+    padding: 8px 12px;
     border-radius: 8px;
-    backdrop-filter: blur(4px);
-    transition: border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
-    opacity: 0.85;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.spotify-widget-min-view .min-container {
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    display: inline-flex;
+}
+
+.spotify-widget-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+}
+
+.spotify-widget-positioner.dragging .spotify-widget-drag-handle {
+    cursor: grabbing;
 }
 
 .spotify-widget-container:hover {
@@ -80,33 +165,11 @@
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-/* Minimized State */
-.spotify-widget-container.minimized {
-    position: fixed;
-    bottom: 2rem;
-    left: 2rem;
-    padding: 10px;
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 50;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    touch-action: none;
-}
-
-.spotify-widget-container.minimized .spotify-widget-drag-handle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-}
-
 .spotify-widget-album {
     width: 64px;
     height: 64px;
     border-radius: 6px;
     object-fit: cover;
-    user-drag: none;
-    -webkit-user-drag: none;
 }
 
 .spotify-widget-info {
@@ -126,14 +189,15 @@
 }
 
 .spotify-widget-title {
-    font-size: 0.95rem;
+    font-family: var(--font-body);
+    font-size: 1rem;
     color: var(--color-ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 220px;
-    font-weight: 500;
-    line-height: 1.2;
+    font-weight: 600;
+    line-height: var(--leading-tight);
 }
 
 .spotify-widget-title:hover {
@@ -180,15 +244,13 @@
     font-family: var(--font-mono);
 }
 
-/* Hide on mobile by default or adjust positioning */
 @media (max-width: 768px) {
-    .spotify-widget-wrapper {
+    .spotify-widget-positioner {
         bottom: 1rem;
         left: 1rem;
-        gap: 2px;
     }
 
-    .spotify-widget-container {
+    .spotify-widget-full-view .spotify-widget-container {
         padding: 6px 10px;
         gap: 8px;
     }
@@ -215,10 +277,5 @@
     .spotify-widget-controls {
         opacity: 1;
         /* Always show controls on mobile */
-    }
-
-    .spotify-widget-container.minimized {
-        bottom: 1rem;
-        left: 1rem;
     }
 }

@@ -16,6 +16,9 @@ export default function SpotifyWidget() {
     const [loading, setLoading] = useState(true);
     const [currentProgress, setCurrentProgress] = useState(0);
 
+    const [renderState, setRenderState] = useState<'hidden' | 'entering' | 'active' | 'exiting'>('hidden');
+    const [displayData, setDisplayData] = useState<SpotifyData | null>(null);
+
     const fetchPlaying = async () => {
         try {
             const res = await fetch('/api/spotify');
@@ -37,6 +40,35 @@ export default function SpotifyWidget() {
         const interval = setInterval(fetchPlaying, 15000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        if (loading) return;
+
+        if (data.isPlaying) {
+            setDisplayData(data);
+            setRenderState(prev => {
+                if (prev === 'hidden' || prev === 'exiting') {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setRenderState('active');
+                        });
+                    });
+                    return 'entering';
+                }
+                return prev;
+            });
+        } else {
+            setRenderState(prev => {
+                if (prev === 'active' || prev === 'entering') {
+                    setTimeout(() => {
+                        setRenderState('hidden');
+                    }, 300); // match exit CSS duration
+                    return 'exiting';
+                }
+                return prev;
+            });
+        }
+    }, [loading, data.isPlaying, data]);
 
     // Live counter for progress
     useEffect(() => {
@@ -60,7 +92,7 @@ export default function SpotifyWidget() {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    const progressPercent = data.durationMs ? (currentProgress / data.durationMs) * 100 : 0;
+    const progressPercent = displayData?.durationMs ? (currentProgress / displayData.durationMs) * 100 : 0;
 
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -88,7 +120,7 @@ export default function SpotifyWidget() {
     const preventClickRef = useRef(false);
 
     const handlePointerDown = (e: React.PointerEvent) => {
-        if ((e.target as HTMLElement).closest('button')) {
+        if ((e.target as HTMLElement).closest('.action-btn')) {
             return;
         }
 
@@ -104,8 +136,6 @@ export default function SpotifyWidget() {
         const deltaY = Math.abs(e.clientY - (dragStart.y + position.y));
         const newTotal = totalMovement + deltaX + deltaY;
 
-        // Take pointer capture only when a genuine drag begins.
-        // Doing this conditionally allows simple taps to register as native link clicks!
         if (newTotal >= 5) {
             try {
                 if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
@@ -159,85 +189,86 @@ export default function SpotifyWidget() {
         localStorage.setItem('spotify-widget-minimized', String(newVal));
     };
 
-    if (loading || !data.isPlaying) {
+    if (renderState === 'hidden' || !displayData) {
         return null;
-    }
-
-    if (isMinimized) {
-        return (
-            <div
-                className="spotify-widget-container minimized"
-                style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                title="Currently listening to Spotify. Click to expand."
-            >
-                <div className="spotify-widget-drag-handle">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--color-accent)">
-                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.45 17.348c-.201.332-.63.438-.962.237-2.637-1.61-5.94-1.976-9.84-.108-.372.178-.813.018-.99-.355-.177-.373-.018-.813.355-.99 4.28-2.052 7.94-1.636 10.865.153.333.203.44.632.237.962zm1.388-3.094c-.255.42-.792.56-1.213.305-3.018-1.85-7.61-2.4-10.74-1.314-.467.162-.97-.087-1.134-.555-.163-.466.088-.97.556-1.133 3.633-1.262 8.73-.637 12.227 1.512.422.256.561.793.305 1.217zm.11-3.237C15.26 8.814 8.868 8.59 5.165 9.714c-.55.166-1.127-.145-1.293-.695-.165-.55.146-1.127.696-1.293 4.267-1.29 11.36-1.023 15.655 1.527.49.29.652.92.36 1.41-.29.492-.92.653-1.41.36z" />
-                    </svg>
-                </div>
-            </div>
-        );
     }
 
     return (
         <div
-            className={`spotify-widget-wrapper ${isDragging && totalMovement > 10 ? 'dragging' : ''}`}
+            className={`spotify-widget-positioner ${isDragging && totalMovement > 10 ? 'dragging' : ''}`}
             style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
         >
-            <div className="spotify-widget-controls">
-                <div />
-                <button className="spotify-widget-minimize action-btn" onClick={toggleMinimize} aria-label="Minimize widget">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-            </div>
-            <a
-                href={data.songUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="spotify-widget-container"
-                title="Listening on Spotify"
-                draggable="false"
-                onClick={(e) => {
-                    if (preventClickRef.current) {
-                        e.preventDefault();
-                    }
-                }}
-            >
-                <img
-                    src={data.albumImageUrl}
-                    alt={data.title}
-                    className="spotify-widget-album"
-                    draggable="false"
-                />
-                <div className="spotify-widget-info">
-                    <div className="spotify-widget-label">Now Playing</div>
-                    <div className="spotify-widget-title">{data.title}</div>
-                    <div className="spotify-widget-artist">{data.artist}</div>
+            <div className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''}`}>
 
-                    {data.durationMs && (
-                        <div className="spotify-widget-progress-container">
-                            <div className="spotify-widget-progress-bar">
-                                <div
-                                    className="spotify-widget-progress-fill"
-                                    style={{ width: `${progressPercent}%` }}
-                                />
-                            </div>
-                            <div className="spotify-widget-time">
-                                <span>{formatTime(currentProgress)}</span>
-                                <span>{formatTime(data.durationMs)}</span>
-                            </div>
+                {/* Full View */}
+                <div className="spotify-widget-full-view">
+                    <div className="spotify-widget-controls">
+                        <div />
+                        <button className="spotify-widget-minimize action-btn" onClick={toggleMinimize} aria-label="Minimize widget">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <a
+                        href={displayData.songUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="spotify-widget-container"
+                        title="Listening on Spotify"
+                        draggable="false"
+                        onClick={(e) => {
+                            if (preventClickRef.current) {
+                                e.preventDefault();
+                            }
+                        }}
+                    >
+                        <img
+                            src={displayData.albumImageUrl}
+                            alt={displayData.title}
+                            className="spotify-widget-album"
+                        />
+                        <div className="spotify-widget-info">
+                            <div className="spotify-widget-label">Now Playing</div>
+                            <div className="spotify-widget-title">{displayData.title}</div>
+                            <div className="spotify-widget-artist">{displayData.artist}</div>
+
+                            {displayData.durationMs && (
+                                <div className="spotify-widget-progress-container">
+                                    <div className="spotify-widget-progress-bar">
+                                        <div
+                                            className="spotify-widget-progress-fill"
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
+                                    <div className="spotify-widget-time">
+                                        <span>{formatTime(currentProgress)}</span>
+                                        <span>{formatTime(displayData.durationMs)}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </a>
                 </div>
-            </a>
+
+                {/* Minimized View */}
+                <div
+                    className="spotify-widget-min-view"
+                    title="Currently listening to Spotify. Click to expand."
+                >
+                    <div className="spotify-widget-container min-container">
+                        <div className="spotify-widget-drag-handle">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--color-accent)">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.45 17.348c-.201.332-.63.438-.962.237-2.637-1.61-5.94-1.976-9.84-.108-.372.178-.813.018-.99-.355-.177-.373-.018-.813.355-.99 4.28-2.052 7.94-1.636 10.865.153.333.203.44.632.237.962zm1.388-3.094c-.255.42-.792.56-1.213.305-3.018-1.85-7.61-2.4-10.74-1.314-.467.162-.97-.087-1.134-.555-.163-.466.088-.97.556-1.133 3.633-1.262 8.73-.637 12.227 1.512.422.256.561.793.305 1.217zm.11-3.237C15.26 8.814 8.868 8.59 5.165 9.714c-.55.166-1.127-.145-1.293-.695-.165-.55.146-1.127.696-1.293 4.267-1.29 11.36-1.023 15.655 1.527.49.29.652.92.36 1.41-.29.492-.92.653-1.41.36z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     );
 }
