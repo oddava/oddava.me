@@ -7,17 +7,23 @@ interface SpotifyData {
     artist?: string;
     albumImageUrl?: string;
     songUrl?: string;
+    durationMs?: number;
+    progressMs?: number;
 }
 
 export default function SpotifyWidget() {
     const [data, setData] = useState<SpotifyData>({ isPlaying: false });
     const [loading, setLoading] = useState(true);
+    const [currentProgress, setCurrentProgress] = useState(0);
 
     const fetchPlaying = async () => {
         try {
             const res = await fetch('/api/spotify');
             const json = await res.json();
             setData(json);
+            if (json.progressMs) {
+                setCurrentProgress(json.progressMs);
+            }
         } catch (e) {
             console.error(e);
             setData({ isPlaying: false });
@@ -28,14 +34,33 @@ export default function SpotifyWidget() {
 
     useEffect(() => {
         fetchPlaying();
-
-        // Poll every 15 seconds
-        const interval = setInterval(() => {
-            fetchPlaying();
-        }, 15000);
-
+        const interval = setInterval(fetchPlaying, 15000);
         return () => clearInterval(interval);
     }, []);
+
+    // Live counter for progress
+    useEffect(() => {
+        if (!data.isPlaying || !data.durationMs) return;
+
+        const timer = setInterval(() => {
+            setCurrentProgress(prev => {
+                if (prev + 1000 >= (data.durationMs || 0)) {
+                    return data.durationMs || 0;
+                }
+                return prev + 1000;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [data.isPlaying, data.durationMs]);
+
+    const formatTime = (ms: number) => {
+        const seconds = Math.floor((ms / 1000) % 60);
+        const minutes = Math.floor(ms / (1000 * 60));
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const progressPercent = data.durationMs ? (currentProgress / data.durationMs) * 100 : 0;
 
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -63,17 +88,13 @@ export default function SpotifyWidget() {
     const preventClickRef = useRef(false);
 
     const handlePointerDown = (e: React.PointerEvent) => {
-        // Only trigger drag if we aren't clicking a button
         if ((e.target as HTMLElement).closest('button')) {
             return;
         }
 
-        // If we are clicking a link, we still allow dragging but don't preventDefault 
-        // until we actually move, so the link remains clickable on a simple tap.
         setIsDragging(true);
         setTotalMovement(0);
         setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -81,15 +102,25 @@ export default function SpotifyWidget() {
 
         const deltaX = Math.abs(e.clientX - (dragStart.x + position.x));
         const deltaY = Math.abs(e.clientY - (dragStart.y + position.y));
+        const newTotal = totalMovement + deltaX + deltaY;
+
+        // Take pointer capture only when a genuine drag begins.
+        // Doing this conditionally allows simple taps to register as native link clicks!
+        if (newTotal >= 5) {
+            try {
+                if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                }
+            } catch (err) { }
+        }
+
         setTotalMovement(prev => prev + deltaX + deltaY);
 
-        // If a drag is in progress, prevent default to stop text selection, etc.
         e.preventDefault();
 
         const newX = e.clientX - dragStart.x;
         const newY = e.clientY - dragStart.y;
 
-        // Prevent dragging completely off screen
         const maxRight = window.innerWidth - 50;
         const maxBottom = window.innerHeight - 50;
 
@@ -101,14 +132,20 @@ export default function SpotifyWidget() {
 
     const handlePointerUp = (e: React.PointerEvent) => {
         setIsDragging(false);
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+        try {
+            if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+            }
+        } catch (err) { }
+
         localStorage.setItem('spotify-widget-pos', JSON.stringify(position));
 
-        // If movement was minimal, consider it a click to expand if minimized
         if (totalMovement < 10 && isMinimized) {
             setIsMinimized(false);
             localStorage.setItem('spotify-widget-minimized', 'false');
-            // Prevent the subsequent 'click' event from triggering the link on mobile
+            preventClickRef.current = true;
+            setTimeout(() => { preventClickRef.current = false; }, 300);
+        } else if (totalMovement >= 10) {
             preventClickRef.current = true;
             setTimeout(() => { preventClickRef.current = false; }, 300);
         }
@@ -147,14 +184,14 @@ export default function SpotifyWidget() {
 
     return (
         <div
-            className={`spotify-widget-wrapper ${isDragging ? 'dragging' : ''}`}
+            className={`spotify-widget-wrapper ${isDragging && totalMovement > 10 ? 'dragging' : ''}`}
             style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
         >
             <div className="spotify-widget-controls">
-                <div /> {/* Spacer */}
+                <div />
                 <button className="spotify-widget-minimize action-btn" onClick={toggleMinimize} aria-label="Minimize widget">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -183,6 +220,21 @@ export default function SpotifyWidget() {
                     <div className="spotify-widget-label">Now Playing</div>
                     <div className="spotify-widget-title">{data.title}</div>
                     <div className="spotify-widget-artist">{data.artist}</div>
+
+                    {data.durationMs && (
+                        <div className="spotify-widget-progress-container">
+                            <div className="spotify-widget-progress-bar">
+                                <div
+                                    className="spotify-widget-progress-fill"
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+                            <div className="spotify-widget-time">
+                                <span>{formatTime(currentProgress)}</span>
+                                <span>{formatTime(data.durationMs)}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </a>
         </div>

@@ -101,9 +101,9 @@
 }
 
 .spotify-widget-album {
-    width: 48px;
-    height: 48px;
-    border-radius: 4px;
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
     object-fit: cover;
 }
 
@@ -111,6 +111,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    min-width: 160px;
 }
 
 .spotify-widget-label {
@@ -123,26 +124,58 @@
 }
 
 .spotify-widget-title {
-    font-size: 0.75rem;
+    font-size: 0.95rem;
     color: var(--color-ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 150px;
+    max-width: 220px;
+    font-weight: 500;
+    line-height: 1.2;
 }
 
-.spotify-widget-container:hover .spotify-widget-title {
+.spotify-widget-title:hover {
     color: var(--color-accent);
     text-decoration: underline;
 }
 
 .spotify-widget-artist {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--color-ink-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 150px;
+    max-width: 220px;
+    margin-top: 0;
+    line-height: 1.2;
+}
+
+.spotify-widget-progress-container {
+    margin-top: 6px;
+    width: 100%;
+}
+
+.spotify-widget-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--color-rule);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 2px;
+}
+
+.spotify-widget-progress-fill {
+    height: 100%;
+    background: var(--color-accent);
+    transition: width 0.1s linear;
+}
+
+.spotify-widget-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: var(--color-ink-faint);
+    font-family: var(--font-mono);
 }
 
 /* Hide on mobile by default or adjust positioning */
@@ -150,15 +183,36 @@
     .spotify-widget-wrapper {
         bottom: 1rem;
         left: 1rem;
+        gap: 2px;
     }
 
     .spotify-widget-container {
         padding: 6px 10px;
+        gap: 8px;
+    }
+
+    .spotify-widget-album {
+        width: 48px;
+        height: 48px;
+    }
+
+    .spotify-widget-info {
+        min-width: 120px;
+    }
+
+    .spotify-widget-title {
+        font-size: 0.8rem;
+        max-width: 160px;
+    }
+
+    .spotify-widget-artist {
+        font-size: 0.7rem;
+        max-width: 160px;
     }
 
     .spotify-widget-controls {
         opacity: 1;
-        /* Always show controls on mobile for accessibility */
+        /* Always show controls on mobile */
     }
 
     .spotify-widget-container.minimized {
