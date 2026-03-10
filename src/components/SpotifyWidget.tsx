@@ -97,6 +97,7 @@ export default function SpotifyWidget() {
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [initialPointer, setInitialPointer] = useState({ x: 0, y: 0 });
     const [isMinimized, setIsMinimized] = useState(false);
 
     // Load saved position from local storage
@@ -127,14 +128,15 @@ export default function SpotifyWidget() {
         setIsDragging(true);
         setTotalMovement(0);
         setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+        setInitialPointer({ x: e.clientX, y: e.clientY });
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
         if (!isDragging) return;
 
-        const deltaX = Math.abs(e.clientX - (dragStart.x + position.x));
-        const deltaY = Math.abs(e.clientY - (dragStart.y + position.y));
-        const newTotal = totalMovement + deltaX + deltaY;
+        const deltaX = Math.abs(e.clientX - initialPointer.x);
+        const deltaY = Math.abs(e.clientY - initialPointer.y);
+        const newTotal = deltaX + deltaY;
 
         if (newTotal >= 5) {
             try {
@@ -144,7 +146,7 @@ export default function SpotifyWidget() {
             } catch (err) { }
         }
 
-        setTotalMovement(prev => prev + deltaX + deltaY);
+        setTotalMovement(newTotal);
 
         e.preventDefault();
 
@@ -230,6 +232,8 @@ export default function SpotifyWidget() {
                             src={displayData.albumImageUrl}
                             alt={displayData.title}
                             className="spotify-widget-album"
+                            draggable="false"
+                            onDragStart={(e) => e.preventDefault()}
                         />
                         <div className="spotify-widget-info">
                             <div className="spotify-widget-label">Now Playing</div>
