@@ -22,12 +22,11 @@
   margin: 0 auto;
   padding: var(--space-md) 0;
   display: grid;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: var(--space-xl);
 }
 
 .page-header h1 {
@@ -100,8 +99,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Minesweeper Component Styles */
@@ -376,10 +382,12 @@
     opacity: 0;
     transform: translate(-50%, 0) scale(0.7);
   }
+
   15% {
     opacity: 1;
     transform: translate(-50%, -8px) scale(1);
   }
+
   100% {
     opacity: 0;
     transform: translate(-50%, -26px) scale(1.03);
@@ -391,10 +399,12 @@
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
   }
+
   12% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1) rotate(0deg);
   }
+
   100% {
     opacity: 0;
     transform: translate(calc(-50% + var(--piece-x)), calc(-50% + var(--piece-y))) scale(0.9) rotate(var(--piece-spin));
