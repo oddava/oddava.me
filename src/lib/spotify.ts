@@ -1,4 +1,11 @@
+let cachedAccessToken: string | null = null;
+let tokenExpirationTime: number = 0;
+
 export const getAccessToken = async () => {
+    if (cachedAccessToken && Date.now() < tokenExpirationTime) {
+        return { access_token: cachedAccessToken };
+    }
+
     const client_id = import.meta.env.SPOTIFY_CLIENT_ID;
     const client_secret = import.meta.env.SPOTIFY_CLIENT_SECRET;
     const refresh_token = import.meta.env.SPOTIFY_REFRESH_TOKEN;
@@ -22,7 +29,15 @@ export const getAccessToken = async () => {
         }),
     });
 
-    return response.json();
+    const data = await response.json();
+
+    if (data.access_token) {
+        cachedAccessToken = data.access_token;
+        // data.expires_in is usually 3600. We subtract 300 (5 minutes) for safety.
+        tokenExpirationTime = Date.now() + (data.expires_in - 300) * 1000;
+    }
+
+    return data;
 };
 
 export const getNowPlaying = async () => {

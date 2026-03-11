@@ -1,7 +1,28 @@
 import type { APIRoute } from 'astro';
 import { getNowPlaying } from '../../lib/spotify';
 
+let cachedData: any = null;
+let cacheExpiration: number = 0;
+
 export const GET: APIRoute = async () => {
+    if (cachedData && Date.now() < cacheExpiration) {
+        // Adjust the progressMs locally before serving the cached response
+        // so the progress bar doesn't jump backwards if the cache is a few seconds old.
+        const ageMs = Date.now() - (cacheExpiration - 5000);
+        const adjustedData = { ...cachedData };
+        if (adjustedData.progressMs && adjustedData.isPlaying) {
+            adjustedData.progressMs += ageMs;
+        }
+
+        return new Response(JSON.stringify(adjustedData), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=5',
+            },
+        });
+    }
+
     try {
         const response = await getNowPlaying();
 
@@ -26,7 +47,7 @@ export const GET: APIRoute = async () => {
         const durationMs = song.item.duration_ms;
         const progressMs = song.progress_ms;
 
-        return new Response(JSON.stringify({
+        const responseData = {
             albumImageUrl,
             artist,
             isPlaying,
@@ -34,7 +55,12 @@ export const GET: APIRoute = async () => {
             title,
             durationMs,
             progressMs
-        }), {
+        };
+
+        cachedData = responseData;
+        cacheExpiration = Date.now() + 5000;
+
+        return new Response(JSON.stringify(responseData), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -61,7 +87,7 @@ async function fetchLanyardFallback() {
 
         if (data.success && data.data.spotify) {
             const spotify = data.data.spotify;
-            return new Response(JSON.stringify({
+            const responseData = {
                 isPlaying: true,
                 title: spotify.song,
                 artist: spotify.artist,
@@ -69,7 +95,12 @@ async function fetchLanyardFallback() {
                 songUrl: `https://open.spotify.com/track/${spotify.track_id}`,
                 durationMs: spotify.timestamps?.end ? spotify.timestamps.end - spotify.timestamps.start : 0,
                 progressMs: spotify.timestamps?.start ? Date.now() - spotify.timestamps.start : 0,
-            }), {
+            };
+
+            cachedData = responseData;
+            cacheExpiration = Date.now() + 5000;
+
+            return new Response(JSON.stringify(responseData), {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
@@ -78,7 +109,11 @@ async function fetchLanyardFallback() {
             });
         }
 
-        return new Response(JSON.stringify({ isPlaying: false, fromFallback: true }), {
+        const fallbackData = { isPlaying: false, fromFallback: true };
+        cachedData = fallbackData;
+        cacheExpiration = Date.now() + 5000;
+
+        return new Response(JSON.stringify(fallbackData), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -89,7 +124,11 @@ async function fetchLanyardFallback() {
 }
 
 function createErrorResponse(errorMsg: string) {
-    return new Response(JSON.stringify({ isPlaying: false, error: errorMsg }), {
+    const errorData = { isPlaying: false, error: errorMsg };
+    cachedData = errorData;
+    cacheExpiration = Date.now() + 5000;
+    
+    return new Response(JSON.stringify(errorData), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
     });

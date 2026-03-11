@@ -10,7 +10,7 @@ export function CellComponent({ cell, onClick, onRightClick }: CellComponentProp
     const getContent = () => {
         if (cell.isFlagged) return '🚩';
         if (!cell.isRevealed) return '';
-        if (cell.isMine) return '💣';
+        if (cell.isMine) return <img src="/images/games/bomb-devil.png" alt="mine" width={20} height={20} />;
         if (cell.neighborMines === 0) return '';
         return cell.neighborMines;
     };
