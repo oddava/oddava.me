@@ -1,28 +1,34 @@
 ---
 export const prerender = true;
 import Base from '../../layouts/Base.astro';
-import { getAllAnime } from '../../lib/content';
+import { getAnimeFavorites } from '../../lib/content';
 
-const animeList = await getAllAnime();
+const animeList: any[] = await getAnimeFavorites();
 ---
 
 <Base title="anime" description="My favorite anime and watch list.">
   <header class="post-header">
     <h1>anime</h1>
-    <p class="post-header__meta">thoughts on what I've been watching.</p>
+    <p class="post-header__meta">my favorite animes</p>
   </header>
 
-  <ul class="post-list">
-    {animeList.map((anime) => (
+  <ul class="post-list" style="margin-top: var(--space-md);">
+    {animeList.map((entry) => (
       <li class="post-item">
-        <a href={`/anime/${anime.id}`} class="post-item__link">
-          <div class="post-item__title">{anime.data.title}</div>
-          <div class="post-item__meta">
-            {anime.data.rating && <span>rating: {anime.data.rating}/10</span>}
-            {anime.data.rating && anime.data.year && <span class="separator">·</span>}
-            {anime.data.year && <span>year: {anime.data.year}</span>}
-            <span class="separator">·</span>
-            <span>status: {anime.data.status}</span>
+        <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="post-item__link">
+          <div class="anime-item">
+            <img 
+              src={entry.anime.cover_image_small || entry.anime.cover_image} 
+              alt={entry.anime.title} 
+              class="anime-item__image" 
+              loading="lazy" 
+            />
+            <div class="anime-item__content">
+              <div class="post-item__title">{entry.anime.title}</div>
+              <div class="post-item__meta">
+                {entry.anime.title_jp} {entry.anime.rating && ` • ★ ${entry.anime.rating}`}
+              </div>
+            </div>
           </div>
         </a>
       </li>
@@ -33,3 +39,27 @@ const animeList = await getAllAnime();
     <p style="color: var(--color-ink-muted);">Nothing here yet.</p>
   )}
 </Base>
+
+<style>
+  .anime-item {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .anime-item__image {
+    width: 48px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-rule);
+    flex-shrink: 0;
+  }
+
+  .anime-item__content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+</style>

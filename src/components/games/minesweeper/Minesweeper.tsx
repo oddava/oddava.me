@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import { useState, useEffect, useCallback } from 'react';
-import type { Cell, GameConfig, GameStatus } from './types';
+import type { Cell, GameStatus } from './types';
 import { createBoard, floodFill, checkWin, formatTime } from './logic';
 import { DIFFICULTIES } from './types';
 
@@ -17,6 +17,8 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     const [status, setStatus] = useState<GameStatus>('idle');
     const [timer, setTimer] = useState(0);
     const [flags, setFlags] = useState(0);
+    const [explodedCell, setExplodedCell] = useState<number | null>(null);
+    const [showAllMines, setShowAllMines] = useState(false);
 
     useEffect(() => {
         resetGame();
@@ -37,6 +39,8 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         setStatus('idle');
         setTimer(0);
         setFlags(0);
+        setExplodedCell(null);
+        setShowAllMines(false);
     };
 
     const handleCellClick = useCallback(
@@ -55,8 +59,20 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
 
             if (cell.isMine) {
                 newBoard[index] = { ...cell, isRevealed: true };
+                const minesToReveal = newBoard
+                    .map((c, idx) => (c.isMine && idx !== index ? idx : -1))
+                    .filter((idx) => idx !== -1);
                 setBoard(newBoard);
+                setExplodedCell(index);
                 setStatus('lost');
+                setTimeout(() => {
+                    setShowAllMines(true);
+                    const finalBoard = [...newBoard];
+                    minesToReveal.forEach((idx) => {
+                        finalBoard[idx] = { ...finalBoard[idx], isRevealed: true };
+                    });
+                    setBoard(finalBoard);
+                }, 600);
                 return;
             }
 
@@ -87,10 +103,14 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         [board, status],
     );
 
-    const getCellClassName = (cell: Cell | null) => {
+    const getCellClassName = (cell: Cell | null, index: number) => {
         if (!cell) return 'cell hidden';
         if (cell.isRevealed) {
-            if (cell.isMine) return 'cell mine';
+            if (cell.isMine) {
+                if (index === explodedCell) return 'cell mine exploded';
+                if (showAllMines) return 'cell mine revealed-lost';
+                return 'cell mine';
+            }
             return 'cell revealed';
         }
         if (cell.isFlagged) return 'cell flagged';
@@ -98,13 +118,16 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     };
 
     const getCellContent = (cell: Cell | null) => {
-        if (!cell || !cell.isRevealed) {
-            if (cell?.isFlagged) return '🚩';
-            return '';
+        if (!cell) return '';
+        if (cell.isFlagged && !cell.isRevealed) return '🚩';
+        if (cell.isRevealed) {
+            if (cell.isMine) {
+                return <img src="/images/games/bomb-devil.png" alt="mine" width={20} height={20} />;
+            }
+            if (cell.neighborMines === 0) return '';
+            return cell.neighborMines;
         }
-        if (cell.isMine) return '💣';
-        if (cell.neighborMines === 0) return '';
-        return cell.neighborMines;
+        return '';
     };
 
     return (
@@ -134,7 +157,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
 
             <div className="board-wrapper">
                 <div
-                    className="board-grid"
+                    className={`board-grid ${status === 'lost' ? 'game-over' : ''}`}
                     style={{
                         gridTemplateColumns: `repeat(${cols}, 28px)`,
                         gridTemplateRows: `repeat(${rows}, 28px)`,
@@ -152,8 +175,9 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                         : board.map((cell, i) => (
                             <button
                                 key={i}
-                                className={getCellClassName(cell)}
+                                className={getCellClassName(cell, i)}
                                 data-mines={cell.isRevealed && !cell.isMine && cell.neighborMines > 0 ? cell.neighborMines : undefined}
+                                style={showAllMines && cell.isMine && i !== explodedCell ? { '--reveal-delay': `${(i % cols) * 0.05 + Math.floor(i / cols) * 0.03}s` } as React.CSSProperties : undefined}
                                 onClick={() => handleCellClick(i)}
                                 onContextMenu={(e) => handleRightClick(e, i)}
                             >
