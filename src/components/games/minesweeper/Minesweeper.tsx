@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import { useState, useEffect, useCallback } from 'react';
 import type { Cell, GameStatus } from './types';
-import { createBoard, floodFill, checkWin, formatTime } from './logic';
+import { createBoard, floodFill, chord, checkWin, formatTime } from './logic';
 import { DIFFICULTIES } from './types';
 
 interface MinesweeperProps {
@@ -55,7 +55,35 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             }
 
             const cell = newBoard[index];
-            if (cell.isRevealed || cell.isFlagged) return;
+            if (cell.isFlagged) return;
+
+            // Chord: clicking a revealed number attempts to open its safe neighbors
+            if (cell.isRevealed) {
+                const result = chord(newBoard, index, rows, cols);
+                if (!result) return; // conditions not met, no-op
+
+                if (result.hitMine) {
+                    const minesToReveal = result.board
+                        .map((c, idx) => (c.isMine && idx !== result.mineIndex ? idx : -1))
+                        .filter((idx) => idx !== -1);
+                    setBoard(result.board);
+                    setExplodedCell(result.mineIndex);
+                    setStatus('lost');
+                    setTimeout(() => {
+                        setShowAllMines(true);
+                        const finalBoard = [...result.board];
+                        minesToReveal.forEach((idx) => {
+                            finalBoard[idx] = { ...finalBoard[idx], isRevealed: true };
+                        });
+                        setBoard(finalBoard);
+                    }, 600);
+                    return;
+                }
+
+                setBoard(result.board);
+                if (checkWin(result.board)) setStatus('won');
+                return;
+            }
 
             if (cell.isMine) {
                 newBoard[index] = { ...cell, isRevealed: true };
