@@ -35,9 +35,9 @@
 /* --- Dark Theme (default) --- */
 :root,
 [data-theme="dark"] {
-  --color-ink: #e8e2f0;
-  --color-ink-muted: #9b93a8;
-  --color-ink-faint: #6b6478;
+  --color-ink: #f0eef5;
+  --color-ink-muted: #aba4b5;
+  --color-ink-faint: #7a7385;
   --color-surface: #0f0d13;
   --color-surface-raised: #181520;
   --color-accent: #8b7ec8;
