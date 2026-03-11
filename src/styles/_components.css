@@ -26,6 +26,10 @@
     max-width: 34rem;
 }
 
+.intro p:first-of-type {
+    color: var(--color-ink);
+}
+
 .section-heading {
     font-family: var(--font-mono);
     font-size: var(--text-sm);

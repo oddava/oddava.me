@@ -133,7 +133,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     return (
         <div className="minesweeper-wrapper">
             <p className="minesweeper__lead">
-                i'm addicted to this game lol
+                I'm addicted to this game lol.
             </p>
             <div className="difficulty-selector">
                 {(Object.keys(DIFFICULTIES) as Array<keyof typeof DIFFICULTIES>).map((level) => (
