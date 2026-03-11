@@ -267,6 +267,70 @@
   background: var(--ms-cell-mine, #3a1f1f);
 }
 
+.cell.mine.exploded {
+  background: #ff6666;
+  animation: mineExplode 0.6s ease forwards;
+}
+
+@keyframes mineExplode {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.25) rotate(-4deg);
+    box-shadow: 0 0 20px #ff666680;
+  }
+  40% {
+    transform: scale(1.15) rotate(3deg);
+  }
+  60% {
+    transform: scale(1.1) rotate(-2deg);
+  }
+  80% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cell.mine.revealed-lost {
+  animation: mineRevealLost 0.4s ease forwards;
+  animation-delay: var(--reveal-delay, 0s);
+}
+
+@keyframes mineRevealLost {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.board-grid.game-over {
+  animation: boardShake 0.5s ease;
+}
+
+@keyframes boardShake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-4px) rotate(-0.5deg); }
+  20% { transform: translateX(4px) rotate(0.5deg); }
+  30% { transform: translateX(-4px) rotate(-0.5deg); }
+  40% { transform: translateX(4px) rotate(0.5deg); }
+  50% { transform: translateX(-2px) rotate(-0.25deg); }
+  60% { transform: translateX(2px) rotate(0.25deg); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
 .game-end-controls {
   display: flex;
   align-items: center;

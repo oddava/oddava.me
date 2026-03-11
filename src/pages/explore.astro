@@ -1,28 +1,13 @@
 ---
 export const prerender = true;
 import Base from '../layouts/Base.astro';
-import { getAllAnime } from '../lib/content';
+import { getAnimeFavorites } from '../lib/content';
 
-const animeList = await getAllAnime();
-
-const featuredAnime = animeList.slice(0, 4);
-
-const recentActivity = [
-  ...animeList.map((entry) => ({
-    type: 'anime',
-    title: entry.data.title,
-    href: `/anime/${entry.id}`,
-    date: entry.data.updatedAt ?? (entry.data.year ? `${entry.data.year}-01-01` : '1970-01-01'),
-    label: entry.data.status,
-  })),
-]
-  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  .slice(0, 6);
+const featuredAnime: any[] = (await getAnimeFavorites()).slice(0, 4);
 ---
 <Base title="explore" description="Anime notes and discovery in one calm surface.">
   <header class="explore-header">
     <h1>explore</h1>
-    <p>anime notes and recent updates in one clean discovery flow.</p>
   </section>
 
   <section class="group">
@@ -33,34 +18,14 @@ const recentActivity = [
     <ul class="stream">
       {featuredAnime.map((entry) => (
         <li>
-          <a href={`/anime/${entry.id}`} class="row">
-            <span>{entry.data.title}</span>
-            <span>{entry.data.rating ? `${entry.data.rating}/10` : '—'} · {entry.data.status}</span>
+          <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="row">
+            <span>{entry.anime.title}</span>
+            <span>{entry.anime.rating ? `${entry.anime.rating}/10` : '—'}</span>
           </a>
         </li>
       ))}
     </ul>
     {featuredAnime.length === 0 && <p class="empty">No anime entries yet.</p>}
-  </section>
-
-  <section class="group">
-    <div class="group-head">
-      <h2>recent flow</h2>
-    </div>
-    <ul class="stream">
-      {recentActivity.map((item) => (
-        <li>
-          <a href={item.href} class="row">
-            <span class="row-main">
-              <span class={`badge ${item.type}`}>{item.type}</span>
-              <span>{item.title}</span>
-            </span>
-            <span>{item.label}</span>
-          </a>
-        </li>
-      ))}
-    </ul>
-    {recentActivity.length === 0 && <p class="empty">No activity yet.</p>}
   </section>
 
   <section class="group">
