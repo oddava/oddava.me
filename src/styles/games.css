@@ -384,6 +384,11 @@
   font-size: var(--text-sm);
 }
 
+.minesweeper__lead {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
 .community-clicker__count {
   position: relative;
   min-width: 10ch;
