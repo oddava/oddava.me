@@ -165,7 +165,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         if (cell.isFlagged && !cell.isRevealed) return '🚩';
         if (cell.isRevealed) {
             if (cell.isMine) {
-                return <img src="/images/games/bomb-devil.png" alt="mine" width={20} height={20} />;
+                return <img src="/images/games/bomb.png" alt="mine" width={20} height={20} />;
             }
             if (cell.neighborMines === 0) return '';
             return cell.neighborMines;
