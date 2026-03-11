@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Cell, GameStatus } from './types';
-import { createBoard, floodFill, chord, checkWin, formatTime } from './logic';
+import { createBoard, floodFill, chord, getNeighbors, checkWin, formatTime } from './logic';
 import { DIFFICULTIES } from './types';
 
 interface MinesweeperProps {
@@ -19,6 +19,20 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     const [flags, setFlags] = useState(0);
     const [explodedCell, setExplodedCell] = useState<number | null>(null);
     const [showAllMines, setShowAllMines] = useState(false);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+    // Cells to highlight as chord preview: unrevealed, unflagged neighbors of
+    // the hovered cell — but only when that cell is a revealed number and
+    // its flagged-neighbor count matches its value (i.e. chord is ready).
+    const chordPreviewCells = useMemo<Set<number>>(() => {
+        if (hoveredIndex === null || board.length === 0) return new Set();
+        const cell = board[hoveredIndex];
+        if (!cell?.isRevealed || cell.isMine || cell.neighborMines === 0) return new Set();
+        const neighbors = getNeighbors(hoveredIndex, rows, cols);
+        const flaggedCount = neighbors.filter((i) => board[i].isFlagged).length;
+        if (flaggedCount !== cell.neighborMines) return new Set();
+        return new Set(neighbors.filter((i) => !board[i].isRevealed && !board[i].isFlagged));
+    }, [hoveredIndex, board, rows, cols]);
 
     useEffect(() => {
         resetGame();
@@ -41,6 +55,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         setFlags(0);
         setExplodedCell(null);
         setShowAllMines(false);
+        setHoveredIndex(null);
     };
 
     const handleCellClick = useCallback(
@@ -206,11 +221,14 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                         : board.map((cell, i) => (
                             <button
                                 key={i}
-                                className={getCellClassName(cell, i)}
+                                className={`${getCellClassName(cell, i)}${chordPreviewCells.has(i) ? ' chord-preview' : ''}`}
                                 data-mines={cell.isRevealed && !cell.isMine && cell.neighborMines > 0 ? cell.neighborMines : undefined}
                                 style={showAllMines && cell.isMine && i !== explodedCell ? { '--reveal-delay': `${(i % cols) * 0.05 + Math.floor(i / cols) * 0.03}s` } as React.CSSProperties : undefined}
                                 onClick={() => handleCellClick(i)}
                                 onContextMenu={(e) => handleRightClick(e, i)}
+                                onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); handleCellClick(i); } }}
+                                onMouseEnter={() => setHoveredIndex(i)}
+                                onMouseLeave={() => setHoveredIndex(null)}
                             >
                                 {getCellContent(cell)}
                             </button>

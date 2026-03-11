@@ -23,10 +23,27 @@ export function createBoard(
         });
     }
 
-    // Collect available indices (excluding safe cell)
+    // Collect available indices — exclude the clicked cell AND all its neighbors
+    // so the first click always lands on a zero cell and triggers flood fill.
+    const safeZone = new Set<number>();
+    if (safeIndex !== undefined) {
+        safeZone.add(safeIndex);
+        const sr = Math.floor(safeIndex / cols);
+        const sc = safeIndex % cols;
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const nr = sr + dr;
+                const nc = sc + dc;
+                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                    safeZone.add(nr * cols + nc);
+                }
+            }
+        }
+    }
+
     const availableIndices: number[] = [];
     for (let i = 0; i < totalCells; i++) {
-        if (i !== safeIndex) {
+        if (!safeZone.has(i)) {
             availableIndices.push(i);
         }
     }
@@ -110,6 +127,24 @@ export function floodFill(
     }
 
     return newBoard;
+}
+
+/** Returns the indices of all valid neighbors of a cell. */
+export function getNeighbors(index: number, rows: number, cols: number): number[] {
+    const r = Math.floor(index / cols);
+    const c = index % cols;
+    const neighbors: number[] = [];
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                neighbors.push(nr * cols + nc);
+            }
+        }
+    }
+    return neighbors;
 }
 
 /**
