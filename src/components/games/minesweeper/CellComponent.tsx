@@ -4,9 +4,11 @@ interface CellComponentProps {
     cell: Cell;
     onClick: () => void;
     onRightClick: (e: React.MouseEvent) => void;
+    onMiddleClick: () => void;
+    isChordPreview?: boolean;
 }
 
-export function CellComponent({ cell, onClick, onRightClick }: CellComponentProps) {
+export function CellComponent({ cell, onClick, onRightClick, onMiddleClick, isChordPreview }: CellComponentProps) {
     const getContent = () => {
         if (cell.isFlagged) return '🚩';
         if (!cell.isRevealed) return '';
@@ -22,6 +24,7 @@ export function CellComponent({ cell, onClick, onRightClick }: CellComponentProp
             return `${base} revealed`;
         }
         if (cell.isFlagged) return `${base} flagged`;
+        if (isChordPreview) return `${base} hidden chord-preview`;
         return `${base} hidden`;
     };
 
@@ -33,7 +36,7 @@ export function CellComponent({ cell, onClick, onRightClick }: CellComponentProp
             onAuxClick={(e) => {
                 if (e.button === 1) {
                     e.preventDefault();
-                    onRightClick(e);
+                    onMiddleClick();
                 }
             }}
         >
