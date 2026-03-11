@@ -112,6 +112,52 @@ export function floodFill(
     return newBoard;
 }
 
+/**
+ * Chording — click a revealed number whose flagged-neighbor count matches it.
+ * Returns null if conditions aren't met (no-op), otherwise the result.
+ */
+export function chord(
+    board: Cell[],
+    index: number,
+    rows: number,
+    cols: number,
+): { board: Cell[]; hitMine: false } | { board: Cell[]; hitMine: true; mineIndex: number } | null {
+    const cell = board[index];
+    if (!cell.isRevealed || cell.isMine || cell.neighborMines === 0) return null;
+
+    const r = Math.floor(index / cols);
+    const c = index % cols;
+
+    const neighbors: number[] = [];
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                neighbors.push(nr * cols + nc);
+            }
+        }
+    }
+
+    const flaggedCount = neighbors.filter((i) => board[i].isFlagged).length;
+    if (flaggedCount !== cell.neighborMines) return null; // chord conditions not met
+
+    // Attempt to reveal all unflagged, unrevealed neighbors
+    let newBoard = [...board];
+    for (const ni of neighbors) {
+        const n = newBoard[ni];
+        if (n.isRevealed || n.isFlagged) continue;
+        if (n.isMine) {
+            newBoard[ni] = { ...n, isRevealed: true };
+            return { board: newBoard, hitMine: true, mineIndex: ni };
+        }
+        newBoard = floodFill(newBoard, ni, rows, cols);
+    }
+
+    return { board: newBoard, hitMine: false };
+}
+
 /** Check if the player has won (all non-mine cells revealed). */
 export function checkWin(board: Cell[]): boolean {
     return board.every((cell) => cell.isMine || cell.isRevealed);
