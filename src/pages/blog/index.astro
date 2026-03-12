@@ -4,6 +4,9 @@ import Base from '../../layouts/Base.astro';
 import { getPublishedPosts } from '../../lib/content';
 
 const posts = await getPublishedPosts();
+const allTags = Array.from(
+  new Set(posts.flatMap((post: any) => post.data.tags ?? [])),
+).sort();
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -22,14 +25,41 @@ function formatDate(dateStr: string): string {
     </p>
   </div>
 
+  <section class="post-filters">
+    <label class="post-filters__search">
+      <span>search</span>
+      <input type="search" placeholder="title or summary" data-filter="search" />
+    </label>
+    <div class="post-filters__tags">
+      <button type="button" class="tag-filter is-active" data-tag="">
+        all
+      </button>
+      {allTags.map((tag) => (
+        <button type="button" class="tag-filter" data-tag={tag}>{tag}</button>
+      ))}
+    </div>
+  </section>
+
   <ul class="post-list" style="margin-top: var(--space-md);">
     {posts.map((post: any) => (
-      <li class="post-item">
+      <li
+        class="post-item"
+        data-title={post.data.title.toLowerCase()}
+        data-description={(post.data.description ?? '').toLowerCase()}
+        data-tags={(post.data.tags ?? []).join(',')}
+      >
         <a href={`/blog/${post.id}`} class="post-item__link">
           <div class="post-item__title">{post.data.title}</div>
           <div class="post-item__meta">
             <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
           </div>
+          {post.data.tags?.length > 0 && (
+            <div class="post-item__tags">
+              {post.data.tags.map((tag: string) => (
+                <span class="tag-chip">{tag}</span>
+              ))}
+            </div>
+          )}
           {post.data.description && (
             <div class="post-item__description">{post.data.description}</div>
           )}
@@ -38,3 +68,39 @@ function formatDate(dateStr: string): string {
     ))}
   </ul>
 </Base>
+
+<script is:inline>
+  const searchInput = document.querySelector('[data-filter="search"]');
+  const tagButtons = document.querySelectorAll('[data-tag]');
+  const posts = document.querySelectorAll('.post-item');
+
+  let activeTag = '';
+
+  const applyFilters = () => {
+    const query = searchInput?.value.toLowerCase().trim() || '';
+
+    posts.forEach((item) => {
+      const title = item.getAttribute('data-title') || '';
+      const description = item.getAttribute('data-description') || '';
+      const tags = item.getAttribute('data-tags') || '';
+
+      const matchesSearch = !query || title.includes(query) || description.includes(query);
+      const matchesTag = !activeTag || tags.split(',').includes(activeTag);
+
+      item.style.display = matchesSearch && matchesTag ? '' : 'none';
+    });
+  };
+
+  if (searchInput) {
+    searchInput.addEventListener('input', applyFilters);
+  }
+
+  tagButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      activeTag = button.getAttribute('data-tag') || '';
+      tagButtons.forEach((btn) => btn.classList.remove('is-active'));
+      button.classList.add('is-active');
+      applyFilters();
+    });
+  });
+</script>
