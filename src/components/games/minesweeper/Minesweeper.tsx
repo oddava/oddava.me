@@ -1,11 +1,16 @@
 /** @jsxImportSource react */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Cell, GameStatus } from './types';
 import { createBoard, floodFill, chord, getNeighbors, checkWin, formatTime } from './logic';
 import { DIFFICULTIES } from './types';
 
 interface MinesweeperProps {
     initialDifficulty?: keyof typeof DIFFICULTIES;
+}
+
+interface LeaderboardEntry {
+    time: number;
+    createdAt: string;
 }
 
 export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
@@ -20,6 +25,11 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     const [explodedCell, setExplodedCell] = useState<number | null>(null);
     const [showAllMines, setShowAllMines] = useState(false);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+    const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+    const submittedRef = useRef(false);
+    const activeDifficultyRef = useRef<keyof typeof DIFFICULTIES>(difficulty);
 
     // Cells to highlight as chord preview: unrevealed, unflagged neighbors of
     // the hovered cell — but only when that cell is a revealed number and
@@ -33,6 +43,53 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         if (flaggedCount !== cell.neighborMines) return new Set();
         return new Set(neighbors.filter((i) => !board[i].isRevealed && !board[i].isFlagged));
     }, [hoveredIndex, board, rows, cols]);
+
+    const resetGame = () => {
+        setBoard([]);
+        setStatus('idle');
+        setTimer(0);
+        setFlags(0);
+        setExplodedCell(null);
+        setShowAllMines(false);
+        setHoveredIndex(null);
+        submittedRef.current = false;
+        activeDifficultyRef.current = difficulty;
+    };
+
+    const loadLeaderboard = useCallback(async (level: keyof typeof DIFFICULTIES) => {
+        try {
+            setLeaderboardLoading(true);
+            const response = await fetch(`/api/minesweeper-leaderboard?difficulty=${level}`, {
+                cache: 'no-store',
+            });
+            if (!response.ok) throw new Error('Failed to load leaderboard');
+            const data = (await response.json()) as { entries: LeaderboardEntry[] };
+            setLeaderboard(data.entries ?? []);
+            setLeaderboardError(null);
+        } catch {
+            setLeaderboardError('Could not load leaderboard.');
+        } finally {
+            setLeaderboardLoading(false);
+        }
+    }, []);
+
+    const submitScore = useCallback(async (level: keyof typeof DIFFICULTIES, time: number) => {
+        try {
+            const response = await fetch('/api/minesweeper-leaderboard', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ difficulty: level, time }),
+            });
+            if (!response.ok) throw new Error('Failed to submit');
+            const data = (await response.json()) as { entries: LeaderboardEntry[] };
+            setLeaderboard(data.entries ?? []);
+            setLeaderboardError(null);
+        } catch {
+            setLeaderboardError('Could not submit score.');
+        }
+    }, []);
 
     useEffect(() => {
         resetGame();
@@ -48,15 +105,15 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         return () => clearInterval(interval);
     }, [status]);
 
-    const resetGame = () => {
-        setBoard([]);
-        setStatus('idle');
-        setTimer(0);
-        setFlags(0);
-        setExplodedCell(null);
-        setShowAllMines(false);
-        setHoveredIndex(null);
-    };
+    useEffect(() => {
+        loadLeaderboard(difficulty);
+    }, [difficulty, loadLeaderboard]);
+
+    useEffect(() => {
+        if (status !== 'won' || timer <= 0 || submittedRef.current) return;
+        submittedRef.current = true;
+        submitScore(activeDifficultyRef.current, timer);
+    }, [status, timer, submitScore]);
 
     const handleCellClick = useCallback(
         (index: number) => {
@@ -65,6 +122,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             let newBoard = [...board];
 
             if (status === 'idle') {
+                activeDifficultyRef.current = difficulty;
                 newBoard = createBoard(rows, cols, mines, index);
                 setStatus('playing');
             }
@@ -178,6 +236,27 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             <p className="minesweeper__lead">
                 I'm addicted to this game lol.
             </p>
+            <div className="leaderboard">
+                <div className="leaderboard__head">
+                    <span>best times</span>
+                    <span>{difficulty}</span>
+                </div>
+                {leaderboardLoading && <p className="leaderboard__empty">Loading leaderboard...</p>}
+                {!leaderboardLoading && leaderboard.length === 0 && (
+                    <p className="leaderboard__empty">No times yet.</p>
+                )}
+                {!leaderboardLoading && leaderboard.length > 0 && (
+                    <ol className="leaderboard__list">
+                        {leaderboard.map((entry, index) => (
+                            <li key={`${entry.createdAt}-${index}`}>
+                                <span className="leaderboard__rank">#{index + 1}</span>
+                                <span className="leaderboard__time">{formatTime(entry.time)}</span>
+                            </li>
+                        ))}
+                    </ol>
+                )}
+                {leaderboardError && <p className="leaderboard__error">{leaderboardError}</p>}
+            </div>
             <div className="difficulty-selector">
                 {(Object.keys(DIFFICULTIES) as Array<keyof typeof DIFFICULTIES>).map((level) => (
                     <button

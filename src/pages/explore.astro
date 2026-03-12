@@ -3,30 +3,42 @@ export const prerender = true;
 import Base from '../layouts/Base.astro';
 import { getAnimeFavorites } from '../lib/content';
 
-const featuredAnime: any[] = (await getAnimeFavorites()).slice(0, 4);
+let featuredAnime: any[] = [];
+let animeAvailable = true;
+
+try {
+  featuredAnime = (await getAnimeFavorites()).slice(0, 4);
+} catch {
+  animeAvailable = false;
+}
 ---
 <Base title="explore" description="Anime notes and discovery in one calm surface.">
   <header class="explore-header">
     <h1>explore</h1>
-  </section>
+  </header>
 
-  <section class="group">
-    <div class="group-head">
-      <h2>fav animes</h2>
-      <a href="/anime">all anime</a>
-    </div>
-    <ul class="stream">
-      {featuredAnime.map((entry) => (
-        <li>
-          <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="row">
-            <span>{entry.anime.title}</span>
-            <span>{entry.anime.rating ? `${entry.anime.rating}/10` : '—'}</span>
-          </a>
-        </li>
-      ))}
-    </ul>
-    {featuredAnime.length === 0 && <p class="empty">No anime entries yet.</p>}
-  </section>
+  {animeAvailable && (
+    <section class="group">
+      <div class="group-head">
+        <h2>fav animes</h2>
+        <div class="group-links">
+          <a href="/anime">all anime</a>
+          <a href="/anime/notes">notes</a>
+        </div>
+      </div>
+      <ul class="stream">
+        {featuredAnime.map((entry) => (
+          <li>
+            <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="row">
+              <span>{entry.anime.title}</span>
+              <span>{entry.anime.rating ? `${entry.anime.rating}/10` : '—'}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      {featuredAnime.length === 0 && <p class="empty">No anime entries yet.</p>}
+    </section>
+  )}
 
   <section class="group">
     <div class="group-head">
@@ -65,6 +77,11 @@ const featuredAnime: any[] = (await getAnimeFavorites()).slice(0, 4);
     justify-content: space-between;
     align-items: baseline;
     margin-bottom: 0.5rem;
+  }
+
+  .group-links {
+    display: flex;
+    gap: 0.8rem;
   }
 
   .group-head a {
@@ -124,6 +141,7 @@ const featuredAnime: any[] = (await getAnimeFavorites()).slice(0, 4);
   .badge.anime {
     color: #5e78b6;
   }
+
 
   .empty {
     margin: 0.4rem 0 0 0;

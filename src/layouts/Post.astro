@@ -7,6 +7,7 @@ export interface Props {
     date: string;
     description?: string;
     image?: string;
+    tags?: string[];
   };
 }
 
@@ -28,6 +29,13 @@ function formatDate(dateStr: string): string {
       <div class="post-header__meta">
         <time datetime={frontmatter.date}>{formatDate(frontmatter.date)}</time>
       </div>
+      {frontmatter.tags?.length ? (
+        <div class="post-header__tags">
+          {frontmatter.tags.map((tag) => (
+            <span class="tag-chip">{tag}</span>
+          ))}
+        </div>
+      ) : null}
     </header>
 
     <div class="prose">
