@@ -3,7 +3,14 @@ export const prerender = true;
 import Base from '../../layouts/Base.astro';
 import { getAnimeFavorites } from '../../lib/content';
 
-const animeList: any[] = await getAnimeFavorites();
+let animeList: any[] = [];
+let animeAvailable = true;
+
+try {
+  animeList = await getAnimeFavorites();
+} catch {
+  animeAvailable = false;
+}
 ---
 
 <Base title="anime" description="My favorite anime and watch list.">
@@ -12,31 +19,37 @@ const animeList: any[] = await getAnimeFavorites();
     <p class="post-header__meta">my favorite animes</p>
   </header>
 
-  <ul class="post-list" style="margin-top: var(--space-md);">
-    {animeList.map((entry) => (
-      <li class="post-item">
-        <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="post-item__link">
-          <div class="anime-item">
-            <img 
-              src={entry.anime.cover_image_small || entry.anime.cover_image} 
-              alt={entry.anime.title} 
-              class="anime-item__image" 
-              loading="lazy" 
-            />
-            <div class="anime-item__content">
-              <div class="post-item__title">{entry.anime.title}</div>
-              <div class="post-item__meta">
-                {entry.anime.title_jp} {entry.anime.rating && ` • ★ ${entry.anime.rating}`}
+  {animeAvailable && (
+    <ul class="post-list" style="margin-top: var(--space-md);">
+      {animeList.map((entry) => (
+        <li class="post-item">
+          <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="post-item__link">
+            <div class="anime-item">
+              <img 
+                src={entry.anime.cover_image_small || entry.anime.cover_image} 
+                alt={entry.anime.title} 
+                class="anime-item__image" 
+                loading="lazy" 
+              />
+              <div class="anime-item__content">
+                <div class="post-item__title">{entry.anime.title}</div>
+                <div class="post-item__meta">
+                  {entry.anime.title_jp} {entry.anime.rating && ` • ★ ${entry.anime.rating}`}
+                </div>
               </div>
             </div>
-          </div>
-        </a>
-      </li>
-    ))}
-  </ul>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
 
-  {animeList.length === 0 && (
+  {animeAvailable && animeList.length === 0 && (
     <p style="color: var(--color-ink-muted);">Nothing here yet.</p>
+  )}
+
+  {!animeAvailable && (
+    <p style="color: var(--color-ink-muted);">Favorites are offline right now.</p>
   )}
 </Base>
 

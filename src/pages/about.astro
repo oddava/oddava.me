@@ -1,6 +1,7 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
+import { Guestbook } from '../components/Guestbook';
 ---
 <Base title="about" description="Who is Oddava">
   <div class="about-content">
@@ -16,4 +17,6 @@ import Base from '@layouts/Base.astro';
       or reach me at <a href="mailto:hello@oddava.me">hello@oddava.me</a>.
     </p>
   </div>
+
+  <Guestbook client:only="react" />
 </Base>

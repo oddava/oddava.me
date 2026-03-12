@@ -32,6 +32,10 @@ export default config({
                     description: 'A short summary for the index page',
                     multiline: true,
                 }),
+                tags: fields.array(fields.text({ label: 'Tag' }), {
+                    label: 'Tags',
+                    itemLabel: (props) => props.value || 'tag',
+                }),
                 draft: fields.checkbox({
                     label: 'Draft',
                     description: 'Hide this post from the public site',

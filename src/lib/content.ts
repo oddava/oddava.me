@@ -21,9 +21,7 @@ let cachedAnimeFavorites: any = null;
 
 export async function getAnimeFavorites() {
     if (cachedAnimeFavorites) return cachedAnimeFavorites;
-    const apiRes = await fetch('https://anishows.com/api/v1/favorites/?username=oddava&compact=true');
-    const apiData = await apiRes.json();
-    cachedAnimeFavorites = apiData.results;
+    cachedAnimeFavorites = [];
     return cachedAnimeFavorites;
 }
 
