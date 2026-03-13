@@ -23,4 +23,16 @@ const anime = defineCollection({
     }),
 });
 
-export const collections = { blog, anime };
+const projects = defineCollection({
+    loader: glob({ pattern: '**/*.mdx', base: './src/content/projects' }),
+    schema: z.object({
+        title: z.string(),
+        description: z.string(),
+        tech: z.array(z.string()).optional().default([]),
+        url: z.string().optional(),
+        repo: z.string().optional(),
+        featured: z.boolean().optional().default(false),
+    }),
+});
+
+export const collections = { blog, anime, projects };
