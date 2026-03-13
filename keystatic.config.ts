@@ -52,5 +52,42 @@ export default config({
                 }),
             },
         }),
+        projects: collection({
+            label: 'Projects',
+            slugField: 'title',
+            path: 'src/content/projects/*',
+            format: { contentField: 'content' },
+            schema: {
+                title: fields.slug({ name: { label: 'Title' } }),
+                description: fields.text({
+                    label: 'Description',
+                    description: 'A short summary of the project',
+                    multiline: true,
+                    validation: { isRequired: true },
+                }),
+                tech: fields.array(fields.text({ label: 'Technology' }), {
+                    label: 'Tech Stack',
+                    itemLabel: (props) => props.value || 'tech',
+                }),
+                url: fields.text({
+                    label: 'Live URL',
+                    description: 'Link to the live project (optional)',
+                }),
+                repo: fields.text({
+                    label: 'Repository URL',
+                    description: 'Link to the source code (optional)',
+                }),
+                featured: fields.checkbox({
+                    label: 'Featured',
+                    description: 'Show this project on the explore page',
+                    defaultValue: false,
+                }),
+                content: fields.mdx({
+                    label: 'Content',
+                    description: 'Optional detailed write-up about the project',
+                }),
+            },
+        }),
     },
 });
+
