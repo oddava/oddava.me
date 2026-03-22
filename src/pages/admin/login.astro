@@ -1,0 +1,31 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
+
+if (await isAdminRequest(Astro.cookies)) {
+  return Astro.redirect('/admin');
+}
+
+const configured = isAdminConfigured();
+const next = Astro.url.searchParams.get('next') ?? '/admin';
+const invalid = Astro.url.searchParams.get('error') === 'invalid';
+const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
+---
+<AdminLayout title="Admin Login" description="Authenticate to manage oddava.me.">
+  <section class="admin-card admin-login">
+    <p class="admin-kicker">oddava admin</p>
+    <h1>Sign in</h1>
+    <p>Use the shared admin token to access the control panel.</p>
+    {!configured && <p class="admin-note">Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` to enable admin access.</p>}
+    {invalid && <p class="admin-error">The admin token was rejected.</p>}
+    {loggedOut && <p class="admin-success">Admin session cleared.</p>}
+    <form method="post" action="/api/admin/session">
+      <input type="hidden" name="next" value={next} />
+      <label>
+        <span style="display:block; margin-bottom:8px; color:var(--admin-muted);">Admin token</span>
+        <input class="admin-input" type="password" name="token" required autocomplete="current-password" disabled={!configured} />
+      </label>
+      <button class="admin-button primary" type="submit" disabled={!configured}>Open admin</button>
+    </form>
+  </section>
+</AdminLayout>

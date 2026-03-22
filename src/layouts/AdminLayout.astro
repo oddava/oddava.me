@@ -1,0 +1,173 @@
+---
+export interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'admin',
+  description = 'Site administration for oddava.me.',
+} = Astro.props;
+const pageTitle = `${title} | oddava admin`;
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content={description} />
+    <title>{pageTitle}</title>
+    <style is:global>
+      :root {
+        --admin-bg: #f4efe4;
+        --admin-bg-alt: #efe6d5;
+        --admin-surface: rgba(255, 252, 246, 0.88);
+        --admin-surface-strong: #fffaf1;
+        --admin-ink: #20180f;
+        --admin-muted: #655849;
+        --admin-line: rgba(63, 47, 34, 0.12);
+        --admin-accent: #a64222;
+        --admin-accent-strong: #7f2d16;
+        --admin-success: #2e6b43;
+        --admin-danger: #8f2f25;
+        --admin-warn: #926818;
+        --admin-radius: 20px;
+        --admin-shadow: 0 24px 80px rgba(63, 42, 20, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+        color: var(--admin-ink);
+        background:
+          radial-gradient(circle at top left, rgba(166, 66, 34, 0.12), transparent 28%),
+          radial-gradient(circle at top right, rgba(146, 104, 24, 0.16), transparent 24%),
+          linear-gradient(180deg, var(--admin-bg), var(--admin-bg-alt));
+      }
+
+      a { color: inherit; }
+      button, input, select, textarea {
+        font: inherit;
+      }
+
+      .admin-shell {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 32px 20px 56px;
+      }
+
+      .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      .admin-header h1 {
+        margin: 0;
+        font-size: clamp(2.25rem, 4vw, 4rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      .admin-header p {
+        margin: 10px 0 0;
+        color: var(--admin-muted);
+        max-width: 54ch;
+      }
+
+      .admin-kicker {
+        margin: 0 0 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--admin-accent);
+      }
+
+      .admin-card {
+        background: var(--admin-surface);
+        border: 1px solid var(--admin-line);
+        border-radius: var(--admin-radius);
+        box-shadow: var(--admin-shadow);
+        backdrop-filter: blur(14px);
+      }
+
+      .admin-toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .admin-button,
+      .admin-input,
+      .admin-select {
+        border-radius: 999px;
+        border: 1px solid var(--admin-line);
+        background: rgba(255, 250, 241, 0.92);
+        color: var(--admin-ink);
+        min-height: 44px;
+      }
+
+      .admin-button {
+        padding: 0 18px;
+        cursor: pointer;
+        transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+      }
+
+      .admin-button:hover { transform: translateY(-1px); }
+      .admin-button:disabled { opacity: 0.58; cursor: wait; transform: none; }
+      .admin-button.primary { background: var(--admin-accent); color: #fff7ef; border-color: transparent; }
+      .admin-button.danger { background: var(--admin-danger); color: #fff6f3; border-color: transparent; }
+      .admin-button.ghost { background: transparent; }
+
+      .admin-input,
+      .admin-select {
+        width: 100%;
+        padding: 0 16px;
+      }
+
+      .admin-main {
+        display: grid;
+        gap: 20px;
+      }
+
+      .admin-login {
+        max-width: 520px;
+        margin: 9vh auto 0;
+        padding: 28px;
+      }
+
+      .admin-login form {
+        display: grid;
+        gap: 14px;
+      }
+
+      .admin-note,
+      .admin-error,
+      .admin-success {
+        margin: 0;
+        padding: 12px 14px;
+        border-radius: 14px;
+      }
+
+      .admin-note { background: rgba(146, 104, 24, 0.12); color: var(--admin-warn); }
+      .admin-error { background: rgba(143, 47, 37, 0.1); color: var(--admin-danger); }
+      .admin-success { background: rgba(46, 107, 67, 0.12); color: var(--admin-success); }
+
+      @media (max-width: 720px) {
+        .admin-shell { padding: 20px 14px 40px; }
+        .admin-header { flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-shell">
+      <slot />
+    </div>
+  </body>
+</html>

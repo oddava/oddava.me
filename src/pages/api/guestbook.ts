@@ -5,6 +5,8 @@ import {
   enforceRedisRateLimit,
   hasRedisConfig,
   hasTurnstileConfig,
+  isTurnstileChallengeRequired,
+  isStorageUnavailableError,
   json,
   rejectIfStorageUnavailable,
   verifyTurnstileToken,
@@ -30,11 +32,23 @@ export const GET: APIRoute = async () => {
         entries,
         writable: hasRedisConfig() && hasTurnstileConfig(),
         reviewRequired: true,
+        captchaRequired: isTurnstileChallengeRequired(),
       },
       { status: 200 },
     );
   } catch (error) {
     console.error('[guestbook] GET failed', error);
+    if (isStorageUnavailableError(error)) {
+      return json(
+        {
+          entries: [],
+          writable: false,
+          reviewRequired: true,
+          captchaRequired: isTurnstileChallengeRequired(),
+        },
+        { status: 200 },
+      );
+    }
     return json({ error: 'Could not load guestbook messages.', code: 'guestbook_unavailable' }, { status: 503 });
   }
 };
@@ -102,6 +116,15 @@ export const POST: APIRoute = async ({ request }) => {
     );
   } catch (error) {
     console.error('[guestbook] POST failed', error);
+    if (isStorageUnavailableError(error)) {
+      return json(
+        {
+          error: 'This shared feature is temporarily unavailable because persistent storage is not configured.',
+          code: 'storage_unavailable',
+        },
+        { status: 503 },
+      );
+    }
     return json({ error: 'Could not post message.', code: 'guestbook_unavailable' }, { status: 503 });
   }
 };

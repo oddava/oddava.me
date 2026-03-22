@@ -2,20 +2,11 @@
 import type { APIRoute } from 'astro';
 import { json, rejectIfStorageUnavailable } from '../../../lib/server/community';
 import type { GuestbookStatus } from '../../../lib/server/guestbook';
+import { requireAdminApi } from '../../../lib/server/admin';
 import {
   readGuestbookEntries,
   writeGuestbookEntries,
 } from '../../../lib/server/guestbook';
-
-function isAuthorized(request: Request): boolean {
-  const token = import.meta.env.GUESTBOOK_ADMIN_TOKEN;
-  if (!token) return false;
-  return request.headers.get('X-Guestbook-Admin') === token;
-}
-
-function unauthorizedResponse(): Response {
-  return json({ error: 'Unauthorized.', code: 'unauthorized' }, { status: 401 });
-}
 
 function normalizeStatus(value: string | null): GuestbookStatus | null {
   if (value === 'pending' || value === 'approved' || value === 'rejected') return value;
@@ -30,8 +21,9 @@ function withSecurityHeaders(response: Response): Response {
   return new Response(response.body, { status: response.status, headers });
 }
 
-export const GET: APIRoute = async ({ request, url }) => {
-  if (!isAuthorized(request)) return withSecurityHeaders(unauthorizedResponse());
+export const GET: APIRoute = async ({ cookies, url }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return withSecurityHeaders(authError);
 
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
@@ -48,8 +40,9 @@ export const GET: APIRoute = async ({ request, url }) => {
   }
 };
 
-export const PATCH: APIRoute = async ({ request }) => {
-  if (!isAuthorized(request)) return withSecurityHeaders(unauthorizedResponse());
+export const PATCH: APIRoute = async ({ request, cookies }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return withSecurityHeaders(authError);
 
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
@@ -78,8 +71,9 @@ export const PATCH: APIRoute = async ({ request }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ request, url }) => {
-  if (!isAuthorized(request)) return withSecurityHeaders(unauthorizedResponse());
+export const DELETE: APIRoute = async ({ cookies, url }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return withSecurityHeaders(authError);
 
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return withSecurityHeaders(storageUnavailable);

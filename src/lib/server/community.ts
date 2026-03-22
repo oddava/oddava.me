@@ -224,6 +224,19 @@ export function rejectIfStorageUnavailable(): Response | null {
   );
 }
 
+export function isStorageUnavailableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return [
+    'Persistent storage is not configured.',
+    'ECONNREFUSED',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'The client is closed',
+    'Socket closed unexpectedly',
+    'fetch failed',
+  ].some((fragment) => message.includes(fragment));
+}
+
 function getRequestOrigin(request: Request): string | null {
   const origin = request.headers.get('origin');
   if (origin) return origin;
@@ -398,6 +411,10 @@ export async function enforceRedisRateLimit(
 export function hasTurnstileConfig(): boolean {
   if (isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV) return true;
   return Boolean(import.meta.env.PUBLIC_TURNSTILE_SITE_KEY && TURNSTILE_SECRET_KEY);
+}
+
+export function isTurnstileChallengeRequired(): boolean {
+  return hasTurnstileConfig() && !(isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV);
 }
 
 export async function verifyTurnstileToken(request: Request, token: string | undefined): Promise<Response | null> {

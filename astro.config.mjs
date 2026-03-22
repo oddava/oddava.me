@@ -16,7 +16,7 @@ export default defineConfig({
       dedupe: ['yjs', 'react', 'react-dom'],
     },
     optimizeDeps: {
-      include: ['yjs'],
+      include: ['yjs', '@keystatic/astro/ui', '@keystatic/astro/api', '@keystatic/core/ui'],
     },
   },
 });
