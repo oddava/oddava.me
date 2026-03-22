@@ -1,9 +1,13 @@
 /// <reference types="astro/client" />
 import type { APIRoute } from 'astro';
-
-declare global {
-    var __guestbookEntries: GuestbookEntry[] | undefined;
-}
+import {
+    enforceSignedCooldown,
+    ensureSameOrigin,
+    hasRedisConfig,
+    json,
+    redisRequest,
+    rejectIfStorageUnavailable,
+} from '../../lib/server/community';
 
 interface GuestbookEntry {
     id: string;
@@ -12,48 +16,13 @@ interface GuestbookEntry {
     createdAt: string;
 }
 
-const REDIS_API_URL =
-    import.meta.env.UPSTASH_REDIS_REST_URL ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
-const REDIS_API_TOKEN =
-    import.meta.env.UPSTASH_REDIS_REST_TOKEN ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
-
 const ENTRIES_KEY = 'community:guestbook:entries';
 const ENCODED_ENTRIES_KEY = encodeURIComponent(ENTRIES_KEY);
 const ENTRY_LIMIT = 50;
-
-function hasRedisConfig(): boolean {
-    return Boolean(REDIS_API_URL && REDIS_API_TOKEN);
-}
-
-async function redisRequest(command: string): Promise<Response> {
-    return fetch(`${REDIS_API_URL}/${command}`, {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${REDIS_API_TOKEN}`,
-        },
-    });
-}
-
-function getMemoryEntries(): GuestbookEntry[] {
-    if (!Array.isArray(globalThis.__guestbookEntries)) {
-        globalThis.__guestbookEntries = [];
-    }
-    return globalThis.__guestbookEntries;
-}
-
-function addMemoryEntry(entry: GuestbookEntry): GuestbookEntry[] {
-    const entries = getMemoryEntries();
-    entries.unshift(entry);
-    globalThis.__guestbookEntries = entries.slice(0, ENTRY_LIMIT);
-    return globalThis.__guestbookEntries;
-}
+const GUESTBOOK_COOLDOWN_MS = 30_000;
 
 async function getEntries(): Promise<GuestbookEntry[]> {
-    if (!hasRedisConfig()) {
-        return getMemoryEntries();
-    }
+    if (!hasRedisConfig()) return [];
 
     const response = await redisRequest(`lrange/${ENCODED_ENTRIES_KEY}/0/${ENTRY_LIMIT - 1}`);
     if (!response.ok) {
@@ -76,9 +45,7 @@ async function getEntries(): Promise<GuestbookEntry[]> {
 }
 
 async function addEntry(entry: GuestbookEntry): Promise<GuestbookEntry[]> {
-    if (!hasRedisConfig()) {
-        return addMemoryEntry(entry);
-    }
+    if (!hasRedisConfig()) throw new Error('Persistent storage is not configured.');
 
     const payload = encodeURIComponent(JSON.stringify(entry));
     const pushResponse = await redisRequest(`lpush/${ENCODED_ENTRIES_KEY}/${payload}`);
@@ -103,27 +70,23 @@ function sanitizeText(value: string, limit: number): string {
 export const GET: APIRoute = async () => {
     try {
         const entries = await getEntries();
-        return new Response(JSON.stringify({ entries }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ entries, writable: hasRedisConfig() }, { status: 200 });
     } catch (error) {
-        console.error('[guestbook] GET failed, using memory fallback', error);
-        const entries = getMemoryEntries();
-        return new Response(JSON.stringify({ entries, fallback: true }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        console.error('[guestbook] GET failed', error);
+        return json({ error: 'Could not load guestbook messages.' }, { status: 503 });
     }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
+    const sameOriginError = ensureSameOrigin(request);
+    if (sameOriginError) return sameOriginError;
+
+    const storageUnavailable = rejectIfStorageUnavailable();
+    if (storageUnavailable) return storageUnavailable;
+
+    const cooldownError = await enforceSignedCooldown(cookies, request, 'guestbook-rate-limit', GUESTBOOK_COOLDOWN_MS);
+    if (cooldownError) return cooldownError;
+
     let body: { name?: string; message?: string };
 
     try {
@@ -141,12 +104,11 @@ export const POST: APIRoute = async ({ request }) => {
     const message = sanitizeText(body.message ?? '', 280);
 
     if (!message) {
-        return new Response(JSON.stringify({ error: 'Message required.' }), {
-            status: 400,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return json({ error: 'Message required.' }, { status: 400 });
+    }
+
+    if (message.length < 3) {
+        return json({ error: 'Message is too short.' }, { status: 400 });
     }
 
     const entry: GuestbookEntry = {
@@ -158,22 +120,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     try {
         const entries = await addEntry(entry);
-        return new Response(JSON.stringify({ entries }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ entries, writable: true }, { status: 200 });
     } catch (error) {
-        console.error('[guestbook] POST failed, using memory fallback', error);
-        const entries = addMemoryEntry(entry);
-        return new Response(JSON.stringify({ entries, fallback: true }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        console.error('[guestbook] POST failed', error);
+        return json({ error: 'Could not post message.' }, { status: 503 });
     }
 };

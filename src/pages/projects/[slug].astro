@@ -1,0 +1,134 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+---
+
+<Base title={project.data.title} description={project.data.description}>
+  <article class="project-page">
+    <a href="/projects" class="project-back">← back to projects</a>
+
+    <header class="project-hero">
+      <div class="project-hero__copy">
+        <p class="project-hero__eyebrow">project</p>
+        <h1>{project.data.title}</h1>
+        <p class="project-hero__description">{project.data.description}</p>
+      </div>
+
+      <div class="project-hero__meta">
+        <div class="project-hero__section">
+          <span>stack</span>
+          <div class="project-hero__chips">
+            {(project.data.tech ?? []).map((item: string) => (
+              <span class="tag-chip">{item}</span>
+            ))}
+          </div>
+        </div>
+
+        <div class="project-hero__links">
+          {project.data.url && (
+            <a href={project.data.url} target="_blank" rel="noopener noreferrer">live ↗</a>
+          )}
+          {project.data.repo && (
+            <a href={project.data.repo} target="_blank" rel="noopener noreferrer">source ↗</a>
+          )}
+        </div>
+      </div>
+    </header>
+
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</Base>
+
+<style>
+  .project-page {
+    display: grid;
+    gap: var(--space-md);
+  }
+
+  .project-back {
+    color: var(--color-ink-faint);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  .project-hero {
+    display: grid;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border: 1px solid var(--color-rule);
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at top right, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 40%),
+      var(--color-surface);
+  }
+
+  .project-hero__eyebrow {
+    margin: 0 0 0.5rem;
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+  }
+
+  .project-hero h1 {
+    margin: 0;
+  }
+
+  .project-hero__description {
+    margin: 0.75rem 0 0;
+    color: var(--color-ink-muted);
+    line-height: 1.6;
+    max-width: 60ch;
+  }
+
+  .project-hero__meta {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .project-hero__section > span {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-ink-faint);
+    font-family: var(--font-mono);
+  }
+
+  .project-hero__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .project-hero__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .project-hero__links a {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+</style>

@@ -19,6 +19,8 @@ const {
 } = Astro.props;
 
 const pageTitle = title === 'oddava' ? title : `${title} — oddava`;
+const canonicalUrl = Astro.url;
+const socialImage = new URL(image, Astro.url);
 ---
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -27,22 +29,25 @@ const pageTitle = title === 'oddava' ? title : `${title} — oddava`;
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content={description} />
   <title>{pageTitle}</title>
+  <link rel="canonical" href={canonicalUrl} />
 
   <!-- Open Graph -->
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={description} />
   <meta property="og:type" content={type} />
-  <meta property="og:url" content={Astro.url} />
-  <meta property="og:image" content={new URL(image, Astro.url)} />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:image" content={socialImage} />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@oddava" />
   <meta name="twitter:title" content={pageTitle} />
   <meta name="twitter:description" content={description} />
-  <meta name="twitter:image" content={new URL(image, Astro.url)} />
+  <meta name="twitter:image" content={socialImage} />
 
+  <link rel="alternate" type="application/rss+xml" title="oddava writing" href="/rss.xml" />
   <link rel="sitemap" href="/sitemap-index.xml" />
+  <slot name="head" />
 
   {/* Theme detection — runs before paint to prevent flash */}
   <script is:inline>

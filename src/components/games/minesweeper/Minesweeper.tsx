@@ -13,6 +13,11 @@ interface LeaderboardEntry {
     createdAt: string;
 }
 
+interface LeaderboardResponse {
+    entries: LeaderboardEntry[];
+    writable?: boolean;
+}
+
 export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     const [difficulty, setDifficulty] = useState<keyof typeof DIFFICULTIES>(initialDifficulty);
     const config = DIFFICULTIES[difficulty];
@@ -28,8 +33,10 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [leaderboardLoading, setLeaderboardLoading] = useState(true);
     const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+    const [leaderboardWritable, setLeaderboardWritable] = useState(true);
     const submittedRef = useRef(false);
     const activeDifficultyRef = useRef<keyof typeof DIFFICULTIES>(difficulty);
+    const sessionStartedRef = useRef(false);
 
     // Cells to highlight as chord preview: unrevealed, unflagged neighbors of
     // the hovered cell — but only when that cell is a revealed number and
@@ -54,6 +61,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         setHoveredIndex(null);
         submittedRef.current = false;
         activeDifficultyRef.current = difficulty;
+        sessionStartedRef.current = false;
     };
 
     const loadLeaderboard = useCallback(async (level: keyof typeof DIFFICULTIES) => {
@@ -63,14 +71,32 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 cache: 'no-store',
             });
             if (!response.ok) throw new Error('Failed to load leaderboard');
-            const data = (await response.json()) as { entries: LeaderboardEntry[] };
+            const data = (await response.json()) as LeaderboardResponse;
             setLeaderboard(data.entries ?? []);
+            setLeaderboardWritable(data.writable !== false);
             setLeaderboardError(null);
         } catch {
+            setLeaderboardWritable(false);
             setLeaderboardError('Could not load leaderboard.');
         } finally {
             setLeaderboardLoading(false);
         }
+    }, []);
+
+    const startLeaderboardSession = useCallback(async (level: keyof typeof DIFFICULTIES) => {
+        const response = await fetch('/api/minesweeper-leaderboard', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ difficulty: level }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to start session');
+        }
+
+        sessionStartedRef.current = true;
     }, []);
 
     const submitScore = useCallback(async (level: keyof typeof DIFFICULTIES, time: number) => {
@@ -83,8 +109,9 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 body: JSON.stringify({ difficulty: level, time }),
             });
             if (!response.ok) throw new Error('Failed to submit');
-            const data = (await response.json()) as { entries: LeaderboardEntry[] };
+            const data = (await response.json()) as LeaderboardResponse;
             setLeaderboard(data.entries ?? []);
+            setLeaderboardWritable(data.writable !== false);
             setLeaderboardError(null);
         } catch {
             setLeaderboardError('Could not submit score.');
@@ -110,18 +137,25 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     }, [difficulty, loadLeaderboard]);
 
     useEffect(() => {
-        if (status !== 'won' || timer <= 0 || submittedRef.current) return;
+        if (status !== 'won' || timer <= 0 || submittedRef.current || !leaderboardWritable) return;
         submittedRef.current = true;
         submitScore(activeDifficultyRef.current, timer);
-    }, [status, timer, submitScore]);
+    }, [leaderboardWritable, status, timer, submitScore]);
 
     const handleCellClick = useCallback(
-        (index: number) => {
+        async (index: number) => {
             if (status === 'won' || status === 'lost') return;
 
             let newBoard = [...board];
 
             if (status === 'idle') {
+                if (leaderboardWritable && !sessionStartedRef.current) {
+                    try {
+                        await startLeaderboardSession(difficulty);
+                    } catch {
+                        setLeaderboardError('Could not start leaderboard session.');
+                    }
+                }
                 activeDifficultyRef.current = difficulty;
                 newBoard = createBoard(rows, cols, mines, index);
                 setStatus('playing');
@@ -184,7 +218,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 setStatus('won');
             }
         },
-        [board, status, rows, cols, mines],
+        [board, status, rows, cols, mines, difficulty, leaderboardWritable, startLeaderboardSession],
     );
 
     const handleRightClick = useCallback(
@@ -256,6 +290,9 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                     </ol>
                 )}
                 {leaderboardError && <p className="leaderboard__error">{leaderboardError}</p>}
+                {!leaderboardWritable && (
+                    <p className="leaderboard__error">Leaderboard submissions are temporarily disabled while storage is unavailable.</p>
+                )}
             </div>
             <div className="difficulty-selector">
                 {(Object.keys(DIFFICULTIES) as Array<keyof typeof DIFFICULTIES>).map((level) => (

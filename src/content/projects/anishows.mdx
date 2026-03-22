@@ -12,4 +12,32 @@ url: https://anishows.com
 repo: https://github.com/oddava/aniShows
 featured: true
 ---
-AniShows is a comprehensive platform for anime enthusiasts to track their progress, rate shows, and discover new anime
+AniShows is a larger product build than most of my experiments: a real discovery and tracking platform for anime fans.
+
+## Scope
+
+The goal was not just to list shows. I wanted a place where people could:
+
+- track progress
+- rate and review titles
+- discover new series
+- keep up with airing releases
+
+That pushed the project beyond a simple content site into application territory pretty quickly.
+
+## Stack choices
+
+The frontend uses React, while the backend is Django with PostgreSQL as the primary database. Redis and Celery handle the background work and caching that a content-heavy product eventually needs. Docker keeps the local setup consistent across services.
+
+That combination let me move fast on product features without giving up too much structure once the app became more operationally complex.
+
+## What I learned
+
+AniShows taught me that “content product” complexity usually shows up in the data and background tasks first:
+
+- sync jobs
+- cache invalidation
+- ranking/discovery logic
+- image and metadata pipelines
+
+The fun visible part is the UI, but the real work is making the content layer dependable enough that the UI stays useful.
