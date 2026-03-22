@@ -1,118 +1,108 @@
 /// <reference types="astro/client" />
 import type { APIRoute } from 'astro';
-import { hasRedisConfig, json, redisRequest, rejectIfStorageUnavailable } from '../../../lib/server/community';
-
-interface GuestbookEntry {
-    id: string;
-    name: string;
-    message: string;
-    createdAt: string;
-}
-
-const ENTRIES_KEY = 'community:guestbook:entries';
-const ENCODED_ENTRIES_KEY = encodeURIComponent(ENTRIES_KEY);
-const ENTRY_LIMIT = 50;
-
-async function readEntries(): Promise<GuestbookEntry[]> {
-    if (!hasRedisConfig()) return [];
-
-    const response = await redisRequest(`lrange/${ENCODED_ENTRIES_KEY}/0/${ENTRY_LIMIT - 1}`);
-    if (!response.ok) {
-        const details = await response.text();
-        throw new Error(`Failed to read guestbook: ${response.status} ${details}`);
-    }
-
-    const data = (await response.json()) as { result: string[] | null };
-    if (!data.result) return [];
-
-    return data.result
-        .map((raw) => {
-            try {
-                return JSON.parse(raw) as GuestbookEntry;
-            } catch {
-                return null;
-            }
-        })
-        .filter((entry): entry is GuestbookEntry => Boolean(entry));
-}
-
-async function writeEntries(entries: GuestbookEntry[]): Promise<void> {
-    const nextEntries = entries.slice(0, ENTRY_LIMIT);
-
-    if (nextEntries.length === 0) {
-        const delResponse = await redisRequest(`del/${ENCODED_ENTRIES_KEY}`);
-        if (!delResponse.ok) {
-            const details = await delResponse.text();
-            throw new Error(`Failed to clear guestbook: ${delResponse.status} ${details}`);
-        }
-        return;
-    }
-
-    const delResponse = await redisRequest(`del/${ENCODED_ENTRIES_KEY}`);
-    if (!delResponse.ok) {
-        const details = await delResponse.text();
-        throw new Error(`Failed to reset guestbook: ${delResponse.status} ${details}`);
-    }
-
-    const payloads = nextEntries
-        .slice()
-        .reverse()
-        .map((entry) => encodeURIComponent(JSON.stringify(entry)));
-    const pushResponse = await redisRequest(`lpush/${ENCODED_ENTRIES_KEY}/${payloads.join('/')}`);
-    if (!pushResponse.ok) {
-        const details = await pushResponse.text();
-        throw new Error(`Failed to write guestbook: ${pushResponse.status} ${details}`);
-    }
-}
+import { json, rejectIfStorageUnavailable } from '../../../lib/server/community';
+import type { GuestbookStatus } from '../../../lib/server/guestbook';
+import {
+  readGuestbookEntries,
+  writeGuestbookEntries,
+} from '../../../lib/server/guestbook';
 
 function isAuthorized(request: Request): boolean {
-    const token = import.meta.env.GUESTBOOK_ADMIN_TOKEN;
-    if (!token) return false;
-    return request.headers.get('X-Guestbook-Admin') === token;
+  const token = import.meta.env.GUESTBOOK_ADMIN_TOKEN;
+  if (!token) return false;
+  return request.headers.get('X-Guestbook-Admin') === token;
 }
 
 function unauthorizedResponse(): Response {
-    return json({ error: 'Unauthorized.' }, { status: 401 });
+  return json({ error: 'Unauthorized.', code: 'unauthorized' }, { status: 401 });
 }
 
-export const GET: APIRoute = async ({ request }) => {
-    if (!isAuthorized(request)) return unauthorizedResponse();
-    const storageUnavailable = rejectIfStorageUnavailable();
-    if (storageUnavailable) return storageUnavailable;
+function normalizeStatus(value: string | null): GuestbookStatus | null {
+  if (value === 'pending' || value === 'approved' || value === 'rejected') return value;
+  return null;
+}
 
-    try {
-        const entries = await readEntries();
-        return json({ entries }, { status: 200 });
-    } catch (error) {
-        console.error('[guestbook-admin] GET failed', error);
-        return json({ error: 'Failed to load entries.' }, { status: 500 });
-    }
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'no-store');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'no-referrer');
+  return new Response(response.body, { status: response.status, headers });
+}
+
+export const GET: APIRoute = async ({ request, url }) => {
+  if (!isAuthorized(request)) return withSecurityHeaders(unauthorizedResponse());
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
+
+  const statusFilter = normalizeStatus(url.searchParams.get('status'));
+
+  try {
+    const entries = await readGuestbookEntries();
+    const filteredEntries = statusFilter ? entries.filter((entry) => entry.status === statusFilter) : entries;
+    return withSecurityHeaders(json({ entries: filteredEntries }, { status: 200 }));
+  } catch (error) {
+    console.error('[guestbook-admin] GET failed', error);
+    return withSecurityHeaders(json({ error: 'Failed to load entries.', code: 'admin_unavailable' }, { status: 500 }));
+  }
+};
+
+export const PATCH: APIRoute = async ({ request }) => {
+  if (!isAuthorized(request)) return withSecurityHeaders(unauthorizedResponse());
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
+
+  let body: { id?: string; status?: string };
+
+  try {
+    body = (await request.json()) as { id?: string; status?: string };
+  } catch {
+    return withSecurityHeaders(json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 }));
+  }
+
+  const status = normalizeStatus(body.status ?? null);
+  if (!body.id || !status) {
+    return withSecurityHeaders(json({ error: 'Missing id or valid status.', code: 'invalid_request' }, { status: 400 }));
+  }
+
+  try {
+    const entries = await readGuestbookEntries();
+    const next = entries.map((entry) => (entry.id === body.id ? { ...entry, status } : entry));
+    await writeGuestbookEntries(next);
+    return withSecurityHeaders(json({ entries: next }, { status: 200 }));
+  } catch (error) {
+    console.error('[guestbook-admin] PATCH failed', error);
+    return withSecurityHeaders(json({ error: 'Failed to update entry.', code: 'admin_unavailable' }, { status: 500 }));
+  }
 };
 
 export const DELETE: APIRoute = async ({ request, url }) => {
-    if (!isAuthorized(request)) return unauthorizedResponse();
-    const storageUnavailable = rejectIfStorageUnavailable();
-    if (storageUnavailable) return storageUnavailable;
+  if (!isAuthorized(request)) return withSecurityHeaders(unauthorizedResponse());
 
-    const id = url.searchParams.get('id');
-    const clearAll = url.searchParams.get('all') === 'true';
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
 
-    if (!id && !clearAll) {
-        return json({ error: 'Missing id or all=true.' }, { status: 400 });
+  const id = url.searchParams.get('id');
+  const clearAll = url.searchParams.get('all') === 'true';
+
+  if (!id && !clearAll) {
+    return withSecurityHeaders(json({ error: 'Missing id or all=true.', code: 'invalid_request' }, { status: 400 }));
+  }
+
+  try {
+    if (clearAll) {
+      await writeGuestbookEntries([]);
+      return withSecurityHeaders(json({ entries: [] }, { status: 200 }));
     }
 
-    try {
-        if (clearAll) {
-            await writeEntries([]);
-            return json({ entries: [] }, { status: 200 });
-        }
-
-        const entries = await readEntries();
-        const next = entries.filter((entry) => entry.id !== id);
-        await writeEntries(next);
-        return json({ entries: next }, { status: 200 });
-    } catch (error) {
-        console.error('[guestbook-admin] DELETE failed', error);
-        return json({ error: 'Failed to delete entries.' }, { status: 500 });
-    }
+    const entries = await readGuestbookEntries();
+    const next = entries.filter((entry) => entry.id !== id);
+    await writeGuestbookEntries(next);
+    return withSecurityHeaders(json({ entries: next }, { status: 200 }));
+  } catch (error) {
+    console.error('[guestbook-admin] DELETE failed', error);
+    return withSecurityHeaders(json({ error: 'Failed to delete entries.', code: 'admin_unavailable' }, { status: 500 }));
+  }
 };

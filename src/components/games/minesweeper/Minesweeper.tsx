@@ -16,6 +16,8 @@ interface LeaderboardEntry {
 interface LeaderboardResponse {
     entries: LeaderboardEntry[];
     writable?: boolean;
+    error?: string;
+    retryAfterSeconds?: number;
 }
 
 export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
@@ -92,8 +94,13 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             body: JSON.stringify({ difficulty: level }),
         });
 
+        const data = (await response.json()) as { error?: string; retryAfterSeconds?: number };
         if (!response.ok) {
-            throw new Error('Failed to start session');
+            throw new Error(
+                data.retryAfterSeconds
+                    ? `${data.error ?? 'Failed to start session.'} Try again in ${data.retryAfterSeconds}s.`
+                    : data.error ?? 'Failed to start session.',
+            );
         }
 
         sessionStartedRef.current = true;
@@ -108,13 +115,19 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 },
                 body: JSON.stringify({ difficulty: level, time }),
             });
-            if (!response.ok) throw new Error('Failed to submit');
             const data = (await response.json()) as LeaderboardResponse;
+            if (!response.ok) {
+                throw new Error(
+                    data.retryAfterSeconds
+                        ? `${data.error ?? 'Could not submit score.'} Try again in ${data.retryAfterSeconds}s.`
+                        : data.error ?? 'Could not submit score.',
+                );
+            }
             setLeaderboard(data.entries ?? []);
             setLeaderboardWritable(data.writable !== false);
             setLeaderboardError(null);
-        } catch {
-            setLeaderboardError('Could not submit score.');
+        } catch (submitError) {
+            setLeaderboardError(submitError instanceof Error ? submitError.message : 'Could not submit score.');
         }
     }, []);
 
@@ -152,8 +165,10 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 if (leaderboardWritable && !sessionStartedRef.current) {
                     try {
                         await startLeaderboardSession(difficulty);
-                    } catch {
-                        setLeaderboardError('Could not start leaderboard session.');
+                    } catch (sessionError) {
+                        setLeaderboardError(
+                            sessionError instanceof Error ? sessionError.message : 'Could not start leaderboard session.',
+                        );
                     }
                 }
                 activeDifficultyRef.current = difficulty;

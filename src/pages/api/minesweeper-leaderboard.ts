@@ -2,8 +2,8 @@
 import type { APIRoute } from 'astro';
 import {
     createSignedValue,
-    enforceSignedCooldown,
     ensureSameOrigin,
+    enforceRedisRateLimit,
     hasRedisConfig,
     json,
     readSignedValue,
@@ -18,8 +18,9 @@ interface LeaderboardEntry {
 
 const LEADERBOARD_LIMIT = 10;
 const SESSION_COOKIE = 'minesweeper-session';
-const SUBMIT_COOLDOWN_MS = 10_000;
 const SESSION_TTL_SECONDS = 60 * 60 * 2;
+const START_RATE_LIMIT = { limit: 12, windowMs: 10 * 60 * 1000 };
+const SUBMIT_RATE_LIMIT = { limit: 6, windowMs: 10 * 60 * 1000 };
 const MINIMUM_TIMES: Record<string, number> = {
     easy: 8,
     medium: 25,
@@ -30,6 +31,8 @@ const DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
 interface SignedMinesweeperSession {
     difficulty: string;
     startedAt: number;
+    sessionId: string;
+    submitted?: boolean;
 }
 
 function getKey(difficulty: string): string {
@@ -100,8 +103,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const storageUnavailable = rejectIfStorageUnavailable();
     if (storageUnavailable) return storageUnavailable;
 
-    const cooldownError = await enforceSignedCooldown(cookies, request, 'minesweeper-submit-rate-limit', SUBMIT_COOLDOWN_MS);
-    if (cooldownError) return cooldownError;
+    const rateLimitError = await enforceRedisRateLimit(
+        request,
+        'minesweeper-submit',
+        SUBMIT_RATE_LIMIT.limit,
+        SUBMIT_RATE_LIMIT.windowMs,
+    );
+    if (rateLimitError) return rateLimitError;
 
     let body: { difficulty?: string; time?: number };
 
@@ -128,7 +136,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const session = await readSignedValue<SignedMinesweeperSession>(cookies.get(SESSION_COOKIE)?.value);
     const now = Date.now();
-    if (!session || session.difficulty !== difficulty) {
+    if (!session || session.difficulty !== difficulty || !session.sessionId || session.submitted) {
         return json({ error: 'Missing or invalid game session.' }, { status: 403 });
     }
 
@@ -148,7 +156,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         ]);
 
         await writeLeaderboard(difficulty, next);
-        cookies.delete(SESSION_COOKIE, { path: '/' });
+        const usedSession = await createSignedValue({ ...session, submitted: true });
+        cookies.set(SESSION_COOKIE, usedSession, {
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: new URL(request.url).protocol === 'https:',
+            path: '/',
+            maxAge: 60,
+        });
 
         return json({ entries: next, writable: true }, { status: 200 });
     } catch (error) {
@@ -163,6 +178,14 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 
     const storageUnavailable = rejectIfStorageUnavailable();
     if (storageUnavailable) return storageUnavailable;
+
+    const rateLimitError = await enforceRedisRateLimit(
+        request,
+        'minesweeper-session',
+        START_RATE_LIMIT.limit,
+        START_RATE_LIMIT.windowMs,
+    );
+    if (rateLimitError) return rateLimitError;
 
     let body: { difficulty?: string };
 
@@ -180,6 +203,8 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     const value = await createSignedValue({
         difficulty,
         startedAt: Date.now(),
+        sessionId: crypto.randomUUID(),
+        submitted: false,
     });
 
     cookies.set(SESSION_COOKIE, value, {

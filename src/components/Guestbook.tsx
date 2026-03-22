@@ -9,12 +9,57 @@ interface GuestbookEntry {
 }
 
 interface GuestbookResponse {
-    entries: GuestbookEntry[];
+    entries?: GuestbookEntry[];
     writable?: boolean;
+    reviewRequired?: boolean;
+    submitted?: boolean;
+    message?: string;
     error?: string;
+    retryAfterSeconds?: number;
+}
+
+declare global {
+    interface Window {
+        turnstile?: {
+            render: (container: HTMLElement, options: {
+                sitekey: string;
+                callback: (token: string) => void;
+                'expired-callback'?: () => void;
+                'error-callback'?: () => void;
+                theme?: 'light' | 'dark' | 'auto';
+            }) => string;
+            reset: (widgetId?: string) => void;
+        };
+    }
 }
 
 const POLL_INTERVAL = 12000;
+const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
+const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const REQUIRES_CAPTCHA = Boolean(TURNSTILE_SITE_KEY);
+
+function ensureTurnstileScript(): Promise<void> {
+    if (typeof window === 'undefined') return Promise.resolve();
+    if (window.turnstile) return Promise.resolve();
+
+    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${TURNSTILE_SCRIPT_SRC}"]`);
+    if (existingScript) {
+        return new Promise((resolve, reject) => {
+            existingScript.addEventListener('load', () => resolve(), { once: true });
+            existingScript.addEventListener('error', () => reject(new Error('Failed to load Turnstile.')), { once: true });
+        });
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = TURNSTILE_SCRIPT_SRC;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Turnstile.'));
+        document.head.appendChild(script);
+    });
+}
 
 export function Guestbook() {
     const [entries, setEntries] = useState<GuestbookEntry[]>([]);
@@ -23,21 +68,24 @@ export function Guestbook() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
     const [writable, setWritable] = useState(true);
-    const optimisticIdRef = useRef<string | null>(null);
+    const [captchaToken, setCaptchaToken] = useState('');
+    const widgetContainerRef = useRef<HTMLDivElement>(null);
+    const widgetIdRef = useRef<string | null>(null);
 
     const remaining = useMemo(() => 280 - message.length, [message]);
 
     const loadEntries = async () => {
         try {
             const response = await fetch('/api/guestbook', { cache: 'no-store' });
-            if (!response.ok) throw new Error('Failed to load guestbook.');
             const data = (await response.json()) as GuestbookResponse;
+            if (!response.ok) throw new Error(data.error || 'Failed to load guestbook.');
             setEntries(data.entries ?? []);
             setWritable(data.writable !== false);
             setError(null);
-        } catch {
-            setError('Could not load guestbook messages.');
+        } catch (loadError) {
+            setError(loadError instanceof Error ? loadError.message : 'Could not load guestbook messages.');
             setWritable(false);
         } finally {
             setLoading(false);
@@ -60,26 +108,37 @@ export function Guestbook() {
         };
     }, []);
 
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    useEffect(() => {
+        if (!REQUIRES_CAPTCHA || !widgetContainerRef.current || !writable) return;
+        if (widgetIdRef.current) return;
+
+        ensureTurnstileScript()
+            .then(() => {
+                if (!widgetContainerRef.current || !window.turnstile || widgetIdRef.current) return;
+                widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
+                    sitekey: TURNSTILE_SITE_KEY,
+                    callback: (token) => setCaptchaToken(token),
+                    'expired-callback': () => setCaptchaToken(''),
+                    'error-callback': () => setCaptchaToken(''),
+                    theme: 'auto',
+                });
+            })
+            .catch(() => {
+                setWritable(false);
+                setError('Guestbook posting is unavailable because bot verification could not load.');
+            });
+    }, [writable]);
+
+    const handleSubmit = async (event: { preventDefault(): void }) => {
         event.preventDefault();
-        if (!message.trim()) return;
+        if (!message.trim() || !writable) return;
 
         const trimmedName = name.trim().slice(0, 32) || 'anon';
         const trimmedMessage = message.trim().slice(0, 280);
-        const optimisticId = `optimistic-${Date.now()}`;
-        optimisticIdRef.current = optimisticId;
 
-        const optimisticEntry: GuestbookEntry = {
-            id: optimisticId,
-            name: trimmedName,
-            message: trimmedMessage,
-            createdAt: new Date().toISOString(),
-        };
-
-        setEntries((current) => [optimisticEntry, ...current]);
         setSubmitting(true);
         setError(null);
-        setMessage('');
+        setNotice(null);
 
         try {
             const response = await fetch('/api/guestbook', {
@@ -87,17 +146,27 @@ export function Guestbook() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name: trimmedName, message: trimmedMessage }),
+                body: JSON.stringify({ name: trimmedName, message: trimmedMessage, captchaToken }),
             });
 
-            if (!response.ok) throw new Error('Failed to submit.');
             const data = (await response.json()) as GuestbookResponse;
-            setEntries(data.entries ?? []);
-            setWritable(data.writable !== false);
-            optimisticIdRef.current = null;
-        } catch {
-            setError('Could not post your message.');
-            setEntries((current) => current.filter((entry) => entry.id !== optimisticId));
+            if (!response.ok) {
+                throw new Error(
+                    data.retryAfterSeconds
+                        ? `${data.error ?? 'Could not post your message.'} Try again in ${data.retryAfterSeconds}s.`
+                        : data.error ?? 'Could not post your message.',
+                );
+            }
+
+            setMessage('');
+            setNotice(data.message ?? 'Thanks. You note will appear soon.');
+            setCaptchaToken('');
+            if (widgetIdRef.current && window.turnstile) {
+                window.turnstile.reset(widgetIdRef.current);
+            }
+            await loadEntries();
+        } catch (submitError) {
+            setError(submitError instanceof Error ? submitError.message : 'Could not post your message.');
         } finally {
             setSubmitting(false);
         }
@@ -107,7 +176,7 @@ export function Guestbook() {
         <section className="guestbook">
             <header className="guestbook__header">
                 <h2>guestbook</h2>
-                <p>leave a short note. stay kind.</p>
+                <p>leave a short note.</p>
             </header>
 
             <form className="guestbook__form" onSubmit={handleSubmit}>
@@ -134,18 +203,23 @@ export function Guestbook() {
                     />
                     <span className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}>{remaining}</span>
                 </label>
-                <button className="guestbook__submit" type="submit" disabled={submitting || !message.trim() || !writable}>
-                    {submitting ? 'posting...' : 'post'}
+                {REQUIRES_CAPTCHA && writable && <div ref={widgetContainerRef} />}
+                <button
+                    className="guestbook__submit"
+                    type="submit"
+                    disabled={submitting || !message.trim() || !writable || (REQUIRES_CAPTCHA && !captchaToken)}
+                >
+                    {submitting ? 'posting...' : 'submit'}
                 </button>
                 {!writable && (
-                    <p className="guestbook__error">Guestbook posting is temporarily read-only while storage is unavailable.</p>
+                    <p className="guestbook__error">Guestbook posting is temporarily unavailable.</p>
                 )}
             </form>
 
             <div className="guestbook__entries">
                 {loading && <p className="guestbook__empty">Loading notes...</p>}
                 {!loading && entries.length === 0 && (
-                    <p className="guestbook__empty">No notes yet. Be the first.</p>
+                    <p className="guestbook__empty">No notes yet.</p>
                 )}
                 {entries.map((entry) => (
                     <article key={entry.id} className="guestbook__entry">
@@ -160,6 +234,7 @@ export function Guestbook() {
                         <p>{entry.message}</p>
                     </article>
                 ))}
+                {notice && <p>{notice}</p>}
                 {error && <p className="guestbook__error">{error}</p>}
             </div>
         </section>

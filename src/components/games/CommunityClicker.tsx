@@ -5,6 +5,8 @@ import type { CSSProperties } from 'react';
 interface ClickerState {
     count: number;
     writable?: boolean;
+    error?: string;
+    retryAfterSeconds?: number;
 }
 
 interface ConfettiPiece {
@@ -116,12 +118,18 @@ export function CommunityClicker() {
 
         try {
             const response = await fetch('/api/clicker', { method: 'POST', cache: 'no-store' });
-            if (!response.ok) throw new Error('Failed to increment');
             const data = (await response.json()) as ClickerState;
+            if (!response.ok) {
+                throw new Error(
+                    data.retryAfterSeconds
+                        ? `${data.error ?? 'Could not update click count.'} Try again in ${data.retryAfterSeconds}s.`
+                        : data.error ?? 'Could not update click count.',
+                );
+            }
             setWritable(data.writable !== false);
             setCount((current) => (current === null ? data.count : Math.max(current, data.count)));
-        } catch {
-            setError('Could not update click count.');
+        } catch (clickError) {
+            setError(clickError instanceof Error ? clickError.message : 'Could not update click count.');
             setCount((current) => (current === null ? 0 : Math.max(0, current - 1)));
         }
     };
