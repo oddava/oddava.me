@@ -289,7 +289,11 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
                   void runAction(
                     'guestbook-clear',
                     async () => {
-                      await readJson('/api/guestbook/admin?all=true', { method: 'DELETE' });
+                      await readJson('/api/guestbook/admin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'delete', all: true }),
+                      });
                       await loadGuestbook(guestbookStatus);
                     },
                     'Guestbook cleared.',
@@ -369,8 +373,10 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
                       void runAction(
                         `guestbook-${entry.id}-delete`,
                         async () => {
-                          await readJson(`/api/guestbook/admin?id=${encodeURIComponent(entry.id)}`, {
-                            method: 'DELETE',
+                          await readJson('/api/guestbook/admin', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'delete', id: entry.id }),
                           });
                           await loadGuestbook(guestbookStatus);
                         },
@@ -474,9 +480,9 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
                     `clear-${difficulty}`,
                     async () => {
                       await readJson('/api/admin/minesweeper', {
-                        method: 'DELETE',
+                        method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ difficulty, clearAll: true }),
+                        body: JSON.stringify({ action: 'delete', difficulty, clearAll: true }),
                       });
                       await loadLeaderboard(difficulty);
                     },
@@ -513,9 +519,10 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
                               `${difficulty}-${entry.createdAt}`,
                               async () => {
                                 await readJson('/api/admin/minesweeper', {
-                                  method: 'DELETE',
+                                  method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
+                                    action: 'delete',
                                     difficulty,
                                     createdAt: entry.createdAt,
                                     time: entry.time,
