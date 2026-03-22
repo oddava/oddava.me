@@ -8,7 +8,7 @@ let featuredAnime: any[] = [];
 let animeAvailable = true;
 
 try {
-  featuredAnime = (await getAnimeFavorites()).slice(0, 4);
+  featuredAnime = await getAnimeFavorites();
 } catch {
   animeAvailable = false;
 }
@@ -28,12 +28,28 @@ const featuredProjects = await getFeaturedProjects();
           <a href="/anime">all anime</a>
         </div>
       </div>
-      <ul class="stream">
+      <ul class="anime-grid">
         {featuredAnime.map((entry) => (
           <li>
-            <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="row">
-              <span>{entry.anime.title}</span>
-              <span>{entry.anime.rating ? `${entry.anime.rating}/10` : '—'}</span>
+            <a
+              href={`https://anishows.com/anime/${entry.anime.slug}`}
+              class="anime-cover-link"
+              aria-label={entry.anime.title}
+            >
+              <span class="cover-wrap">
+                {(entry.anime.cover_image_small || entry.anime.cover_image) ? (
+                  <img
+                    src={entry.anime.cover_image_small || entry.anime.cover_image}
+                    alt={entry.anime.title}
+                    class="cover-thumb"
+                    loading="lazy"
+                    width="112"
+                    height="152"
+                  />
+                ) : (
+                  <span class="cover-fallback" aria-hidden="true"></span>
+                )}
+              </span>
             </a>
           </li>
         ))}
@@ -126,6 +142,28 @@ const featuredProjects = await getFeaturedProjects();
     border-bottom: none;
   }
 
+  .anime-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .anime-grid li {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .anime-cover-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    line-height: 0;
+  }
+
   .row {
     display: flex;
     justify-content: space-between;
@@ -143,10 +181,30 @@ const featuredProjects = await getFeaturedProjects();
     text-transform: lowercase;
   }
 
-  .row-main {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
+  .cover-wrap {
+    display: block;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .cover-thumb {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+    background: var(--color-surface-raised);
+  }
+
+  .cover-fallback {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-surface-raised) 88%, #c5d4ee 12%);
   }
 
   .badge {
@@ -173,6 +231,11 @@ const featuredProjects = await getFeaturedProjects();
   }
 
   @media (max-width: 640px) {
+    .anime-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.8rem;
+    }
+
     .row {
       align-items: flex-start;
       flex-direction: column;

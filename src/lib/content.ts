@@ -12,7 +12,7 @@ type AnimeFavoriteEntry = {
         slug: string;
         title: string;
         title_jp?: string | null;
-        rating?: number | null;
+        rating?: number | string | null;
         cover_image?: string | null;
         cover_image_small?: string | null;
     };
