@@ -365,27 +365,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
                       Reject
                     </button>
                   )}
-                  <button
-                    className="admin-button danger"
-                    type="button"
-                    disabled={busyKey === `guestbook-${entry.id}-delete`}
-                    onClick={() =>
-                      void runAction(
-                        `guestbook-${entry.id}-delete`,
-                        async () => {
-                          await readJson('/api/guestbook/admin', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'delete', id: entry.id }),
-                          });
-                          await loadGuestbook(guestbookStatus);
-                        },
-                        'Guestbook entry deleted.',
-                      )
-                    }
-                  >
-                    Delete
-                  </button>
                 </div>
               </article>
             ))}
