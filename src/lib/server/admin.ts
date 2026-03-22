@@ -86,16 +86,6 @@ export function clearAdminSession(cookies: AstroCookies, request: Request): void
   });
 }
 
-export function redirectToAdminLogin(currentPath: string): Response {
-  const location = currentPath && currentPath !== '/admin/login'
-    ? `/admin/login?next=${encodeURIComponent(currentPath)}`
-    : '/admin/login';
-  return new Response(null, {
-    status: 302,
-    headers: { Location: location },
-  });
-}
-
 export interface AdminIntegrationStatus {
   name: string;
   healthy: boolean;

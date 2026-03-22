@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import {
-  clearAdminSession,
   createAdminSessionValue,
   isAdminConfigured,
   setAdminSession,
@@ -49,12 +48,4 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return json({ ok: true, next: next.startsWith('/') ? next : '/admin' }, { status: 200 });
   }
   return redirect(next.startsWith('/') ? next : '/admin', 302);
-};
-
-export const DELETE: APIRoute = async ({ request, cookies, redirect }) => {
-  clearAdminSession(cookies, request);
-  if (wantsJson(request)) {
-    return json({ ok: true, next: '/admin/login?logged_out=1' }, { status: 200 });
-  }
-  return redirect('/admin/login?logged_out=1', 302);
 };

@@ -292,7 +292,7 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
                       await readJson('/api/guestbook/admin', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'delete', all: true }),
+                        body: JSON.stringify({ action: 'clear', all: true }),
                       });
                       await loadGuestbook(guestbookStatus);
                     },
