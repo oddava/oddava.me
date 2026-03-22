@@ -1,15 +1,12 @@
 import type { APIRoute } from 'astro';
 import {
   ensureSameOrigin,
-  enforceRedisRateLimit,
   hasRedisConfig,
   isStorageUnavailableError,
   json,
   rejectIfStorageUnavailable,
 } from '../../lib/server/community';
 import { getClickerCount, incrementClickerCount } from '../../lib/server/clicker';
-
-const CLICKER_RATE_LIMIT = { limit: 8, windowMs: 10_000 };
 
 export const GET: APIRoute = async () => {
   try {
@@ -30,14 +27,6 @@ export const POST: APIRoute = async ({ request }) => {
 
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return storageUnavailable;
-
-  const rateLimitError = await enforceRedisRateLimit(
-    request,
-    'clicker-post',
-    CLICKER_RATE_LIMIT.limit,
-    CLICKER_RATE_LIMIT.windowMs,
-  );
-  if (rateLimitError) return rateLimitError;
 
   try {
     const count = await incrementClickerCount();
