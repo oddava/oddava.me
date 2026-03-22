@@ -40,7 +40,7 @@ function formatDate(dateStr: string): string {
     </div>
   </section>
 
-  <ul class="post-list" style="margin-top: var(--space-md);">
+  <ul class="post-list">
     {posts.map((post: any) => (
       <li
         class="post-item"
@@ -50,19 +50,19 @@ function formatDate(dateStr: string): string {
       >
         <a href={`/blog/${post.id}`} class="post-item__link">
           <div class="post-item__title">{post.data.title}</div>
-          <div class="post-item__meta">
-            <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
-          </div>
-          {post.data.tags?.length > 0 && (
-            <div class="post-item__tags">
-              {post.data.tags.map((tag: string) => (
-                <span class="tag-chip">{tag}</span>
-              ))}
-            </div>
-          )}
           {post.data.description && (
             <div class="post-item__description">{post.data.description}</div>
           )}
+          <div class="post-item__footer">
+            <div class="post-item__tags">
+              {post.data.tags?.map((tag: string) => (
+                <span class="tag-chip">{tag}</span>
+              ))}
+            </div>
+            <div class="post-item__meta">
+              <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
+            </div>
+          </div>
         </a>
       </li>
     ))}
