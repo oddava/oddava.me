@@ -12,17 +12,6 @@ const blog = defineCollection({
     }),
 });
 
-const anime = defineCollection({
-    loader: glob({ pattern: '**/*.mdx', base: './src/content/anime' }),
-    schema: z.object({
-        title: z.string(),
-        year: z.coerce.number().optional(),
-        rating: z.coerce.number().optional(),
-        updatedAt: z.coerce.string().optional(),
-        status: z.enum(['watching', 'completed', 'dropped', 'plan-to-watch']),
-    }),
-});
-
 const projects = defineCollection({
     loader: glob({ pattern: '**/*.mdx', base: './src/content/projects' }),
     schema: z.object({
@@ -35,4 +24,4 @@ const projects = defineCollection({
     }),
 });
 
-export const collections = { blog, anime, projects };
+export const collections = { blog, projects };
