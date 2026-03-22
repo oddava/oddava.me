@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 
 interface ClickerState {
     count: number;
+    writable?: boolean;
 }
 
 interface ConfettiPiece {
@@ -21,6 +22,7 @@ const CONFETTI_COLORS = ['#f6d365', '#fda085', '#a8edea', '#fed6e3', '#89f7fe', 
 export function CommunityClicker() {
     const [count, setCount] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [writable, setWritable] = useState(true);
     const [bursts, setBursts] = useState<number[]>([]);
     const [confetti, setConfetti] = useState<ConfettiPiece[]>([]);
     const [milestone, setMilestone] = useState<number | null>(null);
@@ -81,10 +83,14 @@ export function CommunityClicker() {
                 const data = (await response.json()) as ClickerState;
                 if (mounted) {
                     setCount(data.count);
+                    setWritable(data.writable !== false);
                     setError(null);
                 }
             } catch {
-                if (mounted) setError('Could not load click count.');
+                if (mounted) {
+                    setWritable(false);
+                    setError('Could not load click count.');
+                }
             }
         };
 
@@ -99,6 +105,7 @@ export function CommunityClicker() {
 
     const handleClick = async () => {
         const now = Date.now();
+        if (!writable) return;
         if (now - lastClickAtRef.current < 120) return;
         lastClickAtRef.current = now;
 
@@ -108,9 +115,10 @@ export function CommunityClicker() {
         setError(null);
 
         try {
-            const response = await fetch('/api/clicker?op=hit', { method: 'GET', cache: 'no-store' });
+            const response = await fetch('/api/clicker', { method: 'POST', cache: 'no-store' });
             if (!response.ok) throw new Error('Failed to increment');
             const data = (await response.json()) as ClickerState;
+            setWritable(data.writable !== false);
             setCount((current) => (current === null ? data.count : Math.max(current, data.count)));
         } catch {
             setError('Could not update click count.');
@@ -155,12 +163,14 @@ export function CommunityClicker() {
             <button
                 className="community-clicker__button"
                 onClick={handleClick}
+                disabled={!writable}
             >
                 <span className="community-clicker__button-text">click</span>
                 <span className="community-clicker__button-sizer" aria-hidden="true">click</span>
             </button>
             {milestone && <p className="community-clicker__milestone">Milestone unlocked: {milestone} clicks!</p>}
             <p className="community-clicker__hint">It refreshes every few seconds, so you can see other visitors click too.</p>
+            {!writable && <p className="community-clicker__error">Clicking is temporarily disabled while storage is unavailable.</p>}
             {error && <p className="community-clicker__error">{error}</p>}
         </div>
     );

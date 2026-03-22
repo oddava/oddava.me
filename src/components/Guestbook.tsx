@@ -10,6 +10,8 @@ interface GuestbookEntry {
 
 interface GuestbookResponse {
     entries: GuestbookEntry[];
+    writable?: boolean;
+    error?: string;
 }
 
 const POLL_INTERVAL = 12000;
@@ -21,6 +23,7 @@ export function Guestbook() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [writable, setWritable] = useState(true);
     const optimisticIdRef = useRef<string | null>(null);
 
     const remaining = useMemo(() => 280 - message.length, [message]);
@@ -31,9 +34,11 @@ export function Guestbook() {
             if (!response.ok) throw new Error('Failed to load guestbook.');
             const data = (await response.json()) as GuestbookResponse;
             setEntries(data.entries ?? []);
+            setWritable(data.writable !== false);
             setError(null);
         } catch {
             setError('Could not load guestbook messages.');
+            setWritable(false);
         } finally {
             setLoading(false);
         }
@@ -88,6 +93,7 @@ export function Guestbook() {
             if (!response.ok) throw new Error('Failed to submit.');
             const data = (await response.json()) as GuestbookResponse;
             setEntries(data.entries ?? []);
+            setWritable(data.writable !== false);
             optimisticIdRef.current = null;
         } catch {
             setError('Could not post your message.');
@@ -128,9 +134,12 @@ export function Guestbook() {
                     />
                     <span className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}>{remaining}</span>
                 </label>
-                <button className="guestbook__submit" type="submit" disabled={submitting || !message.trim()}>
+                <button className="guestbook__submit" type="submit" disabled={submitting || !message.trim() || !writable}>
                     {submitting ? 'posting...' : 'post'}
                 </button>
+                {!writable && (
+                    <p className="guestbook__error">Guestbook posting is temporarily read-only while storage is unavailable.</p>
+                )}
             </form>
 
             <div className="guestbook__entries">

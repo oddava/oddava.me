@@ -12,6 +12,20 @@ export interface Props {
 }
 
 const { frontmatter } = Astro.props;
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: frontmatter.title,
+  description: frontmatter.description,
+  datePublished: frontmatter.date,
+  author: {
+    '@type': 'Person',
+    name: 'oddava',
+    url: 'https://oddava.me/about',
+  },
+  image: frontmatter.image ? new URL(frontmatter.image, Astro.url).toString() : undefined,
+  mainEntityOfPage: Astro.url.toString(),
+};
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -23,6 +37,7 @@ function formatDate(dateStr: string): string {
 }
 ---
 <Base title={frontmatter.title} description={frontmatter.description} type="article" image={frontmatter.image}>
+  <script slot="head" is:inline type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
   <article>
     <header class="post-header">
       <h1>{frontmatter.title}</h1>

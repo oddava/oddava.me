@@ -1,35 +1,19 @@
 import type { APIRoute } from 'astro';
+import {
+    enforceSignedCooldown,
+    ensureSameOrigin,
+    hasRedisConfig,
+    json,
+    redisRequest,
+    rejectIfStorageUnavailable,
+} from '../../lib/server/community';
 
-declare global {
-    var __communityClickerCount: number | undefined;
-}
-
-const REDIS_API_URL =
-    import.meta.env.UPSTASH_REDIS_REST_URL ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
-const REDIS_API_TOKEN =
-    import.meta.env.UPSTASH_REDIS_REST_TOKEN ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
 const COUNTER_KEY = 'community:clicker:count';
 const ENCODED_COUNTER_KEY = encodeURIComponent(COUNTER_KEY);
-
-function hasRedisConfig(): boolean {
-    return Boolean(REDIS_API_URL && REDIS_API_TOKEN);
-}
-
-async function redisRequest(command: string): Promise<Response> {
-    return fetch(`${REDIS_API_URL}/${command}`, {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${REDIS_API_TOKEN}`,
-        },
-    });
-}
+const CLICKER_COOLDOWN_MS = 1_000;
 
 async function getCount(): Promise<number> {
-    if (!hasRedisConfig()) {
-        return getMemoryCount();
-    }
+    if (!hasRedisConfig()) return 0;
 
     const response = await redisRequest(`get/${ENCODED_COUNTER_KEY}`);
     if (!response.ok) {
@@ -45,9 +29,7 @@ async function getCount(): Promise<number> {
 }
 
 async function incrementCount(): Promise<number> {
-    if (!hasRedisConfig()) {
-        return incrementMemoryCount();
-    }
+    if (!hasRedisConfig()) throw new Error('Persistent storage is not configured.');
 
     const response = await redisRequest(`incr/${ENCODED_COUNTER_KEY}`);
     if (!response.ok) {
@@ -59,64 +41,31 @@ async function incrementCount(): Promise<number> {
     return typeof data.result === 'number' ? data.result : 0;
 }
 
-function getMemoryCount(): number {
-    if (typeof globalThis.__communityClickerCount !== 'number') {
-        globalThis.__communityClickerCount = 0;
-    }
-    return globalThis.__communityClickerCount;
-}
-
-function incrementMemoryCount(): number {
-    const next = (globalThis.__communityClickerCount ?? 0) + 1;
-    globalThis.__communityClickerCount = next;
-    return next;
-}
-
-export const GET: APIRoute = async ({ url }) => {
-    const op = url.searchParams.get('op');
-    const shouldIncrement = op === 'hit';
-
+export const GET: APIRoute = async () => {
     try {
-        const count = shouldIncrement ? await incrementCount() : await getCount();
-        return new Response(JSON.stringify({ count }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        const count = await getCount();
+        return json({ count, writable: hasRedisConfig() }, { status: 200 });
     } catch (error) {
-        console.error('[clicker] GET failed, using memory fallback', error);
-        const count = shouldIncrement ? incrementMemoryCount() : getMemoryCount();
-        return new Response(JSON.stringify({ count, fallback: true }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        console.error('[clicker] GET failed', error);
+        return json({ error: 'Could not load click count.' }, { status: 503 });
     }
 };
 
-export const POST: APIRoute = async () => {
+export const POST: APIRoute = async ({ request, cookies }) => {
+    const sameOriginError = ensureSameOrigin(request);
+    if (sameOriginError) return sameOriginError;
+
+    const storageUnavailable = rejectIfStorageUnavailable();
+    if (storageUnavailable) return storageUnavailable;
+
+    const cooldownError = await enforceSignedCooldown(cookies, request, 'clicker-rate-limit', CLICKER_COOLDOWN_MS);
+    if (cooldownError) return cooldownError;
+
     try {
         const count = await incrementCount();
-        return new Response(JSON.stringify({ count }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ count, writable: true }, { status: 200 });
     } catch (error) {
-        console.error('[clicker] POST failed, using memory fallback', error);
-        const count = incrementMemoryCount();
-        return new Response(JSON.stringify({ count, fallback: true }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        console.error('[clicker] POST failed', error);
+        return json({ error: 'Could not update click count.' }, { status: 503 });
     }
 };

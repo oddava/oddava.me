@@ -1,42 +1,35 @@
 /// <reference types="astro/client" />
 import type { APIRoute } from 'astro';
-
-declare global {
-    var __minesweeperLeaderboard: Record<string, LeaderboardEntry[]> | undefined;
-}
+import {
+    createSignedValue,
+    enforceSignedCooldown,
+    ensureSameOrigin,
+    hasRedisConfig,
+    json,
+    readSignedValue,
+    redisRequest,
+    rejectIfStorageUnavailable,
+} from '../../lib/server/community';
 
 interface LeaderboardEntry {
     time: number;
     createdAt: string;
 }
 
-const REDIS_API_URL =
-    import.meta.env.UPSTASH_REDIS_REST_URL ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
-const REDIS_API_TOKEN =
-    import.meta.env.UPSTASH_REDIS_REST_TOKEN ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
-
 const LEADERBOARD_LIMIT = 10;
+const SESSION_COOKIE = 'minesweeper-session';
+const SUBMIT_COOLDOWN_MS = 10_000;
+const SESSION_TTL_SECONDS = 60 * 60 * 2;
+const MINIMUM_TIMES: Record<string, number> = {
+    easy: 8,
+    medium: 25,
+    hard: 60,
+};
+const DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
 
-function hasRedisConfig(): boolean {
-    return Boolean(REDIS_API_URL && REDIS_API_TOKEN);
-}
-
-async function redisRequest(command: string): Promise<Response> {
-    return fetch(`${REDIS_API_URL}/${command}`, {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${REDIS_API_TOKEN}`,
-        },
-    });
-}
-
-function getMemoryStore(): Record<string, LeaderboardEntry[]> {
-    if (!globalThis.__minesweeperLeaderboard) {
-        globalThis.__minesweeperLeaderboard = {};
-    }
-    return globalThis.__minesweeperLeaderboard;
+interface SignedMinesweeperSession {
+    difficulty: string;
+    startedAt: number;
 }
 
 function getKey(difficulty: string): string {
@@ -44,9 +37,7 @@ function getKey(difficulty: string): string {
 }
 
 async function readLeaderboard(difficulty: string): Promise<LeaderboardEntry[]> {
-    if (!hasRedisConfig()) {
-        return getMemoryStore()[difficulty] ?? [];
-    }
+    if (!hasRedisConfig()) return [];
 
     const key = encodeURIComponent(getKey(difficulty));
     const response = await redisRequest(`get/${key}`);
@@ -66,11 +57,6 @@ async function readLeaderboard(difficulty: string): Promise<LeaderboardEntry[]> 
 }
 
 async function writeLeaderboard(difficulty: string, entries: LeaderboardEntry[]): Promise<void> {
-    if (!hasRedisConfig()) {
-        getMemoryStore()[difficulty] = entries;
-        return;
-    }
-
     const key = encodeURIComponent(getKey(difficulty));
     const value = encodeURIComponent(JSON.stringify(entries));
     const response = await redisRequest(`set/${key}/${value}`);
@@ -87,55 +73,68 @@ function normalizeEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
         .slice(0, LEADERBOARD_LIMIT);
 }
 
+function normalizeDifficulty(value: string | undefined): string | null {
+    if (!value) return 'easy';
+    return DIFFICULTIES.has(value) ? value : null;
+}
+
 export const GET: APIRoute = async ({ url }) => {
-    const difficulty = url.searchParams.get('difficulty') ?? 'easy';
+    const difficulty = normalizeDifficulty(url.searchParams.get('difficulty') ?? 'easy');
+    if (!difficulty) {
+        return json({ error: 'Invalid difficulty.' }, { status: 400 });
+    }
 
     try {
         const entries = await readLeaderboard(difficulty);
-        return new Response(JSON.stringify({ entries: normalizeEntries(entries) }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ entries: normalizeEntries(entries), writable: hasRedisConfig() }, { status: 200 });
     } catch (error) {
-        console.error('[minesweeper] GET failed, using memory fallback', error);
-        const entries = getMemoryStore()[difficulty] ?? [];
-        return new Response(JSON.stringify({ entries: normalizeEntries(entries), fallback: true }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        console.error('[minesweeper] GET failed', error);
+        return json({ error: 'Could not load leaderboard.' }, { status: 503 });
     }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
+    const sameOriginError = ensureSameOrigin(request);
+    if (sameOriginError) return sameOriginError;
+
+    const storageUnavailable = rejectIfStorageUnavailable();
+    if (storageUnavailable) return storageUnavailable;
+
+    const cooldownError = await enforceSignedCooldown(cookies, request, 'minesweeper-submit-rate-limit', SUBMIT_COOLDOWN_MS);
+    if (cooldownError) return cooldownError;
+
     let body: { difficulty?: string; time?: number };
 
     try {
         body = (await request.json()) as { difficulty?: string; time?: number };
     } catch {
-        return new Response(JSON.stringify({ error: 'Invalid request.' }), {
-            status: 400,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return json({ error: 'Invalid request.' }, { status: 400 });
     }
 
-    const difficulty = body.difficulty ?? 'easy';
+    const difficulty = normalizeDifficulty(body.difficulty);
     const time = Number(body.time);
 
+    if (!difficulty) {
+        return json({ error: 'Invalid difficulty.' }, { status: 400 });
+    }
+
     if (!Number.isFinite(time) || time <= 0) {
-        return new Response(JSON.stringify({ error: 'Invalid time.' }), {
-            status: 400,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return json({ error: 'Invalid time.' }, { status: 400 });
+    }
+
+    if (time < MINIMUM_TIMES[difficulty]) {
+        return json({ error: 'Time is not plausible for this difficulty.' }, { status: 400 });
+    }
+
+    const session = await readSignedValue<SignedMinesweeperSession>(cookies.get(SESSION_COOKIE)?.value);
+    const now = Date.now();
+    if (!session || session.difficulty !== difficulty) {
+        return json({ error: 'Missing or invalid game session.' }, { status: 403 });
+    }
+
+    const elapsedSeconds = Math.floor((now - session.startedAt) / 1000);
+    if (elapsedSeconds <= 0 || elapsedSeconds + 2 < time || elapsedSeconds > SESSION_TTL_SECONDS) {
+        return json({ error: 'Submitted time does not match the active game session.' }, { status: 400 });
     }
 
     try {
@@ -149,33 +148,47 @@ export const POST: APIRoute = async ({ request }) => {
         ]);
 
         await writeLeaderboard(difficulty, next);
+        cookies.delete(SESSION_COOKIE, { path: '/' });
 
-        return new Response(JSON.stringify({ entries: next }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ entries: next, writable: true }, { status: 200 });
     } catch (error) {
-        console.error('[minesweeper] POST failed, using memory fallback', error);
-        const store = getMemoryStore();
-        const existing = store[difficulty] ?? [];
-        const next = normalizeEntries([
-            ...existing,
-            {
-                time,
-                createdAt: new Date().toISOString(),
-            },
-        ]);
-        store[difficulty] = next;
-
-        return new Response(JSON.stringify({ entries: next, fallback: true }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        console.error('[minesweeper] POST failed', error);
+        return json({ error: 'Could not submit score.' }, { status: 503 });
     }
+};
+
+export const PUT: APIRoute = async ({ request, cookies }) => {
+    const sameOriginError = ensureSameOrigin(request);
+    if (sameOriginError) return sameOriginError;
+
+    const storageUnavailable = rejectIfStorageUnavailable();
+    if (storageUnavailable) return storageUnavailable;
+
+    let body: { difficulty?: string };
+
+    try {
+        body = (await request.json()) as { difficulty?: string };
+    } catch {
+        return json({ error: 'Invalid request.' }, { status: 400 });
+    }
+
+    const difficulty = normalizeDifficulty(body.difficulty);
+    if (!difficulty) {
+        return json({ error: 'Invalid difficulty.' }, { status: 400 });
+    }
+
+    const value = await createSignedValue({
+        difficulty,
+        startedAt: Date.now(),
+    });
+
+    cookies.set(SESSION_COOKIE, value, {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: new URL(request.url).protocol === 'https:',
+        path: '/',
+        maxAge: SESSION_TTL_SECONDS,
+    });
+
+    return json({ ok: true }, { status: 200 });
 };

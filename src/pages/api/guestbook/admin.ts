@@ -1,9 +1,6 @@
 /// <reference types="astro/client" />
 import type { APIRoute } from 'astro';
-
-declare global {
-    var __guestbookEntries: GuestbookEntry[] | undefined;
-}
+import { hasRedisConfig, json, redisRequest, rejectIfStorageUnavailable } from '../../../lib/server/community';
 
 interface GuestbookEntry {
     id: string;
@@ -12,41 +9,12 @@ interface GuestbookEntry {
     createdAt: string;
 }
 
-const REDIS_API_URL =
-    import.meta.env.UPSTASH_REDIS_REST_URL ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
-const REDIS_API_TOKEN =
-    import.meta.env.UPSTASH_REDIS_REST_TOKEN ??
-    import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
-
 const ENTRIES_KEY = 'community:guestbook:entries';
 const ENCODED_ENTRIES_KEY = encodeURIComponent(ENTRIES_KEY);
 const ENTRY_LIMIT = 50;
 
-function hasRedisConfig(): boolean {
-    return Boolean(REDIS_API_URL && REDIS_API_TOKEN);
-}
-
-async function redisRequest(command: string): Promise<Response> {
-    return fetch(`${REDIS_API_URL}/${command}`, {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${REDIS_API_TOKEN}`,
-        },
-    });
-}
-
-function getMemoryEntries(): GuestbookEntry[] {
-    if (!Array.isArray(globalThis.__guestbookEntries)) {
-        globalThis.__guestbookEntries = [];
-    }
-    return globalThis.__guestbookEntries;
-}
-
 async function readEntries(): Promise<GuestbookEntry[]> {
-    if (!hasRedisConfig()) {
-        return getMemoryEntries();
-    }
+    if (!hasRedisConfig()) return [];
 
     const response = await redisRequest(`lrange/${ENCODED_ENTRIES_KEY}/0/${ENTRY_LIMIT - 1}`);
     if (!response.ok) {
@@ -70,11 +38,6 @@ async function readEntries(): Promise<GuestbookEntry[]> {
 
 async function writeEntries(entries: GuestbookEntry[]): Promise<void> {
     const nextEntries = entries.slice(0, ENTRY_LIMIT);
-
-    if (!hasRedisConfig()) {
-        globalThis.__guestbookEntries = nextEntries;
-        return;
-    }
 
     if (nextEntries.length === 0) {
         const delResponse = await redisRequest(`del/${ENCODED_ENTRIES_KEY}`);
@@ -109,81 +72,47 @@ function isAuthorized(request: Request): boolean {
 }
 
 function unauthorizedResponse(): Response {
-    return new Response(JSON.stringify({ error: 'Unauthorized.' }), {
-        status: 401,
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
+    return json({ error: 'Unauthorized.' }, { status: 401 });
 }
 
 export const GET: APIRoute = async ({ request }) => {
     if (!isAuthorized(request)) return unauthorizedResponse();
+    const storageUnavailable = rejectIfStorageUnavailable();
+    if (storageUnavailable) return storageUnavailable;
 
     try {
         const entries = await readEntries();
-        return new Response(JSON.stringify({ entries }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ entries }, { status: 200 });
     } catch (error) {
         console.error('[guestbook-admin] GET failed', error);
-        return new Response(JSON.stringify({ error: 'Failed to load entries.' }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return json({ error: 'Failed to load entries.' }, { status: 500 });
     }
 };
 
 export const DELETE: APIRoute = async ({ request, url }) => {
     if (!isAuthorized(request)) return unauthorizedResponse();
+    const storageUnavailable = rejectIfStorageUnavailable();
+    if (storageUnavailable) return storageUnavailable;
 
     const id = url.searchParams.get('id');
     const clearAll = url.searchParams.get('all') === 'true';
 
     if (!id && !clearAll) {
-        return new Response(JSON.stringify({ error: 'Missing id or all=true.' }), {
-            status: 400,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return json({ error: 'Missing id or all=true.' }, { status: 400 });
     }
 
     try {
         if (clearAll) {
             await writeEntries([]);
-            return new Response(JSON.stringify({ entries: [] }), {
-                status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-store',
-                },
-            });
+            return json({ entries: [] }, { status: 200 });
         }
 
         const entries = await readEntries();
         const next = entries.filter((entry) => entry.id !== id);
         await writeEntries(next);
-        return new Response(JSON.stringify({ entries: next }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store',
-            },
-        });
+        return json({ entries: next }, { status: 200 });
     } catch (error) {
         console.error('[guestbook-admin] DELETE failed', error);
-        return new Response(JSON.stringify({ error: 'Failed to delete entries.' }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return json({ error: 'Failed to delete entries.' }, { status: 500 });
     }
 };
