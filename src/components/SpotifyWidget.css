@@ -4,7 +4,6 @@
     touch-action: none;
     cursor: grab;
     user-select: none;
-    will-change: left, right, top, bottom;
 }
 
 .spotify-widget-positioner.dragging {

@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "astro dev --mode development --force",
+    "dev": "astro dev --mode development",
     "build": "astro build --mode production",
     "build:dev": "astro build --mode development",
     "preview": "astro preview --mode production",

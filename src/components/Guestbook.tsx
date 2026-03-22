@@ -12,6 +12,7 @@ interface GuestbookResponse {
     entries?: GuestbookEntry[];
     writable?: boolean;
     reviewRequired?: boolean;
+    captchaRequired?: boolean;
     submitted?: boolean;
     message?: string;
     error?: string;
@@ -36,7 +37,6 @@ declare global {
 const POLL_INTERVAL = 12000;
 const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
 const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-const REQUIRES_CAPTCHA = Boolean(TURNSTILE_SITE_KEY);
 
 function ensureTurnstileScript(): Promise<void> {
     if (typeof window === 'undefined') return Promise.resolve();
@@ -70,6 +70,7 @@ export function Guestbook() {
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [writable, setWritable] = useState(true);
+    const [captchaRequired, setCaptchaRequired] = useState(false);
     const [captchaToken, setCaptchaToken] = useState('');
     const widgetContainerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
@@ -83,10 +84,12 @@ export function Guestbook() {
             if (!response.ok) throw new Error(data.error || 'Failed to load guestbook.');
             setEntries(data.entries ?? []);
             setWritable(data.writable !== false);
+            setCaptchaRequired(Boolean(data.captchaRequired && TURNSTILE_SITE_KEY));
             setError(null);
         } catch (loadError) {
             setError(loadError instanceof Error ? loadError.message : 'Could not load guestbook messages.');
             setWritable(false);
+            setCaptchaRequired(false);
         } finally {
             setLoading(false);
         }
@@ -109,7 +112,7 @@ export function Guestbook() {
     }, []);
 
     useEffect(() => {
-        if (!REQUIRES_CAPTCHA || !widgetContainerRef.current || !writable) return;
+        if (!captchaRequired || !widgetContainerRef.current || !writable) return;
         if (widgetIdRef.current) return;
 
         ensureTurnstileScript()
@@ -127,7 +130,7 @@ export function Guestbook() {
                 setWritable(false);
                 setError('Guestbook posting is unavailable because bot verification could not load.');
             });
-    }, [writable]);
+    }, [captchaRequired, writable]);
 
     const handleSubmit = async (event: { preventDefault(): void }) => {
         event.preventDefault();
@@ -203,11 +206,11 @@ export function Guestbook() {
                     />
                     <span className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}>{remaining}</span>
                 </label>
-                {REQUIRES_CAPTCHA && writable && <div ref={widgetContainerRef} />}
+                {captchaRequired && writable && <div ref={widgetContainerRef} />}
                 <button
                     className="guestbook__submit"
                     type="submit"
-                    disabled={submitting || !message.trim() || !writable || (REQUIRES_CAPTCHA && !captchaToken)}
+                    disabled={submitting || !message.trim() || !writable || (captchaRequired && !captchaToken)}
                 >
                     {submitting ? 'posting...' : 'submit'}
                 </button>
