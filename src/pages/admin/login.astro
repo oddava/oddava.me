@@ -19,7 +19,7 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
     {!configured && <p class="admin-note">Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` to enable admin access.</p>}
     {invalid && <p class="admin-error">The admin token was rejected.</p>}
     {loggedOut && <p class="admin-success">Admin session cleared.</p>}
-    <form method="post" action="/api/admin/session">
+    <form id="admin-login-form" method="post" action="/api/admin/session">
       <input type="hidden" name="next" value={next} />
       <label>
         <span style="display:block; margin-bottom:8px; color:var(--admin-muted);">Admin token</span>
@@ -27,5 +27,37 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
       </label>
       <button class="admin-button primary" type="submit" disabled={!configured}>Open admin</button>
     </form>
+    <p id="admin-login-error" class="admin-error" style="display:none; margin-top:14px;"></p>
   </section>
+  <script is:inline>
+    const form = document.getElementById('admin-login-form');
+    const errorEl = document.getElementById('admin-login-error');
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errorEl.style.display = 'none';
+
+      const formData = new FormData(form);
+      const response = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: formData.get('token'),
+          next: formData.get('next'),
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        errorEl.textContent = payload.error || 'Could not sign in.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      window.location.href = payload.next || '/admin';
+    });
+  </script>
 </AdminLayout>

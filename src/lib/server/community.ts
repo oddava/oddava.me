@@ -251,8 +251,39 @@ function getRequestOrigin(request: Request): string | null {
   }
 }
 
+function getForwardedProtocol(request: Request): string {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedProto) {
+    return forwardedProto.split(',')[0]?.trim() || 'https';
+  }
+
+  return new URL(request.url).protocol.replace(/:$/, '');
+}
+
+export function isSecureRequest(request: Request): boolean {
+  return getForwardedProtocol(request) === 'https';
+}
+
+function getForwardedHost(request: Request): string | null {
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  if (forwardedHost) {
+    return forwardedHost.split(',')[0]?.trim() || null;
+  }
+
+  return request.headers.get('host');
+}
+
+function getRequestTargetOrigin(request: Request): string {
+  const forwardedHost = getForwardedHost(request);
+  if (forwardedHost) {
+    return `${getForwardedProtocol(request)}://${forwardedHost}`;
+  }
+
+  return new URL(request.url).origin;
+}
+
 export function ensureSameOrigin(request: Request): Response | null {
-  const requestOrigin = new URL(request.url).origin;
+  const requestOrigin = getRequestTargetOrigin(request);
   const submittedOrigin = getRequestOrigin(request);
 
   if (!submittedOrigin || submittedOrigin !== requestOrigin) {
