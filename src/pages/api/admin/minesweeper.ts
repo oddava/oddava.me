@@ -21,21 +21,12 @@ export const GET: APIRoute = async ({ cookies, url }) => {
   return json({ difficulty, entries }, { status: 200 });
 };
 
-export const DELETE: APIRoute = async ({ request, cookies }) => {
-  const authError = await requireAdminApi(cookies);
-  if (authError) return authError;
-
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return storageUnavailable;
-
-  let body: { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
-
-  try {
-    body = (await request.json()) as { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
-  } catch {
-    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
-  }
-
+async function handleDeleteRequest(body: {
+  difficulty?: string;
+  createdAt?: string;
+  time?: number;
+  clearAll?: boolean;
+}): Promise<Response> {
   const difficulty = normalizeDifficulty(body.difficulty);
   if (!difficulty) {
     return json({ error: 'Invalid difficulty.', code: 'invalid_request' }, { status: 400 });
@@ -57,4 +48,44 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
   });
 
   return json({ difficulty, entries }, { status: 200 });
+}
+
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return authError;
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return storageUnavailable;
+
+  let body: { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
+
+  try {
+    body = (await request.json()) as { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
+  } catch {
+    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
+  }
+
+  if ((body as { action?: string }).action !== 'delete') {
+    return json({ error: 'Invalid action.', code: 'invalid_request' }, { status: 400 });
+  }
+
+  return handleDeleteRequest(body);
+};
+
+export const DELETE: APIRoute = async ({ request, cookies }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return authError;
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return storageUnavailable;
+
+  let body: { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
+
+  try {
+    body = (await request.json()) as { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
+  } catch {
+    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
+  }
+
+  return handleDeleteRequest(body);
 };

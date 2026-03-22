@@ -71,16 +71,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ cookies, url }) => {
-  const authError = await requireAdminApi(cookies);
-  if (authError) return withSecurityHeaders(authError);
-
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
-
-  const id = url.searchParams.get('id');
-  const clearAll = url.searchParams.get('all') === 'true';
-
+async function handleDeleteRequest(id: string | null, clearAll: boolean): Promise<Response> {
   if (!id && !clearAll) {
     return withSecurityHeaders(json({ error: 'Missing id or all=true.', code: 'invalid_request' }, { status: 400 }));
   }
@@ -99,4 +90,36 @@ export const DELETE: APIRoute = async ({ cookies, url }) => {
     console.error('[guestbook-admin] DELETE failed', error);
     return withSecurityHeaders(json({ error: 'Failed to delete entries.', code: 'admin_unavailable' }, { status: 500 }));
   }
+}
+
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return withSecurityHeaders(authError);
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
+
+  let body: { action?: string; id?: string; all?: boolean };
+
+  try {
+    body = (await request.json()) as { action?: string; id?: string; all?: boolean };
+  } catch {
+    return withSecurityHeaders(json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 }));
+  }
+
+  if (body.action !== 'delete') {
+    return withSecurityHeaders(json({ error: 'Invalid action.', code: 'invalid_request' }, { status: 400 }));
+  }
+
+  return handleDeleteRequest(body.id ?? null, body.all === true);
+};
+
+export const DELETE: APIRoute = async ({ cookies, url }) => {
+  const authError = await requireAdminApi(cookies);
+  if (authError) return withSecurityHeaders(authError);
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
+
+  return handleDeleteRequest(url.searchParams.get('id'), url.searchParams.get('all') === 'true');
 };
