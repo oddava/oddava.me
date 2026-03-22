@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import {
-    enforceSignedCooldown,
     ensureSameOrigin,
+    enforceRedisRateLimit,
     hasRedisConfig,
     json,
     redisRequest,
@@ -10,7 +10,7 @@ import {
 
 const COUNTER_KEY = 'community:clicker:count';
 const ENCODED_COUNTER_KEY = encodeURIComponent(COUNTER_KEY);
-const CLICKER_COOLDOWN_MS = 1_000;
+const CLICKER_RATE_LIMIT = { limit: 8, windowMs: 10_000 };
 
 async function getCount(): Promise<number> {
     if (!hasRedisConfig()) return 0;
@@ -51,15 +51,20 @@ export const GET: APIRoute = async () => {
     }
 };
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request }) => {
     const sameOriginError = ensureSameOrigin(request);
     if (sameOriginError) return sameOriginError;
 
     const storageUnavailable = rejectIfStorageUnavailable();
     if (storageUnavailable) return storageUnavailable;
 
-    const cooldownError = await enforceSignedCooldown(cookies, request, 'clicker-rate-limit', CLICKER_COOLDOWN_MS);
-    if (cooldownError) return cooldownError;
+    const rateLimitError = await enforceRedisRateLimit(
+        request,
+        'clicker-post',
+        CLICKER_RATE_LIMIT.limit,
+        CLICKER_RATE_LIMIT.windowMs,
+    );
+    if (rateLimitError) return rateLimitError;
 
     try {
         const count = await incrementCount();

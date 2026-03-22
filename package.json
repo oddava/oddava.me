@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "astro dev --force",
-    "build": "astro build",
-    "preview": "astro preview",
+    "dev": "astro dev --mode development --force",
+    "build": "astro build --mode production",
+    "build:dev": "astro build --mode development",
+    "preview": "astro preview --mode production",
     "check": "astro check",
     "astro": "astro"
   },
@@ -24,6 +25,7 @@
     "querystring": "^0.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "redis": "^4.7.1",
     "typescript": "^5.9.3"
   }
 }
