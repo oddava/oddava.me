@@ -71,21 +71,3 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   return handleDeleteRequest(body);
 };
-
-export const DELETE: APIRoute = async ({ request, cookies }) => {
-  const authError = await requireAdminApi(cookies);
-  if (authError) return authError;
-
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return storageUnavailable;
-
-  let body: { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
-
-  try {
-    body = (await request.json()) as { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
-  } catch {
-    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
-  }
-
-  return handleDeleteRequest(body);
-};

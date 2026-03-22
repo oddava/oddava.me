@@ -71,24 +71,17 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   }
 };
 
-async function handleDeleteRequest(id: string | null, clearAll: boolean): Promise<Response> {
-  if (!id && !clearAll) {
-    return withSecurityHeaders(json({ error: 'Missing id or all=true.', code: 'invalid_request' }, { status: 400 }));
+async function handleClearAllRequest(clearAll: boolean): Promise<Response> {
+  if (!clearAll) {
+    return withSecurityHeaders(json({ error: 'Missing all=true.', code: 'invalid_request' }, { status: 400 }));
   }
 
   try {
-    if (clearAll) {
-      await writeGuestbookEntries([]);
-      return withSecurityHeaders(json({ entries: [] }, { status: 200 }));
-    }
-
-    const entries = await readGuestbookEntries();
-    const next = entries.filter((entry) => entry.id !== id);
-    await writeGuestbookEntries(next);
-    return withSecurityHeaders(json({ entries: next }, { status: 200 }));
+    await writeGuestbookEntries([]);
+    return withSecurityHeaders(json({ entries: [] }, { status: 200 }));
   } catch (error) {
-    console.error('[guestbook-admin] DELETE failed', error);
-    return withSecurityHeaders(json({ error: 'Failed to delete entries.', code: 'admin_unavailable' }, { status: 500 }));
+    console.error('[guestbook-admin] clear-all failed', error);
+    return withSecurityHeaders(json({ error: 'Failed to clear entries.', code: 'admin_unavailable' }, { status: 500 }));
   }
 }
 
@@ -99,27 +92,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
 
-  let body: { action?: string; id?: string; all?: boolean };
+  let body: { action?: string; all?: boolean };
 
   try {
-    body = (await request.json()) as { action?: string; id?: string; all?: boolean };
+    body = (await request.json()) as { action?: string; all?: boolean };
   } catch {
     return withSecurityHeaders(json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 }));
   }
 
-  if (body.action !== 'delete') {
+  if (body.action !== 'clear') {
     return withSecurityHeaders(json({ error: 'Invalid action.', code: 'invalid_request' }, { status: 400 }));
   }
 
-  return handleDeleteRequest(body.id ?? null, body.all === true);
-};
-
-export const DELETE: APIRoute = async ({ cookies, url }) => {
-  const authError = await requireAdminApi(cookies);
-  if (authError) return withSecurityHeaders(authError);
-
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
-
-  return handleDeleteRequest(url.searchParams.get('id'), url.searchParams.get('all') === 'true');
+  return handleClearAllRequest(body.all === true);
 };
