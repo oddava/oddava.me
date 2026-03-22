@@ -5,6 +5,7 @@ import {
   ensureSameOrigin,
   enforceRedisRateLimit,
   hasRedisConfig,
+  isSecureRequest,
   isStorageUnavailableError,
   json,
   readSignedValue,
@@ -117,7 +118,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     cookies.set(SESSION_COOKIE, usedSession, {
       httpOnly: true,
       sameSite: 'strict',
-      secure: new URL(request.url).protocol === 'https:',
+      secure: isSecureRequest(request),
       path: '/',
       maxAge: 60,
     });
@@ -176,7 +177,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   cookies.set(SESSION_COOKIE, value, {
     httpOnly: true,
     sameSite: 'strict',
-    secure: new URL(request.url).protocol === 'https:',
+    secure: isSecureRequest(request),
     path: '/',
     maxAge: SESSION_TTL_SECONDS,
   });

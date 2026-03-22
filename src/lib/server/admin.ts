@@ -1,5 +1,12 @@
 import type { AstroCookies } from 'astro';
-import { createSignedValue, hasRedisConfig, hasTurnstileConfig, json, readSignedValue } from './community';
+import {
+  createSignedValue,
+  hasRedisConfig,
+  hasTurnstileConfig,
+  isSecureRequest,
+  json,
+  readSignedValue,
+} from './community';
 
 const ADMIN_COOKIE = 'oddava-admin-session';
 const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -21,11 +28,11 @@ async function sha256Hex(value: string): Promise<string> {
     .join('');
 }
 
-function getCookieOptions(requestUrl: string): Parameters<AstroCookies['set']>[2] {
+function getCookieOptions(request: Request): Parameters<AstroCookies['set']>[2] {
   return {
     httpOnly: true,
     sameSite: 'strict',
-    secure: new URL(requestUrl).protocol === 'https:',
+    secure: isSecureRequest(request),
     path: '/',
     maxAge: ADMIN_SESSION_TTL_SECONDS,
   };
@@ -68,13 +75,13 @@ export async function requireAdminApi(cookies: AstroCookies): Promise<Response |
   return json({ error: 'Unauthorized.', code: 'unauthorized' }, { status: 401 });
 }
 
-export function setAdminSession(cookies: AstroCookies, requestUrl: string, value: string): void {
-  cookies.set(ADMIN_COOKIE, value, getCookieOptions(requestUrl));
+export function setAdminSession(cookies: AstroCookies, request: Request, value: string): void {
+  cookies.set(ADMIN_COOKIE, value, getCookieOptions(request));
 }
 
-export function clearAdminSession(cookies: AstroCookies, requestUrl: string): void {
+export function clearAdminSession(cookies: AstroCookies, request: Request): void {
   cookies.set(ADMIN_COOKIE, '', {
-    ...getCookieOptions(requestUrl),
+    ...getCookieOptions(request),
     maxAge: 0,
   });
 }

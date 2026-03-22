@@ -117,7 +117,15 @@ export function CommunityClicker() {
         setError(null);
 
         try {
-            const response = await fetch('/api/clicker', { method: 'POST', cache: 'no-store' });
+            const response = await fetch('/api/clicker', {
+                method: 'POST',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ increment: true }),
+            });
             const data = (await response.json()) as ClickerState;
             if (!response.ok) {
                 throw new Error(

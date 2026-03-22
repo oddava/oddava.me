@@ -20,9 +20,7 @@ const keystaticHref = '/keystatic';
           <h1>Unified admin panel</h1>
           <p>Manage content, moderate community features, and inspect service readiness without leaving one surface.</p>
         </div>
-        <form method="post" action="/api/admin/logout">
-          <button class="admin-button ghost" type="submit">Sign out</button>
-        </form>
+        <a class="admin-button ghost" href="/api/admin/logout">Sign out</a>
       </header>
       <main class="admin-main">
         <AdminPanel client:load keystaticHref={keystaticHref} />
