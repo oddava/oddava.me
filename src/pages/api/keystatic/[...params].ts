@@ -11,7 +11,7 @@ function firstHeaderValue(value: string | null): string | null {
 }
 
 function normalizeRequestOrigin(request: Request): Request {
-  const configuredOrigin = import.meta.env.KEYSTATIC_PUBLIC_ORIGIN || import.meta.env.SITE;
+  const configuredOrigin = import.meta.env.KEYSTATIC_PUBLIC_ORIGIN;
   const forwardedHost = firstHeaderValue(request.headers.get('x-forwarded-host'));
   const forwardedProto = firstHeaderValue(request.headers.get('x-forwarded-proto'));
 
