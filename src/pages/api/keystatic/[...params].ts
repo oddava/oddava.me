@@ -1,4 +1,8 @@
-import { defineMiddleware } from 'astro:middleware';
+import { makeHandler } from '@keystatic/astro/api';
+import type { APIContext } from 'astro';
+import config from '../../../../keystatic.config';
+
+const handler = makeHandler({ config });
 
 function firstHeaderValue(value: string | null): string | null {
   if (!value) return null;
@@ -7,7 +11,7 @@ function firstHeaderValue(value: string | null): string | null {
 }
 
 function normalizeRequestOrigin(request: Request): Request {
-  const configuredOrigin = import.meta.env.KEYSTATIC_PUBLIC_ORIGIN;
+  const configuredOrigin = import.meta.env.KEYSTATIC_PUBLIC_ORIGIN || import.meta.env.SITE;
   const forwardedHost = firstHeaderValue(request.headers.get('x-forwarded-host'));
   const forwardedProto = firstHeaderValue(request.headers.get('x-forwarded-proto'));
 
@@ -42,16 +46,15 @@ function normalizeRequestOrigin(request: Request): Request {
   return new Request(rewritten.toString(), request);
 }
 
-export const onRequest = defineMiddleware((context, next) => {
-  if (!context.url.pathname.startsWith('/api/keystatic/')) {
-    return next();
-  }
-
+async function all(context: APIContext): Promise<Response> {
   const rewrittenRequest = normalizeRequestOrigin(context.request);
 
   if (rewrittenRequest === context.request) {
-    return next();
+    return handler(context);
   }
 
-  return next(rewrittenRequest);
-});
+  return handler({ ...context, request: rewrittenRequest });
+}
+
+export { all, all as ALL };
+export const prerender = false;
