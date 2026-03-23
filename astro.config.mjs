@@ -2,11 +2,10 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
-import keystatic from '@keystatic/astro';
 import vercel from '@astrojs/vercel';
 
 export default defineConfig({
-  integrations: [react(), keystatic(), mdx()],
+  integrations: [react(), mdx()],
   trailingSlash: 'never',
   output: 'server',
   adapter: vercel(),
@@ -16,7 +15,7 @@ export default defineConfig({
       dedupe: ['yjs', 'react', 'react-dom'],
     },
     optimizeDeps: {
-      include: ['yjs', '@keystatic/astro/ui', '@keystatic/astro/api', '@keystatic/core/ui'],
+      include: ['yjs', '@keystatic/astro/ui', '@keystatic/core/ui'],
     },
   },
 });

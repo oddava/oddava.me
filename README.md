@@ -91,7 +91,7 @@ AniShows integration:
 
 - Blog pages use canonical URLs and article structured data.
 - Project content is authored in MDX and rendered as public case-study pages.
-- Keystatic routing is provided by the Astro integration; there is no custom duplicate API route.
+- Keystatic routes are defined in `src/pages/keystatic/[...params].astro` and `src/pages/api/keystatic/[...params].ts`.
 - Public write endpoints use same-origin checks plus Redis-backed server-side rate limits.
 - The clicker is write-only via `POST`; `GET` is read-only.
 - Minesweeper leaderboard sessions are signed and single-use, but the leaderboard is still casual rather than cheat-proof.
