@@ -186,6 +186,24 @@ const afterStyle = inlineVars([
     height: 100%;
   }
 
+  .card-comparison__item[data-fit='contain'][data-upscale='false'] .card-comparison__media,
+  .card-comparison__item[data-fit='scale-down'][data-upscale='false'] .card-comparison__media {
+    height: auto;
+    max-height: none;
+    aspect-ratio: auto;
+    background: transparent;
+    overflow: visible;
+    display: block;
+  }
+
+  .card-comparison__item[data-fit='contain'][data-upscale='false'] .card-comparison__media img,
+  .card-comparison__item[data-fit='scale-down'][data-upscale='false'] .card-comparison__media img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: none;
+  }
+
   .card-comparison__caption {
     margin: 0;
     font-family: var(--font-mono);
