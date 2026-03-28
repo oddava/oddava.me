@@ -2,6 +2,25 @@ import { config, fields, collection } from '@keystatic/core';
 
 const isProd = import.meta.env.PROD;
 
+function uniqueImageFilename(originalFilename: string): string {
+    const sanitized = originalFilename
+        .trim()
+        .replace(/\\/g, '/')
+        .split('/')
+        .pop()
+        ?.toLowerCase() ?? 'image';
+
+    const extensionMatch = sanitized.match(/(\.[a-z0-9]+)$/);
+    const extension = extensionMatch?.[1] ?? '';
+    const basename = (extension ? sanitized.slice(0, -extension.length) : sanitized)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 48) || 'image';
+
+    const uniqueSuffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${basename}-${uniqueSuffix}${extension}`;
+}
+
 export default config({
     storage: isProd
         ? {
@@ -47,6 +66,7 @@ export default config({
                         image: {
                             directory: 'public/images/blog',
                             publicPath: '/images/blog/',
+                            transformFilename: uniqueImageFilename,
                         },
                     },
                 }),
@@ -90,4 +110,3 @@ export default config({
         }),
     },
 });
-
