@@ -10,38 +10,46 @@ function firstHeaderValue(value: string | null): string | null {
   return first || null;
 }
 
-function normalizeRequestOrigin(request: Request): Request {
-  const configuredOrigin = import.meta.env.KEYSTATIC_PUBLIC_ORIGIN;
+function parseOrigin(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function preferredOrigin(request: Request): URL | null {
+  const configuredOrigin = import.meta.env.KEYSTATIC_PUBLIC_ORIGIN?.trim();
   const forwardedHost = firstHeaderValue(request.headers.get('x-forwarded-host'));
   const forwardedProto = firstHeaderValue(request.headers.get('x-forwarded-proto'));
 
-  const originalUrl = new URL(request.url);
-
   if (configuredOrigin) {
-    const target = new URL(configuredOrigin);
-
-    if (target.origin !== originalUrl.origin) {
-      const rewritten = new URL(request.url);
-      rewritten.protocol = target.protocol;
-      rewritten.host = target.host;
-      return new Request(rewritten.toString(), request);
-    }
-
-    return request;
+    return parseOrigin(configuredOrigin);
   }
 
   if (!forwardedHost) {
+    return null;
+  }
+
+  const proto = (forwardedProto ?? 'https').toLowerCase();
+  return parseOrigin(`${proto === 'http' ? 'http' : 'https'}://${forwardedHost}`);
+}
+
+function normalizeRequestOrigin(request: Request): Request {
+  const targetOrigin = preferredOrigin(request);
+
+  if (!targetOrigin) {
     return request;
   }
 
-  const normalizedProto = (forwardedProto ?? originalUrl.protocol.replace(':', '')).toLowerCase();
+  const originalUrl = new URL(request.url);
+  if (targetOrigin.origin === originalUrl.origin) {
+    return request;
+  }
+
   const rewritten = new URL(request.url);
-  rewritten.protocol = normalizedProto === 'http' ? 'http:' : 'https:';
-  rewritten.host = forwardedHost;
-
-  if (rewritten.origin === originalUrl.origin) {
-    return request;
-  }
+  rewritten.protocol = targetOrigin.protocol;
+  rewritten.host = targetOrigin.host;
 
   return new Request(rewritten.toString(), request);
 }
