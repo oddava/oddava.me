@@ -2,6 +2,7 @@
 export const prerender = true;
 import Base from '../../layouts/Base.astro';
 import { getCollection, render } from 'astro:content';
+import { mdxComponents } from '../../components/mdx/components';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
@@ -49,7 +50,7 @@ const { Content } = await render(project);
     </header>
 
     <div class="prose">
-      <Content />
+      <Content components={mdxComponents} />
     </div>
   </article>
 </Base>
