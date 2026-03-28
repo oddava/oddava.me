@@ -1,0 +1,150 @@
+---
+export interface Props {
+  beforeSrc: string;
+  beforeAlt: string;
+  afterSrc: string;
+  afterAlt: string;
+  beforeCaption?: string;
+  afterCaption?: string;
+  height?: string;
+  aspect?: string;
+  gap?: string;
+  beforeHeight?: string;
+  afterHeight?: string;
+  beforeAspect?: string;
+  afterAspect?: string;
+  beforeFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  afterFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  beforePosition?: string;
+  afterPosition?: string;
+  class?: string;
+}
+
+const {
+  beforeSrc,
+  beforeAlt,
+  afterSrc,
+  afterAlt,
+  beforeCaption = 'Before',
+  afterCaption = 'After',
+  height,
+  aspect,
+  gap,
+  beforeHeight,
+  afterHeight,
+  beforeAspect,
+  afterAspect,
+  beforeFit,
+  afterFit,
+  beforePosition,
+  afterPosition,
+  class: className,
+} = Astro.props;
+
+function inlineVars(entries: Array<[string, string | undefined]>): string {
+  return entries
+    .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+    .map(([key, value]) => `${key}: ${value};`)
+    .join(' ');
+}
+
+const rootStyle = inlineVars([
+  ['--comparison-gap', gap],
+  ['--comparison-card-height', height],
+  ['--comparison-card-aspect', aspect],
+]);
+
+const beforeStyle = inlineVars([
+  ['--comparison-item-height', beforeHeight],
+  ['--comparison-item-aspect', beforeAspect],
+  ['--comparison-item-fit', beforeFit],
+  ['--comparison-item-position', beforePosition],
+]);
+
+const afterStyle = inlineVars([
+  ['--comparison-item-height', afterHeight],
+  ['--comparison-item-aspect', afterAspect],
+  ['--comparison-item-fit', afterFit],
+  ['--comparison-item-position', afterPosition],
+]);
+---
+
+<section class:list={['card-comparison', className]} style={rootStyle}>
+  <div class="card-comparison__grid">
+    <figure class="card-comparison__item" style={beforeStyle}>
+      <div class="card-comparison__media">
+        <img src={beforeSrc} alt={beforeAlt} loading="lazy" decoding="async" />
+      </div>
+      <figcaption class="card-comparison__caption">{beforeCaption}</figcaption>
+    </figure>
+
+    <figure class="card-comparison__item" style={afterStyle}>
+      <div class="card-comparison__media">
+        <img src={afterSrc} alt={afterAlt} loading="lazy" decoding="async" />
+      </div>
+      <figcaption class="card-comparison__caption">{afterCaption}</figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .card-comparison {
+    --comparison-gap: 1.25rem;
+    --comparison-card-height: clamp(20rem, 48vw, 32rem);
+    --comparison-card-aspect: 3 / 5;
+    margin: 1.5em 0;
+  }
+
+  .card-comparison__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--comparison-gap);
+  }
+
+  .card-comparison__item {
+    margin: 0;
+    min-width: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .card-comparison__media {
+    width: 100%;
+    height: var(--comparison-item-height, var(--comparison-card-height));
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--color-surface-raised);
+  }
+
+  @supports (aspect-ratio: 1 / 1) {
+    .card-comparison__media {
+      height: auto;
+      aspect-ratio: var(--comparison-item-aspect, var(--comparison-card-aspect));
+      max-height: var(--comparison-item-height, var(--comparison-card-height));
+    }
+  }
+
+  .card-comparison__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: var(--comparison-item-fit, cover);
+    object-position: var(--comparison-item-position, top center);
+  }
+
+  .card-comparison__caption {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-ink-faint);
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .card-comparison__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
