@@ -329,6 +329,9 @@
 
 .prose .comparison-grid img {
     width: 100%;
+    height: clamp(20rem, 48vw, 32rem);
+    object-fit: cover;
+    object-position: top;
     margin: 0;
 }
 
