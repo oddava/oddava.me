@@ -7,7 +7,6 @@
    - `APP_ENV=development`
    - `REDIS_MODE=local`
    - `LOCAL_REDIS_URL=redis://127.0.0.1:6379`
-   - `KEYSTATIC_PUBLIC_ORIGIN=http://127.0.0.1:4321`
 3. Start local Redis:
    - `docker compose up -d redis`
 4. Start app:
@@ -23,8 +22,11 @@ The app uses local Redis and prefixes keys with `dev:` to isolate local data.
    - `APP_ENV=production`
    - `REDIS_MODE=upstash`
    - `TURNSTILE_BYPASS_IN_DEV=false`
-   - `KEYSTATIC_PUBLIC_ORIGIN=https://oddava.me`
 4. Use `.env.production.example` only as a reference template.
+
+Keystatic OAuth origin override (optional):
+- Set `KEYSTATIC_PUBLIC_ORIGIN` only if callback URLs need a forced canonical host.
+- Match it exactly with the domain used in GitHub OAuth callback settings.
 
 ## Secret Rotation
 

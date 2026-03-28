@@ -73,7 +73,7 @@ Keystatic:
 - `KEYSTATIC_SECRET`
 - `KEYSTATIC_GITHUB_CLIENT_ID`
 - `KEYSTATIC_GITHUB_CLIENT_SECRET`
-- `KEYSTATIC_PUBLIC_ORIGIN` (set in production, e.g. `https://oddava.me`)
+- `KEYSTATIC_PUBLIC_ORIGIN` (optional: force Keystatic OAuth origin, e.g. `https://oddava.me` or `https://www.oddava.me`)
 - `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`
 
 AniShows integration:
