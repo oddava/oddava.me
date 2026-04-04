@@ -14,6 +14,7 @@ try {
 }
 
 const featuredProjects = await getFeaturedProjects();
+const featuredAnimePreview = featuredAnime.slice(0, 5);
 ---
 <Base title="explore" description="Anime favorites and discovery in one calm surface.">
   <header class="explore-header">
@@ -29,7 +30,7 @@ const featuredProjects = await getFeaturedProjects();
         </div>
       </div>
       <ul class="anime-grid">
-        {featuredAnime.map((entry) => (
+        {featuredAnimePreview.map((entry) => (
           <li>
             <a
               href={`https://anishows.com/anime/${entry.anime.slug}`}
