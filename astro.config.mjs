@@ -1,14 +1,14 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
+import node from '@astrojs/node';
 import react from '@astrojs/react';
-import vercel from '@astrojs/vercel';
 
 export default defineConfig({
   integrations: [react(), mdx()],
   trailingSlash: 'never',
   output: 'server',
-  adapter: vercel(),
+  adapter: node({ mode: 'standalone' }),
   site: 'https://oddava.me',
   vite: {
     plugins: [

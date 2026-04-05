@@ -1,0 +1,11 @@
+.git
+.github
+.astro
+.codex
+dist
+node_modules
+npm-debug.log*
+.env
+.env.local
+.env.development
+.env.*.local

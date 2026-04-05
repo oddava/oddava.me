@@ -1,8 +1,29 @@
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: oddava-local-redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oddava-app
+    env_file:
+      - .env.production
+    expose:
+      - "4321"
     restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: oddava-caddy
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
