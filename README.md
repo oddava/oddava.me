@@ -21,7 +21,7 @@ npm run dev
 
 ## VPS deployment
 
-Production is set up to run with Docker Compose behind your existing shared Caddy:
+Production is set up to run with Docker Compose behind your existing shared Caddy in `~/Projects/aniShows`:
 
 ```bash
 cp .env.production.example .env.production
@@ -29,10 +29,11 @@ docker compose up -d --build
 ```
 
 The app runs as the Astro Node standalone server and joins the external Docker network `anishows_default` so the existing AniShows Caddy can reverse proxy `oddava.me` to `oddava-app:4321`.
-The Caddy site block to add to AniShows is in [Caddyfile](/home/oddava/Projects/oddava.me/Caddyfile).
+The Caddy configuration now lives only in the AniShows repo, which avoids keeping duplicate proxy config in two places.
 The Docker image build reads `.env.production` too, because Astro resolves part of `import.meta.env` during `npm run build`.
 
 The GitHub Actions deploy workflow expects these repository secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_APP_DIR`, `VPS_SSH_KEY`, and `VPS_KNOWN_HOSTS`.
+It rebuilds only the `oddava-app` stack; shared proxy changes belong in the AniShows deployment.
 
 Useful commands:
 
