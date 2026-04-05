@@ -1,7 +1,7 @@
 oddava.me {
   encode zstd gzip
 
-  reverse_proxy app:4321 {
+  reverse_proxy oddava-app:4321 {
     header_up Host {host}
     header_up X-Forwarded-Host {host}
     header_up X-Forwarded-Proto {scheme}
