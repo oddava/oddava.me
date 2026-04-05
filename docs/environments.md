@@ -25,6 +25,7 @@ The app uses local Redis and prefixes keys with `dev:` to isolate local data.
 4. Use `.env.production.example` only as a reference template.
 
 If you use the Docker Compose deployment in this repo, place the production values in `.env.production` because [docker-compose.yml](/home/oddava/Projects/oddava.me/docker-compose.yml) loads that file for the app container, and the Docker image build also needs it for Astro's `import.meta.env` build-time resolution.
+This stack expects an existing shared reverse proxy on the external Docker network `anishows_default`.
 
 Keystatic OAuth origin override (optional):
 - Set `KEYSTATIC_PUBLIC_ORIGIN` only if callback URLs need a forced canonical host.

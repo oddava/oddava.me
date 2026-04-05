@@ -8,22 +8,13 @@ services:
       - .env.production
     expose:
       - "4321"
+    networks:
+      anishows_proxy:
+        aliases:
+          - oddava-app
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: oddava-caddy
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    restart: unless-stopped
-
-volumes:
-  caddy_data:
-  caddy_config:
+networks:
+  anishows_proxy:
+    external: true
+    name: anishows_default
