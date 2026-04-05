@@ -7,7 +7,7 @@ Personal site built with Astro, MDX, React, and TypeScript.
 - Astro for routing, layouts, and server rendering
 - MDX content collections for blog posts and project pages
 - React islands for interactive components
-- Vercel adapter for deployment
+- Node adapter for deployment
 - Keystatic for content authoring
 - Upstash Redis REST API for shared guestbook/clicker/leaderboard data
 
@@ -15,9 +15,23 @@ Personal site built with Astro, MDX, React, and TypeScript.
 
 ```bash
 npm install
-docker compose up -d redis
+docker compose -f docker-compose.local.yml up -d redis
 npm run dev
 ```
+
+## VPS deployment
+
+Production is set up to run with Docker Compose and Caddy:
+
+```bash
+cp .env.production.example .env.production
+docker compose up -d --build
+```
+
+The app runs as the Astro Node standalone server behind Caddy with automatic HTTPS for `oddava.me`.
+The Docker image build reads `.env.production` too, because Astro resolves part of `import.meta.env` during `npm run build`.
+
+The GitHub Actions deploy workflow expects these repository secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_APP_DIR`, `VPS_SSH_KEY`, and `VPS_KNOWN_HOSTS`.
 
 Useful commands:
 
@@ -47,7 +61,7 @@ The guestbook is moderated. Public submissions are stored as pending entries and
 Use separate env files per mode:
 
 - `.env.development` for local development
-- production values only in Vercel environment settings
+- production values via your VPS process manager (`systemd`, PM2, Docker, etc.)
 - `.env.example` and `.env.production.example` are templates only
 
 Shared persistence:

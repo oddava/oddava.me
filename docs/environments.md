@@ -8,7 +8,7 @@
    - `REDIS_MODE=local`
    - `LOCAL_REDIS_URL=redis://127.0.0.1:6379`
 3. Start local Redis:
-   - `docker compose up -d redis`
+   - `docker compose -f docker-compose.local.yml up -d redis`
 4. Start app:
    - `npm run dev`
 
@@ -17,12 +17,14 @@ The app uses local Redis and prefixes keys with `dev:` to isolate local data.
 ## Production
 
 1. Do not use `.env.production` in git.
-2. Put all production secrets in Vercel project environment variables.
+2. Put all production secrets in your VPS runtime environment (for example `systemd`, PM2, or Docker Compose env settings).
 3. Set:
    - `APP_ENV=production`
    - `REDIS_MODE=upstash`
    - `TURNSTILE_BYPASS_IN_DEV=false`
 4. Use `.env.production.example` only as a reference template.
+
+If you use the Docker Compose deployment in this repo, place the production values in `.env.production` because [docker-compose.yml](/home/oddava/Projects/oddava.me/docker-compose.yml) loads that file for the app container, and the Docker image build also needs it for Astro's `import.meta.env` build-time resolution.
 
 Keystatic OAuth origin override (optional):
 - Set `KEYSTATIC_PUBLIC_ORIGIN` only if callback URLs need a forced canonical host.
@@ -33,6 +35,6 @@ Keystatic OAuth origin override (optional):
 If any secret is exposed in git history:
 
 1. Rotate it immediately at provider (Upstash, Spotify, Cloudflare, etc.).
-2. Update Vercel environment variables.
+2. Update VPS runtime environment values.
 3. Revoke old values permanently.
 4. Confirm app health after rollout.
