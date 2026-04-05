@@ -1,3 +1,7 @@
+www.oddava.me {
+  redir https://oddava.me{uri} permanent
+}
+
 oddava.me {
   encode zstd gzip
 
