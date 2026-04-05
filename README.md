@@ -32,7 +32,7 @@ The app runs as the Astro Node standalone server and joins the external Docker n
 The Caddy configuration now lives only in the AniShows repo, which avoids keeping duplicate proxy config in two places.
 The Docker image build reads `.env.production` too, because Astro resolves part of `import.meta.env` during `npm run build`.
 
-The GitHub Actions deploy workflow expects these repository secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_APP_DIR`, `VPS_SSH_KEY`, and `VPS_KNOWN_HOSTS`.
+The GitHub Actions deploy workflow expects these repository secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_APP_DIR`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, and optionally `VPS_SSH_PASSPHRASE` if the deploy key is encrypted.
 It rebuilds only the `oddava-app` stack; shared proxy changes belong in the AniShows deployment.
 
 Useful commands:
