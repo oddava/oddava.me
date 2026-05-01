@@ -14,26 +14,27 @@
 
 .page>main {
     flex: 1;
-    padding-top: var(--space-md);
-    padding-bottom: var(--space-xl);
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-lg);
 }
 
 /* --- Navigation --- */
 .site-nav {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    padding: var(--space-md) 0;
-    border-bottom: 1px solid var(--color-rule);
+    padding: var(--space-md) 0 0;
 }
 
 .site-nav__name {
     font-family: var(--font-body);
-    font-size: var(--text-lg);
+    font-size: var(--text-base);
     font-weight: 600;
     color: var(--color-ink);
     text-decoration: none;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
 }
 
 .site-nav__name:hover {
@@ -79,9 +80,9 @@
 
 /* --- Footer --- */
 .site-footer {
-    padding: var(--space-lg) 0 var(--space-md);
-    border-top: 1px solid var(--color-rule);
+    padding: 0 0 var(--space-md);
     font-size: var(--text-sm);
+    text-align: center;
     color: var(--color-ink-faint);
 }
 

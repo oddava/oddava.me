@@ -3,6 +3,33 @@
    =================================================== */
 
 /* --- Homepage --- */
+.home {
+    width: 100%;
+    max-width: 30rem;
+    margin: auto;
+    text-align: center;
+}
+
+.home h1 {
+    margin-bottom: var(--space-sm);
+}
+
+.home p {
+    margin: 0 auto;
+    color: var(--color-ink-muted);
+}
+
+.home__links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin-top: var(--space-md);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    text-transform: lowercase;
+}
+
 .intro {
     padding: var(--space-lg) 0;
     display: flow-root;

@@ -1,8 +1,6 @@
 ---
 import '../styles/global.css';
-import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-import SpotifyWidget from '../components/SpotifyWidget';
 
 export interface Props {
   title?: string;
@@ -63,16 +61,11 @@ const socialImage = new URL(image, Astro.url);
 </head>
 <body>
   <div class="page">
-    <slot name="nav">
-      <Nav />
-    </slot>
-
     <main>
       <slot />
     </main>
 
     <Footer />
-    <SpotifyWidget client:only="react" />
   </div>
 </body>
 </html>
