@@ -1,58 +1,18 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
-import { getPublishedPosts } from '@lib/content';
-
-const posts = (await getPublishedPosts()).slice(0, 5);
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 ---
-<Base title="oddava" description="A quiet corner of the internet.">
-  <section class="intro">
-    <img src="/images/resting-angel.jpg" class="intro-image" alt="oddava" />
+<Base title="oddava" description="Software, AI, and personal projects by oddava.">
+  <section class="home">
+    <h1>oddava</h1>
     <p>
-      Hi, I'm <a href="/about">oddava</a>. I'm curious about all sorts of things, especially AI and software engineering. It's fascinating to see how these fields evolve and intersect. I'm trying to make sense of it all.
+      i build software. currently working on <a href="https://anishows.com" target="_blank" rel="noopener noreferrer">anishows</a>, an anime discovery and tracking site.
     </p>
 
-    <br>
-
-    <p>
-      This place is a sandbox for my latest experiments and a space to express myself. Feel free to look around.
-    </p>
-  </section>
-
-  <hr />
-
-  <section>
-    <h2 class="section-heading">recent writing</h2>
-    <ul class="post-list">
-      {posts.map((post: any) => (
-        <li class="post-item">
-          <a href={`/blog/${post.id}`} class="post-item__link">
-            <div class="post-item__title">{post.data.title}</div>
-            {post.data.description && (
-              <div class="post-item__description">{post.data.description}</div>
-            )}
-            <div class="post-item__footer">
-              <div class="post-item__tags">
-                {post.data.tags?.map((tag: string) => (
-                  <span class="tag-chip">{tag}</span>
-                ))}
-              </div>
-              <div class="post-item__meta">
-                <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
-              </div>
-            </div>
-          </a>
-        </li>
-      ))}
-    </ul>
+    <div class="home__links" aria-label="Primary links">
+      <a href="https://github.com/oddava" target="_blank" rel="noopener noreferrer">github</a>
+      <a href="https://x.com/oddava" target="_blank" rel="noopener noreferrer">twitter</a>
+      <a href="mailto:hello@oddava.me">email</a>
+    </div>
   </section>
 </Base>
