@@ -2,7 +2,7 @@
 
 ## Local Development (isolated)
 
-1. Copy `.env.example` to `.env.development` and fill local values.
+1. Copy `.env.example` to `.env` and fill local values.
 2. Ensure these values are set:
    - `APP_ENV=development`
    - `REDIS_MODE=local`
@@ -16,16 +16,17 @@ The app uses local Redis and prefixes keys with `dev:` to isolate local data.
 
 ## Production
 
-1. Do not use `.env.production` in git.
-2. Put all production secrets in your VPS runtime environment (for example `systemd`, PM2, or Docker Compose env settings).
+1. Do not use a production env file in the repo.
+2. Put production secrets in Cloudflare environment variables/secrets.
 3. Set:
    - `APP_ENV=production`
    - `REDIS_MODE=upstash`
    - `TURNSTILE_BYPASS_IN_DEV=false`
-4. Use `.env.production.example` only as a reference template.
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+4. Keep `.env.example` as the only committed reference template.
 
-If you use the Docker Compose deployment in this repo, place the production values in `.env.production` because [docker-compose.yml](/home/oddava/Projects/oddava.me/docker-compose.yml) loads that file for the app container, and the Docker image build also needs it for Astro's `import.meta.env` build-time resolution.
-This stack expects the existing shared reverse proxy from `~/Projects/aniShows` on the external Docker network `anishows_default`.
+The deployed Worker is configured by `wrangler.jsonc`. Avoid mirroring production secrets into local files; keep them in Cloudflare so local development cannot accidentally target production services.
 
 Keystatic OAuth origin override (optional):
 - Set `KEYSTATIC_PUBLIC_ORIGIN` only if callback URLs need a forced canonical host.

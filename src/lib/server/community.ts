@@ -1,5 +1,5 @@
 import type { AstroCookies } from 'astro';
-import { createClient, type RedisClientType } from 'redis';
+import type { RedisClientType } from 'redis';
 
 type AppEnv = 'development' | 'production';
 type RedisMode = 'local' | 'upstash';
@@ -85,6 +85,7 @@ function getStorageNamespacePrefix(): string {
 
 async function getLocalRedisClient(): Promise<RedisClientType> {
   if (!localRedisClient) {
+    const { createClient } = await import(/* @vite-ignore */ 'redis');
     localRedisClient = createClient({ url: LOCAL_REDIS_URL });
   }
 

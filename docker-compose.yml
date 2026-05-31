@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: oddava-app
     env_file:
-      - .env.production
+      - .env
     expose:
       - "4321"
     networks:
