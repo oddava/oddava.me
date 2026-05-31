@@ -7,7 +7,7 @@
     "dev": "astro dev --mode development",
     "build": "astro build --mode production",
     "build:dev": "astro build --mode development",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --keep-vars",
     "preview": "astro preview --mode production",
     "check": "astro check",
     "astro": "astro"

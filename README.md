@@ -29,6 +29,7 @@ Production is set up for Cloudflare Workers via Wrangler. In the Cloudflare dash
 - Project name: `oddava-me`
 
 The deployed Worker is configured by `wrangler.jsonc`. Static assets are uploaded from `dist`, while Astro's Cloudflare adapter generates the Worker entrypoint at `dist/_worker.js/index.js`.
+The deploy command uses `--keep-vars`, and `wrangler.jsonc` sets `keep_vars: true`, so dashboard-managed variables and secrets are preserved on future deploys.
 
 Production shared data should use Upstash Redis REST, not a TCP Redis connection:
 
