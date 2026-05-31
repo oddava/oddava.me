@@ -7,33 +7,40 @@ Personal site built with Astro, MDX, React, and TypeScript.
 - Astro for routing, layouts, and server rendering
 - MDX content collections for blog posts and project pages
 - React islands for interactive components
-- Node adapter for deployment
+- Cloudflare adapter for Worker deployment
 - Keystatic for content authoring
 - Upstash Redis REST API for shared guestbook/clicker/leaderboard data
 
 ## Local development
 
 ```bash
+cp .env.example .env
 npm install
 docker compose -f docker-compose.local.yml up -d redis
 npm run dev
 ```
 
-## VPS deployment
+## Cloudflare deployment
 
-Production is set up to run with Docker Compose behind your existing shared Caddy in `~/Projects/aniShows`:
+Production is set up for Cloudflare Workers via Wrangler. In the Cloudflare dashboard, create a Worker from this GitHub repository and use:
+
+- Build command: `npm run build`
+- Deploy command: `npm run deploy`
+- Project name: `oddava-me`
+
+The deployed Worker is configured by `wrangler.jsonc`. Static assets are uploaded from `dist`, while Astro's Cloudflare adapter generates the Worker entrypoint at `dist/_worker.js/index.js`.
+
+Production shared data should use Upstash Redis REST, not a TCP Redis connection:
 
 ```bash
-cp .env.production.example .env.production
-docker compose up -d --build
+NODE_VERSION=22
+APP_ENV=production
+REDIS_MODE=upstash
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
 ```
 
-The app runs as the Astro Node standalone server and joins the external Docker network `anishows_default` so the existing AniShows Caddy can reverse proxy `oddava.me` to `oddava-app:4321`.
-The Caddy configuration now lives only in the AniShows repo, which avoids keeping duplicate proxy config in two places.
-The Docker image build reads `.env.production` too, because Astro resolves part of `import.meta.env` during `npm run build`.
-
-The GitHub Actions deploy workflow expects these repository secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_APP_DIR`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, and optionally `VPS_SSH_PASSPHRASE` if the deploy key is encrypted.
-It rebuilds only the `oddava-app` stack; shared proxy changes belong in the AniShows deployment.
+Add the other production values in Cloudflare's environment variables/secrets UI.
 
 Useful commands:
 
@@ -41,6 +48,7 @@ Useful commands:
 npm run check
 npm run build
 npm run build:dev
+npm run deploy
 ```
 
 ## Content structure
@@ -60,11 +68,11 @@ The guestbook is moderated. Public submissions are stored as pending entries and
 
 ## Environment variables
 
-Use separate env files per mode:
+Keep environment files simple:
 
-- `.env.development` for local development
-- production values via your VPS process manager (`systemd`, PM2, Docker, etc.)
-- `.env.example` and `.env.production.example` are templates only
+- `.env` is the only local environment file. It is ignored and may contain real local secrets.
+- `.env.example` is the only committed template.
+- Production values live in Cloudflare environment variables/secrets, not in repo files.
 
 Shared persistence:
 
@@ -116,6 +124,6 @@ AniShows integration:
 ## Security hygiene
 
 - Do not commit `.env` or any other file containing real secrets.
-- Do not commit `.env.development` or `.env.production`.
+- Do not create per-mode env files in the repo root; use `.env` locally and provider-managed secrets for production.
 - If a secret ever lands in git, rotate it immediately and treat the old value as compromised even if the commit is later removed.
 - Keep `.env.example` as the only tracked environment file.

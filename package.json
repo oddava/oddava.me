@@ -7,6 +7,7 @@
     "dev": "astro dev --mode development",
     "build": "astro build --mode production",
     "build:dev": "astro build --mode development",
+    "deploy": "wrangler deploy",
     "preview": "astro preview --mode production",
     "check": "astro check",
     "astro": "astro"
@@ -14,17 +15,19 @@
   "dependencies": {
     "@astrojs/check": "^0.9.6",
     "@astrojs/mdx": "^4.3.0",
-    "@astrojs/node": "^9.5.4",
     "@astrojs/react": "^4.4.2",
     "@keystatic/astro": "^5.0.6",
     "@keystatic/core": "^0.5.48",
     "astro": "^5.17.1",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
     "querystring": "^0.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "redis": "^4.7.1",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@astrojs/cloudflare": "^12.6.13",
+    "wrangler": "^4.95.0"
   }
 }
