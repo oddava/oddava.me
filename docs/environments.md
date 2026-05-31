@@ -37,6 +37,6 @@ Keystatic OAuth origin override (optional):
 If any secret is exposed in git history:
 
 1. Rotate it immediately at provider (Upstash, Spotify, Cloudflare, etc.).
-2. Update VPS runtime environment values.
+2. Update Cloudflare Worker variables/secrets.
 3. Revoke old values permanently.
 4. Confirm app health after rollout.
