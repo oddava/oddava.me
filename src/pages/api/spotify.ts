@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getNowPlaying } from '../../lib/spotify';
+import { getServerEnv } from '../../lib/server/env';
 
 let cachedData: any = null;
 let cacheExpiration: number = 0;
@@ -75,7 +76,7 @@ export const GET: APIRoute = async () => {
 
 async function fetchLanyardFallback() {
     console.log("Falling back to Lanyard...");
-    const discordId = import.meta.env.DISCORD_USER_ID;
+    const discordId = getServerEnv('DISCORD_USER_ID');
 
     if (!discordId) {
         return createErrorResponse("No Discord ID configured for fallback");

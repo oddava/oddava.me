@@ -1,35 +1,36 @@
 import type { AstroCookies } from 'astro';
 import type { RedisClientType } from 'redis';
+import { getServerEnv } from './env';
 
 type AppEnv = 'development' | 'production';
 type RedisMode = 'local' | 'upstash';
 
 const REDIS_API_URL =
-  import.meta.env.UPSTASH_REDIS_REST_URL ??
-  import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  getServerEnv('UPSTASH_REDIS_REST_URL') ??
+  getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_URL');
 const REDIS_API_TOKEN =
-  import.meta.env.UPSTASH_REDIS_REST_TOKEN ??
-  import.meta.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
-const LOCAL_REDIS_URL = import.meta.env.LOCAL_REDIS_URL ?? 'redis://127.0.0.1:6379';
+  getServerEnv('UPSTASH_REDIS_REST_TOKEN') ??
+  getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_TOKEN');
+const LOCAL_REDIS_URL = getServerEnv('LOCAL_REDIS_URL') ?? 'redis://127.0.0.1:6379';
 const APP_ENV: AppEnv =
-  import.meta.env.APP_ENV === 'production' || import.meta.env.MODE === 'production'
+  getServerEnv('APP_ENV') === 'production' || import.meta.env.MODE === 'production'
     ? 'production'
     : 'development';
 const REDIS_MODE: RedisMode =
-  import.meta.env.REDIS_MODE === 'upstash'
+  getServerEnv('REDIS_MODE') === 'upstash'
     ? 'upstash'
-    : import.meta.env.REDIS_MODE === 'local'
+    : getServerEnv('REDIS_MODE') === 'local'
       ? 'local'
       : APP_ENV === 'production'
         ? 'upstash'
         : 'local';
 
 const APP_SIGNING_SECRET =
-  import.meta.env.COMMUNITY_SIGNING_SECRET ??
-  import.meta.env.KEYSTATIC_SECRET ??
+  getServerEnv('COMMUNITY_SIGNING_SECRET') ??
+  getServerEnv('KEYSTATIC_SECRET') ??
   REDIS_API_TOKEN;
-const TURNSTILE_SECRET_KEY = import.meta.env.TURNSTILE_SECRET_KEY;
-const TURNSTILE_BYPASS_IN_DEV = import.meta.env.TURNSTILE_BYPASS_IN_DEV === 'true';
+const TURNSTILE_SECRET_KEY = getServerEnv('TURNSTILE_SECRET_KEY');
+const TURNSTILE_BYPASS_IN_DEV = getServerEnv('TURNSTILE_BYPASS_IN_DEV') === 'true';
 const TURNSTILE_VERIFY_ENDPOINT = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
 let localRedisClient: RedisClientType | null = null;
@@ -442,11 +443,15 @@ export async function enforceRedisRateLimit(
 
 export function hasTurnstileConfig(): boolean {
   if (isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV) return true;
-  return Boolean(import.meta.env.PUBLIC_TURNSTILE_SITE_KEY && TURNSTILE_SECRET_KEY);
+  return Boolean(getTurnstileSiteKey() && TURNSTILE_SECRET_KEY);
 }
 
 export function isTurnstileChallengeRequired(): boolean {
   return hasTurnstileConfig() && !(isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV);
+}
+
+export function getTurnstileSiteKey(): string | undefined {
+  return getServerEnv('PUBLIC_TURNSTILE_SITE_KEY');
 }
 
 export async function verifyTurnstileToken(request: Request, token: string | undefined): Promise<Response | null> {

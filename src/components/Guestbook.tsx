@@ -13,6 +13,7 @@ interface GuestbookResponse {
     writable?: boolean;
     reviewRequired?: boolean;
     captchaRequired?: boolean;
+    turnstileSiteKey?: string;
     submitted?: boolean;
     message?: string;
     error?: string;
@@ -35,7 +36,6 @@ declare global {
 }
 
 const POLL_INTERVAL = 12000;
-const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
 const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 function ensureTurnstileScript(): Promise<void> {
@@ -71,6 +71,7 @@ export function Guestbook() {
     const [notice, setNotice] = useState<string | null>(null);
     const [writable, setWritable] = useState(true);
     const [captchaRequired, setCaptchaRequired] = useState(false);
+    const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
     const [captchaToken, setCaptchaToken] = useState('');
     const widgetContainerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
@@ -84,7 +85,8 @@ export function Guestbook() {
             if (!response.ok) throw new Error(data.error || 'Failed to load guestbook.');
             setEntries(data.entries ?? []);
             setWritable(data.writable !== false);
-            setCaptchaRequired(Boolean(data.captchaRequired && TURNSTILE_SITE_KEY));
+            setTurnstileSiteKey(data.turnstileSiteKey ?? '');
+            setCaptchaRequired(Boolean(data.captchaRequired && data.turnstileSiteKey));
             setError(null);
         } catch (loadError) {
             setError(loadError instanceof Error ? loadError.message : 'Could not load guestbook messages.');
@@ -112,14 +114,14 @@ export function Guestbook() {
     }, []);
 
     useEffect(() => {
-        if (!captchaRequired || !widgetContainerRef.current || !writable) return;
+        if (!captchaRequired || !turnstileSiteKey || !widgetContainerRef.current || !writable) return;
         if (widgetIdRef.current) return;
 
         ensureTurnstileScript()
             .then(() => {
                 if (!widgetContainerRef.current || !window.turnstile || widgetIdRef.current) return;
                 widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
-                    sitekey: TURNSTILE_SITE_KEY,
+                    sitekey: turnstileSiteKey,
                     callback: (token) => setCaptchaToken(token),
                     'expired-callback': () => setCaptchaToken(''),
                     'error-callback': () => setCaptchaToken(''),
@@ -130,7 +132,7 @@ export function Guestbook() {
                 setWritable(false);
                 setError('Guestbook posting is unavailable because bot verification could not load.');
             });
-    }, [captchaRequired, writable]);
+    }, [captchaRequired, turnstileSiteKey, writable]);
 
     const handleSubmit = async (event: { preventDefault(): void }) => {
         event.preventDefault();
