@@ -5,6 +5,7 @@ import {
   enforceRedisRateLimit,
   hasRedisConfig,
   hasTurnstileConfig,
+  getTurnstileSiteKey,
   isTurnstileChallengeRequired,
   isStorageUnavailableError,
   json,
@@ -33,6 +34,7 @@ export const GET: APIRoute = async () => {
         writable: hasRedisConfig() && hasTurnstileConfig(),
         reviewRequired: true,
         captchaRequired: isTurnstileChallengeRequired(),
+        turnstileSiteKey: getTurnstileSiteKey(),
       },
       { status: 200 },
     );
@@ -45,6 +47,7 @@ export const GET: APIRoute = async () => {
           writable: false,
           reviewRequired: true,
           captchaRequired: isTurnstileChallengeRequired(),
+          turnstileSiteKey: getTurnstileSiteKey(),
         },
         { status: 200 },
       );

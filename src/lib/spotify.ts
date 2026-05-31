@@ -1,3 +1,5 @@
+import { getServerEnv } from './server/env';
+
 let cachedAccessToken: string | null = null;
 let tokenExpirationTime: number = 0;
 
@@ -6,9 +8,9 @@ export const getAccessToken = async () => {
         return { access_token: cachedAccessToken };
     }
 
-    const client_id = import.meta.env.SPOTIFY_CLIENT_ID;
-    const client_secret = import.meta.env.SPOTIFY_CLIENT_SECRET;
-    const refresh_token = import.meta.env.SPOTIFY_REFRESH_TOKEN;
+    const client_id = getServerEnv('SPOTIFY_CLIENT_ID');
+    const client_secret = getServerEnv('SPOTIFY_CLIENT_SECRET');
+    const refresh_token = getServerEnv('SPOTIFY_REFRESH_TOKEN');
 
     if (!client_id || !client_secret || !refresh_token) {
         throw new Error('Spotify credentials are missing.');

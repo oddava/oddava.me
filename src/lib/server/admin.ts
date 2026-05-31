@@ -1,4 +1,5 @@
 import type { AstroCookies } from 'astro';
+import { getServerEnv } from './env';
 import {
   createSignedValue,
   hasRedisConfig,
@@ -18,7 +19,7 @@ interface AdminSession {
 }
 
 function getAdminToken(): string | null {
-  return import.meta.env.ADMIN_PANEL_TOKEN ?? import.meta.env.GUESTBOOK_ADMIN_TOKEN ?? null;
+  return getServerEnv('ADMIN_PANEL_TOKEN') ?? getServerEnv('GUESTBOOK_ADMIN_TOKEN') ?? null;
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -114,20 +115,22 @@ export async function getAdminIntegrationStatuses(): Promise<AdminIntegrationSta
     detail: `Configured in ${keystaticMode} mode.`,
   });
 
-  const aniShowsConfigured = Boolean(import.meta.env.ANISHOWS_API_BASE_URL ?? 'https://anishows.com/api/v1');
+  const aniShowsApiBaseUrl = getServerEnv('ANISHOWS_API_BASE_URL') ?? 'https://anishows.com/api/v1';
+  const aniShowsUsername = getServerEnv('ANISHOWS_USERNAME') ?? 'oddava';
+  const aniShowsConfigured = Boolean(aniShowsApiBaseUrl);
   statuses.push({
     name: 'AniShows',
     healthy: aniShowsConfigured,
     detail: aniShowsConfigured
-      ? `Favorites source configured for ${import.meta.env.ANISHOWS_USERNAME ?? 'oddava'}.`
+      ? `Favorites source configured for ${aniShowsUsername}.`
       : 'AniShows integration is not configured.',
   });
 
   const spotifyConfigured = Boolean(
-    import.meta.env.SPOTIFY_CLIENT_ID &&
-      import.meta.env.SPOTIFY_CLIENT_SECRET &&
-      import.meta.env.SPOTIFY_REFRESH_TOKEN,
-  ) || Boolean(import.meta.env.DISCORD_USER_ID);
+    getServerEnv('SPOTIFY_CLIENT_ID') &&
+      getServerEnv('SPOTIFY_CLIENT_SECRET') &&
+      getServerEnv('SPOTIFY_REFRESH_TOKEN'),
+  ) || Boolean(getServerEnv('DISCORD_USER_ID'));
 
   statuses.push({
     name: 'Spotify',
