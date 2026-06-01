@@ -24,7 +24,6 @@ export const GET: APIRoute = async () => {
     makeEntry('/projects'),
     makeEntry('/games'),
     makeEntry('/anime'),
-    makeEntry('/explore'),
   ];
 
   const postEntries = posts.map((post) => makeEntry(`/blog/${post.id}`, post.data.date));

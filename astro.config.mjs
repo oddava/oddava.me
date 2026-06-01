@@ -4,6 +4,34 @@ import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
 import react from '@astrojs/react';
 
+/** @returns {import('vite').Plugin} */
+function devCloudflareWorkersEnv() {
+  let isDevServer = false;
+
+  return {
+    name: 'dev-cloudflare-workers-env',
+    enforce: 'pre',
+    /** @param {import('vite').ResolvedConfig} config */
+    configResolved(config) {
+      isDevServer = config.command === 'serve';
+    },
+    /** @param {string} id */
+    resolveId(id) {
+      if (isDevServer && id === 'cloudflare:workers') {
+        return '\0dev-cloudflare-workers-env';
+      }
+      return null;
+    },
+    /** @param {string} id */
+    load(id) {
+      if (id === '\0dev-cloudflare-workers-env') {
+        return 'export const env = import.meta.env;';
+      }
+      return null;
+    },
+  };
+}
+
 export default defineConfig({
   integrations: [react(), mdx()],
   trailingSlash: 'never',
@@ -12,6 +40,7 @@ export default defineConfig({
   site: 'https://oddava.me',
   vite: {
     plugins: [
+      devCloudflareWorkersEnv(),
       {
         name: 'keystatic-virtual-config',
         resolveId(id) {

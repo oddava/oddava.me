@@ -11,7 +11,7 @@ const {
 const pageTitle = `${title} | oddava admin`;
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="admin-page">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -19,7 +19,7 @@ const pageTitle = `${title} | oddava admin`;
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
     <style is:global>
-      :root {
+      .admin-page {
         --admin-bg: #f4efe4;
         --admin-bg-alt: #efe6d5;
         --admin-surface: rgba(255, 252, 246, 0.88);
@@ -36,9 +36,19 @@ const pageTitle = `${title} | oddava admin`;
         --admin-shadow: 0 24px 80px rgba(63, 42, 20, 0.08);
       }
 
-      * { box-sizing: border-box; }
-      html, body { margin: 0; min-height: 100%; }
-      body {
+      .admin-page *,
+      .admin-page *::before,
+      .admin-page *::after {
+        box-sizing: border-box;
+      }
+
+      .admin-page,
+      .admin-page__body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      .admin-page__body {
         font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
         color: var(--admin-ink);
         background:
@@ -47,8 +57,11 @@ const pageTitle = `${title} | oddava admin`;
           linear-gradient(180deg, var(--admin-bg), var(--admin-bg-alt));
       }
 
-      a { color: inherit; }
-      button, input, select, textarea {
+      .admin-page a { color: inherit; }
+      .admin-page button,
+      .admin-page input,
+      .admin-page select,
+      .admin-page textarea {
         font: inherit;
       }
 
@@ -165,7 +178,7 @@ const pageTitle = `${title} | oddava admin`;
       }
     </style>
   </head>
-  <body>
+  <body class="admin-page__body">
     <div class="admin-shell">
       <slot />
     </div>

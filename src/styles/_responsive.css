@@ -12,11 +12,19 @@
     }
 
     .site-nav {
-        padding: var(--space-sm) 0 0;
+        padding: var(--space-sm) 0 var(--space-xs);
     }
 
-    .site-nav__name {
-        font-size: var(--text-base);
+    .site-nav__track {
+        justify-content: flex-start;
+        gap: 0.2rem 0.62rem;
+        min-height: 0;
+    }
+
+    .site-nav__link--home {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 0.1rem;
     }
 
     .intro {
