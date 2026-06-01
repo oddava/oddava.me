@@ -1,20 +1,11 @@
 :root,
-[data-theme="dark"] {
+[data-theme] {
   --ms-cell-hidden: color-mix(in srgb, var(--color-surface-elevated) 88%, var(--color-accent) 12%);
   --ms-cell-hidden-hover: color-mix(in srgb, var(--color-surface-elevated) 78%, var(--color-accent) 22%);
   --ms-cell-revealed: var(--color-surface);
   --ms-grid-gap: color-mix(in srgb, var(--color-surface) 92%, black 8%);
   --ms-cell-flagged: color-mix(in srgb, var(--color-surface-elevated) 76%, var(--color-accent) 24%);
   --ms-cell-mine: #3a1f1f;
-}
-
-[data-theme="light"] {
-  --ms-cell-hidden: color-mix(in srgb, var(--color-surface-elevated) 88%, var(--color-accent) 12%);
-  --ms-cell-hidden-hover: color-mix(in srgb, var(--color-surface-elevated) 78%, var(--color-accent) 22%);
-  --ms-cell-revealed: color-mix(in srgb, var(--color-surface) 94%, white 6%);
-  --ms-grid-gap: color-mix(in srgb, var(--color-rule) 88%, white 12%);
-  --ms-cell-flagged: color-mix(in srgb, var(--color-surface-elevated) 76%, var(--color-accent) 24%);
-  --ms-cell-mine: #f5d5d5;
 }
 
 .games-container {

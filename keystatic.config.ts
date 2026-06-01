@@ -157,7 +157,7 @@ export default config({
                 }),
                 featured: fields.checkbox({
                     label: 'Featured',
-                    description: 'Show this project on the explore page',
+                    description: 'Show this project prominently on the projects page',
                     defaultValue: false,
                 }),
                 content: fields.mdx({

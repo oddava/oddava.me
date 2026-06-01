@@ -32,8 +32,9 @@
   --page-padding: 1.5rem;
 }
 
-/* --- Dark Theme (default) --- */
+/* --- Site Palette --- */
 :root,
+[data-theme],
 [data-theme="dark"] {
   --color-ink: #eeedf4;
   --color-ink-muted: #b7b1c4;
@@ -55,28 +56,4 @@
   --color-selection: color-mix(in srgb, #8b5cf6 24%, transparent);
 
   color-scheme: dark;
-}
-
-/* --- Light Theme --- */
-[data-theme="light"] {
-  --color-ink: #241d35;
-  --color-ink-muted: #5d5670;
-  --color-ink-faint: #8b839c;
-  --color-surface: color-mix(in srgb, #faf8fd 94%, #8b5cf6 6%);
-  --color-surface-raised: color-mix(in srgb, #f0ecf7 90%, #8b5cf6 10%);
-  --color-surface-elevated: color-mix(in srgb, #e6e0f1 86%, #8b5cf6 14%);
-  --color-surface-glass: color-mix(in srgb, var(--color-surface-raised) 90%, transparent);
-  --color-surface-overlay: color-mix(in srgb, #ffffff 86%, var(--color-surface-raised) 14%);
-  --color-accent: #6b5cad;
-  --color-accent-soft: #8b5cf6;
-  --color-accent-hover: #6d28d9;
-  --color-rule: color-mix(in srgb, #7c3aed 16%, #d8d0e8);
-  --color-rule-strong: color-mix(in srgb, #7c3aed 26%, #cfc5e3);
-  --color-overlay-soft: color-mix(in srgb, #7c3aed 6%, transparent);
-  --color-overlay-strong: color-mix(in srgb, #7c3aed 10%, transparent);
-  --color-shadow: color-mix(in srgb, #7c3aed 10%, transparent);
-  --color-focus-ring: color-mix(in srgb, #7c3aed 20%, transparent);
-  --color-selection: color-mix(in srgb, #7c3aed 18%, transparent);
-
-  color-scheme: light;
 }
