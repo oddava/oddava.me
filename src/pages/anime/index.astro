@@ -14,13 +14,8 @@ try {
 ---
 
 <Base title="anime" description="My favorite anime and watch list.">
-  <header class="post-header">
-    <h1>anime</h1>
-    <p class="post-header__meta">my favorite animes</p>
-  </header>
-
   {animeAvailable && (
-    <ul class="post-list" style="margin-top: var(--space-md);">
+    <ul class="post-list">
       {animeList.map((entry) => (
         <li class="post-item">
           <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="post-item__link">
