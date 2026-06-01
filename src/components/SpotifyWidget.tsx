@@ -23,9 +23,12 @@ export default function SpotifyWidget() {
     const fetchPlaying = async () => {
         try {
             const res = await fetch('/api/spotify');
+            if (!res.ok) {
+                throw new Error(`Spotify API returned ${res.status}`);
+            }
             const json = await res.json();
             setData(json);
-            if (json.progressMs) {
+            if (typeof json.progressMs === 'number') {
                 setCurrentProgress(json.progressMs);
             }
         } catch (e) {
