@@ -18,7 +18,7 @@ try {
     <ul class="post-list">
       {animeList.map((entry) => (
         <li class="post-item">
-          <a href={`https://anishows.com/anime/${entry.anime.slug}`} class="post-item__link">
+          <a href={entry.anime.url || `https://anilist.co/anime/${entry.anime.slug}`} class="post-item__link">
             <div class="anime-item">
               <img 
                 src={entry.anime.cover_image_small || entry.anime.cover_image} 
