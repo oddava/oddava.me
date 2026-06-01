@@ -143,7 +143,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
-    margin: var(--space-md) 0;
+    margin: 0 0 var(--space-md);
     padding: 0;
 }
 
@@ -345,7 +345,7 @@
 
 /* --- About Page --- */
 .about-content {
-    padding-top: var(--space-md);
+    padding-top: 0;
 }
 
 .about-content h1 {
@@ -354,10 +354,6 @@
 
 .about-content p {
     margin-bottom: 1.5em;
-    color: var(--color-ink-muted);
-}
-
-.about-content p:first-of-type {
     color: var(--color-ink);
 }
 
