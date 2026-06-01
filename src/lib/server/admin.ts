@@ -115,15 +115,14 @@ export async function getAdminIntegrationStatuses(): Promise<AdminIntegrationSta
     detail: `Configured in ${keystaticMode} mode.`,
   });
 
-  const aniShowsApiBaseUrl = getServerEnv('ANISHOWS_API_BASE_URL') ?? 'https://anishows.com/api/v1';
-  const aniShowsUsername = getServerEnv('ANISHOWS_USERNAME') ?? 'oddava';
-  const aniShowsConfigured = Boolean(aniShowsApiBaseUrl);
+  const aniListUsername = getServerEnv('ANILIST_USERNAME') ?? 'codeJ';
+  const aniListConfigured = Boolean(aniListUsername);
   statuses.push({
-    name: 'AniShows',
-    healthy: aniShowsConfigured,
-    detail: aniShowsConfigured
-      ? `Favorites source configured for ${aniShowsUsername}.`
-      : 'AniShows integration is not configured.',
+    name: 'AniList',
+    healthy: aniListConfigured,
+    detail: aniListConfigured
+      ? `Favorites source configured for ${aniListUsername}.`
+      : 'AniList integration is not configured.',
   });
 
   const spotifyConfigured = Boolean(

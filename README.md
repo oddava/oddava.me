@@ -101,10 +101,9 @@ Keystatic:
 - `KEYSTATIC_PUBLIC_ORIGIN` (optional: force Keystatic OAuth origin, e.g. `https://oddava.me` or `https://www.oddava.me`)
 - `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`
 
-AniShows integration:
+AniList integration:
 
-- `ANISHOWS_API_BASE_URL`
-- `ANISHOWS_USERNAME`
+- `ANILIST_USERNAME`
 
 ## SEO outputs
 
