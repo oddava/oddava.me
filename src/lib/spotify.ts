@@ -33,11 +33,13 @@ export const getAccessToken = async () => {
 
     const data = await response.json();
 
-    if (data.access_token) {
-        cachedAccessToken = data.access_token;
-        // data.expires_in is usually 3600. We subtract 300 (5 minutes) for safety.
-        tokenExpirationTime = Date.now() + (data.expires_in - 300) * 1000;
+    if (!response.ok || !data.access_token) {
+        throw new Error(data.error_description || data.error || 'Could not refresh Spotify access token.');
     }
+
+    cachedAccessToken = data.access_token;
+    // data.expires_in is usually 3600. We subtract 300 (5 minutes) for safety.
+    tokenExpirationTime = Date.now() + (data.expires_in - 300) * 1000;
 
     return data;
 };

@@ -27,7 +27,7 @@ export const GET: APIRoute = async () => {
     try {
         const response = await getNowPlaying();
 
-        if (response.status === 204 || response.status > 400) {
+        if (response.status === 204 || !response.ok) {
             console.log("Spotify status: ", response.status);
             // Fallback to Lanyard if Spotify fails (e.g. 403 Forbidden due to no Premium)
             return await fetchLanyardFallback();
@@ -76,7 +76,7 @@ export const GET: APIRoute = async () => {
 
 async function fetchLanyardFallback() {
     console.log("Falling back to Lanyard...");
-    const discordId = getServerEnv('DISCORD_USER_ID');
+    const discordId = getServerEnv('DISCORD_USER_ID')?.trim();
 
     if (!discordId) {
         return createErrorResponse("No Discord ID configured for fallback");

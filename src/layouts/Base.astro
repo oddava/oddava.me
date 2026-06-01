@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import SpotifyWidget from '../components/SpotifyWidget';
 
 export interface Props {
   title?: string;
@@ -71,5 +72,6 @@ const socialImage = new URL(image, Astro.url);
 
     <Footer />
   </div>
+  <SpotifyWidget client:load />
 </body>
 </html>
