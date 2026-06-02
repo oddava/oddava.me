@@ -66,6 +66,17 @@
         white-space: normal;
     }
 
+    .project-item {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .project-item__meta {
+        justify-content: flex-start;
+        text-align: left;
+    }
+
     hr {
         margin: var(--space-md) 0;
     }
