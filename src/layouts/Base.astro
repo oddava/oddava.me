@@ -18,7 +18,7 @@ const {
   type = 'website'
 } = Astro.props;
 
-const pageTitle = title === 'oddava' ? title : `${title} — oddava`;
+const pageTitle = title === 'oddava' ? title : `${title} · oddava`;
 const canonicalUrl = Astro.url;
 const socialImage = new URL(image, Astro.url);
 ---
