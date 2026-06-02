@@ -36,7 +36,8 @@
 :root,
 [data-theme],
 [data-theme="dark"] {
-  --color-ink: #eeedf4;
+  /* Pull the brightest text slightly toward the site's lavender-gray ink. */
+  --color-ink: #e8e4ee;
   --color-ink-muted: #b7b1c4;
   --color-ink-faint: #888397;
   --color-surface: color-mix(in srgb, #0b0c0f 96%, #8b5cf6 4%);

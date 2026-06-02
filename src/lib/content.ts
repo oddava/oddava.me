@@ -1,5 +1,38 @@
 import { getCollection } from 'astro:content';
 
+const WORDS_PER_MINUTE = 225;
+
+export type PostStats = {
+    wordCount: number;
+    readingTimeMinutes: number;
+};
+
+export function getPostStats(body = ''): PostStats {
+    const text = body
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/`[^`]*`/g, ' ')
+        .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+        .replace(/\[[^\]]*\]\([^)]+\)/g, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/[{}#[\]>*_~|:-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const wordCount = text ? text.split(' ').length : 0;
+
+    return {
+        wordCount,
+        readingTimeMinutes: Math.max(1, Math.ceil(wordCount / WORDS_PER_MINUTE)),
+    };
+}
+
+export function formatPostStats(stats: PostStats): string {
+    const wordLabel = stats.wordCount === 1 ? 'word' : 'words';
+    const minuteLabel = stats.readingTimeMinutes === 1 ? 'min' : 'mins';
+
+    return `${stats.readingTimeMinutes} ${minuteLabel} read · ${stats.wordCount} ${wordLabel}`;
+}
+
 export async function getPublishedPosts() {
     const posts = await getCollection('blog');
     return posts

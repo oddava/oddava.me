@@ -3,6 +3,7 @@ export const prerender = true;
 import Post from '../../layouts/Post.astro';
 import { getCollection, render } from 'astro:content';
 import { mdxComponents } from '../../components/mdx/components';
+import { getPostStats } from '../../lib/content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -17,8 +18,9 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content } = await render(post);
+const stats = getPostStats(post.body);
 ---
-<Post frontmatter={post.data}>
+<Post frontmatter={post.data} stats={stats}>
   <Content components={mdxComponents} />
   <a href="/blog" class="post-back">← back to journal</a>
 </Post>
