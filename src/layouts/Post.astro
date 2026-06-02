@@ -1,23 +1,26 @@
 ---
 import Base from './Base.astro';
+import { formatPostStats, type PostStats } from '../lib/content';
 
 export interface Props {
   frontmatter: {
     title: string;
     date: string;
+    updated?: string;
     description?: string;
     image?: string;
-    tags?: string[];
   };
+  stats: PostStats;
 }
 
-const { frontmatter } = Astro.props;
+const { frontmatter, stats } = Astro.props;
 const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: frontmatter.title,
   description: frontmatter.description,
   datePublished: frontmatter.date,
+  dateModified: frontmatter.updated ?? frontmatter.date,
   author: {
     '@type': 'Person',
     name: 'oddava',
@@ -43,14 +46,15 @@ function formatDate(dateStr: string): string {
       <h1>{frontmatter.title}</h1>
       <div class="post-header__meta">
         <time datetime={frontmatter.date}>{formatDate(frontmatter.date)}</time>
+        {frontmatter.updated && (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span>updated <time datetime={frontmatter.updated}>{formatDate(frontmatter.updated)}</time></span>
+          </>
+        )}
+        <span aria-hidden="true"> · </span>
+        <span>{formatPostStats(stats)}</span>
       </div>
-      {frontmatter.tags?.length ? (
-        <div class="post-header__tags">
-          {frontmatter.tags.map((tag) => (
-            <span class="tag-chip">{tag}</span>
-          ))}
-        </div>
-      ) : null}
     </header>
 
     <div class="prose">

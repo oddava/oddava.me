@@ -32,6 +32,8 @@ const pageTitle = `${title} | oddava admin`;
         --admin-success: #2e6b43;
         --admin-danger: #8f2f25;
         --admin-warn: #926818;
+        --admin-ink-on-accent: #f2e6d7;
+        --admin-ink-on-danger: #f1e1de;
         --admin-radius: 20px;
         --admin-shadow: 0 24px 80px rgba(63, 42, 20, 0.08);
       }
@@ -134,8 +136,8 @@ const pageTitle = `${title} | oddava admin`;
 
       .admin-button:hover { transform: translateY(-1px); }
       .admin-button:disabled { opacity: 0.58; cursor: wait; transform: none; }
-      .admin-button.primary { background: var(--admin-accent); color: #fff7ef; border-color: transparent; }
-      .admin-button.danger { background: var(--admin-danger); color: #fff6f3; border-color: transparent; }
+      .admin-button.primary { background: var(--admin-accent); color: var(--admin-ink-on-accent); border-color: transparent; }
+      .admin-button.danger { background: var(--admin-danger); color: var(--admin-ink-on-danger); border-color: transparent; }
       .admin-button.ghost { background: transparent; }
 
       .admin-input,

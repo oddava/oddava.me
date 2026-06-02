@@ -55,6 +55,17 @@
         margin: 0 auto;
     }
 
+    .post-item__link {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .post-item__meta {
+        text-align: left;
+        white-space: normal;
+    }
+
     hr {
         margin: var(--space-md) 0;
     }

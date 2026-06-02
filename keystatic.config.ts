@@ -103,14 +103,14 @@ export default config({
                     description: 'The date of the post (e.g., 2026-03-01)',
                     validation: { isRequired: true },
                 }),
+                updated: fields.date({
+                    label: 'Last Updated',
+                    description: 'Optional date for evolving posts',
+                }),
                 description: fields.text({
                     label: 'Description',
                     description: 'A short summary for the index page',
                     multiline: true,
-                }),
-                tags: fields.array(fields.text({ label: 'Tag' }), {
-                    label: 'Tags',
-                    itemLabel: (props) => props.value || 'tag',
                 }),
                 draft: fields.checkbox({
                     label: 'Draft',
