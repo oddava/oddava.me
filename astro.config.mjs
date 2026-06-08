@@ -36,7 +36,12 @@ export default defineConfig({
   integrations: [react(), mdx()],
   trailingSlash: 'never',
   output: 'server',
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    imageService: 'compile',
+  }),
+  session: {
+    driver: 'memory',
+  },
   site: 'https://oddava.me',
   vite: {
     plugins: [

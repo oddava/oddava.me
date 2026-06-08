@@ -147,11 +147,11 @@ export default config({
                     label: 'Tech Stack',
                     itemLabel: (props) => props.value || 'tech',
                 }),
-                url: fields.text({
+                url: fields.url({
                     label: 'Live URL',
                     description: 'Link to the live project (optional)',
                 }),
-                repo: fields.text({
+                repo: fields.url({
                     label: 'Repository URL',
                     description: 'Link to the source code (optional)',
                 }),

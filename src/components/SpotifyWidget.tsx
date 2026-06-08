@@ -1,24 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './SpotifyWidget.css';
+import type { SpotifyNowPlaying } from '../lib/contracts';
 
-interface SpotifyData {
-    isPlaying: boolean;
-    title?: string;
-    artist?: string;
-    albumImageUrl?: string;
-    songUrl?: string;
-    durationMs?: number;
-    progressMs?: number;
+function isSpotifyNowPlaying(value: unknown): value is SpotifyNowPlaying {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as { isPlaying?: unknown }).isPlaying === 'boolean'
+    );
 }
 
 export default function SpotifyWidget() {
     const widgetRef = useRef<HTMLDivElement>(null);
-    const [data, setData] = useState<SpotifyData>({ isPlaying: false });
+    const [data, setData] = useState<SpotifyNowPlaying>({ isPlaying: false });
     const [loading, setLoading] = useState(true);
     const [currentProgress, setCurrentProgress] = useState(0);
 
     const [renderState, setRenderState] = useState<'hidden' | 'entering' | 'active' | 'exiting'>('hidden');
-    const [displayData, setDisplayData] = useState<SpotifyData | null>(null);
+    const [displayData, setDisplayData] = useState<SpotifyNowPlaying | null>(null);
 
     const fetchPlaying = async () => {
         try {
@@ -26,7 +25,10 @@ export default function SpotifyWidget() {
             if (!res.ok) {
                 throw new Error(`Spotify API returned ${res.status}`);
             }
-            const json = await res.json();
+            const json: unknown = await res.json();
+            if (!isSpotifyNowPlaying(json)) {
+                throw new Error('Spotify API returned an invalid payload');
+            }
             setData(json);
             if (typeof json.progressMs === 'number') {
                 setCurrentProgress(json.progressMs);
@@ -40,9 +42,28 @@ export default function SpotifyWidget() {
     };
 
     useEffect(() => {
-        fetchPlaying();
-        const interval = setInterval(fetchPlaying, 15000);
-        return () => clearInterval(interval);
+        let active = true;
+        let timeout: ReturnType<typeof setTimeout> | null = null;
+
+        const poll = async () => {
+            if (!active) return;
+            if (!document.hidden) await fetchPlaying();
+            if (active) timeout = setTimeout(poll, 30000);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden || !active) return;
+            if (timeout) clearTimeout(timeout);
+            void poll();
+        };
+
+        void poll();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            active = false;
+            if (timeout) clearTimeout(timeout);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -153,7 +174,7 @@ export default function SpotifyWidget() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const [totalMovement, setTotalMovement] = useState(0);
+    const totalMovementRef = useRef(0);
     const preventClickRef = useRef(false);
 
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -169,7 +190,7 @@ export default function SpotifyWidget() {
         const rect = currentTarget.getBoundingClientRect();
 
         setIsDragging(true);
-        setTotalMovement(0);
+        totalMovementRef.current = 0;
         dragOffsetRef.current = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
@@ -189,7 +210,7 @@ export default function SpotifyWidget() {
                 const deltaX = Math.abs(e.clientX - initialPointerRef.current.x);
                 const deltaY = Math.abs(e.clientY - initialPointerRef.current.y);
                 const newTotal = deltaX + deltaY;
-                setTotalMovement(newTotal);
+                totalMovementRef.current = newTotal;
 
                 const rect = widgetRef.current?.getBoundingClientRect();
                 if (!rect) return;
@@ -212,7 +233,9 @@ export default function SpotifyWidget() {
                 const offsetX = edgeX === 'left' ? left : window.innerWidth - (left + rect.width);
                 const offsetY = edgeY === 'top' ? top : window.innerHeight - (top + rect.height);
 
-                setPos({ edgeX, edgeY, offsetX, offsetY });
+                const nextPos = { edgeX, edgeY, offsetX, offsetY };
+                posRef.current = nextPos;
+                setPos(nextPos);
             });
         };
 
@@ -223,6 +246,7 @@ export default function SpotifyWidget() {
 
             localStorage.setItem('spotify-widget-pos-v2', JSON.stringify(posRef.current));
 
+            const totalMovement = totalMovementRef.current;
             if (totalMovement < 10 && isMinimized) {
                 setIsMinimized(false);
                 localStorage.setItem('spotify-widget-minimized', 'false');
@@ -244,7 +268,7 @@ export default function SpotifyWidget() {
             window.removeEventListener('pointerup', handleUp);
             window.removeEventListener('pointercancel', handleUp);
         };
-    }, [isDragging, isMinimized, totalMovement]);
+    }, [isDragging, isMinimized]);
 
     const toggleMinimize = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -271,7 +295,7 @@ export default function SpotifyWidget() {
     return (
         <div
             ref={widgetRef}
-            className={`spotify-widget-positioner ${isDragging && totalMovement > 10 ? 'dragging' : ''}`}
+            className={`spotify-widget-positioner ${isDragging ? 'dragging' : ''}`}
             style={style}
             onPointerDown={handlePointerDown}
         >
@@ -335,9 +359,16 @@ export default function SpotifyWidget() {
                 </div>
 
                 {/* Minimized View */}
-                <div
+                <button
+                    type="button"
                     className="spotify-widget-min-view"
                     title="Currently listening to Spotify. Click to expand."
+                    aria-label="Expand currently playing Spotify track"
+                    onClick={() => {
+                        if (preventClickRef.current) return;
+                        setIsMinimized(false);
+                        localStorage.setItem('spotify-widget-minimized', 'false');
+                    }}
                 >
                     <div className="spotify-widget-container min-container">
                         <div className="spotify-widget-drag-handle">
@@ -346,7 +377,7 @@ export default function SpotifyWidget() {
                             </svg>
                         </div>
                     </div>
-                </div>
+                </button>
 
             </div>
         </div>

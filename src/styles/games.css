@@ -281,6 +281,13 @@
   padding: 0;
 }
 
+.cell:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--color-text-interactive);
+  outline-offset: 1px;
+}
+
 .cell.hidden {
   background: var(--ms-cell-hidden, #2a2535);
 }
@@ -516,6 +523,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .cell.mine.exploded,
+  .cell.mine.revealed-lost,
+  .board-grid.game-over {
+    animation-duration: 0.01ms;
+  }
+
   .community-clicker__burst {
     animation-duration: 0.01ms;
   }

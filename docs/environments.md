@@ -7,6 +7,7 @@
    - `APP_ENV=development`
    - `REDIS_MODE=local`
    - `LOCAL_REDIS_URL=redis://127.0.0.1:6379`
+   - `COMMUNITY_SIGNING_SECRET=<a long random development-only value>`
 3. Start local Redis:
    - `docker compose -f docker-compose.local.yml up -d redis`
 4. Start app:
@@ -22,6 +23,7 @@ The app uses local Redis and prefixes keys with `dev:` to isolate local data.
    - `APP_ENV=production`
    - `REDIS_MODE=upstash`
    - `TURNSTILE_BYPASS_IN_DEV=false`
+   - `COMMUNITY_SIGNING_SECRET`
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
 4. Keep `.env.example` as the only committed reference template.

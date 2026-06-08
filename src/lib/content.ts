@@ -40,7 +40,7 @@ export async function getPublishedPosts() {
         .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 }
 
-type AnimeFavoriteEntry = {
+export type AnimeFavoriteEntry = {
     anime: {
         slug: string;
         title: string;
@@ -174,7 +174,7 @@ async function fetchAniListFavoritesPage(page: number, signal: AbortSignal): Pro
     return nodes;
 }
 
-export async function getAnimeFavorites() {
+export async function getAnimeFavorites(): Promise<AnimeFavoriteEntry[]> {
     if (cachedAnimeFavorites) return cachedAnimeFavorites;
 
     const controller = new AbortController();

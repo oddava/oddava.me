@@ -1,8 +1,13 @@
-import { getClientFingerprint, hasRedisConfig, redisRequest } from './community';
+import {
+  getClientFingerprint,
+  hasRedisConfig,
+  redisCommand,
+} from './community';
+import type { PublicGuestbookEntry } from '../contracts';
 
 export type GuestbookStatus = 'pending' | 'approved' | 'rejected';
 
-export interface GuestbookEntry {
+export interface GuestbookEntry extends PublicGuestbookEntry {
   id: string;
   name: string;
   message: string;
@@ -13,22 +18,20 @@ export interface GuestbookEntry {
 }
 
 const ENTRIES_KEY = 'community:guestbook:entries';
-const ENCODED_ENTRIES_KEY = encodeURIComponent(ENTRIES_KEY);
 const ENTRY_LIMIT = 100;
 
 export async function readGuestbookEntries(): Promise<GuestbookEntry[]> {
   if (!hasRedisConfig()) return [];
 
-  const response = await redisRequest(`lrange/${ENCODED_ENTRIES_KEY}/0/${ENTRY_LIMIT - 1}`);
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`Failed to read guestbook: ${response.status} ${details}`);
-  }
+  const result = await redisCommand<string[] | null>([
+    'LRANGE',
+    ENTRIES_KEY,
+    0,
+    ENTRY_LIMIT - 1,
+  ]);
+  if (!result) return [];
 
-  const data = (await response.json()) as { result: string[] | null };
-  if (!data.result) return [];
-
-  return data.result
+  return result
     .map((raw) => {
       try {
         const entry = JSON.parse(raw) as GuestbookEntry;
@@ -40,35 +43,81 @@ export async function readGuestbookEntries(): Promise<GuestbookEntry[]> {
     .filter((entry): entry is GuestbookEntry => Boolean(entry));
 }
 
-export async function writeGuestbookEntries(entries: GuestbookEntry[]): Promise<void> {
+export async function writeGuestbookEntries(
+  entries: GuestbookEntry[],
+): Promise<void> {
   if (!hasRedisConfig()) {
     throw new Error('Persistent storage is not configured.');
   }
 
-  const nextEntries = entries.slice(0, ENTRY_LIMIT);
-  const deleteResponse = await redisRequest(`del/${ENCODED_ENTRIES_KEY}`);
-  if (!deleteResponse.ok) {
-    const details = await deleteResponse.text();
-    throw new Error(`Failed to reset guestbook: ${deleteResponse.status} ${details}`);
-  }
-
-  if (nextEntries.length === 0) {
-    return;
-  }
-
-  const payloads = nextEntries
-    .slice()
-    .reverse()
-    .map((entry) => encodeURIComponent(JSON.stringify(entry)));
-
-  const pushResponse = await redisRequest(`lpush/${ENCODED_ENTRIES_KEY}/${payloads.join('/')}`);
-  if (!pushResponse.ok) {
-    const details = await pushResponse.text();
-    throw new Error(`Failed to write guestbook: ${pushResponse.status} ${details}`);
-  }
+  const payloads = entries
+    .slice(0, ENTRY_LIMIT)
+    .map((entry) => JSON.stringify(entry));
+  const script = `
+    redis.call('DEL', KEYS[1])
+    if #ARGV > 0 then
+      redis.call('RPUSH', KEYS[1], unpack(ARGV))
+    end
+    return #ARGV
+  `;
+  await redisCommand(['EVAL', script, 1, ENTRIES_KEY, ...payloads]);
 }
 
-export async function createGuestbookEntry(request: Request, name: string, message: string): Promise<GuestbookEntry> {
+export async function appendGuestbookEntry(
+  entry: GuestbookEntry,
+): Promise<void> {
+  const script = `
+    redis.call('LPUSH', KEYS[1], ARGV[1])
+    redis.call('LTRIM', KEYS[1], 0, tonumber(ARGV[2]) - 1)
+    return redis.call('LLEN', KEYS[1])
+  `;
+  await redisCommand([
+    'EVAL',
+    script,
+    1,
+    ENTRIES_KEY,
+    JSON.stringify(entry),
+    ENTRY_LIMIT,
+  ]);
+}
+
+export async function updateGuestbookEntryStatus(
+  id: string,
+  status: GuestbookStatus,
+): Promise<boolean> {
+  const script = `
+    local values = redis.call('LRANGE', KEYS[1], 0, -1)
+    local updated = 0
+    for index, raw in ipairs(values) do
+      local ok, entry = pcall(cjson.decode, raw)
+      if ok and tostring(entry.id) == ARGV[1] then
+        entry.status = ARGV[2]
+        values[index] = cjson.encode(entry)
+        updated = 1
+      end
+    end
+    if updated == 1 then
+      redis.call('DEL', KEYS[1])
+      if #values > 0 then redis.call('RPUSH', KEYS[1], unpack(values)) end
+    end
+    return updated
+  `;
+  const result = await redisCommand<number | string>([
+    'EVAL',
+    script,
+    1,
+    ENTRIES_KEY,
+    id,
+    status,
+  ]);
+  return Number(result) === 1;
+}
+
+export async function createGuestbookEntry(
+  request: Request,
+  name: string,
+  message: string,
+): Promise<GuestbookEntry> {
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     name,
@@ -80,21 +129,42 @@ export async function createGuestbookEntry(request: Request, name: string, messa
   };
 }
 
-export function normalizeGuestbookEntry(entry: GuestbookEntry): GuestbookEntry | null {
+export function normalizeGuestbookEntry(
+  entry: GuestbookEntry,
+): GuestbookEntry | null {
   if (!entry || typeof entry !== 'object') return null;
-  if (!entry.id || !entry.name || !entry.message || !entry.createdAt) return null;
+  if (!entry.id || !entry.name || !entry.message || !entry.createdAt)
+    return null;
 
   return {
     id: String(entry.id),
     name: String(entry.name),
     message: String(entry.message),
     createdAt: String(entry.createdAt),
-    status: entry.status === 'approved' || entry.status === 'rejected' ? entry.status : 'pending',
-    ipFingerprint: entry.ipFingerprint ? String(entry.ipFingerprint) : undefined,
+    status:
+      entry.status === 'approved' || entry.status === 'rejected'
+        ? entry.status
+        : 'pending',
+    ipFingerprint: entry.ipFingerprint
+      ? String(entry.ipFingerprint)
+      : undefined,
     userAgent: entry.userAgent ? String(entry.userAgent) : undefined,
   };
 }
 
-export function getApprovedGuestbookEntries(entries: GuestbookEntry[]): GuestbookEntry[] {
+export function getApprovedGuestbookEntries(
+  entries: GuestbookEntry[],
+): GuestbookEntry[] {
   return entries.filter((entry) => entry.status === 'approved');
+}
+
+export function toPublicGuestbookEntries(
+  entries: GuestbookEntry[],
+): PublicGuestbookEntry[] {
+  return entries.map(({ id, name, message, createdAt }) => ({
+    id,
+    name,
+    message,
+    createdAt,
+  }));
 }

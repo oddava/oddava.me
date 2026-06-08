@@ -5,7 +5,23 @@ import {
   setAdminSession,
   verifyAdminToken,
 } from '../../../lib/server/admin';
-import { json } from '../../../lib/server/community';
+import {
+  ensureSameOrigin,
+  enforceRedisRateLimit,
+  json,
+  readJsonBody,
+  readUrlEncodedBody,
+  rejectIfSigningUnavailable,
+  requestBodyErrorResponse,
+} from '../../../lib/server/community';
+
+const LOGIN_RATE_LIMIT = { limit: 8, windowMs: 15 * 60 * 1000 };
+
+function safeNextPath(value: string): string {
+  return value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')
+    ? value
+    : '/admin';
+}
 
 function wantsJson(request: Request): boolean {
   const accept = request.headers.get('accept') ?? '';
@@ -14,17 +30,35 @@ function wantsJson(request: Request): boolean {
 }
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return sameOriginError;
+
+  const signingUnavailable = rejectIfSigningUnavailable();
+  if (signingUnavailable) return signingUnavailable;
+
+  const rateLimitError = await enforceRedisRateLimit(
+    request,
+    'admin-login',
+    LOGIN_RATE_LIMIT.limit,
+    LOGIN_RATE_LIMIT.windowMs,
+  );
+  if (rateLimitError) return rateLimitError;
+
   let token = '';
   let next = '/admin';
 
-  if (request.headers.get('content-type')?.includes('application/json')) {
-    const body = (await request.json().catch(() => ({}))) as { token?: string; next?: string };
-    token = String(body.token ?? '');
-    next = String(body.next ?? '/admin');
-  } else {
-    const formData = await request.formData();
-    token = String(formData.get('token') ?? '');
-    next = String(formData.get('next') ?? '/admin');
+  try {
+    if (request.headers.get('content-type')?.includes('application/json')) {
+      const body = await readJsonBody<{ token?: string; next?: string }>(request);
+      token = String(body.token ?? '');
+      next = String(body.next ?? '/admin');
+    } else {
+      const formData = await readUrlEncodedBody(request);
+      token = String(formData.get('token') ?? '');
+      next = String(formData.get('next') ?? '/admin');
+    }
+  } catch (error) {
+    return requestBodyErrorResponse(error);
   }
 
   if (!isAdminConfigured()) {
@@ -39,13 +73,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
     const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('error', 'invalid');
-    if (next.startsWith('/')) loginUrl.searchParams.set('next', next);
+    loginUrl.searchParams.set('next', safeNextPath(next));
     return redirect(loginUrl.pathname + loginUrl.search, 302);
   }
 
   setAdminSession(cookies, request, await createAdminSessionValue(token));
   if (wantsJson(request)) {
-    return json({ ok: true, next: next.startsWith('/') ? next : '/admin' }, { status: 200 });
+    return json({ ok: true, next: safeNextPath(next) }, { status: 200 });
   }
-  return redirect(next.startsWith('/') ? next : '/admin', 302);
+  return redirect(safeNextPath(next), 302);
 };

@@ -3,6 +3,11 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": ">=22 <25",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "astro dev --mode development",
     "build": "astro build --mode production",
@@ -10,24 +15,33 @@
     "deploy": "wrangler deploy --keep-vars",
     "preview": "astro preview --mode production",
     "check": "astro check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check package.json vitest.config.ts tests .github/workflows",
+    "audit": "npm audit --omit=dev --audit-level=high",
+    "spotify:token": "node get-spotify-token.js",
+    "verify": "npm run check && npm run test && npm run build",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.6",
     "@astrojs/mdx": "^4.3.0",
     "@astrojs/react": "^4.4.2",
     "@keystatic/astro": "^5.0.6",
     "@keystatic/core": "^0.5.48",
     "astro": "^5.17.1",
-    "dotenv": "^17.3.1",
-    "querystring": "^0.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "redis": "^4.7.1",
-    "typescript": "^5.9.3"
+    "redis": "^4.7.1"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.8",
     "@astrojs/cloudflare": "^12.6.13",
+    "@types/node": "^24.13.1",
+    "prettier": "^3.8.3",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8",
     "wrangler": "^4.95.0"
   }
 }

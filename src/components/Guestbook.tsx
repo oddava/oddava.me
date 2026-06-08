@@ -1,24 +1,6 @@
 /** @jsxImportSource react */
 import { useEffect, useMemo, useRef, useState } from 'react';
-
-interface GuestbookEntry {
-    id: string;
-    name: string;
-    message: string;
-    createdAt: string;
-}
-
-interface GuestbookResponse {
-    entries?: GuestbookEntry[];
-    writable?: boolean;
-    reviewRequired?: boolean;
-    captchaRequired?: boolean;
-    turnstileSiteKey?: string;
-    submitted?: boolean;
-    message?: string;
-    error?: string;
-    retryAfterSeconds?: number;
-}
+import type { GuestbookApiResponse, PublicGuestbookEntry } from '../lib/contracts';
 
 declare global {
     interface Window {
@@ -35,7 +17,7 @@ declare global {
     }
 }
 
-const POLL_INTERVAL = 12000;
+const POLL_INTERVAL = 30000;
 const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 function ensureTurnstileScript(): Promise<void> {
@@ -62,7 +44,7 @@ function ensureTurnstileScript(): Promise<void> {
 }
 
 export function Guestbook() {
-    const [entries, setEntries] = useState<GuestbookEntry[]>([]);
+    const [entries, setEntries] = useState<PublicGuestbookEntry[]>([]);
     const [name, setName] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(true);
@@ -81,7 +63,7 @@ export function Guestbook() {
     const loadEntries = async () => {
         try {
             const response = await fetch('/api/guestbook', { cache: 'no-store' });
-            const data = (await response.json()) as GuestbookResponse;
+            const data = (await response.json()) as GuestbookApiResponse;
             if (!response.ok) throw new Error(data.error || 'Failed to load guestbook.');
             setEntries(data.entries ?? []);
             setWritable(data.writable !== false);
@@ -99,17 +81,36 @@ export function Guestbook() {
 
     useEffect(() => {
         let mounted = true;
-        const fetchEntries = async () => {
+        let timeout: ReturnType<typeof setTimeout> | null = null;
+
+        const schedule = () => {
             if (!mounted) return;
-            await loadEntries();
+            timeout = setTimeout(fetchEntries, POLL_INTERVAL);
         };
 
-        fetchEntries();
-        const interval = setInterval(fetchEntries, POLL_INTERVAL);
+        const fetchEntries = async () => {
+            if (!mounted) return;
+            if (document.hidden) {
+                schedule();
+                return;
+            }
+            await loadEntries();
+            schedule();
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden || !mounted) return;
+            if (timeout) clearTimeout(timeout);
+            void fetchEntries();
+        };
+
+        void fetchEntries();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             mounted = false;
-            clearInterval(interval);
+            if (timeout) clearTimeout(timeout);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
@@ -154,7 +155,7 @@ export function Guestbook() {
                 body: JSON.stringify({ name: trimmedName, message: trimmedMessage, captchaToken }),
             });
 
-            const data = (await response.json()) as GuestbookResponse;
+            const data = (await response.json()) as GuestbookApiResponse;
             if (!response.ok) {
                 throw new Error(
                     data.retryAfterSeconds
@@ -217,7 +218,7 @@ export function Guestbook() {
                     {submitting ? 'posting...' : 'submit'}
                 </button>
                 {!writable && (
-                    <p className="guestbook__error">Guestbook posting is temporarily unavailable.</p>
+                    <p className="guestbook__error" role="alert">Guestbook posting is temporarily unavailable.</p>
                 )}
             </form>
 
@@ -239,8 +240,8 @@ export function Guestbook() {
                         <p>{entry.message}</p>
                     </article>
                 ))}
-                {notice && <p className="guestbook__notice">{notice}</p>}
-                {error && <p className="guestbook__error">{error}</p>}
+                {notice && <p className="guestbook__notice" role="status" aria-live="polite">{notice}</p>}
+                {error && <p className="guestbook__error" role="alert">{error}</p>}
             </div>
         </section>
     );

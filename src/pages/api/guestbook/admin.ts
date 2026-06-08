@@ -1,10 +1,17 @@
 /// <reference types="astro/client" />
 import type { APIRoute } from 'astro';
-import { json, rejectIfStorageUnavailable } from '../../../lib/server/community';
+import {
+  ensureSameOrigin,
+  json,
+  readJsonBody,
+  rejectIfStorageUnavailable,
+  requestBodyErrorResponse,
+} from '../../../lib/server/community';
 import type { GuestbookStatus } from '../../../lib/server/guestbook';
 import { requireAdminApi } from '../../../lib/server/admin';
 import {
   readGuestbookEntries,
+  updateGuestbookEntryStatus,
   writeGuestbookEntries,
 } from '../../../lib/server/guestbook';
 
@@ -41,6 +48,9 @@ export const GET: APIRoute = async ({ cookies, url }) => {
 };
 
 export const PATCH: APIRoute = async ({ request, cookies }) => {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return withSecurityHeaders(sameOriginError);
+
   const authError = await requireAdminApi(cookies);
   if (authError) return withSecurityHeaders(authError);
 
@@ -50,9 +60,9 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   let body: { id?: string; status?: string };
 
   try {
-    body = (await request.json()) as { id?: string; status?: string };
-  } catch {
-    return withSecurityHeaders(json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 }));
+    body = await readJsonBody<{ id?: string; status?: string }>(request);
+  } catch (error) {
+    return withSecurityHeaders(requestBodyErrorResponse(error));
   }
 
   const status = normalizeStatus(body.status ?? null);
@@ -61,9 +71,11 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   }
 
   try {
-    const entries = await readGuestbookEntries();
-    const next = entries.map((entry) => (entry.id === body.id ? { ...entry, status } : entry));
-    await writeGuestbookEntries(next);
+    const updated = await updateGuestbookEntryStatus(body.id, status);
+    if (!updated) {
+      return withSecurityHeaders(json({ error: 'Entry not found.', code: 'not_found' }, { status: 404 }));
+    }
+    const next = await readGuestbookEntries();
     return withSecurityHeaders(json({ entries: next }, { status: 200 }));
   } catch (error) {
     console.error('[guestbook-admin] PATCH failed', error);
@@ -86,6 +98,9 @@ async function handleClearAllRequest(clearAll: boolean): Promise<Response> {
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return withSecurityHeaders(sameOriginError);
+
   const authError = await requireAdminApi(cookies);
   if (authError) return withSecurityHeaders(authError);
 
@@ -95,9 +110,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   let body: { action?: string; all?: boolean };
 
   try {
-    body = (await request.json()) as { action?: string; all?: boolean };
-  } catch {
-    return withSecurityHeaders(json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 }));
+    body = await readJsonBody<{ action?: string; all?: boolean }>(request);
+  } catch (error) {
+    return withSecurityHeaders(requestBodyErrorResponse(error));
   }
 
   if (body.action !== 'clear') {

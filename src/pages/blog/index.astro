@@ -27,7 +27,7 @@ const postsByYear = posts.reduce((groups: Record<string, typeof posts>, post) =>
       <section class="post-year" aria-labelledby={`posts-${year}`}>
         <h2 class="post-year__heading" id={`posts-${year}`}>{year}</h2>
         <ul class="post-list">
-          {yearPosts.map((post: any) => (
+          {yearPosts.map((post) => (
             <li class="post-item">
               <a href={`/blog/${post.id}`} class="post-item__link">
                 <div class="post-item__title">{post.data.title}</div>

@@ -78,22 +78,6 @@
     font-weight: 600;
 }
 
-/* --- Theme Toggle --- */
-.theme-toggle {
-    background: none;
-    border: none;
-    color: var(--color-text-muted);
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    padding: 0;
-    transition: color 0.15s ease;
-}
-
-.theme-toggle:hover {
-    color: var(--color-text-primary);
-}
-
 /* --- Footer --- */
 .site-footer {
     padding: 0 0 var(--space-md);

@@ -3,20 +3,25 @@ import type { APIRoute } from 'astro';
 import {
   ensureSameOrigin,
   enforceRedisRateLimit,
+  hasCommunitySigningSecret,
   hasRedisConfig,
   hasTurnstileConfig,
   getTurnstileSiteKey,
   isTurnstileChallengeRequired,
   isStorageUnavailableError,
   json,
+  readJsonBody,
+  rejectIfSigningUnavailable,
   rejectIfStorageUnavailable,
+  requestBodyErrorResponse,
   verifyTurnstileToken,
 } from '../../lib/server/community';
 import {
+  appendGuestbookEntry,
   createGuestbookEntry,
   getApprovedGuestbookEntries,
   readGuestbookEntries,
-  writeGuestbookEntries,
+  toPublicGuestbookEntries,
 } from '../../lib/server/guestbook';
 
 const GUESTBOOK_RATE_LIMIT = { limit: 3, windowMs: 10 * 60 * 1000 };
@@ -27,11 +32,16 @@ function sanitizeText(value: string, limit: number): string {
 
 export const GET: APIRoute = async () => {
   try {
-    const entries = getApprovedGuestbookEntries(await readGuestbookEntries());
+    const entries = toPublicGuestbookEntries(
+      getApprovedGuestbookEntries(await readGuestbookEntries()),
+    );
     return json(
       {
         entries,
-        writable: hasRedisConfig() && hasTurnstileConfig(),
+        writable:
+          hasRedisConfig() &&
+          hasTurnstileConfig() &&
+          hasCommunitySigningSecret(),
         reviewRequired: true,
         captchaRequired: isTurnstileChallengeRequired(),
         turnstileSiteKey: getTurnstileSiteKey(),
@@ -63,6 +73,9 @@ export const POST: APIRoute = async ({ request }) => {
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return storageUnavailable;
 
+  const signingUnavailable = rejectIfSigningUnavailable();
+  if (signingUnavailable) return signingUnavailable;
+
   const captchaUnavailable = !hasTurnstileConfig()
     ? json(
         {
@@ -85,9 +98,9 @@ export const POST: APIRoute = async ({ request }) => {
   let body: { name?: string; message?: string; captchaToken?: string };
 
   try {
-    body = (await request.json()) as { name?: string; message?: string; captchaToken?: string };
-  } catch {
-    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
+    body = await readJsonBody<{ name?: string; message?: string; captchaToken?: string }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
   }
 
   const captchaError = await verifyTurnstileToken(request, body.captchaToken);
@@ -105,9 +118,8 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    const entries = await readGuestbookEntries();
     const nextEntry = await createGuestbookEntry(request, name, message);
-    await writeGuestbookEntries([nextEntry, ...entries]);
+    await appendGuestbookEntry(nextEntry);
 
     return json(
       {
