@@ -239,7 +239,7 @@ export function Guestbook() {
                         <p>{entry.message}</p>
                     </article>
                 ))}
-                {notice && <p>{notice}</p>}
+                {notice && <p className="guestbook__notice">{notice}</p>}
                 {error && <p className="guestbook__error">{error}</p>}
             </div>
         </section>

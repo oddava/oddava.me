@@ -6,7 +6,7 @@ body {
     font-family: var(--font-body);
     font-size: var(--text-base);
     line-height: var(--leading-body);
-    color: var(--color-ink);
+    color: var(--color-text-primary);
     background-color: var(--color-surface);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -20,13 +20,13 @@ body {
 
 /* --- Links --- */
 a {
-    color: var(--color-accent);
+    color: var(--color-text-interactive);
     text-decoration: none;
     transition: color 0.15s ease;
 }
 
 a:hover {
-    color: var(--color-accent-hover);
+    color: var(--color-text-interactive-hover);
 }
 
 /* --- Headings --- */
@@ -36,7 +36,7 @@ h3,
 h4 {
     font-family: var(--font-body);
     line-height: var(--leading-tight);
-    color: var(--color-ink);
+    color: var(--color-text-primary);
     letter-spacing: -0.02em;
 }
 
