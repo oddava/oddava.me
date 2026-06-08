@@ -3,21 +3,10 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Cell, GameStatus } from './types';
 import { createBoard, floodFill, chord, getNeighbors, checkWin, formatTime } from './logic';
 import { DIFFICULTIES } from './types';
+import type { LeaderboardApiResponse, LeaderboardEntry } from '../../../lib/contracts';
 
 interface MinesweeperProps {
     initialDifficulty?: keyof typeof DIFFICULTIES;
-}
-
-interface LeaderboardEntry {
-    time: number;
-    createdAt: string;
-}
-
-interface LeaderboardResponse {
-    entries: LeaderboardEntry[];
-    writable?: boolean;
-    error?: string;
-    retryAfterSeconds?: number;
 }
 
 export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
@@ -39,6 +28,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     const submittedRef = useRef(false);
     const activeDifficultyRef = useRef<keyof typeof DIFFICULTIES>(difficulty);
     const sessionStartedRef = useRef(false);
+    const gameStartedAtRef = useRef<number | null>(null);
 
     // Cells to highlight as chord preview: unrevealed, unflagged neighbors of
     // the hovered cell — but only when that cell is a revealed number and
@@ -64,6 +54,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         submittedRef.current = false;
         activeDifficultyRef.current = difficulty;
         sessionStartedRef.current = false;
+        gameStartedAtRef.current = null;
     };
 
     const loadLeaderboard = useCallback(async (level: keyof typeof DIFFICULTIES) => {
@@ -73,7 +64,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 cache: 'no-store',
             });
             if (!response.ok) throw new Error('Failed to load leaderboard');
-            const data = (await response.json()) as LeaderboardResponse;
+            const data = (await response.json()) as LeaderboardApiResponse;
             setLeaderboard(data.entries ?? []);
             setLeaderboardWritable(data.writable !== false);
             setLeaderboardError(null);
@@ -86,6 +77,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     }, []);
 
     const startLeaderboardSession = useCallback(async (level: keyof typeof DIFFICULTIES) => {
+        sessionStartedRef.current = true;
         const response = await fetch('/api/minesweeper-leaderboard', {
             method: 'PUT',
             headers: {
@@ -96,6 +88,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
 
         const data = (await response.json()) as { error?: string; retryAfterSeconds?: number };
         if (!response.ok) {
+            sessionStartedRef.current = false;
             throw new Error(
                 data.retryAfterSeconds
                     ? `${data.error ?? 'Failed to start session.'} Try again in ${data.retryAfterSeconds}s.`
@@ -103,7 +96,6 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             );
         }
 
-        sessionStartedRef.current = true;
     }, []);
 
     const submitScore = useCallback(async (level: keyof typeof DIFFICULTIES, time: number) => {
@@ -115,7 +107,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 },
                 body: JSON.stringify({ difficulty: level, time }),
             });
-            const data = (await response.json()) as LeaderboardResponse;
+            const data = (await response.json()) as LeaderboardApiResponse;
             if (!response.ok) {
                 throw new Error(
                     data.retryAfterSeconds
@@ -136,13 +128,22 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     }, [difficulty]);
 
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval>;
+        let interval: ReturnType<typeof setInterval> | undefined;
         if (status === 'playing') {
+            const updateTimer = () => {
+                const startedAt = gameStartedAtRef.current;
+                if (startedAt) {
+                    setTimer(Math.floor((Date.now() - startedAt) / 1000));
+                }
+            };
+            updateTimer();
             interval = setInterval(() => {
-                setTimer((t) => t + 1);
-            }, 1000);
+                updateTimer();
+            }, 250);
         }
-        return () => clearInterval(interval);
+        return () => {
+            if (interval) clearInterval(interval);
+        };
     }, [status]);
 
     useEffect(() => {
@@ -156,22 +157,21 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
     }, [leaderboardWritable, status, timer, submitScore]);
 
     const handleCellClick = useCallback(
-        async (index: number) => {
+        (index: number) => {
             if (status === 'won' || status === 'lost') return;
 
             let newBoard = [...board];
 
             if (status === 'idle') {
                 if (leaderboardWritable && !sessionStartedRef.current) {
-                    try {
-                        await startLeaderboardSession(difficulty);
-                    } catch (sessionError) {
+                    void startLeaderboardSession(difficulty).catch((sessionError) => {
                         setLeaderboardError(
                             sessionError instanceof Error ? sessionError.message : 'Could not start leaderboard session.',
                         );
-                    }
+                    });
                 }
                 activeDifficultyRef.current = difficulty;
+                gameStartedAtRef.current = Date.now();
                 newBoard = createBoard(rows, cols, mines, index);
                 setStatus('playing');
             }
@@ -203,7 +203,11 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                 }
 
                 setBoard(result.board);
-                if (checkWin(result.board)) setStatus('won');
+                if (checkWin(result.board)) {
+                    const startedAt = gameStartedAtRef.current;
+                    if (startedAt) setTimer(Math.max(1, Math.floor((Date.now() - startedAt) / 1000)));
+                    setStatus('won');
+                }
                 return;
             }
 
@@ -230,15 +234,16 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             setBoard(newBoard);
 
             if (checkWin(newBoard)) {
+                const startedAt = gameStartedAtRef.current;
+                if (startedAt) setTimer(Math.max(1, Math.floor((Date.now() - startedAt) / 1000)));
                 setStatus('won');
             }
         },
         [board, status, rows, cols, mines, difficulty, leaderboardWritable, startLeaderboardSession],
     );
 
-    const handleRightClick = useCallback(
-        (e: React.MouseEvent, index: number) => {
-            e.preventDefault();
+    const toggleFlag = useCallback(
+        (index: number) => {
             if (status === 'won' || status === 'lost') return;
             if (status === 'idle') return;
 
@@ -252,6 +257,25 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         },
         [board, status],
     );
+
+    const handleRightClick = useCallback(
+        (e: React.MouseEvent, index: number) => {
+            e.preventDefault();
+            toggleFlag(index);
+        },
+        [toggleFlag],
+    );
+
+    const getCellLabel = (cell: Cell | null, index: number) => {
+        const row = Math.floor(index / cols) + 1;
+        const column = (index % cols) + 1;
+        if (!cell) return `Row ${row}, column ${column}, hidden`;
+        if (cell.isFlagged && !cell.isRevealed) return `Row ${row}, column ${column}, flagged`;
+        if (!cell.isRevealed) return `Row ${row}, column ${column}, hidden`;
+        if (cell.isMine) return `Row ${row}, column ${column}, mine`;
+        if (cell.neighborMines === 0) return `Row ${row}, column ${column}, empty`;
+        return `Row ${row}, column ${column}, ${cell.neighborMines} neighboring mines`;
+    };
 
     const getCellClassName = (cell: Cell | null, index: number) => {
         if (!cell) return 'cell hidden';
@@ -272,7 +296,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
         if (cell.isFlagged && !cell.isRevealed) return '🚩';
         if (cell.isRevealed) {
             if (cell.isMine) {
-                return <img src="/images/games/bomb.png" alt="mine" width={20} height={20} />;
+                return <img src="/images/games/bomb.svg" alt="mine" width={20} height={20} />;
             }
             if (cell.neighborMines === 0) return '';
             return cell.neighborMines;
@@ -304,7 +328,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                         ))}
                     </ol>
                 )}
-                {leaderboardError && <p className="leaderboard__error">{leaderboardError}</p>}
+                {leaderboardError && <p className="leaderboard__error" role="alert">{leaderboardError}</p>}
                 {!leaderboardWritable && (
                     <p className="leaderboard__error">Leaderboard submissions are temporarily disabled while storage is unavailable.</p>
                 )}
@@ -315,6 +339,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                         key={level}
                         className={`difficulty-btn ${difficulty === level ? 'active' : ''}`}
                         onClick={() => setDifficulty(level)}
+                        aria-pressed={difficulty === level}
                     >
                         {level}
                     </button>
@@ -335,6 +360,8 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
             <div className="board-wrapper">
                 <div
                     className={`board-grid ${status === 'lost' ? 'game-over' : ''}`}
+                    role="group"
+                    aria-label={`${difficulty} Minesweeper board`}
                     style={{
                         gridTemplateColumns: `repeat(${cols}, 28px)`,
                         gridTemplateRows: `repeat(${rows}, 28px)`,
@@ -345,18 +372,32 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
                             <button
                                 key={i}
                                 className="cell hidden"
+                                aria-label={getCellLabel(null, i)}
                                 onClick={() => handleCellClick(i)}
                                 onContextMenu={(e) => handleRightClick(e, i)}
+                                onKeyDown={(e) => {
+                                    if (e.key.toLowerCase() === 'f') {
+                                        e.preventDefault();
+                                        toggleFlag(i);
+                                    }
+                                }}
                             />
                         ))
                         : board.map((cell, i) => (
                             <button
                                 key={i}
                                 className={`${getCellClassName(cell, i)}${chordPreviewCells.has(i) ? ' chord-preview' : ''}`}
+                                aria-label={getCellLabel(cell, i)}
                                 data-mines={cell.isRevealed && !cell.isMine && cell.neighborMines > 0 ? cell.neighborMines : undefined}
                                 style={showAllMines && cell.isMine && i !== explodedCell ? { '--reveal-delay': `${(i % cols) * 0.05 + Math.floor(i / cols) * 0.03}s` } as React.CSSProperties : undefined}
                                 onClick={() => handleCellClick(i)}
                                 onContextMenu={(e) => handleRightClick(e, i)}
+                                onKeyDown={(e) => {
+                                    if (e.key.toLowerCase() === 'f') {
+                                        e.preventDefault();
+                                        toggleFlag(i);
+                                    }
+                                }}
                                 onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); handleCellClick(i); } }}
                                 onMouseEnter={() => setHoveredIndex(i)}
                                 onMouseLeave={() => setHoveredIndex(null)}
@@ -369,7 +410,7 @@ export function Minesweeper({ initialDifficulty = 'easy' }: MinesweeperProps) {
 
             {(status === 'won' || status === 'lost') && (
                 <div className="game-end-controls">
-                    <div className={`game-message ${status}`}>
+                    <div className={`game-message ${status}`} role="status" aria-live="polite">
                         {status === 'won' ? 'well done!' : 'game over'}
                     </div>
                     <button className="restart-btn" onClick={resetGame}>

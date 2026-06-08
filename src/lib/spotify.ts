@@ -1,9 +1,17 @@
 import { getServerEnv } from './server/env';
+import { fetchWithTimeout } from './server/community';
 
 let cachedAccessToken: string | null = null;
 let tokenExpirationTime: number = 0;
 
-export const getAccessToken = async () => {
+interface SpotifyTokenResponse {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+}
+
+export const getAccessToken = async (): Promise<{ access_token: string }> => {
     if (cachedAccessToken && Date.now() < tokenExpirationTime) {
         return { access_token: cachedAccessToken };
     }
@@ -19,7 +27,7 @@ export const getAccessToken = async () => {
     const basic = btoa(`${client_id}:${client_secret}`);
     const TOKEN_ENDPOINT = `https://accounts.spotify.com/api/token`;
 
-    const response = await fetch(TOKEN_ENDPOINT, {
+    const response = await fetchWithTimeout(TOKEN_ENDPOINT, {
         method: 'POST',
         headers: {
             Authorization: `Basic ${basic}`,
@@ -31,7 +39,7 @@ export const getAccessToken = async () => {
         }),
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as SpotifyTokenResponse;
 
     if (!response.ok || !data.access_token) {
         throw new Error(data.error_description || data.error || 'Could not refresh Spotify access token.');
@@ -39,16 +47,16 @@ export const getAccessToken = async () => {
 
     cachedAccessToken = data.access_token;
     // data.expires_in is usually 3600. We subtract 300 (5 minutes) for safety.
-    tokenExpirationTime = Date.now() + (data.expires_in - 300) * 1000;
+    tokenExpirationTime = Date.now() + Math.max(60, (data.expires_in ?? 3600) - 300) * 1000;
 
-    return data;
+    return { access_token: data.access_token };
 };
 
 export const getNowPlaying = async () => {
     const { access_token } = await getAccessToken();
     const NOW_PLAYING_ENDPOINT = `https://api.spotify.com/v1/me/player/currently-playing`;
 
-    return fetch(NOW_PLAYING_ENDPOINT, {
+    return fetchWithTimeout(NOW_PLAYING_ENDPOINT, {
         headers: {
             Authorization: `Bearer ${access_token}`,
         },

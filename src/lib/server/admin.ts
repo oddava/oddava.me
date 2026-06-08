@@ -2,6 +2,7 @@ import type { AstroCookies } from 'astro';
 import { getServerEnv } from './env';
 import {
   createSignedValue,
+  hasCommunitySigningSecret,
   hasRedisConfig,
   hasTurnstileConfig,
   isSecureRequest,
@@ -29,6 +30,15 @@ async function sha256Hex(value: string): Promise<string> {
     .join('');
 }
 
+function constantTimeEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 function getCookieOptions(request: Request): Parameters<AstroCookies['set']>[2] {
   return {
     httpOnly: true,
@@ -44,13 +54,13 @@ export function getAdminCookieName(): string {
 }
 
 export function isAdminConfigured(): boolean {
-  return Boolean(getAdminToken());
+  return Boolean(getAdminToken()) && hasCommunitySigningSecret();
 }
 
 export async function verifyAdminToken(token: string): Promise<boolean> {
   const configured = getAdminToken();
   if (!configured) return false;
-  return token === configured;
+  return constantTimeEqual(await sha256Hex(token), await sha256Hex(configured));
 }
 
 export async function createAdminSessionValue(token: string): Promise<string> {
@@ -67,8 +77,12 @@ export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
 
   const session = await readSignedValue<AdminSession>(cookies.get(ADMIN_COOKIE)?.value);
   if (!session || session.role !== 'admin' || !session.tokenHash) return false;
+  const ageMs = Date.now() - session.issuedAt;
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > ADMIN_SESSION_TTL_SECONDS * 1000) {
+    return false;
+  }
 
-  return session.tokenHash === (await sha256Hex(configured));
+  return constantTimeEqual(session.tokenHash, await sha256Hex(configured));
 }
 
 export async function requireAdminApi(cookies: AstroCookies): Promise<Response | null> {
@@ -140,9 +154,19 @@ export async function getAdminIntegrationStatuses(): Promise<AdminIntegrationSta
   });
 
   statuses.push({
+    name: 'Signing secret',
+    healthy: hasCommunitySigningSecret(),
+    detail: hasCommunitySigningSecret()
+      ? 'Dedicated session signing secret is configured.'
+      : 'COMMUNITY_SIGNING_SECRET is missing.',
+  });
+
+  statuses.push({
     name: 'Admin auth',
     healthy: isAdminConfigured(),
-    detail: isAdminConfigured() ? 'Shared admin token is configured.' : 'ADMIN_PANEL_TOKEN is missing.',
+    detail: isAdminConfigured()
+      ? 'Admin token and signing secret are configured.'
+      : 'ADMIN_PANEL_TOKEN and COMMUNITY_SIGNING_SECRET are both required.',
   });
 
   return statuses;

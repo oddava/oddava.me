@@ -1,6 +1,12 @@
 import type { APIRoute } from 'astro';
 import { requireAdminApi } from '../../../lib/server/admin';
-import { json, rejectIfStorageUnavailable } from '../../../lib/server/community';
+import {
+  ensureSameOrigin,
+  json,
+  readJsonBody,
+  rejectIfStorageUnavailable,
+  requestBodyErrorResponse,
+} from '../../../lib/server/community';
 import { getClickerCount, setClickerCount } from '../../../lib/server/clicker';
 
 export const GET: APIRoute = async ({ cookies }) => {
@@ -12,6 +18,9 @@ export const GET: APIRoute = async ({ cookies }) => {
 };
 
 export const PATCH: APIRoute = async ({ request, cookies }) => {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return sameOriginError;
+
   const authError = await requireAdminApi(cookies);
   if (authError) return authError;
 
@@ -21,9 +30,9 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   let body: { count?: number };
 
   try {
-    body = (await request.json()) as { count?: number };
-  } catch {
-    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
+    body = await readJsonBody<{ count?: number }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
   }
 
   const count = Number(body.count);

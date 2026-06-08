@@ -1,8 +1,13 @@
-import 'dotenv/config';
 import http from 'http';
-import url from 'url';
 import fs from 'fs';
 import path from 'path';
+import { loadEnvFile } from 'process';
+
+try {
+    loadEnvFile();
+} catch {
+    // The script reports missing credentials below when no local .env exists.
+}
 
 const clientId = process.env.SPOTIFY_CLIENT_ID;
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
@@ -32,10 +37,10 @@ console.log(authUrl);
 console.log('\nWaiting for callback on http://localhost:8888/callback ...');
 
 const server = http.createServer(async (req, res) => {
-    const reqUrl = url.parse(req.url, true);
+    const reqUrl = new URL(req.url ?? '/', redirectUri);
 
     if (reqUrl.pathname === '/callback') {
-        const code = reqUrl.query.code;
+        const code = reqUrl.searchParams.get('code');
 
         if (code) {
             console.log('\n2. Received auth code, exchanging for tokens...');
@@ -49,7 +54,7 @@ const server = http.createServer(async (req, res) => {
                 },
                 body: new URLSearchParams({
                     grant_type: 'authorization_code',
-                    code: code,
+                    code,
                     redirect_uri: redirectUri,
                 }),
             });
@@ -57,11 +62,7 @@ const server = http.createServer(async (req, res) => {
             const data = await response.json();
 
             if (data.refresh_token) {
-                console.log('\n✅ SUCCESS! Here is your refresh token:\n');
-                console.log('====================================================');
-                console.log(data.refresh_token);
-                console.log('====================================================\n');
-                console.log('Adding this to your .env file...');
+                console.log('\nAuthorization succeeded. Updating SPOTIFY_REFRESH_TOKEN in .env...');
 
                 // Auto-add to .env
                 const envPath = path.resolve(process.cwd(), '.env');
@@ -77,7 +78,7 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 fs.writeFileSync(envPath, envContent);
-                console.log('Done! You can close this window now.');
+                console.log('Done. You can close this window now.');
 
                 res.writeHead(200, { 'Content-Type': 'text/html' });
                 res.end('<h1>Success!</h1><p>Check your terminal for the refresh token. You can close this window.</p>');

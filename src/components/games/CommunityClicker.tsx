@@ -1,13 +1,7 @@
 /** @jsxImportSource react */
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-
-interface ClickerState {
-    count: number;
-    writable?: boolean;
-    error?: string;
-    retryAfterSeconds?: number;
-}
+import type { ClickerApiResponse } from '../../lib/contracts';
 
 interface ConfettiPiece {
     id: number;
@@ -77,12 +71,17 @@ export function CommunityClicker() {
 
     useEffect(() => {
         let mounted = true;
+        let timeout: ReturnType<typeof setTimeout> | null = null;
 
         const loadCount = async () => {
+            if (document.hidden) {
+                if (mounted) timeout = setTimeout(loadCount, 15000);
+                return;
+            }
             try {
                 const response = await fetch('/api/clicker');
                 if (!response.ok) throw new Error('Failed to load');
-                const data = (await response.json()) as ClickerState;
+                const data = (await response.json()) as ClickerApiResponse;
                 if (mounted) {
                     setCount(data.count);
                     setWritable(data.writable !== false);
@@ -93,15 +92,24 @@ export function CommunityClicker() {
                     setWritable(false);
                     setError('Could not load click count.');
                 }
+            } finally {
+                if (mounted) timeout = setTimeout(loadCount, 15000);
             }
         };
 
-        loadCount();
-        const interval = setInterval(loadCount, 5000);
+        const handleVisibilityChange = () => {
+            if (document.hidden || !mounted) return;
+            if (timeout) clearTimeout(timeout);
+            void loadCount();
+        };
+
+        void loadCount();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             mounted = false;
-            clearInterval(interval);
+            if (timeout) clearTimeout(timeout);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
@@ -126,7 +134,7 @@ export function CommunityClicker() {
                 },
                 body: JSON.stringify({ increment: true }),
             });
-            const data = (await response.json()) as ClickerState;
+            const data = (await response.json()) as ClickerApiResponse;
             if (!response.ok) {
                 throw new Error(
                     data.retryAfterSeconds

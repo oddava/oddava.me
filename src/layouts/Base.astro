@@ -72,6 +72,6 @@ const socialImage = new URL(image, Astro.url);
 
     <Footer />
   </div>
-  <SpotifyWidget client:only="react" />
+  <SpotifyWidget client:idle={{ timeout: 2000 }} />
 </body>
 </html>

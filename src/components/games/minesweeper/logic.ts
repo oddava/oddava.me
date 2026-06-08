@@ -92,7 +92,7 @@ export function floodFill(
     rows: number,
     cols: number,
 ): Cell[] {
-    const newBoard = [...board];
+    const newBoard = board.map((cell) => ({ ...cell }));
     const queue: number[] = [startIndex];
     const visited = new Set<number>();
 
@@ -179,7 +179,7 @@ export function chord(
     if (flaggedCount !== cell.neighborMines) return null; // chord conditions not met
 
     // Attempt to reveal all unflagged, unrevealed neighbors
-    let newBoard = [...board];
+    let newBoard = board.map((neighbor) => ({ ...neighbor }));
     for (const ni of neighbors) {
         const n = newBoard[ni];
         if (n.isRevealed || n.isFlagged) continue;

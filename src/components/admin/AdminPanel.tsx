@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import './AdminPanel.css';
+import type {
+  LeaderboardEntry,
+  MinesweeperDifficulty as Difficulty,
+} from '../../lib/contracts';
 
 type GuestbookStatus = 'pending' | 'approved' | 'rejected';
-type Difficulty = 'easy' | 'medium' | 'hard';
 
 interface IntegrationStatus {
   name: string;
@@ -36,11 +39,6 @@ interface GuestbookEntry {
 
 interface GuestbookResponse {
   entries: GuestbookEntry[];
-}
-
-interface LeaderboardEntry {
-  time: number;
-  createdAt: string;
 }
 
 interface LeaderboardResponse {
@@ -167,8 +165,8 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
 
   return (
     <div className="admin-dashboard">
-      {globalError && <p className="admin-error">{globalError}</p>}
-      {notice && <p className="admin-success">{notice}</p>}
+      {globalError && <p className="admin-error" role="alert">{globalError}</p>}
+      {notice && <p className="admin-success" role="status" aria-live="polite">{notice}</p>}
 
       <nav className="admin-anchor-nav admin-card">
         <a href="#content">Content</a>

@@ -227,8 +227,25 @@
     margin-bottom: 4px;
 }
 
-.spotify-widget-wrapper:hover .spotify-widget-controls {
+.spotify-widget-wrapper:hover .spotify-widget-controls,
+.spotify-widget-wrapper:focus-within .spotify-widget-controls {
     opacity: 1;
+}
+
+.spotify-widget-min-view {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spotify-widget-wrapper,
+    .spotify-widget-full-view,
+    .spotify-widget-min-view,
+    .spotify-widget-progress-fill {
+        transition-duration: 0.01ms;
+    }
 }
 
 .action-btn {

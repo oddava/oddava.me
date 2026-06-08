@@ -2,6 +2,11 @@
 
 Personal site built with Astro, MDX, React, and TypeScript.
 
+## Requirements
+
+- Node.js 22 or 24
+- npm 10 or newer
+
 ## Stack
 
 - Astro for routing, layouts, and server rendering
@@ -47,6 +52,8 @@ Useful commands:
 
 ```bash
 npm run check
+npm run test
+npm run format:check
 npm run build
 npm run build:dev
 npm run deploy
@@ -83,9 +90,11 @@ Shared persistence:
 - `LOCAL_REDIS_URL` (default `redis://127.0.0.1:6379`)
 - `APP_ENV` (`development` or `production`)
 
-Optional request signing secret:
+Required request signing secret:
 
 - `COMMUNITY_SIGNING_SECRET`
+
+This secret is used for admin sessions, game sessions, rate-limit fingerprints, and moderation metadata. Affected features fail closed when it is missing.
 
 Guestbook bot protection:
 
@@ -116,9 +125,10 @@ AniList integration:
 - Blog pages use canonical URLs and article structured data.
 - Project content is authored in MDX and rendered as public case-study pages.
 - Keystatic routes are defined in `src/pages/keystatic/[...params].astro` and `src/pages/api/keystatic/[...params].ts`.
-- Public write endpoints use same-origin checks plus Redis-backed server-side rate limits.
+- Public write endpoints use same-origin checks plus atomic Redis-backed server-side rate limits.
 - The clicker is write-only via `POST`; `GET` is read-only.
 - Minesweeper leaderboard sessions are signed and single-use, but the leaderboard is still casual rather than cheat-proof.
+- Guestbook submissions and leaderboard updates use atomic Redis scripts to avoid lost writes.
 - In development, Redis keys are isolated from production by environment-based key prefixes.
 
 ## Security hygiene

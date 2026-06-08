@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { clearAdminSession } from '../../../lib/server/admin';
+import { ensureSameOrigin } from '../../../lib/server/community';
 
 async function handleLogout(request: Request, cookies: Parameters<APIRoute>[0]['cookies'], redirect: Parameters<APIRoute>[0]['redirect']) {
   clearAdminSession(cookies, request);
@@ -7,9 +8,7 @@ async function handleLogout(request: Request, cookies: Parameters<APIRoute>[0]['
 }
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  return handleLogout(request, cookies, redirect);
-};
-
-export const GET: APIRoute = async ({ request, cookies, redirect }) => {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return sameOriginError;
   return handleLogout(request, cookies, redirect);
 };

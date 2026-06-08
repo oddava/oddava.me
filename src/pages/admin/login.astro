@@ -7,7 +7,10 @@ if (await isAdminRequest(Astro.cookies)) {
 }
 
 const configured = isAdminConfigured();
-const next = Astro.url.searchParams.get('next') ?? '/admin';
+const requestedNext = Astro.url.searchParams.get('next') ?? '/admin';
+const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') && !requestedNext.includes('\\')
+  ? requestedNext
+  : '/admin';
 const invalid = Astro.url.searchParams.get('error') === 'invalid';
 const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
 ---

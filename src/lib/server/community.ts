@@ -1,5 +1,4 @@
 import type { AstroCookies } from 'astro';
-import type { RedisClientType } from 'redis';
 import { getServerEnv } from './env';
 
 type AppEnv = 'development' | 'production';
@@ -11,9 +10,11 @@ const REDIS_API_URL =
 const REDIS_API_TOKEN =
   getServerEnv('UPSTASH_REDIS_REST_TOKEN') ??
   getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_TOKEN');
-const LOCAL_REDIS_URL = getServerEnv('LOCAL_REDIS_URL') ?? 'redis://127.0.0.1:6379';
+const LOCAL_REDIS_URL =
+  getServerEnv('LOCAL_REDIS_URL') ?? 'redis://127.0.0.1:6379';
 const APP_ENV: AppEnv =
-  getServerEnv('APP_ENV') === 'production' || import.meta.env.MODE === 'production'
+  getServerEnv('APP_ENV') === 'production' ||
+  import.meta.env.MODE === 'production'
     ? 'production'
     : 'development';
 const REDIS_MODE: RedisMode =
@@ -25,31 +26,158 @@ const REDIS_MODE: RedisMode =
         ? 'upstash'
         : 'local';
 
-const APP_SIGNING_SECRET =
-  getServerEnv('COMMUNITY_SIGNING_SECRET') ??
-  getServerEnv('KEYSTATIC_SECRET') ??
-  REDIS_API_TOKEN;
 const TURNSTILE_SECRET_KEY = getServerEnv('TURNSTILE_SECRET_KEY');
-const TURNSTILE_BYPASS_IN_DEV = getServerEnv('TURNSTILE_BYPASS_IN_DEV') === 'true';
-const TURNSTILE_VERIFY_ENDPOINT = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+const TURNSTILE_BYPASS_IN_DEV =
+  getServerEnv('TURNSTILE_BYPASS_IN_DEV') === 'true';
+const TURNSTILE_VERIFY_ENDPOINT =
+  'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+const DEFAULT_FETCH_TIMEOUT_MS = 5000;
+const DEFAULT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
 
-let localRedisClient: RedisClientType | null = null;
 let environmentLogged = false;
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+function bytesToBase64Url(bytes: Uint8Array): string {
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
+    '',
+  );
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
-function bytesToBase64Url(bytes: Uint8Array): string {
-  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+function getSigningSecret(): string {
+  const secret = getServerEnv('COMMUNITY_SIGNING_SECRET')?.trim();
+  if (!secret) {
+    throw new Error(
+      'COMMUNITY_SIGNING_SECRET is required for signed sessions and tokens.',
+    );
+  }
+  return secret;
+}
+
+export function hasCommunitySigningSecret(): boolean {
+  return Boolean(getServerEnv('COMMUNITY_SIGNING_SECRET')?.trim());
+}
+
+export async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const upstreamSignal = init.signal;
+  const abortFromUpstream = () => controller.abort(upstreamSignal?.reason);
+
+  if (upstreamSignal) {
+    if (upstreamSignal.aborted) {
+      controller.abort(upstreamSignal.reason);
+    } else {
+      upstreamSignal.addEventListener('abort', abortFromUpstream, {
+        once: true,
+      });
+    }
+  }
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+    upstreamSignal?.removeEventListener('abort', abortFromUpstream);
+  }
+}
+
+export class RequestBodyError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+async function readLimitedBody(
+  request: Request,
+  maxBytes: number,
+): Promise<string> {
+  const contentLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new RequestBodyError(
+      'Request body is too large.',
+      413,
+      'payload_too_large',
+    );
+  }
+
+  if (!request.body) return '';
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      bytesRead += value.byteLength;
+      if (bytesRead > maxBytes) {
+        await reader.cancel();
+        throw new RequestBodyError(
+          'Request body is too large.',
+          413,
+          'payload_too_large',
+        );
+      }
+
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return text + decoder.decode();
+}
+
+export async function readJsonBody<T>(
+  request: Request,
+  maxBytes = DEFAULT_JSON_BODY_LIMIT_BYTES,
+): Promise<T> {
+  const text = await readLimitedBody(request, maxBytes);
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new RequestBodyError('Invalid request.', 400, 'invalid_request');
+  }
+}
+
+export async function readUrlEncodedBody(
+  request: Request,
+  maxBytes = DEFAULT_JSON_BODY_LIMIT_BYTES,
+): Promise<URLSearchParams> {
+  return new URLSearchParams(await readLimitedBody(request, maxBytes));
+}
+
+export function requestBodyErrorResponse(error: unknown): Response {
+  if (error instanceof RequestBodyError) {
+    return json(
+      { error: error.message, code: error.code },
+      { status: error.status },
+    );
+  }
+  return json(
+    { error: 'Invalid request.', code: 'invalid_request' },
+    { status: 400 },
+  );
 }
 
 function base64UrlToBytes(value: string): Uint8Array {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+  const padding =
+    normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
   const binary = atob(`${normalized}${padding}`);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
@@ -84,17 +212,62 @@ function getStorageNamespacePrefix(): string {
   return isDevelopmentEnv() ? 'dev:' : '';
 }
 
-async function getLocalRedisClient(): Promise<RedisClientType> {
-  if (!localRedisClient) {
-    const { createClient } = await import(/* @vite-ignore */ 'redis');
-    localRedisClient = createClient({ url: LOCAL_REDIS_URL });
+type RedisArgument = string | number;
+
+function namespaceRedisCommand(command: RedisArgument[]): string[] {
+  const normalized = command.map(String);
+  const operation = normalized[0]?.toUpperCase();
+
+  if (operation === 'EVAL' || operation === 'EVALSHA') {
+    const keyCount = Number(normalized[2] ?? 0);
+    for (let index = 0; index < keyCount; index += 1) {
+      const keyIndex = 3 + index;
+      normalized[keyIndex] = withNamespace(normalized[keyIndex]);
+    }
+    return normalized;
   }
 
-  if (!localRedisClient.isOpen) {
-    await localRedisClient.connect();
+  if (normalized[1]) {
+    normalized[1] = withNamespace(normalized[1]);
+  }
+  return normalized;
+}
+
+export async function redisCommand<T = unknown>(
+  command: RedisArgument[],
+): Promise<T> {
+  if (!hasRedisConfig()) {
+    throw new Error('Persistent storage is not configured.');
   }
 
-  return localRedisClient;
+  if (shouldUseLocalRedis()) {
+    const { executeLocalRedisCommand } = await import('./local-redis');
+    return executeLocalRedisCommand<T>(
+      namespaceRedisCommand(command),
+      LOCAL_REDIS_URL,
+    );
+  }
+
+  const response = await fetchWithTimeout(REDIS_API_URL!, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${REDIS_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    result?: T;
+    error?: string;
+  };
+
+  if (!response.ok || payload.error) {
+    throw new Error(
+      `Redis command failed: ${response.status} ${payload.error ?? 'Unknown error'}`,
+    );
+  }
+
+  return payload.result as T;
 }
 
 export function hasRedisConfig(): boolean {
@@ -107,111 +280,13 @@ function withNamespace(rawKey: string): string {
   return `${getStorageNamespacePrefix()}${rawKey}`;
 }
 
-function decodeSegment(segment: string | undefined): string {
-  return decodeURIComponent(segment ?? '');
-}
-
-function normalizeResult(value: unknown): string | number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'number') return value;
-  return String(value);
-}
-
-async function localRedisResponse(command: string): Promise<Response> {
-  const [opRaw, ...segments] = command.split('/');
-  const op = decodeSegment(opRaw).toLowerCase();
-
-  const client = await getLocalRedisClient();
-  const jsonHeaders = { 'Content-Type': 'application/json' };
-
-  try {
-    if (op === 'get') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const result = await client.get(key);
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'set') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const value = decodeSegment(segments[1]);
-      const result = await client.set(key, value);
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'incr') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const result = await client.incr(key);
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'expire') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const ttlSeconds = Number(decodeSegment(segments[1]));
-      const result = await client.expire(key, ttlSeconds);
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'del') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const result = await client.del(key);
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'lpush') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const values = segments.slice(1).map((segment) => decodeSegment(segment));
-      const result = values.length > 0 ? await client.lPush(key, values) : 0;
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'lrange') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const start = Number(decodeSegment(segments[1] ?? '0'));
-      const stop = Number(decodeSegment(segments[2] ?? '-1'));
-      const result = await client.lRange(key, start, stop);
-      return new Response(JSON.stringify({ result }), { status: 200, headers: jsonHeaders });
-    }
-
-    if (op === 'ltrim') {
-      const key = withNamespace(decodeSegment(segments[0]));
-      const start = Number(decodeSegment(segments[1] ?? '0'));
-      const stop = Number(decodeSegment(segments[2] ?? '-1'));
-      const result = await client.lTrim(key, start, stop);
-      return new Response(JSON.stringify({ result: normalizeResult(result) }), { status: 200, headers: jsonHeaders });
-    }
-
-    return new Response(JSON.stringify({ error: `Unsupported local redis operation: ${op}` }), {
-      status: 400,
-      headers: jsonHeaders,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return new Response(JSON.stringify({ error: message }), { status: 500, headers: jsonHeaders });
-  }
-}
-
-export async function redisRequest(command: string): Promise<Response> {
-  if (!hasRedisConfig()) {
-    throw new Error('Persistent storage is not configured.');
-  }
-
-  if (shouldUseLocalRedis()) {
-    return localRedisResponse(command);
-  }
-
-  return fetch(`${REDIS_API_URL}/${command}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${REDIS_API_TOKEN}`,
-    },
-  });
-}
-
 export function json(data: unknown, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
-  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  if (!headers.has('Content-Type'))
+    headers.set('Content-Type', 'application/json');
   if (!headers.has('Cache-Control')) headers.set('Cache-Control', 'no-store');
-  if (!headers.has('X-Content-Type-Options')) headers.set('X-Content-Type-Options', 'nosniff');
+  if (!headers.has('X-Content-Type-Options'))
+    headers.set('X-Content-Type-Options', 'nosniff');
   return new Response(JSON.stringify(data), { ...init, headers });
 }
 
@@ -219,8 +294,21 @@ export function rejectIfStorageUnavailable(): Response | null {
   if (hasRedisConfig()) return null;
   return json(
     {
-      error: 'This shared feature is temporarily unavailable because persistent storage is not configured.',
+      error:
+        'This shared feature is temporarily unavailable because persistent storage is not configured.',
       code: 'storage_unavailable',
+    },
+    { status: 503 },
+  );
+}
+
+export function rejectIfSigningUnavailable(): Response | null {
+  if (hasCommunitySigningSecret()) return null;
+  return json(
+    {
+      error:
+        'This feature is unavailable because COMMUNITY_SIGNING_SECRET is not configured.',
+      code: 'signing_unavailable',
     },
     { status: 503 },
   );
@@ -289,13 +377,19 @@ export function ensureSameOrigin(request: Request): Response | null {
   const submittedOrigin = getRequestOrigin(request);
 
   if (!submittedOrigin || submittedOrigin !== requestOrigin) {
-    return json({ error: 'Cross-origin requests are not allowed.' }, { status: 403 });
+    return json(
+      { error: 'Cross-origin requests are not allowed.' },
+      { status: 403 },
+    );
   }
 
   return null;
 }
 
 function getClientIp(request: Request): string {
+  const cloudflareIp = request.headers.get('cf-connecting-ip');
+  if (cloudflareIp) return cloudflareIp.trim();
+
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
     return forwardedFor.split(',')[0]?.trim() || 'unknown';
@@ -303,7 +397,6 @@ function getClientIp(request: Request): string {
 
   return (
     request.headers.get('x-real-ip') ??
-    request.headers.get('cf-connecting-ip') ??
     request.headers.get('fly-client-ip') ??
     'unknown'
   );
@@ -314,25 +407,40 @@ export function getClientIpAddress(request: Request): string {
 }
 
 async function sign(value: string): Promise<string> {
-  if (!APP_SIGNING_SECRET) {
-    throw new Error('No signing secret configured.');
-  }
-
   const key = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(APP_SIGNING_SECRET),
+    new TextEncoder().encode(getSigningSecret()),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['sign'],
+    ['sign', 'verify'],
   );
 
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value));
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(value),
+  );
   return bytesToBase64Url(new Uint8Array(signature));
 }
 
 async function verify(value: string, expected: string): Promise<boolean> {
-  const actual = await sign(value);
-  return actual === expected;
+  try {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(getSigningSecret()),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+    return crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlToBytes(expected).buffer as ArrayBuffer,
+      new TextEncoder().encode(value),
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function enforceSignedCooldown(
@@ -382,13 +490,8 @@ export async function enforceSignedCooldown(
   return null;
 }
 
-async function sha256(value: string): Promise<string> {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return bytesToHex(new Uint8Array(bytes));
-}
-
 export async function getClientFingerprint(request: Request): Promise<string> {
-  return sha256(getClientIp(request));
+  return sign(`client-ip:${getClientIp(request)}`);
 }
 
 export async function enforceRedisRateLimit(
@@ -403,28 +506,38 @@ export async function enforceRedisRateLimit(
 
   const ipHash = await getClientFingerprint(request);
   const bucket = Math.floor(Date.now() / windowMs);
-  const key = encodeURIComponent(`community:rate-limit:${feature}:${ipHash}:${bucket}`);
-
-  const incrementResponse = await redisRequest(`incr/${key}`);
-  if (!incrementResponse.ok) {
-    const details = await incrementResponse.text();
-    throw new Error(`Failed to increment rate limit: ${incrementResponse.status} ${details}`);
+  const key = `community:rate-limit:${feature}:${ipHash}:${bucket}`;
+  const script = `
+    local count = redis.call('INCR', KEYS[1])
+    if count == 1 then
+      redis.call('PEXPIRE', KEYS[1], ARGV[1])
+    end
+    return { count, redis.call('PTTL', KEYS[1]) }
+  `;
+  let result: Array<number | string>;
+  try {
+    result = await redisCommand<Array<number | string>>([
+      'EVAL',
+      script,
+      1,
+      key,
+      windowMs,
+    ]);
+  } catch (error) {
+    console.error(`[rate-limit] ${feature} failed`, error);
+    return json(
+      {
+        error: 'Request protection is temporarily unavailable.',
+        code: 'rate_limit_unavailable',
+      },
+      { status: 503 },
+    );
   }
-
-  const incrementData = (await incrementResponse.json()) as { result?: number };
-  const count = typeof incrementData.result === 'number' ? incrementData.result : Number(incrementData.result ?? 0);
-
-  if (count === 1) {
-    const ttlSeconds = Math.max(1, Math.ceil(windowMs / 1000));
-    const expireResponse = await redisRequest(`expire/${key}/${ttlSeconds}`);
-    if (!expireResponse.ok) {
-      const details = await expireResponse.text();
-      throw new Error(`Failed to set rate limit expiry: ${expireResponse.status} ${details}`);
-    }
-  }
+  const count = Number(result[0] ?? 0);
+  const ttlMs = Math.max(1000, Number(result[1] ?? windowMs));
 
   if (count > limit) {
-    const retryAfterSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+    const retryAfterSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
     return json(
       {
         error: 'Too many requests. Please slow down.',
@@ -447,14 +560,19 @@ export function hasTurnstileConfig(): boolean {
 }
 
 export function isTurnstileChallengeRequired(): boolean {
-  return hasTurnstileConfig() && !(isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV);
+  return (
+    hasTurnstileConfig() && !(isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV)
+  );
 }
 
 export function getTurnstileSiteKey(): string | undefined {
   return getServerEnv('PUBLIC_TURNSTILE_SITE_KEY');
 }
 
-export async function verifyTurnstileToken(request: Request, token: string | undefined): Promise<Response | null> {
+export async function verifyTurnstileToken(
+  request: Request,
+  token: string | undefined,
+): Promise<Response | null> {
   if (isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV) {
     return null;
   }
@@ -462,7 +580,8 @@ export async function verifyTurnstileToken(request: Request, token: string | und
   if (!hasTurnstileConfig()) {
     return json(
       {
-        error: 'Guestbook posting is unavailable because bot protection is not configured.',
+        error:
+          'Guestbook posting is unavailable because bot protection is not configured.',
         code: 'captcha_unavailable',
       },
       { status: 503 },
@@ -479,15 +598,27 @@ export async function verifyTurnstileToken(request: Request, token: string | und
     );
   }
 
-  const verificationResponse = await fetch(TURNSTILE_VERIFY_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      secret: TURNSTILE_SECRET_KEY!,
-      response: token,
-      remoteip: getClientIp(request),
-    }),
-  });
+  let verificationResponse: Response;
+  try {
+    verificationResponse = await fetchWithTimeout(TURNSTILE_VERIFY_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: TURNSTILE_SECRET_KEY!,
+        response: token,
+        remoteip: getClientIp(request),
+      }),
+    });
+  } catch (error) {
+    console.error('[turnstile] verification request failed', error);
+    return json(
+      {
+        error: 'Bot verification is temporarily unavailable.',
+        code: 'captcha_unavailable',
+      },
+      { status: 502 },
+    );
+  }
 
   if (!verificationResponse.ok) {
     return json(
@@ -513,13 +644,17 @@ export async function verifyTurnstileToken(request: Request, token: string | und
   return null;
 }
 
-export async function createSignedValue(payload: Record<string, unknown>): Promise<string> {
+export async function createSignedValue(
+  payload: Record<string, unknown>,
+): Promise<string> {
   const body = encodeTextToBase64Url(JSON.stringify(payload));
   const signature = await sign(body);
   return `${body}.${signature}`;
 }
 
-export async function readSignedValue<T>(value: string | undefined): Promise<T | null> {
+export async function readSignedValue<T>(
+  value: string | undefined,
+): Promise<T | null> {
   if (!value) return null;
 
   const separatorIndex = value.lastIndexOf('.');

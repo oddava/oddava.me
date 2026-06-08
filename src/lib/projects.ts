@@ -22,8 +22,3 @@ export async function getAllProjects(): Promise<Project[]> {
         featured: entry.data.featured ?? false,
     }));
 }
-
-export async function getFeaturedProjects(): Promise<Project[]> {
-    const all = await getAllProjects();
-    return all.filter((p) => p.featured);
-}

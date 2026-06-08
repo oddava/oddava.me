@@ -4,19 +4,24 @@ import {
   createSignedValue,
   ensureSameOrigin,
   enforceRedisRateLimit,
+  hasCommunitySigningSecret,
   hasRedisConfig,
   isSecureRequest,
   isStorageUnavailableError,
   json,
+  readJsonBody,
   readSignedValue,
+  rejectIfSigningUnavailable,
   rejectIfStorageUnavailable,
+  requestBodyErrorResponse,
 } from '../../lib/server/community';
 import {
+  addLeaderboardEntry,
+  isPlausibleLeaderboardTime,
   type MinesweeperDifficulty,
   normalizeDifficulty,
   normalizeEntries,
   readLeaderboard,
-  writeLeaderboard,
 } from '../../lib/server/minesweeper';
 
 const SESSION_COOKIE = 'minesweeper-session';
@@ -44,7 +49,13 @@ export const GET: APIRoute = async ({ url }) => {
 
   try {
     const entries = await readLeaderboard(difficulty);
-    return json({ entries: normalizeEntries(entries), writable: hasRedisConfig() }, { status: 200 });
+    return json(
+      {
+        entries: normalizeEntries(entries),
+        writable: hasRedisConfig() && hasCommunitySigningSecret(),
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error('[minesweeper] GET failed', error);
     if (isStorageUnavailableError(error)) {
@@ -61,6 +72,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return storageUnavailable;
 
+  const signingUnavailable = rejectIfSigningUnavailable();
+  if (signingUnavailable) return signingUnavailable;
+
   const rateLimitError = await enforceRedisRateLimit(
     request,
     'minesweeper-submit',
@@ -72,9 +86,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   let body: { difficulty?: string; time?: number };
 
   try {
-    body = (await request.json()) as { difficulty?: string; time?: number };
-  } catch {
-    return json({ error: 'Invalid request.' }, { status: 400 });
+    body = await readJsonBody<{ difficulty?: string; time?: number }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
   }
 
   const difficulty = normalizeDifficulty(body.difficulty);
@@ -89,32 +103,45 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   if (time < MINIMUM_TIMES[difficulty]) {
-    return json({ error: 'Time is not plausible for this difficulty.' }, { status: 400 });
+    return json(
+      { error: 'Time is not plausible for this difficulty.' },
+      { status: 400 },
+    );
   }
 
-  const session = await readSignedValue<SignedMinesweeperSession>(cookies.get(SESSION_COOKIE)?.value);
+  const session = await readSignedValue<SignedMinesweeperSession>(
+    cookies.get(SESSION_COOKIE)?.value,
+  );
   const now = Date.now();
-  if (!session || session.difficulty !== difficulty || !session.sessionId || session.submitted) {
+  if (
+    !session ||
+    session.difficulty !== difficulty ||
+    !session.sessionId ||
+    session.submitted
+  ) {
     return json({ error: 'Missing or invalid game session.' }, { status: 403 });
   }
 
   const elapsedSeconds = Math.floor((now - session.startedAt) / 1000);
-  if (elapsedSeconds <= 0 || elapsedSeconds + 2 < time || elapsedSeconds > SESSION_TTL_SECONDS) {
-    return json({ error: 'Submitted time does not match the active game session.' }, { status: 400 });
+  if (
+    elapsedSeconds > SESSION_TTL_SECONDS ||
+    !isPlausibleLeaderboardTime(elapsedSeconds, time)
+  ) {
+    return json(
+      { error: 'Submitted time does not match the active game session.' },
+      { status: 400 },
+    );
   }
 
   try {
-    const existing = await readLeaderboard(difficulty);
-    const next = normalizeEntries([
-      ...existing,
-      {
-        time,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-
-    await writeLeaderboard(difficulty, next);
-    const usedSession = await createSignedValue({ ...session, submitted: true });
+    const next = await addLeaderboardEntry(difficulty, {
+      time,
+      createdAt: new Date().toISOString(),
+    });
+    const usedSession = await createSignedValue({
+      ...session,
+      submitted: true,
+    });
     cookies.set(SESSION_COOKIE, usedSession, {
       httpOnly: true,
       sameSite: 'strict',
@@ -129,7 +156,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (isStorageUnavailableError(error)) {
       return json(
         {
-          error: 'This shared feature is temporarily unavailable because persistent storage is not configured.',
+          error:
+            'This shared feature is temporarily unavailable because persistent storage is not configured.',
           code: 'storage_unavailable',
         },
         { status: 503 },
@@ -146,6 +174,9 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return storageUnavailable;
 
+  const signingUnavailable = rejectIfSigningUnavailable();
+  if (signingUnavailable) return signingUnavailable;
+
   const rateLimitError = await enforceRedisRateLimit(
     request,
     'minesweeper-session',
@@ -157,9 +188,9 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   let body: { difficulty?: string };
 
   try {
-    body = (await request.json()) as { difficulty?: string };
-  } catch {
-    return json({ error: 'Invalid request.' }, { status: 400 });
+    body = await readJsonBody<{ difficulty?: string }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
   }
 
   const difficulty = normalizeDifficulty(body.difficulty);

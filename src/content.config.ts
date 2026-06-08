@@ -1,6 +1,14 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
+const safeExternalUrl = z
+    .string()
+    .url()
+    .refine((value) => {
+        const protocol = new URL(value).protocol;
+        return protocol === 'https:' || protocol === 'http:';
+    }, 'URL must use http or https.');
+
 const blog = defineCollection({
     loader: glob({ pattern: '**/*.mdx', base: './src/content/blog' }),
     schema: z.object({
@@ -18,8 +26,8 @@ const projects = defineCollection({
         title: z.string(),
         description: z.string(),
         tech: z.array(z.string()).optional().default([]),
-        url: z.string().optional(),
-        repo: z.string().optional(),
+        url: safeExternalUrl.optional(),
+        repo: safeExternalUrl.optional(),
         featured: z.boolean().optional().default(false),
     }),
 });

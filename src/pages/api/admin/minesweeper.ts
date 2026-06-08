@@ -1,6 +1,12 @@
 import type { APIRoute } from 'astro';
 import { requireAdminApi } from '../../../lib/server/admin';
-import { json, rejectIfStorageUnavailable } from '../../../lib/server/community';
+import {
+  ensureSameOrigin,
+  json,
+  readJsonBody,
+  rejectIfStorageUnavailable,
+  requestBodyErrorResponse,
+} from '../../../lib/server/community';
 import {
   clearLeaderboard,
   deleteLeaderboardEntry,
@@ -51,21 +57,36 @@ async function handleDeleteRequest(body: {
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return sameOriginError;
+
   const authError = await requireAdminApi(cookies);
   if (authError) return authError;
 
   const storageUnavailable = rejectIfStorageUnavailable();
   if (storageUnavailable) return storageUnavailable;
 
-  let body: { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
+  let body: {
+    difficulty?: string;
+    createdAt?: string;
+    time?: number;
+    clearAll?: boolean;
+    action?: string;
+  };
 
   try {
-    body = (await request.json()) as { difficulty?: string; createdAt?: string; time?: number; clearAll?: boolean };
-  } catch {
-    return json({ error: 'Invalid request.', code: 'invalid_request' }, { status: 400 });
+    body = await readJsonBody<{
+      difficulty?: string;
+      createdAt?: string;
+      time?: number;
+      clearAll?: boolean;
+      action?: string;
+    }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
   }
 
-  if ((body as { action?: string }).action !== 'delete') {
+  if (body.action !== 'delete') {
     return json({ error: 'Invalid action.', code: 'invalid_request' }, { status: 400 });
   }
 

@@ -1,9 +1,9 @@
 ---
 export const prerender = true;
 import Base from '../../layouts/Base.astro';
-import { getAnimeFavorites } from '../../lib/content';
+import { getAnimeFavorites, type AnimeFavoriteEntry } from '../../lib/content';
 
-let animeList: any[] = [];
+let animeList: AnimeFavoriteEntry[] = [];
 let animeAvailable = true;
 
 try {
