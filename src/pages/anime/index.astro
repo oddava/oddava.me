@@ -40,11 +40,11 @@ try {
   )}
 
   {animeAvailable && animeList.length === 0 && (
-    <p style="color: var(--color-ink-muted);">Nothing here yet.</p>
+    <p class="empty-state">Nothing here yet.</p>
   )}
 
   {!animeAvailable && (
-    <p style="color: var(--color-ink-muted);">Favorites are offline right now.</p>
+    <p class="empty-state">Favorites are offline right now.</p>
   )}
 </Base>
 

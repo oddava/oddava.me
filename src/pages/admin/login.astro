@@ -22,7 +22,7 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
     <form id="admin-login-form" method="post" action="/api/admin/session">
       <input type="hidden" name="next" value={next} />
       <label>
-        <span style="display:block; margin-bottom:8px; color:var(--admin-muted);">Admin token</span>
+        <span class="admin-label">Admin token</span>
         <input class="admin-input" type="password" name="token" required autocomplete="current-password" disabled={!configured} />
       </label>
       <button class="admin-button primary" type="submit" disabled={!configured}>Open admin</button>

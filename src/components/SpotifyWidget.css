@@ -234,7 +234,7 @@
 .action-btn {
     background: transparent;
     border: none;
-    color: var(--color-ink-faint);
+    color: var(--color-text-muted);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -245,7 +245,7 @@
 }
 
 .action-btn:hover {
-    color: var(--color-ink);
+    color: var(--color-text-primary);
     background: var(--color-rule);
 }
 
@@ -255,7 +255,7 @@
     gap: 12px;
     text-decoration: none;
     font-family: var(--font-mono);
-    color: var(--color-ink);
+    color: var(--color-text-primary);
     background-color: color-mix(in srgb, var(--color-surface-raised) 80%, transparent);
     border: 1px solid var(--color-rule);
     backdrop-filter: blur(12px);
@@ -290,7 +290,7 @@
 
 .spotify-widget-container:hover {
     opacity: 1;
-    border-color: var(--color-accent);
+    border-color: var(--color-text-interactive);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
@@ -313,7 +313,7 @@
 .spotify-widget-label {
     font-size: 0.65rem;
     font-family: var(--font-body);
-    color: var(--color-ink-faint);
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 2px;
@@ -322,7 +322,7 @@
 .spotify-widget-title {
     font-family: var(--font-body);
     font-size: 1rem;
-    color: var(--color-ink);
+    color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -333,13 +333,13 @@
 }
 
 .spotify-widget-title:hover {
-    color: var(--color-accent);
+    color: var(--color-text-interactive);
     text-decoration: underline;
 }
 
 .spotify-widget-artist {
     font-size: 0.8rem;
-    color: var(--color-ink-muted);
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -372,7 +372,7 @@
     display: flex;
     justify-content: space-between;
     font-size: 0.6rem;
-    color: var(--color-ink-faint);
+    color: var(--color-text-muted);
     font-family: var(--font-mono);
 }
 

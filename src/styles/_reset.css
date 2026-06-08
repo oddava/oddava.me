@@ -19,5 +19,5 @@ html {
 
 ::selection {
     background: var(--color-selection);
-    color: var(--color-ink);
+    color: var(--color-text-primary);
 }
