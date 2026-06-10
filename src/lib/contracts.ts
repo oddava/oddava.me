@@ -17,27 +17,6 @@ export interface GuestbookApiResponse {
   retryAfterSeconds?: number;
 }
 
-export interface ClickerApiResponse {
-  count: number;
-  writable?: boolean;
-  error?: string;
-  retryAfterSeconds?: number;
-}
-
-export type MinesweeperDifficulty = 'easy' | 'medium' | 'hard';
-
-export interface LeaderboardEntry {
-  time: number;
-  createdAt: string;
-}
-
-export interface LeaderboardApiResponse {
-  entries: LeaderboardEntry[];
-  writable?: boolean;
-  error?: string;
-  retryAfterSeconds?: number;
-}
-
 export interface SpotifyNowPlaying {
   isPlaying: boolean;
   title?: string;

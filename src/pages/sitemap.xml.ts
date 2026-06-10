@@ -22,7 +22,6 @@ export const GET: APIRoute = async () => {
     makeEntry('/about'),
     makeEntry('/blog'),
     makeEntry('/projects'),
-    makeEntry('/games'),
     makeEntry('/anime'),
   ];
 
