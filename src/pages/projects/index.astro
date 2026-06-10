@@ -16,9 +16,7 @@ const projects = await getAllProjects();
         </div>
 
         <div class="project-item__meta">
-          {project.tech.length > 0 && (
-            <span>{project.tech.slice(0, 3).join(' / ')}</span>
-          )}
+          <span>{project.description}</span>
           {project.url && (
             <a href={project.url} target="_blank" rel="noopener noreferrer">live</a>
           )}
