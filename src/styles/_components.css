@@ -16,7 +16,7 @@
 
 .home p {
     margin: 0 auto;
-    color: var(--color-text-secondary);
+    color: var(--color-text-primary);
 }
 
 .home__links {

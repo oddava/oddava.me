@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import './AdminPanel.css';
-import type {
-  LeaderboardEntry,
-  MinesweeperDifficulty as Difficulty,
-} from '../../lib/contracts';
 
 type GuestbookStatus = 'pending' | 'approved' | 'rejected';
 
@@ -21,8 +17,6 @@ interface OverviewResponse {
     featuredProjects: number;
     pendingGuestbook: number;
     approvedGuestbook: number;
-    clickCount: number;
-    leaderboardSummary: Record<Difficulty, number>;
   };
   integrations: IntegrationStatus[];
 }
@@ -41,16 +35,9 @@ interface GuestbookResponse {
   entries: GuestbookEntry[];
 }
 
-interface LeaderboardResponse {
-  difficulty: Difficulty;
-  entries: LeaderboardEntry[];
-}
-
 interface AdminPanelProps {
   keystaticHref: string;
 }
-
-const difficultyOrder: Difficulty[] = ['easy', 'medium', 'hard'];
 
 async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -75,9 +62,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [guestbookStatus, setGuestbookStatus] = useState<GuestbookStatus>('pending');
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([]);
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
-  const [clickerCount, setClickerCount] = useState('0');
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -85,7 +69,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
   const loadOverview = async () => {
     const data = await readJson<OverviewResponse>('/api/admin/overview', { cache: 'no-store' });
     setOverview(data);
-    setClickerCount(String(data.metrics.clickCount));
   };
 
   const loadGuestbook = async (status: GuestbookStatus) => {
@@ -93,19 +76,12 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
     setGuestbookEntries(data.entries);
   };
 
-  const loadLeaderboard = async (nextDifficulty: Difficulty) => {
-    const data = await readJson<LeaderboardResponse>(`/api/admin/minesweeper?difficulty=${nextDifficulty}`, {
-      cache: 'no-store',
-    });
-    setLeaderboardEntries(data.entries);
-  };
-
   useEffect(() => {
     let active = true;
 
     (async () => {
       try {
-        await Promise.all([loadOverview(), loadGuestbook('pending'), loadLeaderboard('easy')]);
+        await Promise.all([loadOverview(), loadGuestbook('pending')]);
         if (!active) return;
         setGlobalError(null);
       } catch (error) {
@@ -124,12 +100,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
       setGlobalError(error instanceof Error ? error.message : 'Could not load guestbook entries.');
     });
   }, [guestbookStatus]);
-
-  useEffect(() => {
-    void loadLeaderboard(difficulty).catch((error) => {
-      setGlobalError(error instanceof Error ? error.message : 'Could not load leaderboard.');
-    });
-  }, [difficulty]);
 
   async function runAction(key: string, fn: () => Promise<void>, successMessage: string) {
     setBusyKey(key);
@@ -155,11 +125,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
       { label: 'Featured', value: overview.metrics.featuredProjects },
       { label: 'Pending notes', value: overview.metrics.pendingGuestbook },
       { label: 'Approved notes', value: overview.metrics.approvedGuestbook },
-      { label: 'Click count', value: overview.metrics.clickCount },
-      {
-        label: 'Leaderboard rows',
-        value: difficultyOrder.reduce((sum, level) => sum + (overview.metrics.leaderboardSummary[level] ?? 0), 0),
-      },
     ];
   }, [overview]);
 
@@ -171,8 +136,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
       <nav className="admin-anchor-nav admin-card">
         <a href="#content">Content</a>
         <a href="#guestbook">Guestbook</a>
-        <a href="#clicker">Clicker</a>
-        <a href="#minesweeper">Minesweeper</a>
         <a href="#integrations">Integrations</a>
       </nav>
 
@@ -261,7 +224,7 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
         </div>
       </section>
 
-      <section className="admin-split">
+      <section className="admin-grid">
         <article id="guestbook" className="admin-card admin-panel">
           <div className="admin-section-head">
             <div>
@@ -369,158 +332,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
           </div>
         </article>
 
-        <div className="admin-grid">
-          <article id="clicker" className="admin-card admin-panel">
-            <div className="admin-section-head">
-              <div>
-                <p className="admin-kicker">community</p>
-                <h2>Clicker</h2>
-                <p>Inspect and override the shared counter state.</p>
-              </div>
-            </div>
-            <form
-              className="admin-inline-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void runAction(
-                  'clicker-set',
-                  async () => {
-                    const next = await readJson<{ count: number }>('/api/admin/clicker', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ count: Number(clickerCount) }),
-                    });
-                    setClickerCount(String(next.count));
-                  },
-                  'Clicker count updated.',
-                );
-              }}
-            >
-              <input
-                className="admin-input"
-                type="number"
-                min="0"
-                value={clickerCount}
-                onChange={(event) => setClickerCount(event.target.value)}
-              />
-              <button className="admin-button primary" type="submit" disabled={busyKey === 'clicker-set'}>
-                Set count
-              </button>
-              <button
-                className="admin-button ghost"
-                type="button"
-                disabled={busyKey === 'clicker-reset'}
-                onClick={() =>
-                  void runAction(
-                    'clicker-reset',
-                    async () => {
-                      await readJson('/api/admin/clicker', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ count: 0 }),
-                      });
-                      setClickerCount('0');
-                    },
-                    'Clicker reset to zero.',
-                  )
-                }
-              >
-                Reset
-              </button>
-            </form>
-          </article>
-
-          <article id="minesweeper" className="admin-card admin-panel">
-            <div className="admin-section-head">
-              <div>
-                <p className="admin-kicker">games</p>
-                <h2>Minesweeper leaderboard</h2>
-                <p>Review or clear leaderboard entries per difficulty.</p>
-              </div>
-              <select
-                className="admin-select"
-                value={difficulty}
-                onChange={(event) => setDifficulty(event.target.value as Difficulty)}
-              >
-                {difficultyOrder.map((level) => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
-            </div>
-            <div className="admin-entry-actions" style={{ marginTop: 0, marginBottom: 16 }}>
-              <button
-                className="admin-button danger"
-                type="button"
-                disabled={busyKey === `clear-${difficulty}`}
-                onClick={() =>
-                  void runAction(
-                    `clear-${difficulty}`,
-                    async () => {
-                      await readJson('/api/admin/minesweeper', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'delete', difficulty, clearAll: true }),
-                      });
-                      await loadLeaderboard(difficulty);
-                    },
-                    `Cleared ${difficulty} leaderboard.`,
-                  )
-                }
-              >
-                Clear {difficulty}
-              </button>
-            </div>
-            {leaderboardEntries.length === 0 ? (
-              <p className="admin-empty">No leaderboard entries for this difficulty.</p>
-            ) : (
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Created</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboardEntries.map((entry) => (
-                    <tr key={`${entry.createdAt}-${entry.time}`}>
-                      <td className="admin-kbd">{entry.time}s</td>
-                      <td>{formatDate(entry.createdAt)}</td>
-                      <td>
-                        <button
-                          className="admin-button danger"
-                          type="button"
-                          disabled={busyKey === `${difficulty}-${entry.createdAt}`}
-                          onClick={() =>
-                            void runAction(
-                              `${difficulty}-${entry.createdAt}`,
-                              async () => {
-                                await readJson('/api/admin/minesweeper', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    action: 'delete',
-                                    difficulty,
-                                    createdAt: entry.createdAt,
-                                    time: entry.time,
-                                  }),
-                                });
-                                await loadLeaderboard(difficulty);
-                              },
-                              'Leaderboard entry removed.',
-                            )
-                          }
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </article>
-        </div>
       </section>
     </div>
   );

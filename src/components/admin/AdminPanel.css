@@ -114,12 +114,6 @@
   color: var(--admin-text-secondary);
 }
 
-.admin-inline-form {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .admin-entry-meta {
   margin: 8px 0 0;
   color: var(--admin-text-secondary);
@@ -135,30 +129,6 @@
 
 .admin-message {
   margin-top: 12px;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.admin-table th,
-.admin-table td {
-  padding: 12px 10px;
-  text-align: left;
-  border-bottom: 1px solid var(--admin-line);
-  vertical-align: top;
-}
-
-.admin-table th {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--admin-text-secondary);
-}
-
-.admin-table tr:last-child td {
-  border-bottom: none;
 }
 
 .admin-content-links {
@@ -210,11 +180,6 @@
   background: #1f1f1f;
 }
 
-.admin-kbd {
-  font-family: 'Courier New', monospace;
-  font-size: 0.88rem;
-}
-
 .admin-muted {
   color: var(--admin-text-secondary);
 }
@@ -254,25 +219,4 @@
     min-height: 720px;
   }
 
-  .admin-table,
-  .admin-table tbody,
-  .admin-table tr,
-  .admin-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .admin-table thead {
-    display: none;
-  }
-
-  .admin-table td {
-    padding: 8px 0;
-    border-bottom: none;
-  }
-
-  .admin-table tr {
-    padding: 14px 0;
-    border-bottom: 1px solid var(--admin-line);
-  }
 }

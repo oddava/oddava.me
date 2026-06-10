@@ -14,7 +14,7 @@ Personal site built with Astro, MDX, React, and TypeScript.
 - React islands for interactive components
 - Cloudflare adapter for Worker deployment
 - Keystatic for content authoring
-- Upstash Redis REST API for shared guestbook/clicker/leaderboard data
+- Upstash Redis REST API for shared guestbook data
 
 ## Local development
 
@@ -68,9 +68,9 @@ npm run deploy
 
 ## Shared API features
 
-The guestbook, community clicker, and Minesweeper leaderboard are backed by Redis via the Upstash REST API.
+The guestbook is backed by Redis via the Upstash REST API.
 
-If Redis is not configured, those features deliberately switch to read-only or unavailable mode. They do not pretend to persist in process memory.
+If Redis is not configured, the guestbook deliberately switches to read-only or unavailable mode. It does not pretend to persist in process memory.
 
 The guestbook is moderated. Public submissions are stored as pending entries and only approved entries appear on the public page.
 
@@ -94,7 +94,7 @@ Required request signing secret:
 
 - `COMMUNITY_SIGNING_SECRET`
 
-This secret is used for admin sessions, game sessions, rate-limit fingerprints, and moderation metadata. Affected features fail closed when it is missing.
+This secret is used for admin sessions, rate-limit fingerprints, and moderation metadata. Affected features fail closed when it is missing.
 
 Guestbook bot protection:
 
@@ -126,9 +126,7 @@ AniList integration:
 - Project content is authored in MDX and rendered as public case-study pages.
 - Keystatic routes are defined in `src/pages/keystatic/[...params].astro` and `src/pages/api/keystatic/[...params].ts`.
 - Public write endpoints use same-origin checks plus atomic Redis-backed server-side rate limits.
-- The clicker is write-only via `POST`; `GET` is read-only.
-- Minesweeper leaderboard sessions are signed and single-use, but the leaderboard is still casual rather than cheat-proof.
-- Guestbook submissions and leaderboard updates use atomic Redis scripts to avoid lost writes.
+- Guestbook submissions use atomic Redis scripts to avoid lost writes.
 - In development, Redis keys are isolated from production by environment-based key prefixes.
 
 ## Security hygiene
