@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, sessionDrivers } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
 import react from '@astrojs/react';
@@ -40,10 +40,15 @@ export default defineConfig({
     imageService: 'compile',
   }),
   session: {
-    driver: 'memory',
+    driver: sessionDrivers.memory(),
   },
   site: 'https://oddava.me',
   vite: {
+    server: {
+      watch: {
+        ignored: ['**/dist/**']
+      }
+    },
     plugins: [
       devCloudflareWorkersEnv(),
       {
