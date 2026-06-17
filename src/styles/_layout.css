@@ -12,6 +12,10 @@
     flex-direction: column;
 }
 
+.page--wide {
+    max-width: var(--max-width-wide);
+}
+
 .page>main {
     flex: 1;
     display: flex;

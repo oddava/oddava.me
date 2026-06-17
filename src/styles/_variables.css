@@ -29,6 +29,7 @@
 
   /* Layout */
   --max-width: 38rem;
+  --max-width-wide: 70rem;
   --page-padding: 1.5rem;
 }
 
