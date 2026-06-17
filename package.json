@@ -25,23 +25,28 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.3.0",
-    "@astrojs/react": "^4.4.2",
-    "@keystatic/astro": "^5.0.6",
-    "@keystatic/core": "^0.5.48",
-    "astro": "^5.17.1",
+    "@astrojs/mdx": "^6.0.3",
+    "@astrojs/react": "^5.0.7",
+    "@keystatic/astro": "^5.1.0",
+    "@keystatic/core": "^0.5.50",
+    "astro": "^6.4.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "redis": "^4.7.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
-    "@astrojs/cloudflare": "^12.6.13",
+    "@astrojs/cloudflare": "^13.7.0",
     "@types/node": "^24.13.1",
     "prettier": "^3.8.3",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8",
     "wrangler": "^4.95.0"
+  },
+  "overrides": {
+    "@babel/core": "7.29.7",
+    "esbuild": "0.28.1",
+    "js-yaml": "4.2.0"
   }
 }
