@@ -198,8 +198,8 @@ const socialImage = new URL(image, Astro.url).toString();
     </div>
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
 
-    {import.meta.env.DEV && (
-      <script is:inline>
+    <script>
+      if (import.meta.env.DEV) {
         (function () {
           function log(msg, ms) {
             console.log('%c' + msg + '%c ' + ms + 'ms', 'color:#a78bfa;font-weight:bold', 'color:inherit');
@@ -219,7 +219,9 @@ const socialImage = new URL(image, Astro.url).toString();
               log('Load Event', Math.round(p.loadEventEnd - p.startTime));
             }
 
-            var fcp = paint.find(function (e) { return e.name === 'first-contentful-paint'; });
+            var fcp = paint.find(function (e) {
+              return e.name === 'first-contentful-paint';
+            });
             if (fcp) log('FCP', Math.round(fcp.startTime));
 
             var lcp = null;
@@ -234,13 +236,21 @@ const socialImage = new URL(image, Astro.url).toString();
             var cls = 0;
             try {
               new PerformanceObserver(function (o) {
-                o.getEntries().forEach(function (e) { if (!e.hadRecentInput) cls += e.value; });
-                console.log('%cCLS' + '%c ' + cls.toFixed(4), 'color:#a78bfa;font-weight:bold', 'color:inherit');
+                o.getEntries().forEach(function (e) {
+                  if (!e.hadRecentInput) cls += e.value;
+                });
+                console.log(
+                  '%cCLS' + '%c ' + cls.toFixed(4),
+                  'color:#a78bfa;font-weight:bold',
+                  'color:inherit',
+                );
               }).observe({ type: 'layout-shift', buffered: true });
             } catch {}
 
             var resources = performance.getEntriesByType('resource');
-            var cssCount = 0, fontCount = 0, jsCount = 0;
+            var cssCount = 0,
+              fontCount = 0,
+              jsCount = 0;
             resources.forEach(function (r) {
               if (r.initiatorType === 'css' || r.name.endsWith('.css')) cssCount++;
               if (r.name.endsWith('.woff2') || r.name.endsWith('.woff')) fontCount++;
@@ -248,16 +258,32 @@ const socialImage = new URL(image, Astro.url).toString();
             });
 
             console.log(
-              '%cResources:%c ' + resources.length + ' total (' + cssCount + ' css, ' + fontCount + ' fonts, ' + jsCount + ' js)',
-              'color:#a78bfa;font-weight:bold', 'color:inherit'
+              '%cResources:%c ' +
+                resources.length +
+                ' total (' +
+                cssCount +
+                ' css, ' +
+                fontCount +
+                ' fonts, ' +
+                jsCount +
+                ' js)',
+              'color:#a78bfa;font-weight:bold',
+              'color:inherit',
             );
             console.log(
-              '%cTransfer:%c ' + (resources.reduce(function (a, r) { return a + r.transferSize; }, 0) / 1024).toFixed(1) + ' KB',
-              'color:#a78bfa;font-weight:bold', 'color:inherit'
+              '%cTransfer:%c ' +
+                (
+                  resources.reduce(function (a, r) {
+                    return a + r.transferSize;
+                  }, 0) / 1024
+                ).toFixed(1) +
+                ' KB',
+              'color:#a78bfa;font-weight:bold',
+              'color:inherit',
             );
           });
         })();
-      </script>
-    )}
+      }
+    </script>
   </body>
 </html>
