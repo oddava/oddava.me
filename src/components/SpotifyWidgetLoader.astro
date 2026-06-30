@@ -1,0 +1,13 @@
+<div id="spotify-widget-host"></div>
+
+<script>
+  const loadWidget = () => {
+    void import('./spotify/bootstrap.tsx');
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(loadWidget, { timeout: 3000 });
+  } else {
+    setTimeout(loadWidget, 1);
+  }
+</script>

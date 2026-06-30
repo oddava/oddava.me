@@ -1,11 +1,8 @@
 import type { SpotifyNowPlaying } from '../../contracts';
 import { fetchWithTimeout } from '../community';
 import { getServerEnv } from '../env';
+import { isLanyardConfigured, SPOTIFY_UNAVAILABLE } from './config';
 import type { LanyardPayload } from './types';
-
-function spotifyError(error: string): SpotifyNowPlaying {
-  return { error, isPlaying: false };
-}
 
 function mapLanyardPayload(payload: LanyardPayload): SpotifyNowPlaying {
   const spotify = payload.data?.spotify;
@@ -32,22 +29,22 @@ function mapLanyardPayload(payload: LanyardPayload): SpotifyNowPlaying {
 }
 
 export async function fetchLanyardNowPlaying(): Promise<SpotifyNowPlaying> {
-  const discordId = getServerEnv('DISCORD_USER_ID')?.trim();
-  if (!discordId) {
-    return spotifyError('No Discord ID configured for fallback');
+  if (!isLanyardConfigured()) {
+    return SPOTIFY_UNAVAILABLE;
   }
+
+  const discordId = getServerEnv('DISCORD_USER_ID')!.trim();
 
   try {
     const response = await fetchWithTimeout(
       `https://api.lanyard.rest/v1/users/${discordId}`,
     );
     if (!response.ok) {
-      throw new Error(`Lanyard returned ${response.status}.`);
+      return SPOTIFY_UNAVAILABLE;
     }
 
     return mapLanyardPayload((await response.json()) as LanyardPayload);
-  } catch (error) {
-    console.error('Lanyard API error', error);
-    return spotifyError('Lanyard API error');
+  } catch {
+    return SPOTIFY_UNAVAILABLE;
   }
 }

@@ -1,3 +1,5 @@
+export const prerender = true;
+
 import type { APIRoute } from 'astro';
 import { getPublishedPosts } from '../lib/content';
 import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';

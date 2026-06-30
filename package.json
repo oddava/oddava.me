@@ -3,13 +3,13 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "npm@11.12.1",
+  "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=22 <25",
-    "npm": ">=10"
+    "pnpm": ">=10"
   },
   "scripts": {
-    "install:deps": "npm install --prefix ../oddava-tmp-install",
+    "install:deps": "pnpm install --dir ../oddava-tmp-install",
     "dev": "astro dev --mode development",
     "build": "astro build --mode production",
     "build:dev": "astro build --mode development",
@@ -20,9 +20,9 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check README.md .github docs src tests astro.config.mjs keystatic.config.ts package.json tsconfig.json vitest.config.ts wrangler.jsonc",
-    "audit": "npm audit --omit=dev --audit-level=high",
+    "audit": "pnpm audit --prod --audit-level high",
     "spotify:token": "node get-spotify-token.js",
-    "verify": "npm run format:check && npm run check && npm run test && npm run build",
+    "verify": "pnpm run format:check && pnpm run check && pnpm run test && pnpm run build",
     "astro": "astro"
   },
   "dependencies": {
@@ -45,9 +45,12 @@
     "vitest": "^4.1.8",
     "wrangler": "^4.95.0"
   },
-  "overrides": {
-    "@babel/core": "7.29.7",
-    "esbuild": "0.28.1",
-    "js-yaml": "4.2.0"
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"],
+    "overrides": {
+      "@babel/core": "7.29.7",
+      "esbuild": "0.28.1",
+      "js-yaml": "4.2.0"
+    }
   }
 }

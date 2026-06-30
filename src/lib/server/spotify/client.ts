@@ -1,6 +1,7 @@
 import type { SpotifyNowPlaying } from '../../contracts';
 import { fetchWithTimeout } from '../community';
 import { getServerEnv } from '../env';
+import { isSpotifyConfigured } from './config';
 import type { SpotifyApiPayload, SpotifyTokenResponse } from './types';
 
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
@@ -58,11 +59,13 @@ async function getAccessToken(): Promise<string> {
   return cachedAccessToken;
 }
 
+const SPOTIFY_IDLE: SpotifyNowPlaying = { isPlaying: false };
+
 function mapSpotifyPayload(
   payload: SpotifyApiPayload | null,
-): SpotifyNowPlaying | null {
-  if (!payload?.item?.name || !payload.item.duration_ms) {
-    return null;
+): SpotifyNowPlaying {
+  if (!payload?.item?.name) {
+    return SPOTIFY_IDLE;
   }
 
   return {
@@ -80,7 +83,11 @@ function mapSpotifyPayload(
   };
 }
 
-export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying | null> {
+export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying> {
+  if (!isSpotifyConfigured()) {
+    return SPOTIFY_IDLE;
+  }
+
   const accessToken = await getAccessToken();
   const response = await fetchWithTimeout(NOW_PLAYING_ENDPOINT, {
     headers: {
@@ -88,9 +95,12 @@ export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying | null
     },
   });
 
-  if (response.status === 204 || !response.ok) {
-    console.log('Spotify status:', response.status);
-    return null;
+  if (response.status === 204) {
+    return SPOTIFY_IDLE;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Spotify now playing request failed with ${response.status}.`);
   }
 
   const text = await response.text();
