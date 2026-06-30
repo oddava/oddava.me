@@ -3,6 +3,11 @@
    Assembled from partials for maintainability.
    =================================================== */
 
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+@import '@fontsource/m-plus-rounded-1c/latin-400.css';
+@import '@fontsource/m-plus-rounded-1c/latin-500.css';
+@import '@fontsource/m-plus-rounded-1c/latin-700.css';
 @import './_variables.css';
 @import './_reset.css';
 @import './_typography.css';

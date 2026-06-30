@@ -1,6 +1,7 @@
 // @ts-check
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadEnv } from 'vite';
 import { defineConfig, sessionDrivers } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
@@ -8,6 +9,31 @@ import react from '@astrojs/react';
 import { localRedisDevProxy } from './vite/local-redis-dev-proxy.mjs';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
+/** @param {string | undefined} value */
+function isConfiguredSecret(value) {
+  if (!value?.trim()) return false;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized.startsWith('your_')) return false;
+  if (normalized.endsWith('_here')) return false;
+
+  return true;
+}
+
+function hasSpotifyWidgetIntegration() {
+  const env = {
+    ...loadEnv('development', projectRoot, ''),
+    ...loadEnv('production', projectRoot, ''),
+  };
+
+  return (
+    (isConfiguredSecret(env.SPOTIFY_CLIENT_ID) &&
+      isConfiguredSecret(env.SPOTIFY_CLIENT_SECRET) &&
+      isConfiguredSecret(env.SPOTIFY_REFRESH_TOKEN)) ||
+    isConfiguredSecret(env.DISCORD_USER_ID)
+  );
+}
 
 // Pre-bundle island deps for the workerd SSR environment in one pass so Vite does
 // not discover them lazily and reload React mid-render (invalid hook call).
@@ -25,9 +51,6 @@ const SERVER_OPTIMIZE_DEPS = [
   'astro/content/runtime',
   'astro/app',
   'astro/runtime/server/astro-island',
-  'astro/runtime/client/idle.js',
-  'astro/runtime/client/visible.js',
-  'astro/runtime/client/load.js',
 ];
 
 const CLIENT_OPTIMIZE_DEPS = [
@@ -47,6 +70,31 @@ function optimizeServerDeps() {
       if (name !== 'client') {
         return { optimizeDeps: { include: SERVER_OPTIMIZE_DEPS } };
       }
+    },
+  };
+}
+
+/** @param {boolean} enabled @returns {import('vite').Plugin} */
+function spotifyWidgetBuildStub(enabled) {
+  const loaderId = path.resolve(
+    projectRoot,
+    'src/components/SpotifyWidgetLoader.astro',
+  );
+  const stubId = path.resolve(
+    projectRoot,
+    'src/components/SpotifyWidgetLoader.stub.astro',
+  );
+
+  return {
+    name: 'spotify-widget-build-stub',
+    enforce: 'pre',
+    /** @param {string} id */
+    resolveId(id) {
+      if (!enabled && (id === loaderId || id.endsWith('SpotifyWidgetLoader.astro'))) {
+        return stubId;
+      }
+
+      return null;
     },
   };
 }
@@ -79,6 +127,8 @@ function devCloudflareWorkersEnv() {
   };
 }
 
+const spotifyWidgetEnabled = hasSpotifyWidgetIntegration();
+
 export default defineConfig({
   integrations: [react(), mdx()],
   compressHTML: true,
@@ -96,12 +146,23 @@ export default defineConfig({
   },
   site: 'https://oddava.me',
   vite: {
+    define: {
+      __SPOTIFY_WIDGET_ENABLED__: JSON.stringify(spotifyWidgetEnabled),
+    },
     server: {
+      warmup: {
+        clientFiles: [
+          './src/layouts/Base.astro',
+          './src/pages/index.astro',
+          './src/styles/global.css',
+        ],
+      },
       watch: {
-        ignored: ['**/dist/**'],
+        ignored: ['**/dist/**', '**/.pnpm-store/**'],
       },
     },
     plugins: [
+      spotifyWidgetBuildStub(spotifyWidgetEnabled),
       localRedisDevProxy(),
       optimizeServerDeps(),
       devCloudflareWorkersEnv(),

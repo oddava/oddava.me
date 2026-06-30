@@ -1,5 +1,7 @@
+---
+// Loaded only when Spotify/Lanyard credentials are configured (see Base.astro).
+---
 <div id="spotify-widget-host"></div>
-
 <script>
   const loadWidget = () => {
     void import('./spotify/bootstrap.tsx');

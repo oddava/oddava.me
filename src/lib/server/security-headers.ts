@@ -10,14 +10,14 @@ const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "base-uri 'self'",
   "connect-src 'self' https://challenges.cloudflare.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "font-src 'self'",
   "form-action 'self'",
   "frame-ancestors 'self'",
   'frame-src https://challenges.cloudflare.com',
   "img-src 'self' data: https:",
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src 'self' 'unsafe-inline'",
 ].join('; ');
 
 const CSP_EXCLUDED_PATH_PREFIXES = ['/admin', '/keystatic', '/api'];

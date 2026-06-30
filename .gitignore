@@ -2,6 +2,7 @@
 dist/
 # generated types
 .astro/
+.astro-build.lock
 
 # vercel build output
 .vercel/
