@@ -90,7 +90,10 @@ function spotifyWidgetBuildStub(enabled) {
     enforce: 'pre',
     /** @param {string} id */
     resolveId(id) {
-      if (!enabled && (id === loaderId || id.endsWith('SpotifyWidgetLoader.astro'))) {
+      if (
+        !enabled &&
+        (id === loaderId || id.endsWith('SpotifyWidgetLoader.astro'))
+      ) {
         return stubId;
       }
 
