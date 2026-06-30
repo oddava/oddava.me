@@ -197,5 +197,67 @@ const socialImage = new URL(image, Astro.url).toString();
       <Footer />
     </div>
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
+
+    {import.meta.env.DEV && (
+      <script is:inline>
+        (function () {
+          function log(msg, ms) {
+            console.log('%c' + msg + '%c ' + ms + 'ms', 'color:#a78bfa;font-weight:bold', 'color:inherit');
+          }
+
+          window.addEventListener('load', function () {
+            var p = performance.getEntriesByType('navigation')[0];
+            var paint = performance.getEntriesByType('paint');
+
+            if (p) {
+              log('TTFB', Math.round(p.responseStart - p.requestStart));
+              log('DNS', Math.round(p.domainLookupEnd - p.domainLookupStart));
+              log('Connect', Math.round(p.connectEnd - p.connectStart));
+              log('Response', Math.round(p.responseEnd - p.responseStart));
+              log('DOM Interactive', Math.round(p.domInteractive - p.startTime));
+              log('DOMContentLoaded', Math.round(p.domContentLoadedEventEnd - p.startTime));
+              log('Load Event', Math.round(p.loadEventEnd - p.startTime));
+            }
+
+            var fcp = paint.find(function (e) { return e.name === 'first-contentful-paint'; });
+            if (fcp) log('FCP', Math.round(fcp.startTime));
+
+            var lcp = null;
+            try {
+              new PerformanceObserver(function (o) {
+                var entries = o.getEntries();
+                lcp = entries[entries.length - 1];
+                if (lcp) log('LCP', Math.round(lcp.startTime));
+              }).observe({ type: 'largest-contentful-paint', buffered: true });
+            } catch {}
+
+            var cls = 0;
+            try {
+              new PerformanceObserver(function (o) {
+                o.getEntries().forEach(function (e) { if (!e.hadRecentInput) cls += e.value; });
+                console.log('%cCLS' + '%c ' + cls.toFixed(4), 'color:#a78bfa;font-weight:bold', 'color:inherit');
+              }).observe({ type: 'layout-shift', buffered: true });
+            } catch {}
+
+            var resources = performance.getEntriesByType('resource');
+            var cssCount = 0, fontCount = 0, jsCount = 0;
+            resources.forEach(function (r) {
+              if (r.initiatorType === 'css' || r.name.endsWith('.css')) cssCount++;
+              if (r.name.endsWith('.woff2') || r.name.endsWith('.woff')) fontCount++;
+              if (r.initiatorType === 'script') jsCount++;
+            });
+
+            console.log(
+              '%cResources:%c ' + resources.length + ' total (' + cssCount + ' css, ' + fontCount + ' fonts, ' + jsCount + ' js)',
+              'color:#a78bfa;font-weight:bold', 'color:inherit'
+            );
+            console.log(
+              '%cTransfer:%c ' + (resources.reduce(function (a, r) { return a + r.transferSize; }, 0) / 1024).toFixed(1) + ' KB',
+              'color:#a78bfa;font-weight:bold', 'color:inherit'
+            );
+          });
+        })();
+      </script>
+    )}
   </body>
 </html>
