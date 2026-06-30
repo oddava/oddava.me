@@ -2,11 +2,10 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-import SpotifyWidgetLoader from '../components/SpotifyWidgetLoader.astro';
+import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER_HANDLE } from '../lib/site';
 
-const FONT_STYLESHEET =
-  'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap';
+const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
 
 export interface Props {
   title?: string;
@@ -35,17 +34,6 @@ const socialImage = new URL(image, Astro.url).toString();
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
     <link rel="canonical" href={canonicalUrl} />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href={FONT_STYLESHEET}
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link rel="stylesheet" href={FONT_STYLESHEET} />
-    </noscript>
 
     <!-- Open Graph -->
     <meta property="og:title" content={pageTitle} />
@@ -93,6 +81,6 @@ const socialImage = new URL(image, Astro.url).toString();
 
       <Footer />
     </div>
-    <SpotifyWidgetLoader />
+    {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
   </body>
 </html>

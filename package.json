@@ -11,7 +11,7 @@
   "scripts": {
     "install:deps": "pnpm install --dir ../oddava-tmp-install",
     "dev": "astro dev --mode development",
-    "build": "astro build --mode production",
+    "build": "node scripts/build-with-retry.mjs",
     "build:dev": "astro build --mode development",
     "deploy": "wrangler deploy --keep-vars",
     "preview": "astro preview --mode production",
@@ -33,7 +33,9 @@
     "astro": "^6.4.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "redis": "^4.7.1"
+    "redis": "^4.7.1",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/m-plus-rounded-1c": "^5.2.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
