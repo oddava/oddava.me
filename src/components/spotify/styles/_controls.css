@@ -1,0 +1,58 @@
+.spotify-widget-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.spotify-widget-wrapper:hover .spotify-widget-controls,
+.spotify-widget-wrapper:focus-within .spotify-widget-controls {
+  opacity: 1;
+}
+
+.spotify-widget-min-view {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.action-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-rule);
+}
+
+.spotify-widget-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+
+.spotify-widget-positioner.dragging .spotify-widget-drag-handle {
+  cursor: grabbing;
+}
+
+@media (max-width: 768px) {
+  .spotify-widget-controls {
+    opacity: 1;
+  }
+}

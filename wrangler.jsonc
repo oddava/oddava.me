@@ -5,9 +5,9 @@
   "keep_vars": true,
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist"
+    "directory": "./dist",
   },
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

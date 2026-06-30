@@ -2,7 +2,11 @@ import type { APIRoute } from 'astro';
 import { clearAdminSession } from '../../../lib/server/admin';
 import { ensureSameOrigin } from '../../../lib/server/community';
 
-async function handleLogout(request: Request, cookies: Parameters<APIRoute>[0]['cookies'], redirect: Parameters<APIRoute>[0]['redirect']) {
+async function handleLogout(
+  request: Request,
+  cookies: Parameters<APIRoute>[0]['cookies'],
+  redirect: Parameters<APIRoute>[0]['redirect'],
+) {
   clearAdminSession(cookies, request);
   return redirect('/admin/login?logged_out=1', 302);
 }

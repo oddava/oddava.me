@@ -9,58 +9,13 @@ type Route = {
   isHome: boolean;
 };
 
-const pages = import.meta.glob('../pages/**/*.{astro,md,mdx}');
-const routeMeta: Record<string, { label: string; order: number }> = {
-  '/': { label: 'oddava', order: 0 },
-  '/blog': { label: 'writing', order: 1 },
-  '/projects': { label: 'projects', order: 2 },
-  '/anime': { label: 'anime', order: 3 },
-  '/about': { label: 'about', order: 4 },
-};
-
-function pagePathToRoute(path: string): string | null {
-  if (path.includes('/api/') || path.includes('/admin/') || path.includes('/keystatic/')) {
-    return null;
-  }
-
-  const route = path
-    .replace('../pages', '')
-    .replace(/\.(astro|md|mdx)$/, '')
-    .replace(/\/index$/, '')
-    || '/';
-
-  if (route.includes('[') || route.endsWith('.xml') || route === '/rss') {
-    return null;
-  }
-
-  return route;
-}
-
-function labelFromRoute(route: string): string {
-  if (routeMeta[route]) {
-    return routeMeta[route].label;
-  }
-
-  return route
-    .split('/')
-    .filter(Boolean)
-    .at(-1)
-    ?.replace(/-/g, ' ') ?? 'home';
-}
-
-const routes: Route[] = Array.from(
-  new Set(Object.keys(pages).map(pagePathToRoute).filter(Boolean) as string[]),
-)
-  .map((href) => ({
-    href,
-    label: labelFromRoute(href),
-    isHome: href === '/',
-  }))
-  .sort((a, b) => {
-    const aOrder = routeMeta[a.href]?.order ?? 100;
-    const bOrder = routeMeta[b.href]?.order ?? 100;
-    return aOrder - bOrder || a.label.localeCompare(b.label);
-  });
+const routes: Route[] = [
+  { href: '/', label: 'oddava', isHome: true },
+  { href: '/blog', label: 'writing', isHome: false },
+  { href: '/projects', label: 'projects', isHome: false },
+  { href: '/anime', label: 'anime', isHome: false },
+  { href: '/about', label: 'about', isHome: false },
+];
 
 const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
 
@@ -72,20 +27,23 @@ function isActiveRoute(route: string): boolean {
   return currentPath === route || currentPath.startsWith(`${route}/`);
 }
 ---
+
 <nav class="site-nav" aria-label="Primary navigation">
   <div class="site-nav__track">
-    {routes.map((route) => (
-      <a
-        href={route.href}
-        class:list={[
-          'site-nav__link',
-          route.isHome && 'site-nav__link--home',
-          isActiveRoute(route.href) && 'is-active',
-        ]}
-        aria-current={isActiveRoute(route.href) ? 'page' : undefined}
-      >
-        <span class="site-nav__label">{route.label}</span>
-      </a>
-    ))}
+    {
+      routes.map((route) => (
+        <a
+          href={route.href}
+          class:list={[
+            'site-nav__link',
+            route.isHome && 'site-nav__link--home',
+            isActiveRoute(route.href) && 'is-active',
+          ]}
+          aria-current={isActiveRoute(route.href) ? 'page' : undefined}
+        >
+          <span class="site-nav__label">{route.label}</span>
+        </a>
+      ))
+    }
   </div>
 </nav>

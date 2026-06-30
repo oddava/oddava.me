@@ -14,38 +14,51 @@ try {
 ---
 
 <Base title="anime" description="My favorite anime and watch list.">
-  {animeAvailable && (
-    <ul class="post-list">
-      {animeList.map((entry) => (
-        <li class="post-item">
-          <a href={entry.anime.url || `https://anilist.co/anime/${entry.anime.slug}`} class="post-item__link">
-            <div class="anime-item">
-              <img 
-                src={entry.anime.cover_image_small || entry.anime.cover_image} 
-                alt={entry.anime.title} 
-                class="anime-item__image" 
-                loading="lazy" 
-              />
-              <div class="anime-item__content">
-                <div class="post-item__title">{entry.anime.title}</div>
-                <div class="post-item__meta">
-                  {entry.anime.title_jp} {entry.anime.rating && ` • ★ ${entry.anime.rating}`}
+  {
+    animeAvailable && (
+      <ul class="post-list">
+        {animeList.map((entry) => (
+          <li class="post-item">
+            <a
+              href={
+                entry.anime.url ||
+                `https://anilist.co/anime/${entry.anime.slug}`
+              }
+              class="post-item__link"
+            >
+              <div class="anime-item">
+                <img
+                  src={entry.anime.cover_image_small || entry.anime.cover_image}
+                  alt={entry.anime.title}
+                  class="anime-item__image"
+                  loading="lazy"
+                />
+                <div class="anime-item__content">
+                  <div class="post-item__title">{entry.anime.title}</div>
+                  <div class="post-item__meta">
+                    {entry.anime.title_jp}{' '}
+                    {entry.anime.rating && `/ score ${entry.anime.rating}`}
+                  </div>
                 </div>
               </div>
-            </div>
-          </a>
-        </li>
-      ))}
-    </ul>
-  )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
-  {animeAvailable && animeList.length === 0 && (
-    <p class="empty-state">Nothing here yet.</p>
-  )}
+  {
+    animeAvailable && animeList.length === 0 && (
+      <p class="empty-state">Nothing here yet.</p>
+    )
+  }
 
-  {!animeAvailable && (
-    <p class="empty-state">Favorites are offline right now.</p>
-  )}
+  {
+    !animeAvailable && (
+      <p class="empty-state">Favorites are offline right now.</p>
+    )
+  }
 </Base>
 
 <style>

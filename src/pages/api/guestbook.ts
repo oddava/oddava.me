@@ -62,7 +62,13 @@ export const GET: APIRoute = async () => {
         { status: 200 },
       );
     }
-    return json({ error: 'Could not load guestbook messages.', code: 'guestbook_unavailable' }, { status: 503 });
+    return json(
+      {
+        error: 'Could not load guestbook messages.',
+        code: 'guestbook_unavailable',
+      },
+      { status: 503 },
+    );
   }
 };
 
@@ -79,7 +85,8 @@ export const POST: APIRoute = async ({ request }) => {
   const captchaUnavailable = !hasTurnstileConfig()
     ? json(
         {
-          error: 'Guestbook posting is temporarily unavailable because bot protection is not configured.',
+          error:
+            'Guestbook posting is temporarily unavailable because bot protection is not configured.',
           code: 'captcha_unavailable',
         },
         { status: 503 },
@@ -98,7 +105,11 @@ export const POST: APIRoute = async ({ request }) => {
   let body: { name?: string; message?: string; captchaToken?: string };
 
   try {
-    body = await readJsonBody<{ name?: string; message?: string; captchaToken?: string }>(request);
+    body = await readJsonBody<{
+      name?: string;
+      message?: string;
+      captchaToken?: string;
+    }>(request);
   } catch (error) {
     return requestBodyErrorResponse(error);
   }
@@ -110,11 +121,17 @@ export const POST: APIRoute = async ({ request }) => {
   const message = sanitizeText(body.message ?? '', 280);
 
   if (!message) {
-    return json({ error: 'Message required.', code: 'message_required' }, { status: 400 });
+    return json(
+      { error: 'Message required.', code: 'message_required' },
+      { status: 400 },
+    );
   }
 
   if (message.length < 3) {
-    return json({ error: 'Message is too short.', code: 'message_too_short' }, { status: 400 });
+    return json(
+      { error: 'Message is too short.', code: 'message_too_short' },
+      { status: 400 },
+    );
   }
 
   try {
@@ -134,12 +151,16 @@ export const POST: APIRoute = async ({ request }) => {
     if (isStorageUnavailableError(error)) {
       return json(
         {
-          error: 'This shared feature is temporarily unavailable because persistent storage is not configured.',
+          error:
+            'This shared feature is temporarily unavailable because persistent storage is not configured.',
           code: 'storage_unavailable',
         },
         { status: 503 },
       );
     }
-    return json({ error: 'Could not post message.', code: 'guestbook_unavailable' }, { status: 503 });
+    return json(
+      { error: 'Could not post message.', code: 'guestbook_unavailable' },
+      { status: 503 },
+    );
   }
 };

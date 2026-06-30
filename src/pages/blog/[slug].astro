@@ -7,7 +7,7 @@ import { getPostStats } from '../../lib/content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
-  
+
   return posts
     .filter((post) => !post.data.draft)
     .map((post) => ({
@@ -20,7 +20,8 @@ const { post } = Astro.props;
 const { Content } = await render(post);
 const stats = getPostStats(post.body);
 ---
+
 <Post frontmatter={post.data} stats={stats}>
   <Content components={mdxComponents} />
-  <a href="/blog" class="post-back">← back to journal</a>
+  <a href="/blog" class="post-back">back to journal</a>
 </Post>

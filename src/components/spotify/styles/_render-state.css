@@ -1,0 +1,61 @@
+.spotify-widget-wrapper.render-hidden {
+  display: none;
+}
+
+.spotify-widget-wrapper.render-entering {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: none;
+}
+
+.spotify-widget-wrapper.render-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.spotify-widget-wrapper.render-exiting {
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.spotify-widget-full-view,
+.spotify-widget-min-view {
+  transition:
+    opacity 0.3s ease,
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.3s;
+  transform-origin: inherit;
+}
+
+.spotify-widget-wrapper:not(.is-minimized) .spotify-widget-full-view {
+  position: relative;
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+}
+
+.spotify-widget-wrapper:not(.is-minimized) .spotify-widget-min-view {
+  position: absolute;
+  opacity: 0;
+  transform: scale(0.5);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.spotify-widget-wrapper.is-minimized .spotify-widget-full-view {
+  position: absolute;
+  opacity: 0;
+  transform: scale(0.9);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.spotify-widget-wrapper.is-minimized .spotify-widget-min-view {
+  position: relative;
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+}

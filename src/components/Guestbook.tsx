@@ -1,248 +1,151 @@
 /** @jsxImportSource react */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { GuestbookApiResponse, PublicGuestbookEntry } from '../lib/contracts';
+import '../styles/components/_guestbook.css';
+import { useCallback, useMemo, useState } from 'react';
+import { useGuestbookEntries } from './guestbook/useGuestbookEntries';
+import { useGuestbookSubmit } from './guestbook/useGuestbookSubmit';
+import { useTurnstile } from './guestbook/useTurnstile';
 
-declare global {
-    interface Window {
-        turnstile?: {
-            render: (container: HTMLElement, options: {
-                sitekey: string;
-                callback: (token: string) => void;
-                'expired-callback'?: () => void;
-                'error-callback'?: () => void;
-                theme?: 'light' | 'dark' | 'auto';
-            }) => string;
-            reset: (widgetId?: string) => void;
-        };
-    }
-}
-
-const POLL_INTERVAL = 30000;
-const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-
-function ensureTurnstileScript(): Promise<void> {
-    if (typeof window === 'undefined') return Promise.resolve();
-    if (window.turnstile) return Promise.resolve();
-
-    const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${TURNSTILE_SCRIPT_SRC}"]`);
-    if (existingScript) {
-        return new Promise((resolve, reject) => {
-            existingScript.addEventListener('load', () => resolve(), { once: true });
-            existingScript.addEventListener('error', () => reject(new Error('Failed to load Turnstile.')), { once: true });
-        });
-    }
-
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = TURNSTILE_SCRIPT_SRC;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load Turnstile.'));
-        document.head.appendChild(script);
-    });
-}
+const MAX_MESSAGE_LENGTH = 280;
 
 export function Guestbook() {
-    const [entries, setEntries] = useState<PublicGuestbookEntry[]>([]);
-    const [name, setName] = useState('');
-    const [message, setMessage] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
-    const [writable, setWritable] = useState(true);
-    const [captchaRequired, setCaptchaRequired] = useState(false);
-    const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
-    const [captchaToken, setCaptchaToken] = useState('');
-    const widgetContainerRef = useRef<HTMLDivElement>(null);
-    const widgetIdRef = useRef<string | null>(null);
+  const {
+    captchaRequired,
+    entries,
+    error,
+    loading,
+    refreshEntries,
+    setError,
+    turnstileSiteKey,
+    writable,
+    markPostingUnavailable,
+  } = useGuestbookEntries();
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const handleTurnstileError = useCallback(
+    () =>
+      markPostingUnavailable(
+        'Guestbook posting is unavailable because bot verification could not load.',
+      ),
+    [markPostingUnavailable],
+  );
+  const { captchaToken, resetCaptcha, widgetContainerRef } = useTurnstile({
+    enabled: captchaRequired && writable,
+    onError: handleTurnstileError,
+    siteKey: turnstileSiteKey,
+  });
+  const handleAfterSubmit = useCallback(async () => {
+    setMessage('');
+    resetCaptcha();
+    await refreshEntries();
+  }, [refreshEntries, resetCaptcha]);
+  const { notice, setNotice, submitEntry, submitting } = useGuestbookSubmit({
+    captchaToken,
+    onAfterSubmit: handleAfterSubmit,
+    setError,
+  });
 
-    const remaining = useMemo(() => 280 - message.length, [message]);
+  const remaining = useMemo(
+    () => MAX_MESSAGE_LENGTH - message.length,
+    [message],
+  );
 
-    const loadEntries = async () => {
-        try {
-            const response = await fetch('/api/guestbook', { cache: 'no-store' });
-            const data = (await response.json()) as GuestbookApiResponse;
-            if (!response.ok) throw new Error(data.error || 'Failed to load guestbook.');
-            setEntries(data.entries ?? []);
-            setWritable(data.writable !== false);
-            setTurnstileSiteKey(data.turnstileSiteKey ?? '');
-            setCaptchaRequired(Boolean(data.captchaRequired && data.turnstileSiteKey));
-            setError(null);
-        } catch (loadError) {
-            setError(loadError instanceof Error ? loadError.message : 'Could not load guestbook messages.');
-            setWritable(false);
-            setCaptchaRequired(false);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSubmit = async (event: { preventDefault(): void }) => {
+    event.preventDefault();
+    if (!message.trim() || !writable) return;
 
-    useEffect(() => {
-        let mounted = true;
-        let timeout: ReturnType<typeof setTimeout> | null = null;
+    setNotice(null);
+    await submitEntry({
+      message,
+      name,
+    });
+  };
 
-        const schedule = () => {
-            if (!mounted) return;
-            timeout = setTimeout(fetchEntries, POLL_INTERVAL);
-        };
+  return (
+    <section className="guestbook">
+      <header className="guestbook__header">
+        <h2>guestbook</h2>
+        <p>leave a short note.</p>
+      </header>
 
-        const fetchEntries = async () => {
-            if (!mounted) return;
-            if (document.hidden) {
-                schedule();
-                return;
-            }
-            await loadEntries();
-            schedule();
-        };
+      <form className="guestbook__form" onSubmit={handleSubmit}>
+        <label className="guestbook__field">
+          <span>name</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="anon"
+            maxLength={32}
+            autoComplete="nickname"
+          />
+        </label>
+        <label className="guestbook__field">
+          <span>message</span>
+          <textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="say hi or leave a thought"
+            maxLength={MAX_MESSAGE_LENGTH}
+            rows={3}
+            required
+          />
+          <span
+            className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}
+          >
+            {remaining}
+          </span>
+        </label>
+        {captchaRequired && writable && <div ref={widgetContainerRef} />}
+        <button
+          className="guestbook__submit"
+          type="submit"
+          disabled={
+            submitting ||
+            !message.trim() ||
+            !writable ||
+            (captchaRequired && !captchaToken)
+          }
+        >
+          {submitting ? 'posting...' : 'submit'}
+        </button>
+        {!writable && (
+          <p className="guestbook__error" role="alert">
+            Guestbook posting is temporarily unavailable.
+          </p>
+        )}
+      </form>
 
-        const handleVisibilityChange = () => {
-            if (document.hidden || !mounted) return;
-            if (timeout) clearTimeout(timeout);
-            void fetchEntries();
-        };
-
-        void fetchEntries();
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-            mounted = false;
-            if (timeout) clearTimeout(timeout);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!captchaRequired || !turnstileSiteKey || !widgetContainerRef.current || !writable) return;
-        if (widgetIdRef.current) return;
-
-        ensureTurnstileScript()
-            .then(() => {
-                if (!widgetContainerRef.current || !window.turnstile || widgetIdRef.current) return;
-                widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
-                    sitekey: turnstileSiteKey,
-                    callback: (token) => setCaptchaToken(token),
-                    'expired-callback': () => setCaptchaToken(''),
-                    'error-callback': () => setCaptchaToken(''),
-                    theme: 'auto',
-                });
-            })
-            .catch(() => {
-                setWritable(false);
-                setError('Guestbook posting is unavailable because bot verification could not load.');
-            });
-    }, [captchaRequired, turnstileSiteKey, writable]);
-
-    const handleSubmit = async (event: { preventDefault(): void }) => {
-        event.preventDefault();
-        if (!message.trim() || !writable) return;
-
-        const trimmedName = name.trim().slice(0, 32) || 'anon';
-        const trimmedMessage = message.trim().slice(0, 280);
-
-        setSubmitting(true);
-        setError(null);
-        setNotice(null);
-
-        try {
-            const response = await fetch('/api/guestbook', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ name: trimmedName, message: trimmedMessage, captchaToken }),
-            });
-
-            const data = (await response.json()) as GuestbookApiResponse;
-            if (!response.ok) {
-                throw new Error(
-                    data.retryAfterSeconds
-                        ? `${data.error ?? 'Could not post your message.'} Try again in ${data.retryAfterSeconds}s.`
-                        : data.error ?? 'Could not post your message.',
-                );
-            }
-
-            setMessage('');
-            setNotice(data.message ?? 'Thanks. You note will appear soon.');
-            setCaptchaToken('');
-            if (widgetIdRef.current && window.turnstile) {
-                window.turnstile.reset(widgetIdRef.current);
-            }
-            await loadEntries();
-        } catch (submitError) {
-            setError(submitError instanceof Error ? submitError.message : 'Could not post your message.');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <section className="guestbook">
-            <header className="guestbook__header">
-                <h2>guestbook</h2>
-                <p>leave a short note.</p>
-            </header>
-
-            <form className="guestbook__form" onSubmit={handleSubmit}>
-                <label className="guestbook__field">
-                    <span>name</span>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        placeholder="anon"
-                        maxLength={32}
-                        autoComplete="nickname"
-                    />
-                </label>
-                <label className="guestbook__field">
-                    <span>message</span>
-                    <textarea
-                        value={message}
-                        onChange={(event) => setMessage(event.target.value)}
-                        placeholder="say hi or leave a thought"
-                        maxLength={280}
-                        rows={3}
-                        required
-                    />
-                    <span className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}>{remaining}</span>
-                </label>
-                {captchaRequired && writable && <div ref={widgetContainerRef} />}
-                <button
-                    className="guestbook__submit"
-                    type="submit"
-                    disabled={submitting || !message.trim() || !writable || (captchaRequired && !captchaToken)}
-                >
-                    {submitting ? 'posting...' : 'submit'}
-                </button>
-                {!writable && (
-                    <p className="guestbook__error" role="alert">Guestbook posting is temporarily unavailable.</p>
-                )}
-            </form>
-
-            <div className="guestbook__entries">
-                {loading && <p className="guestbook__empty">Loading notes...</p>}
-                {!loading && entries.length === 0 && (
-                    <p className="guestbook__empty">No notes yet.</p>
-                )}
-                {entries.map((entry) => (
-                    <article key={entry.id} className="guestbook__entry">
-                        <div className="guestbook__meta">
-                            <span>{entry.name}</span>
-                            <span>{new Date(entry.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                            })}</span>
-                        </div>
-                        <p>{entry.message}</p>
-                    </article>
-                ))}
-                {notice && <p className="guestbook__notice" role="status" aria-live="polite">{notice}</p>}
-                {error && <p className="guestbook__error" role="alert">{error}</p>}
+      <div className="guestbook__entries">
+        {loading && <p className="guestbook__empty">Loading notes...</p>}
+        {!loading && entries.length === 0 && (
+          <p className="guestbook__empty">No notes yet.</p>
+        )}
+        {entries.map((entry) => (
+          <article key={entry.id} className="guestbook__entry">
+            <div className="guestbook__meta">
+              <span>{entry.name}</span>
+              <span>
+                {new Date(entry.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </span>
             </div>
-        </section>
-    );
+            <p>{entry.message}</p>
+          </article>
+        ))}
+        {notice && (
+          <p className="guestbook__notice" role="status" aria-live="polite">
+            {notice}
+          </p>
+        )}
+        {error && (
+          <p className="guestbook__error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </section>
+  );
 }

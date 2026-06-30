@@ -52,4 +52,33 @@ describe('server community utilities', () => {
       code: 'payload_too_large',
     });
   });
+
+  it('sanitizes redirect paths and detects JSON requests', async () => {
+    const { prefersJsonResponse, safeRedirectPath } =
+      await import('../src/lib/server/community');
+
+    expect(safeRedirectPath('/admin?tab=guestbook', '/admin')).toBe(
+      '/admin?tab=guestbook',
+    );
+    expect(safeRedirectPath('//evil.test', '/admin')).toBe('/admin');
+    expect(safeRedirectPath('/admin\\evil', '/admin')).toBe('/admin');
+
+    expect(
+      prefersJsonResponse(
+        new Request('https://oddava.me/api/test', {
+          headers: { accept: 'application/json' },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('parses guestbook statuses in one domain helper', async () => {
+    const { parseGuestbookStatus } =
+      await import('../src/lib/server/guestbook');
+
+    expect(parseGuestbookStatus('pending')).toBe('pending');
+    expect(parseGuestbookStatus('approved')).toBe('approved');
+    expect(parseGuestbookStatus('archived')).toBeNull();
+    expect(parseGuestbookStatus(null)).toBeNull();
+  });
 });

@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
+import { safeRedirectPath } from '../../lib/server/community';
 
 if (await isAdminRequest(Astro.cookies)) {
   return Astro.redirect('/admin');
@@ -8,29 +9,52 @@ if (await isAdminRequest(Astro.cookies)) {
 
 const configured = isAdminConfigured();
 const requestedNext = Astro.url.searchParams.get('next') ?? '/admin';
-const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') && !requestedNext.includes('\\')
-  ? requestedNext
-  : '/admin';
+const next = safeRedirectPath(requestedNext, '/admin');
 const invalid = Astro.url.searchParams.get('error') === 'invalid';
 const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
 ---
-<AdminLayout title="Admin Login" description="Authenticate to manage oddava.me.">
+
+<AdminLayout
+  title="Admin Login"
+  description="Authenticate to manage oddava.me."
+>
   <section class="admin-card admin-login">
     <p class="admin-kicker">oddava admin</p>
     <h1>Sign in</h1>
     <p>Use the shared admin token to access the control panel.</p>
-    {!configured && <p class="admin-note">Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` to enable admin access.</p>}
+    {
+      !configured && (
+        <p class="admin-note">
+          Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` to enable admin
+          access.
+        </p>
+      )
+    }
     {invalid && <p class="admin-error">The admin token was rejected.</p>}
     {loggedOut && <p class="admin-success">Admin session cleared.</p>}
     <form id="admin-login-form" method="post" action="/api/admin/session">
       <input type="hidden" name="next" value={next} />
       <label>
         <span class="admin-label">Admin token</span>
-        <input class="admin-input" type="password" name="token" required autocomplete="current-password" disabled={!configured} />
+        <input
+          class="admin-input"
+          type="password"
+          name="token"
+          required
+          autocomplete="current-password"
+          disabled={!configured}
+        />
       </label>
-      <button class="admin-button primary" type="submit" disabled={!configured}>Open admin</button>
+      <button class="admin-button primary" type="submit" disabled={!configured}
+        >Open admin</button
+      >
     </form>
-    <p id="admin-login-error" class="admin-error" style="display:none; margin-top:14px;"></p>
+    <p
+      id="admin-login-error"
+      class="admin-error"
+      style="display:none; margin-top:14px;"
+    >
+    </p>
   </section>
   <script is:inline>
     const form = document.getElementById('admin-login-form');

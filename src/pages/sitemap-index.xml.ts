@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
+import { siteUrl } from '../lib/site';
 
 export const GET: APIRoute = async () => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
-    <loc>https://oddava.me/sitemap.xml</loc>
+    <loc>${siteUrl('/sitemap.xml')}</loc>
   </sitemap>
 </sitemapindex>`;
 

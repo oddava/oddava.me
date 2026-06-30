@@ -31,6 +31,7 @@ The app uses local Redis and prefixes keys with `dev:` to isolate local data.
 The deployed Worker is configured by `wrangler.jsonc`. Avoid mirroring production secrets into local files; keep them in Cloudflare so local development cannot accidentally target production services.
 
 Keystatic OAuth origin override (optional):
+
 - Set `KEYSTATIC_PUBLIC_ORIGIN` only if callback URLs need a forced canonical host.
 - Match it exactly with the domain used in GitHub OAuth callback settings.
 
