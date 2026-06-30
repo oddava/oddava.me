@@ -1,0 +1,140 @@
+/* Article headers and prose */
+.post-header {
+  padding-top: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.post-header h1 {
+  margin-bottom: 0.5rem;
+}
+
+.post-header__meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.post-back {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-rule);
+}
+
+.post-back:hover {
+  color: var(--color-text-interactive);
+}
+
+.prose {
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+}
+
+.prose p {
+  margin-bottom: 1.5em;
+}
+
+.prose h2 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin-top: 2.5em;
+  margin-bottom: 0.75em;
+}
+
+.prose h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose blockquote {
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-sm);
+  margin: 1.5em 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.prose ul,
+.prose ol {
+  margin: 1.5em 0;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin-bottom: 0.5em;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-surface-raised);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+
+.prose pre {
+  background: var(--color-surface-raised);
+  padding: var(--space-sm);
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 1.5em 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.prose a {
+  color: var(--color-text-interactive);
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-text-interactive) 55%,
+    transparent
+  );
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.prose a:hover {
+  text-decoration-color: var(--color-text-interactive-hover);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 1.5em 0;
+}
+
+.about-content {
+  padding-top: 0;
+}
+
+.about-content h1 {
+  margin-bottom: var(--space-md);
+}
+
+.about-content p {
+  margin-bottom: 1.5em;
+  color: var(--color-text-primary);
+}

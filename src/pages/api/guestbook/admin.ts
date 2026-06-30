@@ -7,116 +7,149 @@ import {
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
 } from '../../../lib/server/community';
-import type { GuestbookStatus } from '../../../lib/server/guestbook';
-import { requireAdminApi } from '../../../lib/server/admin';
 import {
+  requireSecuredAdminApi,
+  withAdminSecurityHeaders,
+} from '../../../lib/server/admin';
+import {
+  parseGuestbookStatus,
   readGuestbookEntries,
   updateGuestbookEntryStatus,
   writeGuestbookEntries,
 } from '../../../lib/server/guestbook';
 
-function normalizeStatus(value: string | null): GuestbookStatus | null {
-  if (value === 'pending' || value === 'approved' || value === 'rejected') return value;
-  return null;
+async function rejectIfAdminUnavailable(
+  cookies: Parameters<APIRoute>[0]['cookies'],
+): Promise<Response | null> {
+  const authError = await requireSecuredAdminApi(cookies);
+  if (authError) return authError;
+
+  const storageUnavailable = rejectIfStorageUnavailable();
+  return storageUnavailable
+    ? withAdminSecurityHeaders(storageUnavailable)
+    : null;
 }
 
-function withSecurityHeaders(response: Response): Response {
-  const headers = new Headers(response.headers);
-  headers.set('Cache-Control', 'no-store');
-  headers.set('X-Frame-Options', 'DENY');
-  headers.set('Referrer-Policy', 'no-referrer');
-  return new Response(response.body, { status: response.status, headers });
+async function rejectIfInvalidMutation(
+  request: Request,
+  cookies: Parameters<APIRoute>[0]['cookies'],
+): Promise<Response | null> {
+  const sameOriginError = ensureSameOrigin(request);
+  if (sameOriginError) return withAdminSecurityHeaders(sameOriginError);
+
+  return rejectIfAdminUnavailable(cookies);
 }
 
 export const GET: APIRoute = async ({ cookies, url }) => {
-  const authError = await requireAdminApi(cookies);
-  if (authError) return withSecurityHeaders(authError);
+  const unavailable = await rejectIfAdminUnavailable(cookies);
+  if (unavailable) return unavailable;
 
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
-
-  const statusFilter = normalizeStatus(url.searchParams.get('status'));
+  const statusFilter = parseGuestbookStatus(url.searchParams.get('status'));
 
   try {
     const entries = await readGuestbookEntries();
-    const filteredEntries = statusFilter ? entries.filter((entry) => entry.status === statusFilter) : entries;
-    return withSecurityHeaders(json({ entries: filteredEntries }, { status: 200 }));
+    const filteredEntries = statusFilter
+      ? entries.filter((entry) => entry.status === statusFilter)
+      : entries;
+    return withAdminSecurityHeaders(
+      json({ entries: filteredEntries }, { status: 200 }),
+    );
   } catch (error) {
     console.error('[guestbook-admin] GET failed', error);
-    return withSecurityHeaders(json({ error: 'Failed to load entries.', code: 'admin_unavailable' }, { status: 500 }));
+    return withAdminSecurityHeaders(
+      json(
+        { error: 'Failed to load entries.', code: 'admin_unavailable' },
+        { status: 500 },
+      ),
+    );
   }
 };
 
 export const PATCH: APIRoute = async ({ request, cookies }) => {
-  const sameOriginError = ensureSameOrigin(request);
-  if (sameOriginError) return withSecurityHeaders(sameOriginError);
-
-  const authError = await requireAdminApi(cookies);
-  if (authError) return withSecurityHeaders(authError);
-
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
+  const unavailable = await rejectIfInvalidMutation(request, cookies);
+  if (unavailable) return unavailable;
 
   let body: { id?: string; status?: string };
 
   try {
     body = await readJsonBody<{ id?: string; status?: string }>(request);
   } catch (error) {
-    return withSecurityHeaders(requestBodyErrorResponse(error));
+    return withAdminSecurityHeaders(requestBodyErrorResponse(error));
   }
 
-  const status = normalizeStatus(body.status ?? null);
+  const status = parseGuestbookStatus(body.status);
   if (!body.id || !status) {
-    return withSecurityHeaders(json({ error: 'Missing id or valid status.', code: 'invalid_request' }, { status: 400 }));
+    return withAdminSecurityHeaders(
+      json(
+        { error: 'Missing id or valid status.', code: 'invalid_request' },
+        { status: 400 },
+      ),
+    );
   }
 
   try {
     const updated = await updateGuestbookEntryStatus(body.id, status);
     if (!updated) {
-      return withSecurityHeaders(json({ error: 'Entry not found.', code: 'not_found' }, { status: 404 }));
+      return withAdminSecurityHeaders(
+        json({ error: 'Entry not found.', code: 'not_found' }, { status: 404 }),
+      );
     }
     const next = await readGuestbookEntries();
-    return withSecurityHeaders(json({ entries: next }, { status: 200 }));
+    return withAdminSecurityHeaders(json({ entries: next }, { status: 200 }));
   } catch (error) {
     console.error('[guestbook-admin] PATCH failed', error);
-    return withSecurityHeaders(json({ error: 'Failed to update entry.', code: 'admin_unavailable' }, { status: 500 }));
+    return withAdminSecurityHeaders(
+      json(
+        { error: 'Failed to update entry.', code: 'admin_unavailable' },
+        { status: 500 },
+      ),
+    );
   }
 };
 
 async function handleClearAllRequest(clearAll: boolean): Promise<Response> {
   if (!clearAll) {
-    return withSecurityHeaders(json({ error: 'Missing all=true.', code: 'invalid_request' }, { status: 400 }));
+    return withAdminSecurityHeaders(
+      json(
+        { error: 'Missing all=true.', code: 'invalid_request' },
+        { status: 400 },
+      ),
+    );
   }
 
   try {
     await writeGuestbookEntries([]);
-    return withSecurityHeaders(json({ entries: [] }, { status: 200 }));
+    return withAdminSecurityHeaders(json({ entries: [] }, { status: 200 }));
   } catch (error) {
     console.error('[guestbook-admin] clear-all failed', error);
-    return withSecurityHeaders(json({ error: 'Failed to clear entries.', code: 'admin_unavailable' }, { status: 500 }));
+    return withAdminSecurityHeaders(
+      json(
+        { error: 'Failed to clear entries.', code: 'admin_unavailable' },
+        { status: 500 },
+      ),
+    );
   }
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const sameOriginError = ensureSameOrigin(request);
-  if (sameOriginError) return withSecurityHeaders(sameOriginError);
-
-  const authError = await requireAdminApi(cookies);
-  if (authError) return withSecurityHeaders(authError);
-
-  const storageUnavailable = rejectIfStorageUnavailable();
-  if (storageUnavailable) return withSecurityHeaders(storageUnavailable);
+  const unavailable = await rejectIfInvalidMutation(request, cookies);
+  if (unavailable) return unavailable;
 
   let body: { action?: string; all?: boolean };
 
   try {
     body = await readJsonBody<{ action?: string; all?: boolean }>(request);
   } catch (error) {
-    return withSecurityHeaders(requestBodyErrorResponse(error));
+    return withAdminSecurityHeaders(requestBodyErrorResponse(error));
   }
 
   if (body.action !== 'clear') {
-    return withSecurityHeaders(json({ error: 'Invalid action.', code: 'invalid_request' }, { status: 400 }));
+    return withAdminSecurityHeaders(
+      json(
+        { error: 'Invalid action.', code: 'invalid_request' },
+        { status: 400 },
+      ),
+    );
   }
 
   return handleClearAllRequest(body.all === true);

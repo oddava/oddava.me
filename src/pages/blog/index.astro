@@ -1,52 +1,53 @@
 ---
 export const prerender = true;
 import Base from '../../layouts/Base.astro';
-import { getPublishedPosts } from '../../lib/content';
+import {
+  formatPostDate,
+  getPublishedPosts,
+  groupEntriesByYear,
+} from '../../lib/content';
 
 const posts = await getPublishedPosts();
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-const postsByYear = posts.reduce((groups: Record<string, typeof posts>, post) => {
-  const year = new Date(post.data.date).getFullYear().toString();
-  groups[year] ??= [];
-  groups[year].push(post);
-  return groups;
-}, {});
+const postsByYear = groupEntriesByYear(posts);
 ---
+
 <Base title="writing" description="Things I've written.">
   <div class="post-archive">
-    {Object.entries(postsByYear).map(([year, yearPosts]) => (
-      <section class="post-year" aria-labelledby={`posts-${year}`}>
-        <h2 class="post-year__heading" id={`posts-${year}`}>{year}</h2>
-        <ul class="post-list">
-          {yearPosts.map((post) => (
-            <li class="post-item">
-              <a href={`/blog/${post.id}`} class="post-item__link">
-                <div class="post-item__title">{post.data.title}</div>
-                <div class="post-item__footer">
-                  <div class="post-item__meta">
-                    <time datetime={post.data.date}>{formatDate(post.data.date)}</time>
-                    {post.data.updated && (
-                      <>
-                        <span aria-hidden="true"> · </span>
-                        <span>updated <time datetime={post.data.updated}>{formatDate(post.data.updated)}</time></span>
-                      </>
-                    )}
+    {
+      Object.entries(postsByYear).map(([year, yearPosts]) => (
+        <section class="post-year" aria-labelledby={`posts-${year}`}>
+          <h2 class="post-year__heading" id={`posts-${year}`}>
+            {year}
+          </h2>
+          <ul class="post-list">
+            {yearPosts.map((post) => (
+              <li class="post-item">
+                <a href={`/blog/${post.id}`} class="post-item__link">
+                  <div class="post-item__title">{post.data.title}</div>
+                  <div class="post-item__footer">
+                    <div class="post-item__meta">
+                      <time datetime={post.data.date}>
+                        {formatPostDate(post.data.date, 'short')}
+                      </time>
+                      {post.data.updated && (
+                        <>
+                          <span aria-hidden="true"> / </span>
+                          <span>
+                            updated{' '}
+                            <time datetime={post.data.updated}>
+                              {formatPostDate(post.data.updated, 'short')}
+                            </time>
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
   </div>
 </Base>

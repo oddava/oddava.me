@@ -6,29 +6,44 @@ import { getAllProjects } from '../../lib/projects';
 const projects = await getAllProjects();
 ---
 
-<Base title="projects" description="Things I've built and experiments I've shipped.">
+<Base
+  title="projects"
+  description="Things I've built and experiments I've shipped."
+>
   <ul class="project-list">
-    {projects.map((project) => (
-      <li class="project-item">
-        <div class="project-item__main">
-          <a href={`/projects/${project.id}`} class="project-item__title">{project.title}</a>
-          {project.featured && <span class="project-item__badge">featured</span>}
-        </div>
+    {
+      projects.map((project) => (
+        <li class="project-item">
+          <div class="project-item__main">
+            <a href={`/projects/${project.id}`} class="project-item__title">
+              {project.title}
+            </a>
+            {project.featured && (
+              <span class="project-item__badge">featured</span>
+            )}
+          </div>
 
-        <div class="project-item__meta">
-          <span>{project.description}</span>
-          {project.url && (
-            <a href={project.url} target="_blank" rel="noopener noreferrer">live</a>
-          )}
-          {project.repo && (
-            <a href={project.repo} target="_blank" rel="noopener noreferrer">source</a>
-          )}
-        </div>
-      </li>
-    ))}
+          <div class="project-item__meta">
+            <span>{project.description}</span>
+            {project.url && (
+              <a href={project.url} target="_blank" rel="noopener noreferrer">
+                live
+              </a>
+            )}
+            {project.repo && (
+              <a href={project.repo} target="_blank" rel="noopener noreferrer">
+                source
+              </a>
+            )}
+          </div>
+        </li>
+      ))
+    }
   </ul>
 
-  {projects.length === 0 && (
-    <p class="empty-state">Nothing here yet — check back soon.</p>
-  )}
+  {
+    projects.length === 0 && (
+      <p class="empty-state">Nothing here yet - check back soon.</p>
+    )
+  }
 </Base>

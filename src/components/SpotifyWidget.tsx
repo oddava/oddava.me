@@ -1,385 +1,168 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useCallback } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import './SpotifyWidget.css';
-import type { SpotifyNowPlaying } from '../lib/contracts';
-
-function isSpotifyNowPlaying(value: unknown): value is SpotifyNowPlaying {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        typeof (value as { isPlaying?: unknown }).isPlaying === 'boolean'
-    );
-}
+import { formatDuration } from './spotify/format';
+import { useNowPlaying } from './spotify/useNowPlaying';
+import { usePersistedMinimized } from './spotify/usePersistedMinimized';
+import { useSpotifyRenderState } from './spotify/useSpotifyRenderState';
+import { useWidgetPosition } from './spotify/useWidgetPosition';
 
 export default function SpotifyWidget() {
-    const widgetRef = useRef<HTMLDivElement>(null);
-    const [data, setData] = useState<SpotifyNowPlaying>({ isPlaying: false });
-    const [loading, setLoading] = useState(true);
-    const [currentProgress, setCurrentProgress] = useState(0);
+  const { data, loading, currentProgress } = useNowPlaying();
+  const { displayData, renderState } = useSpotifyRenderState(data, loading);
+  const { isMinimized, setPersistedMinimized } = usePersistedMinimized();
+  const expandFromDrag = useCallback(
+    () => setPersistedMinimized(false),
+    [setPersistedMinimized],
+  );
+  const {
+    handlePointerDown,
+    isDragging,
+    position,
+    preventClickRef,
+    widgetRef,
+  } = useWidgetPosition({
+    isMinimized,
+    onExpandFromDrag: expandFromDrag,
+  });
 
-    const [renderState, setRenderState] = useState<'hidden' | 'entering' | 'active' | 'exiting'>('hidden');
-    const [displayData, setDisplayData] = useState<SpotifyNowPlaying | null>(null);
+  if (renderState === 'hidden' || !displayData) {
+    return null;
+  }
 
-    const fetchPlaying = async () => {
-        try {
-            const res = await fetch('/api/spotify');
-            if (!res.ok) {
-                throw new Error(`Spotify API returned ${res.status}`);
-            }
-            const json: unknown = await res.json();
-            if (!isSpotifyNowPlaying(json)) {
-                throw new Error('Spotify API returned an invalid payload');
-            }
-            setData(json);
-            if (typeof json.progressMs === 'number') {
-                setCurrentProgress(json.progressMs);
-            }
-        } catch (e) {
-            console.error(e);
-            setData({ isPlaying: false });
-        } finally {
-            setLoading(false);
-        }
-    };
+  const alignmentClasses = `side-${position.edgeX} side-${position.edgeY}`;
+  const progressPercent = displayData.durationMs
+    ? (currentProgress / displayData.durationMs) * 100
+    : 0;
 
-    useEffect(() => {
-        let active = true;
-        let timeout: ReturnType<typeof setTimeout> | null = null;
+  const style = {
+    left: position.edgeX === 'left' ? `${position.offsetX}px` : 'auto',
+    right: position.edgeX === 'right' ? `${position.offsetX}px` : 'auto',
+    top: position.edgeY === 'top' ? `${position.offsetY}px` : 'auto',
+    bottom: position.edgeY === 'bottom' ? `${position.offsetY}px` : 'auto',
+    touchAction: 'none',
+  } satisfies CSSProperties;
 
-        const poll = async () => {
-            if (!active) return;
-            if (!document.hidden) await fetchPlaying();
-            if (active) timeout = setTimeout(poll, 30000);
-        };
+  const toggleMinimize = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setPersistedMinimized(!isMinimized);
+  };
 
-        const handleVisibilityChange = () => {
-            if (document.hidden || !active) return;
-            if (timeout) clearTimeout(timeout);
-            void poll();
-        };
+  const expandMinimized = () => {
+    if (preventClickRef.current) return;
+    setPersistedMinimized(false);
+  };
 
-        void poll();
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => {
-            active = false;
-            if (timeout) clearTimeout(timeout);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, []);
+  return (
+    <div
+      ref={widgetRef}
+      className={`spotify-widget-positioner ${isDragging ? 'dragging' : ''}`}
+      style={style}
+      onPointerDown={handlePointerDown}
+    >
+      <div
+        className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''} ${alignmentClasses}`}
+      >
+        <div className="spotify-widget-full-view">
+          <div className="spotify-widget-controls">
+            <div />
+            <button
+              className="spotify-widget-minimize action-btn"
+              onClick={toggleMinimize}
+              aria-label="Minimize widget"
+            >
+              <MinimizeIcon />
+            </button>
+          </div>
+          <div className="spotify-widget-container" draggable="false">
+            <img
+              src={displayData.albumImageUrl}
+              alt={displayData.title}
+              className="spotify-widget-album"
+              draggable="false"
+              onDragStart={(event) => event.preventDefault()}
+            />
+            <div className="spotify-widget-info">
+              <div className="spotify-widget-label">listening to</div>
+              <a
+                href={displayData.songUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="spotify-widget-title"
+                title="Listening on Spotify"
+                onClick={(event) => {
+                  if (preventClickRef.current) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                {displayData.title}
+              </a>
+              <div className="spotify-widget-artist">{displayData.artist}</div>
 
-    useEffect(() => {
-        if (loading) return;
-
-        if (data.isPlaying) {
-            setDisplayData(data);
-            setRenderState(prev => {
-                if (prev === 'hidden' || prev === 'exiting') {
-                    setTimeout(() => setRenderState('active'), 50);
-                    return 'entering';
-                }
-                return prev;
-            });
-        } else {
-            setRenderState(prev => {
-                if (prev === 'active' || prev === 'entering') {
-                    setTimeout(() => {
-                        setRenderState('hidden');
-                    }, 300); // match exit CSS duration
-                    return 'exiting';
-                }
-                return prev;
-            });
-        }
-    }, [loading, data.isPlaying, data]);
-
-    // Live counter for progress
-    useEffect(() => {
-        if (!data.isPlaying || !data.durationMs) return;
-
-        const timer = setInterval(() => {
-            setCurrentProgress(prev => {
-                if (prev + 1000 >= (data.durationMs || 0)) {
-                    return data.durationMs || 0;
-                }
-                return prev + 1000;
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [data.isPlaying, data.durationMs]);
-
-    const formatTime = (ms: number) => {
-        const seconds = Math.floor((ms / 1000) % 60);
-        const minutes = Math.floor(ms / (1000 * 60));
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
-
-    const progressPercent = displayData?.durationMs ? (currentProgress / displayData.durationMs) * 100 : 0;
-
-    const [pos, setPos] = useState({
-        edgeX: 'left',
-        edgeY: 'bottom',
-        offsetX: 32,
-        offsetY: 32
-    });
-    const [isDragging, setIsDragging] = useState(false);
-
-    // Refs for performance - avoids useEffect churn
-    const dragOffsetRef = useRef({ x: 0, y: 0 });
-    const initialPointerRef = useRef({ x: 0, y: 0 });
-    const posRef = useRef(pos);
-    const rAFRef = useRef<number | null>(null);
-
-    // Keep posRef in sync for the listener
-    useEffect(() => {
-        posRef.current = pos;
-    }, [pos]);
-
-    const [isMinimized, setIsMinimized] = useState(false);
-
-    // Load saved position and handle responsiveness
-    useEffect(() => {
-        const clampPos = (p: typeof pos) => {
-            const newPos = { ...p };
-            if (newPos.offsetX > window.innerWidth - 60) newPos.offsetX = 16;
-            if (newPos.offsetY > window.innerHeight - 60) newPos.offsetY = 16;
-            return newPos;
-        };
-
-        const savedPos = localStorage.getItem('spotify-widget-pos-v2');
-        if (savedPos) {
-            try {
-                const parsed = clampPos(JSON.parse(savedPos));
-                setPos(parsed);
-                posRef.current = parsed;
-            } catch (e) { /* ignore */ }
-        } else {
-            setPos(prev => clampPos(prev));
-        }
-
-        const handleResize = () => {
-            setPos(prev => {
-                const updated = clampPos(prev);
-                posRef.current = updated;
-                return updated;
-            });
-        };
-
-        window.addEventListener('resize', handleResize);
-
-        const savedMin = localStorage.getItem('spotify-widget-minimized');
-        if (savedMin) {
-            setIsMinimized(savedMin === 'true');
-        }
-
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    const totalMovementRef = useRef(0);
-    const preventClickRef = useRef(false);
-
-    const handlePointerDown = (e: React.PointerEvent) => {
-        if ((e.target as HTMLElement).closest('.action-btn')) {
-            return;
-        }
-
-        const currentTarget = e.currentTarget as HTMLElement;
-        if (e.pointerType === 'touch') {
-            currentTarget.setPointerCapture(e.pointerId);
-        }
-
-        const rect = currentTarget.getBoundingClientRect();
-
-        setIsDragging(true);
-        totalMovementRef.current = 0;
-        dragOffsetRef.current = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
-        initialPointerRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    useEffect(() => {
-        if (!isDragging) return;
-
-        const handleMove = (e: PointerEvent) => {
-            if (rAFRef.current) return; // limit to screen refresh rate
-
-            rAFRef.current = requestAnimationFrame(() => {
-                rAFRef.current = null;
-
-                const deltaX = Math.abs(e.clientX - initialPointerRef.current.x);
-                const deltaY = Math.abs(e.clientY - initialPointerRef.current.y);
-                const newTotal = deltaX + deltaY;
-                totalMovementRef.current = newTotal;
-
-                const rect = widgetRef.current?.getBoundingClientRect();
-                if (!rect) return;
-
-                let left = e.clientX - dragOffsetRef.current.x;
-                let top = e.clientY - dragOffsetRef.current.y;
-
-                const maxLeft = window.innerWidth - rect.width - 16;
-                const maxTop = window.innerHeight - rect.height - 16;
-
-                left = Math.max(16, Math.min(left, maxLeft));
-                top = Math.max(16, Math.min(top, maxTop));
-
-                const cx = left + rect.width / 2;
-                const cy = top + rect.height / 2;
-
-                const edgeX = cx > window.innerWidth / 2 ? 'right' : 'left';
-                const edgeY = cy > window.innerHeight / 2 ? 'bottom' : 'top';
-
-                const offsetX = edgeX === 'left' ? left : window.innerWidth - (left + rect.width);
-                const offsetY = edgeY === 'top' ? top : window.innerHeight - (top + rect.height);
-
-                const nextPos = { edgeX, edgeY, offsetX, offsetY };
-                posRef.current = nextPos;
-                setPos(nextPos);
-            });
-        };
-
-        const handleUp = () => {
-            setIsDragging(false);
-            if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
-            rAFRef.current = null;
-
-            localStorage.setItem('spotify-widget-pos-v2', JSON.stringify(posRef.current));
-
-            const totalMovement = totalMovementRef.current;
-            if (totalMovement < 10 && isMinimized) {
-                setIsMinimized(false);
-                localStorage.setItem('spotify-widget-minimized', 'false');
-                preventClickRef.current = true;
-                setTimeout(() => { preventClickRef.current = false; }, 300);
-            } else if (totalMovement >= 10) {
-                preventClickRef.current = true;
-                setTimeout(() => { preventClickRef.current = false; }, 300);
-            }
-        };
-
-        window.addEventListener('pointermove', handleMove, { passive: true });
-        window.addEventListener('pointerup', handleUp);
-        window.addEventListener('pointercancel', handleUp);
-
-        return () => {
-            if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
-            window.removeEventListener('pointermove', handleMove);
-            window.removeEventListener('pointerup', handleUp);
-            window.removeEventListener('pointercancel', handleUp);
-        };
-    }, [isDragging, isMinimized]);
-
-    const toggleMinimize = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const newVal = !isMinimized;
-        setIsMinimized(newVal);
-        localStorage.setItem('spotify-widget-minimized', String(newVal));
-    };
-
-    if (renderState === 'hidden' || !displayData) {
-        return null;
-    }
-
-    const alignmentClasses = `side-${pos.edgeX} side-${pos.edgeY}`;
-
-    const style: React.CSSProperties = {
-        left: pos.edgeX === 'left' ? `${pos.offsetX}px` : 'auto',
-        right: pos.edgeX === 'right' ? `${pos.offsetX}px` : 'auto',
-        top: pos.edgeY === 'top' ? `${pos.offsetY}px` : 'auto',
-        bottom: pos.edgeY === 'bottom' ? `${pos.offsetY}px` : 'auto',
-        touchAction: 'none'
-    };
-
-    return (
-        <div
-            ref={widgetRef}
-            className={`spotify-widget-positioner ${isDragging ? 'dragging' : ''}`}
-            style={style}
-            onPointerDown={handlePointerDown}
-        >
-            <div className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''} ${alignmentClasses}`}>
-
-                {/* Full View */}
-                <div className="spotify-widget-full-view">
-                    <div className="spotify-widget-controls">
-                        <div />
-                        <button className="spotify-widget-minimize action-btn" onClick={toggleMinimize} aria-label="Minimize widget">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                        </button>
-                    </div>
+              {displayData.durationMs && (
+                <div className="spotify-widget-progress-container">
+                  <div className="spotify-widget-progress-bar">
                     <div
-                        className="spotify-widget-container"
-                        draggable="false"
-                    >
-                        <img
-                            src={displayData.albumImageUrl}
-                            alt={displayData.title}
-                            className="spotify-widget-album"
-                            draggable="false"
-                            onDragStart={(e) => e.preventDefault()}
-                        />
-                        <div className="spotify-widget-info">
-                            <div className="spotify-widget-label">listening to</div>
-                            <a
-                                href={displayData.songUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="spotify-widget-title"
-                                title="Listening on Spotify"
-                                onClick={(e) => {
-                                    if (preventClickRef.current) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                            >
-                                {displayData.title}
-                            </a>
-                            <div className="spotify-widget-artist">{displayData.artist}</div>
-
-                            {displayData.durationMs && (
-                                <div className="spotify-widget-progress-container">
-                                    <div className="spotify-widget-progress-bar">
-                                        <div
-                                            className="spotify-widget-progress-fill"
-                                            style={{ width: `${progressPercent}%` }}
-                                        />
-                                    </div>
-                                    <div className="spotify-widget-time">
-                                        <span>{formatTime(currentProgress)}</span>
-                                        <span>{formatTime(displayData.durationMs)}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                      className="spotify-widget-progress-fill"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="spotify-widget-time">
+                    <span>{formatDuration(currentProgress)}</span>
+                    <span>{formatDuration(displayData.durationMs)}</span>
+                  </div>
                 </div>
-
-                {/* Minimized View */}
-                <button
-                    type="button"
-                    className="spotify-widget-min-view"
-                    title="Currently listening to Spotify. Click to expand."
-                    aria-label="Expand currently playing Spotify track"
-                    onClick={() => {
-                        if (preventClickRef.current) return;
-                        setIsMinimized(false);
-                        localStorage.setItem('spotify-widget-minimized', 'false');
-                    }}
-                >
-                    <div className="spotify-widget-container min-container">
-                        <div className="spotify-widget-drag-handle">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--color-accent)">
-                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.45 17.348c-.201.332-.63.438-.962.237-2.637-1.61-5.94-1.976-9.84-.108-.372.178-.813.018-.99-.355-.177-.373-.018-.813.355-.99 4.28-2.052 7.94-1.636 10.865.153.333.203.44.632.237.962zm1.388-3.094c-.255.42-.792.56-1.213.305-3.018-1.85-7.61-2.4-10.74-1.314-.467.162-.97-.087-1.134-.555-.163-.466.088-.97.556-1.133 3.633-1.262 8.73-.637 12.227 1.512.422.256.561.793.305 1.217zm.11-3.237C15.26 8.814 8.868 8.59 5.165 9.714c-.55.166-1.127-.145-1.293-.695-.165-.55.146-1.127.696-1.293 4.267-1.29 11.36-1.023 15.655 1.527.49.29.652.92.36 1.41-.29.492-.92.653-1.41.36z" />
-                            </svg>
-                        </div>
-                    </div>
-                </button>
-
+              )}
             </div>
+          </div>
         </div>
-    );
+
+        <button
+          type="button"
+          className="spotify-widget-min-view"
+          title="Currently listening to Spotify. Click to expand."
+          aria-label="Expand currently playing Spotify track"
+          onClick={expandMinimized}
+        >
+          <div className="spotify-widget-container min-container">
+            <div className="spotify-widget-drag-handle">
+              <SpotifyLogo />
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MinimizeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function SpotifyLogo() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="var(--color-accent)"
+      aria-hidden="true"
+    >
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.45 17.348c-.201.332-.63.438-.962.237-2.637-1.61-5.94-1.976-9.84-.108-.372.178-.813.018-.99-.355-.177-.373-.018-.813.355-.99 4.28-2.052 7.94-1.636 10.865.153.333.203.44.632.237.962zm1.388-3.094c-.255.42-.792.56-1.213.305-3.018-1.85-7.61-2.4-10.74-1.314-.467.162-.97-.087-1.134-.555-.163-.466.088-.97.556-1.133 3.633-1.262 8.73-.637 12.227 1.512.422.256.561.793.305 1.217zm.11-3.237C15.26 8.814 8.868 8.59 5.165 9.714c-.55.166-1.127-.145-1.293-.695-.165-.55.146-1.127.696-1.293 4.267-1.29 11.36-1.023 15.655 1.527.49.29.652.92.36 1.41-.29.492-.92.653-1.41.36z" />
+    </svg>
+  );
 }

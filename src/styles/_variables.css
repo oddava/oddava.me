@@ -36,7 +36,7 @@
 /* --- Site Palette --- */
 :root,
 [data-theme],
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Semantic text roles. All text colors should reference this group. */
   --color-text-primary: #e8e4ee;
   --color-text-secondary: #b7b1c4;
@@ -54,8 +54,16 @@
   --color-surface: color-mix(in srgb, #0b0c0f 96%, #8b5cf6 4%);
   --color-surface-raised: color-mix(in srgb, #121317 94%, #8b5cf6 6%);
   --color-surface-elevated: color-mix(in srgb, #17181d 91%, #8b5cf6 9%);
-  --color-surface-glass: color-mix(in srgb, var(--color-surface-elevated) 84%, transparent);
-  --color-surface-overlay: color-mix(in srgb, var(--color-surface-raised) 95%, transparent);
+  --color-surface-glass: color-mix(
+    in srgb,
+    var(--color-surface-elevated) 84%,
+    transparent
+  );
+  --color-surface-overlay: color-mix(
+    in srgb,
+    var(--color-surface-raised) 95%,
+    transparent
+  );
   --color-accent: var(--color-text-accent);
   --color-accent-soft: var(--color-text-interactive);
   --color-accent-hover: var(--color-text-interactive-hover);

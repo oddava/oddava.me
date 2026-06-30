@@ -7,5 +7,7 @@
 @import './_reset.css';
 @import './_typography.css';
 @import './_layout.css';
-@import './_components.css';
+@import './components/_home.css';
+@import './components/_lists.css';
+@import './components/_prose.css';
 @import './_responsive.css';

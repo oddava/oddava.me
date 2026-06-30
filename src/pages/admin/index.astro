@@ -6,33 +6,46 @@ import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
 const configured = isAdminConfigured();
 
 if (configured && !(await isAdminRequest(Astro.cookies))) {
-  return Astro.redirect(`/admin/login?next=${encodeURIComponent(Astro.url.pathname)}`);
+  return Astro.redirect(
+    `/admin/login?next=${encodeURIComponent(Astro.url.pathname)}`,
+  );
 }
 
 const keystaticHref = '/keystatic';
 ---
+
 <AdminLayout title="Admin" description="Unified admin panel for oddava.me.">
-  {configured ? (
-    <>
-      <header class="admin-header">
-        <div>
-          <p class="admin-kicker">oddava control plane</p>
-          <h1>Unified admin panel</h1>
-          <p>Manage content, moderate community features, and inspect service readiness without leaving one surface.</p>
-        </div>
-        <form method="post" action="/api/admin/logout">
-          <button class="admin-button ghost" type="submit">Sign out</button>
-        </form>
-      </header>
-      <main class="admin-main">
-        <AdminPanel client:load keystaticHref={keystaticHref} />
-      </main>
-    </>
-  ) : (
-    <section class="admin-card admin-login">
-      <p class="admin-kicker">oddava control plane</p>
-      <h1>Admin unavailable</h1>
-      <p class="admin-note">Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` in the environment, then reload this page.</p>
-    </section>
-  )}
+  {
+    configured ? (
+      <>
+        <header class="admin-header">
+          <div>
+            <p class="admin-kicker">oddava control plane</p>
+            <h1>Unified admin panel</h1>
+            <p>
+              Manage content, moderate community features, and inspect service
+              readiness without leaving one surface.
+            </p>
+          </div>
+          <form method="post" action="/api/admin/logout">
+            <button class="admin-button ghost" type="submit">
+              Sign out
+            </button>
+          </form>
+        </header>
+        <main class="admin-main">
+          <AdminPanel client:only="react" keystaticHref={keystaticHref} />
+        </main>
+      </>
+    ) : (
+      <section class="admin-card admin-login">
+        <p class="admin-kicker">oddava control plane</p>
+        <h1>Admin unavailable</h1>
+        <p class="admin-note">
+          Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` in the environment,
+          then reload this page.
+        </p>
+      </section>
+    )
+  }
 </AdminLayout>

@@ -3,6 +3,7 @@ import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import SpotifyWidget from '../components/SpotifyWidget';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER_HANDLE } from '../lib/site';
 
 export interface Props {
   title?: string;
@@ -12,66 +13,72 @@ export interface Props {
 }
 
 const {
-  title = 'oddava',
-  description = 'A quiet corner of the internet.',
+  title = SITE_NAME,
+  description = SITE_DESCRIPTION,
   image = '/favicon.svg',
-  type = 'website'
+  type = 'website',
 } = Astro.props;
 
-const pageTitle = title === 'oddava' ? title : `${title} · oddava`;
-const canonicalUrl = Astro.url;
-const socialImage = new URL(image, Astro.url);
+const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
+const canonicalUrl = Astro.url.toString();
+const socialImage = new URL(image, Astro.url).toString();
 ---
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="en" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content={description} />
-  <title>{pageTitle}</title>
-  <link rel="canonical" href={canonicalUrl} />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{pageTitle}</title>
+    <link rel="canonical" href={canonicalUrl} />
 
-  <!-- Open Graph -->
-  <meta property="og:title" content={pageTitle} />
-  <meta property="og:description" content={description} />
-  <meta property="og:type" content={type} />
-  <meta property="og:url" content={canonicalUrl} />
-  <meta property="og:image" content={socialImage} />
+    <!-- Open Graph -->
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={socialImage} />
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@oddava" />
-  <meta name="twitter:title" content={pageTitle} />
-  <meta name="twitter:description" content={description} />
-  <meta name="twitter:image" content={socialImage} />
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content={SITE_TWITTER_HANDLE} />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
 
-  <link rel="alternate" type="application/rss+xml" title="oddava writing" href="/rss.xml" />
-  <link rel="sitemap" href="/sitemap-index.xml" />
-  <slot name="head" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="oddava writing"
+      href="/rss.xml"
+    />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <slot name="head" />
 
-  {/* Keep the site on its intended dark palette before paint. */}
-  <script is:inline>
-    (function() {
-      document.documentElement.setAttribute('data-theme', 'dark');
+    {/* Keep the site on its intended dark palette before paint. */}
+    <script is:inline>
+      (function () {
+        document.documentElement.setAttribute('data-theme', 'dark');
 
-      try {
-        localStorage.removeItem('theme');
-      } catch {
-        /* localStorage can be unavailable in strict browser modes. */
-      }
-    })();
-  </script>
-</head>
-<body>
-  <div class="page">
-    <Nav />
+        try {
+          localStorage.removeItem('theme');
+        } catch {
+          /* localStorage can be unavailable in strict browser modes. */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="page">
+      <Nav />
 
-    <main>
-      <slot />
-    </main>
+      <main>
+        <slot />
+      </main>
 
-    <Footer />
-  </div>
-  <SpotifyWidget client:idle={{ timeout: 2000 }} />
-</body>
+      <Footer />
+    </div>
+    <SpotifyWidget client:only="react" />
+  </body>
 </html>

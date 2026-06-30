@@ -1,12 +1,11 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
-
-const SITE = 'https://oddava.me';
+import { siteUrl } from '../lib/site';
 
 function makeEntry(path: string, lastModified?: string): string {
   return `
   <url>
-    <loc>${SITE}${path}</loc>
+    <loc>${siteUrl(path)}</loc>
     ${lastModified ? `<lastmod>${new Date(lastModified).toISOString()}</lastmod>` : ''}
   </url>`;
 }
@@ -25,8 +24,12 @@ export const GET: APIRoute = async () => {
     makeEntry('/anime'),
   ];
 
-  const postEntries = posts.map((post) => makeEntry(`/blog/${post.id}`, post.data.date));
-  const projectEntries = projects.map((project) => makeEntry(`/projects/${project.id}`));
+  const postEntries = posts.map((post) =>
+    makeEntry(`/blog/${post.id}`, post.data.date),
+  );
+  const projectEntries = projects.map((project) =>
+    makeEntry(`/projects/${project.id}`),
+  );
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getPublishedPosts } from '../lib/content';
+import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
 
 function escapeXml(value: string): string {
   return value
@@ -12,11 +13,10 @@ function escapeXml(value: string): string {
 
 export const GET: APIRoute = async () => {
   const posts = await getPublishedPosts();
-  const site = 'https://oddava.me';
 
   const items = posts
     .map((post) => {
-      const url = `${site}/blog/${post.id}`;
+      const url = siteUrl(`/blog/${post.id}`);
       const description = post.data.description ?? '';
       return `
         <item>
@@ -32,9 +32,9 @@ export const GET: APIRoute = async () => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>oddava writing</title>
-    <link>${site}</link>
-    <description>Writing from oddava.</description>
+    <title>${SITE_NAME} writing</title>
+    <link>${SITE_URL}</link>
+    <description>Writing from ${SITE_NAME}.</description>
     ${items}
   </channel>
 </rss>`;

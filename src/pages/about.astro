@@ -3,34 +3,46 @@ export const prerender = true;
 import Base from '@layouts/Base.astro';
 import { Guestbook } from '../components/Guestbook';
 ---
+
 <Base title="about" description="Who is Oddava">
   <div class="about-content">
     <p>
-      i'm oddava, a developer who spends most of his time building things, learning new stuff, and occasionally falling down internet rabbit holes.
+      i'm oddava, a developer who spends most of his time building things,
+      learning new stuff, and occasionally falling down internet rabbit holes.
     </p>
 
     <p>
-      i'm interested in software, anime, books, games, and the strange ways technology changes how people live and create. lately i've been exploring backend development, ai, and whatever side project manages to keep my attention for more than a week.
+      i'm interested in software, anime, books, games, and the strange ways
+      technology changes how people live and create. lately i've been exploring
+      backend development, ai, and whatever side project manages to keep my
+      attention for more than a week.
     </p>
 
     <p>
-      this website is a collection of things i find interesting: projects i've built, notes i've written, and thoughts worth keeping around.
+      this website is a collection of things i find interesting: projects i've
+      built, notes i've written, and thoughts worth keeping around.
     </p>
 
     <p>
-      i don't claim to know everything. i'm mostly figuring things out as i go, documenting the process, and trying to leave behind a few cool things on the internet.
+      i don't claim to know everything. i'm mostly figuring things out as i go,
+      documenting the process, and trying to leave behind a few cool things on
+      the internet.
     </p>
 
-    <p>
-      if any of that sounds interesting, feel free to stick around.
-    </p>
+    <p>if any of that sounds interesting, feel free to stick around.</p>
 
     <p>
-      you can find me on <a href="https://x.com/oddava" target="_blank" rel="noopener">twitter</a>,
-      browse the code on <a href="https://github.com/oddava" target="_blank" rel="noopener">github</a>,
-      or reach me at <a href="mailto:hello@oddava.me">hello@oddava.me</a>.
+      you can find me on <a
+        href="https://x.com/oddava"
+        target="_blank"
+        rel="noopener">twitter</a
+      >, browse the code on <a
+        href="https://github.com/oddava"
+        target="_blank"
+        rel="noopener">github</a
+      >, or reach me at <a href="mailto:hello@oddava.me">hello@oddava.me</a>.
     </p>
   </div>
 
-  <Guestbook client:visible />
+  <Guestbook client:only="react" />
 </Base>
