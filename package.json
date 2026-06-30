@@ -48,7 +48,11 @@
     "wrangler": "^4.95.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"],
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ],
     "overrides": {
       "@babel/core": "7.29.7",
       "esbuild": "0.28.1",

@@ -28,6 +28,5 @@ export function getCachedSpotifyState(): SpotifyNowPlaying | null {
 export function setCachedSpotifyState(data: SpotifyNowPlaying): void {
   cachedData = data;
   cacheExpiration =
-    Date.now() +
-    (data.isPlaying ? PLAYING_CACHE_TTL_MS : IDLE_CACHE_TTL_MS);
+    Date.now() + (data.isPlaying ? PLAYING_CACHE_TTL_MS : IDLE_CACHE_TTL_MS);
 }

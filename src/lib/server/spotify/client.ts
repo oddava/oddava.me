@@ -100,7 +100,9 @@ export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying> {
   }
 
   if (!response.ok) {
-    throw new Error(`Spotify now playing request failed with ${response.status}.`);
+    throw new Error(
+      `Spotify now playing request failed with ${response.status}.`,
+    );
   }
 
   const text = await response.text();

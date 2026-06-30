@@ -20,7 +20,10 @@ export function useNowPlaying() {
       const next = await fetchNowPlaying();
       const previous = dataRef.current;
 
-      if (hasTrackChanged(previous, next) || next.isPlaying !== previous.isPlaying) {
+      if (
+        hasTrackChanged(previous, next) ||
+        next.isPlaying !== previous.isPlaying
+      ) {
         setCurrentProgress(next.progressMs ?? 0);
       } else if (typeof next.progressMs === 'number') {
         setCurrentProgress(next.progressMs);
