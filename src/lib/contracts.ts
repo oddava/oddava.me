@@ -17,6 +17,11 @@ export interface GuestbookApiResponse {
   retryAfterSeconds?: number;
 }
 
+export interface SpotifyIntegrations {
+  spotify: boolean;
+  lanyard: boolean;
+}
+
 export interface SpotifyNowPlaying {
   isPlaying: boolean;
   title?: string;
@@ -27,4 +32,6 @@ export interface SpotifyNowPlaying {
   progressMs?: number;
   fromFallback?: boolean;
   error?: string;
+  source?: 'spotify' | 'lanyard';
+  integrations?: SpotifyIntegrations;
 }

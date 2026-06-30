@@ -11,7 +11,7 @@
 3. Start local Redis:
    - `docker compose -f docker-compose.local.yml up -d redis`
 4. Start app:
-   - `npm run dev`
+   - `pnpm run dev`
 
 The app uses local Redis and prefixes keys with `dev:` to isolate local data.
 

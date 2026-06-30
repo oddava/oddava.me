@@ -1,25 +1,34 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SpotifyNowPlaying } from '../../lib/contracts';
+import { getNowPlayingPollInterval, hasTrackChanged } from './polling';
 import { fetchNowPlaying } from './spotifyApi';
 
-const POLL_INTERVAL_MS = 30000;
 const PROGRESS_INTERVAL_MS = 1000;
 
 export function useNowPlaying() {
   const [data, setData] = useState<SpotifyNowPlaying>({ isPlaying: false });
   const [loading, setLoading] = useState(true);
   const [currentProgress, setCurrentProgress] = useState(0);
+  const dataRef = useRef(data);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetchNowPlaying();
-      setData(next);
-      if (typeof next.progressMs === 'number') {
+      const previous = dataRef.current;
+
+      if (hasTrackChanged(previous, next) || next.isPlaying !== previous.isPlaying) {
+        setCurrentProgress(next.progressMs ?? 0);
+      } else if (typeof next.progressMs === 'number') {
         setCurrentProgress(next.progressMs);
       }
-    } catch (error) {
-      console.error(error);
-      setData({ isPlaying: false });
+
+      setData(next);
+    } catch {
+      setData((previous) => ({ ...previous, isPlaying: false }));
     } finally {
       setLoading(false);
     }
@@ -32,7 +41,10 @@ export function useNowPlaying() {
     const poll = async () => {
       if (!active) return;
       if (!document.hidden) await refresh();
-      if (active) timeout = setTimeout(poll, POLL_INTERVAL_MS);
+      if (!active) return;
+
+      const interval = getNowPlayingPollInterval(dataRef.current);
+      timeout = setTimeout(poll, interval);
     };
 
     const handleVisibilityChange = () => {
@@ -61,7 +73,7 @@ export function useNowPlaying() {
     }, PROGRESS_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [data.isPlaying, data.durationMs]);
+  }, [data.isPlaying, data.durationMs, data.title]);
 
   return { currentProgress, data, loading };
 }

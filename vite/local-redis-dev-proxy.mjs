@@ -15,6 +15,7 @@ export function localRedisDevProxy() {
     name: 'local-redis-dev-proxy',
     configureServer(viteServer) {
       if (viteServer.config.command !== 'serve') return;
+      if (viteServer.config.mode !== 'development') return;
 
       const proxyPort = Number(
         process.env.LOCAL_REDIS_PROXY_PORT ?? DEFAULT_PROXY_PORT,
@@ -70,6 +71,17 @@ export function localRedisDevProxy() {
             );
           }
         });
+      });
+
+      server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+          console.warn(
+            `[local-redis] Port ${proxyPort} is busy; set LOCAL_REDIS_PROXY_PORT to use another port.`,
+          );
+          return;
+        }
+
+        throw error;
       });
 
       server.listen(proxyPort, '127.0.0.1', () => {

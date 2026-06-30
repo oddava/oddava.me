@@ -81,6 +81,7 @@ function devCloudflareWorkersEnv() {
 
 export default defineConfig({
   integrations: [react(), mdx()],
+  compressHTML: true,
   devToolbar: { enabled: false },
   prefetch: {
     defaultStrategy: 'hover',

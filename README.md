@@ -8,14 +8,14 @@ and a moderated guestbook.
 ## Requirements
 
 - Node.js `>=22.12.0 <25` (`.nvmrc` pins Node 22)
-- npm `>=10`
+- pnpm `>=10` (Corepack: `corepack enable`)
 - Docker, only when running local Redis-backed features
 
 ## Local Setup
 
 1. Install dependencies:
    ```sh
-   npm ci
+   pnpm install --frozen-lockfile
    ```
 2. Copy `.env.example` to `.env` and fill local values.
 3. Start Redis for guestbook, admin metrics, and rate-limit flows:
@@ -24,7 +24,7 @@ and a moderated guestbook.
    ```
 4. Start the app:
    ```sh
-   npm run dev
+   pnpm run dev
    ```
 
 Local development defaults to `APP_ENV=development`, `REDIS_MODE=local`, and
@@ -32,13 +32,13 @@ the `dev:` Redis namespace so shared data stays isolated.
 
 ## Useful Commands
 
-- `npm run dev` - start Astro in development mode
-- `npm run check` - run Astro type and content diagnostics
-- `npm test` - run Vitest tests
-- `npm run build` - build the Cloudflare Worker output
-- `npm run verify` - run formatting, checks, tests, and production build
-- `npm run format:check` - check formatting for source, docs, config, and tests
-- `npm run spotify:token` - helper for generating a Spotify refresh token
+- `pnpm run dev` - start Astro in development mode
+- `pnpm run check` - run Astro type and content diagnostics
+- `pnpm test` - run Vitest tests
+- `pnpm run build` - build the Cloudflare Worker output
+- `pnpm run verify` - run formatting, checks, tests, and production build
+- `pnpm run format:check` - check formatting for source, docs, config, and tests
+- `pnpm run spotify:token` - helper for generating a Spotify refresh token
 
 ## Project Layout
 
@@ -66,5 +66,5 @@ inside the admin dashboard for content editing.
 
 Production targets Cloudflare Workers via `@astrojs/cloudflare` and
 `wrangler.jsonc`. Keep production secrets in Cloudflare variables/secrets; do
-not commit production env files. Run `npm run verify` before deploying with
-`npm run deploy`.
+not commit production env files. Run `pnpm run verify` before deploying with
+`pnpm run deploy`.

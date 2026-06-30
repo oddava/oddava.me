@@ -21,7 +21,13 @@ export function useSpotifyRenderState(
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
     if (data.isPlaying) {
-      setDisplayData(data);
+      setDisplayData((current) =>
+        current?.title === data.title &&
+        current?.songUrl === data.songUrl &&
+        current?.artist === data.artist
+          ? { ...current, ...data }
+          : data,
+      );
       setRenderState((previous) => {
         if (previous === 'hidden' || previous === 'exiting') {
           timeout = setTimeout(() => setRenderState('active'), ENTER_DELAY_MS);
