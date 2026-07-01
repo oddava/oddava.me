@@ -33,3 +33,5 @@ agent-tools/
 
 # vscode setting folder
 .vscode/
+
+AGENTS.md

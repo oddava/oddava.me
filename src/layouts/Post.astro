@@ -1,11 +1,7 @@
 ---
 import Base from './Base.astro';
 import '../styles/components/_prose.css';
-import {
-  formatPostDate,
-  formatPostStats,
-  type PostStats,
-} from '../lib/content';
+import { formatPostDate } from '../lib/content';
 import { SITE_AUTHOR_NAME, siteUrl } from '../lib/site';
 
 export interface Props {
@@ -16,10 +12,9 @@ export interface Props {
     description?: string;
     image?: string;
   };
-  stats: PostStats;
 }
 
-const { frontmatter, stats } = Astro.props;
+const { frontmatter } = Astro.props;
 const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
@@ -75,8 +70,7 @@ const serializedArticleSchema = JSON.stringify(articleSchema)
             </>
           )
         }
-        <span aria-hidden="true"> / </span>
-        <span>{formatPostStats(stats)}</span>
+
       </div>
     </header>
 
