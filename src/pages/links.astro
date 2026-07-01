@@ -20,7 +20,12 @@ const themeVars = [
   .join('; ');
 ---
 
-<Base title="Links" description={`Links and socials for ${profile.name}`} hideNav hideFooter>
+<Base
+  title="Links"
+  description={`Links and socials for ${profile.name}`}
+  hideNav
+  hideFooter
+>
   <div class="links-page" style={themeVars}>
     <section class="links-profile">
       <img
@@ -46,7 +51,9 @@ const themeVars = [
                 class="links-item__link"
                 target={isExternal ? '_blank' : undefined}
                 rel={isExternal ? 'noopener noreferrer' : undefined}
-                aria-label={isExternal ? `${link.title} (opens in new tab)` : undefined}
+                aria-label={
+                  isExternal ? `${link.title} (opens in new tab)` : undefined
+                }
               >
                 {theme.showIcons !== false && link.icon && (
                   <span class="links-item__icon">
