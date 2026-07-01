@@ -2,21 +2,9 @@
 /**
  * Site navigation bar.
  */
+import { getPublicNavigationRoutes } from '../lib/site-routes';
 
-type Route = {
-  href: string;
-  label: string;
-  isHome: boolean;
-};
-
-const routes: Route[] = [
-  { href: '/', label: 'oddava', isHome: true },
-  { href: '/blog', label: 'writing', isHome: false },
-  { href: '/projects', label: 'projects', isHome: false },
-  { href: '/likes', label: 'likes', isHome: false },
-  { href: '/about', label: 'about', isHome: false },
-];
-
+const routes = getPublicNavigationRoutes();
 const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
 
 function isActiveRoute(route: string): boolean {

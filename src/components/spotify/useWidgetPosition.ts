@@ -1,58 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-
-type HorizontalEdge = 'left' | 'right';
-type VerticalEdge = 'top' | 'bottom';
-
-interface WidgetPosition {
-  edgeX: HorizontalEdge;
-  edgeY: VerticalEdge;
-  offsetX: number;
-  offsetY: number;
-}
+import {
+  calculateDraggedWidgetPosition,
+  clampWidgetPosition,
+  DEFAULT_WIDGET_POSITION,
+  isWidgetPosition,
+  POSITION_STORAGE_KEY,
+} from './widgetPosition';
 
 interface UseWidgetPositionOptions {
   isMinimized: boolean;
   onExpandFromDrag: () => void;
 }
 
-const POSITION_STORAGE_KEY = 'spotify-widget-pos-v2';
-const DEFAULT_POSITION: WidgetPosition = {
-  edgeX: 'left',
-  edgeY: 'bottom',
-  offsetX: 32,
-  offsetY: 32,
-};
-const VIEWPORT_PADDING = 16;
-const OFFSCREEN_BUFFER = 60;
 const CLICK_MOVEMENT_THRESHOLD = 10;
 const CLICK_SUPPRESSION_MS = 300;
-
-function isWidgetPosition(value: unknown): value is WidgetPosition {
-  const position = value as WidgetPosition;
-  return (
-    position?.edgeX &&
-    position?.edgeY &&
-    (position.edgeX === 'left' || position.edgeX === 'right') &&
-    (position.edgeY === 'top' || position.edgeY === 'bottom') &&
-    typeof position.offsetX === 'number' &&
-    typeof position.offsetY === 'number'
-  );
-}
-
-function clampPosition(position: WidgetPosition): WidgetPosition {
-  return {
-    ...position,
-    offsetX:
-      position.offsetX > window.innerWidth - OFFSCREEN_BUFFER
-        ? VIEWPORT_PADDING
-        : position.offsetX,
-    offsetY:
-      position.offsetY > window.innerHeight - OFFSCREEN_BUFFER
-        ? VIEWPORT_PADDING
-        : position.offsetY,
-  };
-}
 
 function suppressClicks(preventClickRef: { current: boolean }) {
   preventClickRef.current = true;
@@ -66,7 +28,7 @@ export function useWidgetPosition({
   onExpandFromDrag,
 }: UseWidgetPositionOptions) {
   const widgetRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<WidgetPosition>(DEFAULT_POSITION);
+  const [position, setPosition] = useState(DEFAULT_WIDGET_POSITION);
   const [isDragging, setIsDragging] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const initialPointerRef = useRef({ x: 0, y: 0 });
@@ -85,7 +47,10 @@ export function useWidgetPosition({
       try {
         const parsed: unknown = JSON.parse(savedPosition);
         if (isWidgetPosition(parsed)) {
-          const next = clampPosition(parsed);
+          const next = clampWidgetPosition(parsed, {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          });
           setPosition(next);
           positionRef.current = next;
         }
@@ -93,12 +58,20 @@ export function useWidgetPosition({
         /* Ignore invalid localStorage data. */
       }
     } else {
-      setPosition((previous) => clampPosition(previous));
+      setPosition((previous) =>
+        clampWidgetPosition(previous, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }),
+      );
     }
 
     const handleResize = () => {
       setPosition((previous) => {
-        const next = clampPosition(previous);
+        const next = clampWidgetPosition(previous, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        });
         positionRef.current = next;
         return next;
       });
@@ -145,30 +118,22 @@ export function useWidgetPosition({
         const rect = widgetRef.current?.getBoundingClientRect();
         if (!rect) return;
 
-        const maxLeft = window.innerWidth - rect.width - VIEWPORT_PADDING;
-        const maxTop = window.innerHeight - rect.height - VIEWPORT_PADDING;
-        const left = Math.max(
-          VIEWPORT_PADDING,
-          Math.min(event.clientX - dragOffsetRef.current.x, maxLeft),
+        const next = calculateDraggedWidgetPosition(
+          {
+            clientX: event.clientX,
+            clientY: event.clientY,
+            dragOffsetX: dragOffsetRef.current.x,
+            dragOffsetY: dragOffsetRef.current.y,
+          },
+          {
+            width: rect.width,
+            height: rect.height,
+          },
+          {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
         );
-        const top = Math.max(
-          VIEWPORT_PADDING,
-          Math.min(event.clientY - dragOffsetRef.current.y, maxTop),
-        );
-        const centerX = left + rect.width / 2;
-        const centerY = top + rect.height / 2;
-        const edgeX: HorizontalEdge =
-          centerX > window.innerWidth / 2 ? 'right' : 'left';
-        const edgeY: VerticalEdge =
-          centerY > window.innerHeight / 2 ? 'bottom' : 'top';
-        const next: WidgetPosition = {
-          edgeX,
-          edgeY,
-          offsetX:
-            edgeX === 'left' ? left : window.innerWidth - (left + rect.width),
-          offsetY:
-            edgeY === 'top' ? top : window.innerHeight - (top + rect.height),
-        };
 
         positionRef.current = next;
         setPosition(next);
