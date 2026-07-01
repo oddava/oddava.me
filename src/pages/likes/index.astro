@@ -1,0 +1,123 @@
+---
+export const prerender = true;
+import Base from '../../layouts/Base.astro';
+import '../../styles/components/_home.css';
+import { getAnimeFavorites, type AnimeFavoriteEntry } from '../../lib/content';
+
+let animeList: AnimeFavoriteEntry[] = [];
+let animeAvailable = true;
+
+try {
+  animeList = await getAnimeFavorites();
+} catch {
+  animeAvailable = false;
+}
+---
+
+<Base title="likes" description="Things I like.">
+  <h2 class="likes-heading">anime</h2>
+
+  <section class="likes-section">
+    {
+      animeAvailable && (
+        <div class="anime-grid">
+          {animeList.map((entry) => (
+            <a
+              href={
+                entry.anime.url ||
+                `https://anilist.co/anime/${entry.anime.slug}`
+              }
+              class="anime-card"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src={entry.anime.cover_image || entry.anime.cover_image_small}
+                alt={entry.anime.title}
+                class="anime-card__cover"
+                width="95"
+                height="125"
+                loading="lazy"
+              />
+              <span class="anime-card__tooltip">{entry.anime.title}</span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      animeAvailable && animeList.length === 0 && (
+        <p class="empty-state">Nothing here yet.</p>
+      )
+    }
+
+    {
+      !animeAvailable && (
+        <p class="empty-state">Favorites are offline right now.</p>
+      )
+    }
+  </section>
+
+  <style is:global>
+    .likes-section {
+      background: var(--color-surface-raised);
+      border-radius: 12px;
+      padding: 0.75rem var(--space-sm);
+    }
+
+    .likes-heading {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: var(--color-text-secondary);
+      text-transform: lowercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+      margin-left: 0.75rem;
+    }
+
+    .anime-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .anime-card {
+      position: relative;
+      text-decoration: none;
+      font-size: 0;
+    }
+
+    .anime-card__cover {
+      display: block;
+      width: 95px;
+      height: 125px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: var(--color-surface-raised);
+    }
+
+    .anime-card__tooltip {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.3rem 0.6rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      background: var(--color-surface-elevated);
+      border-radius: 6px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .anime-card:hover .anime-card__tooltip {
+      opacity: 1;
+    }
+  </style>
+</Base>
