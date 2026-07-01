@@ -12,6 +12,12 @@ export type AnimeFavoriteEntry = {
   };
 };
 
+export type AnimeFavoriteCard = {
+  coverImage: string;
+  href: string;
+  title: string;
+};
+
 type AniListFavoriteNode = {
   id: number;
   siteUrl?: string | null;
@@ -167,4 +173,19 @@ export async function getAnimeFavorites(): Promise<AnimeFavoriteEntry[]> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function toAnimeFavoriteCards(
+  entries: AnimeFavoriteEntry[],
+): AnimeFavoriteCard[] {
+  return entries.flatMap(({ anime }) => {
+    const coverImage = anime.cover_image || anime.cover_image_small;
+    if (!coverImage) return [];
+
+    return {
+      coverImage,
+      href: anime.url || `https://anilist.co/anime/${anime.slug}`,
+      title: anime.title,
+    };
+  });
 }

@@ -3,6 +3,7 @@ export const prerender = true;
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { siteUrl } from '../lib/site';
+import { getStaticSitemapPaths } from '../lib/site-routes';
 
 function makeEntry(path: string, lastModified?: string): string {
   return `
@@ -18,14 +19,7 @@ export const GET: APIRoute = async () => {
     getCollection('projects'),
   ]);
 
-  const staticEntries = [
-    makeEntry('/'),
-    makeEntry('/about'),
-    makeEntry('/blog'),
-    makeEntry('/projects'),
-    makeEntry('/likes'),
-    makeEntry('/links'),
-  ];
+  const staticEntries = getStaticSitemapPaths().map((path) => makeEntry(path));
 
   const postEntries = posts.map((post) =>
     makeEntry(`/blog/${post.id}`, post.data.date),

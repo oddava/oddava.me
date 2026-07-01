@@ -1,0 +1,98 @@
+.card-comparison {
+  --comparison-gap: 1.25rem;
+  --comparison-card-height: clamp(20rem, 48vw, 32rem);
+  --comparison-card-aspect: 3 / 5;
+  margin: 1.5em 0;
+}
+
+.card-comparison__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--comparison-gap);
+}
+
+.card-comparison__item {
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.card-comparison__media {
+  width: 100%;
+  height: var(--comparison-item-height, var(--comparison-card-height));
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  display: grid;
+  place-items: var(--comparison-item-place, start center);
+}
+
+@supports (aspect-ratio: 1 / 1) {
+  .card-comparison__media {
+    height: auto;
+    aspect-ratio: var(--comparison-item-aspect, var(--comparison-card-aspect));
+    max-height: var(--comparison-item-height, var(--comparison-card-height));
+  }
+}
+
+.card-comparison__media img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: var(--comparison-item-fit, contain);
+  object-position: var(--comparison-item-position, top center);
+}
+
+.card-comparison__item[data-upscale='true'] .card-comparison__media img {
+  width: 100%;
+  height: 100%;
+}
+
+.card-comparison__item[data-fit='cover'] .card-comparison__media img,
+.card-comparison__item[data-fit='fill'] .card-comparison__media img {
+  width: 100%;
+  height: 100%;
+}
+
+.card-comparison__item[data-fit='contain'][data-upscale='false']
+  .card-comparison__media,
+.card-comparison__item[data-fit='scale-down'][data-upscale='false']
+  .card-comparison__media {
+  height: auto;
+  max-height: none;
+  aspect-ratio: auto;
+  background: transparent;
+  overflow: visible;
+  display: block;
+}
+
+.card-comparison__item[data-fit='contain'][data-upscale='false']
+  .card-comparison__media
+  img,
+.card-comparison__item[data-fit='scale-down'][data-upscale='false']
+  .card-comparison__media
+  img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+}
+
+.card-comparison__caption {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .card-comparison__grid {
+    grid-template-columns: 1fr;
+  }
+}
