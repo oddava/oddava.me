@@ -24,6 +24,7 @@ export const GET: APIRoute = async () => {
     makeEntry('/blog'),
     makeEntry('/projects'),
     makeEntry('/anime'),
+    makeEntry('/links'),
   ];
 
   const postEntries = posts.map((post) =>

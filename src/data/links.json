@@ -1,0 +1,23 @@
+{
+  "profile": {
+    "name": "oddava",
+    "bio": "my links",
+    "avatar": "/images/twt-pfp.jpg"
+  },
+  "links": [
+    { "title": "Blog", "url": "/blog", "icon": "pen" },
+    { "title": "GitHub", "url": "https://github.com", "icon": "github" },
+    { "title": "Twitter", "url": "https://x.com", "icon": "twitter" },
+    { "title": "Email", "url": "mailto:hello@oddava.me", "icon": "mail" }
+  ],
+  "theme": {
+    "accentColor": "#fff",
+    "bgColor": "#0a0a0a",
+    "cardBg": "#141414",
+    "cardBorder": "rgba(212, 168, 67, 0.15)",
+    "borderRadius": "14px",
+    "fontFamily": "",
+    "showIcons": true,
+    "layout": "vertical"
+  }
+}

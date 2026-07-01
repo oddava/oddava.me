@@ -1,0 +1,60 @@
+---
+export const prerender = true;
+
+import Base from '../layouts/Base.astro';
+import LinkIcon from '../components/LinkIcon.astro';
+import '../styles/components/_links.css';
+import linksData from '../data/links.json';
+
+const { profile, links, theme } = linksData;
+
+const themeVars = [
+  theme.accentColor && `--links-accent: ${theme.accentColor}`,
+  theme.bgColor && `--links-bg: ${theme.bgColor}`,
+  theme.cardBg && `--links-card-bg: ${theme.cardBg}`,
+  theme.cardBorder && `--links-card-border: ${theme.cardBorder}`,
+  theme.borderRadius && `--links-radius: ${theme.borderRadius}`,
+  theme.fontFamily && `--links-font: ${theme.fontFamily}`,
+]
+  .filter(Boolean)
+  .join('; ');
+---
+
+<Base title="Links" description={`Links and socials for ${profile.name}`} hideNav hideFooter>
+  <div class="links-page" style={themeVars}>
+    <section class="links-profile">
+      <img
+        src={profile.avatar}
+        alt={`${profile.name} avatar`}
+        class="links-profile__avatar"
+        width="96"
+        height="96"
+        loading="eager"
+      />
+      <h1 class="links-profile__name">{profile.name}</h1>
+      <p class="links-profile__bio">{profile.bio}</p>
+    </section>
+
+    <ul class="links-list">
+      {
+        links.map((link) => (
+          <li class="links-item">
+            <a
+              href={link.url}
+              class="links-item__link"
+              target={link.url.startsWith('http') ? '_blank' : undefined}
+              rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+            >
+              {theme.showIcons !== false && link.icon && (
+                <span class="links-item__icon">
+                  <LinkIcon name={link.icon} />
+                </span>
+              )}
+              <span>{link.title}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>

@@ -1,0 +1,149 @@
+/* ===================================================
+   LINKS PAGE — Minimal link hub
+   =================================================== */
+
+/* Full-page reset — overrides .page wrapper and body defaults */
+html, body {
+  overflow: hidden !important;
+  height: 100dvh !important;
+  background: var(--links-bg, #0a0a0a) !important;
+}
+
+.page {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: unset !important;
+  height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+.page > main {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.page > main .links-page {
+  min-height: unset;
+}
+
+h1 {
+  margin-bottom: 0 !important;
+}
+
+.links-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  padding: var(--page-padding);
+  font-family: var(--links-font, var(--font-body));
+  background: var(--links-bg, #0a0a0a);
+  /* Theme overrides via inline style on wrapper */
+  --links-accent: var(--color-text-interactive);
+  --links-bg: #0a0a0a;
+  --links-card-bg: var(--color-surface-raised);
+  --links-card-border: var(--color-rule);
+  --links-radius: 14px;
+}
+
+/* --- Profile --- */
+
+.links-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.links-profile__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--links-card-border);
+  background: var(--links-card-bg);
+}
+
+.links-profile__name {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--leading-tight);
+}
+
+.links-profile__bio {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--leading-body);
+}
+
+/* --- Links list --- */
+
+.links-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 22rem;
+}
+
+/* --- Individual link --- */
+
+.links-item {
+  display: block;
+}
+
+.links-item__link {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: var(--links-card-bg);
+  border: 1px solid var(--links-card-border);
+  border-radius: var(--links-radius);
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.15s ease;
+}
+
+.links-item__link:hover {
+  background: color-mix(in srgb, var(--links-card-bg) 92%, #666);
+  color: var(--color-text-primary);
+}
+
+/* Icon inside link */
+
+.links-item__icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  color: var(--links-accent);
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 480px) {
+  .links-profile__avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  .links-list {
+    max-width: 100%;
+  }
+}
