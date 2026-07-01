@@ -291,7 +291,12 @@ const socialImage = new URL(image, Astro.url).toString();
     <script>
       if (import.meta.env.DEV) {
         (function () {
-          function log(msg, ms) {
+          type LayoutShiftEntry = PerformanceEntry & {
+            hadRecentInput: boolean;
+            value: number;
+          };
+
+          function log(msg: string, ms: number) {
             console.log(
               '%c' + msg + '%c ' + ms + 'ms',
               'color:#a78bfa;font-weight:bold',
@@ -300,7 +305,8 @@ const socialImage = new URL(image, Astro.url).toString();
           }
 
           window.addEventListener('load', function () {
-            var p = performance.getEntriesByType('navigation')[0];
+            var p = performance.getEntriesByType('navigation')[0] as
+              PerformanceNavigationTiming | undefined;
             var paint = performance.getEntriesByType('paint');
 
             if (p) {
@@ -337,7 +343,8 @@ const socialImage = new URL(image, Astro.url).toString();
             try {
               new PerformanceObserver(function (o) {
                 o.getEntries().forEach(function (e) {
-                  if (!e.hadRecentInput) cls += e.value;
+                  var shift = e as LayoutShiftEntry;
+                  if (!shift.hadRecentInput) cls += shift.value;
                 });
                 console.log(
                   '%cCLS' + '%c ' + cls.toFixed(4),
@@ -347,7 +354,9 @@ const socialImage = new URL(image, Astro.url).toString();
               }).observe({ type: 'layout-shift', buffered: true });
             } catch {}
 
-            var resources = performance.getEntriesByType('resource');
+            var resources = performance.getEntriesByType(
+              'resource',
+            ) as PerformanceResourceTiming[];
             var cssCount = 0,
               fontCount = 0,
               jsCount = 0;
