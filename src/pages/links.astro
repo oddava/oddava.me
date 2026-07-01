@@ -37,23 +37,27 @@ const themeVars = [
 
     <ul class="links-list">
       {
-        links.map((link) => (
-          <li class="links-item">
-            <a
-              href={link.url}
-              class="links-item__link"
-              target={link.url.startsWith('http') ? '_blank' : undefined}
-              rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
-            >
-              {theme.showIcons !== false && link.icon && (
-                <span class="links-item__icon">
-                  <LinkIcon name={link.icon} />
-                </span>
-              )}
-              <span>{link.title}</span>
-            </a>
-          </li>
-        ))
+        links.map((link) => {
+          const isExternal = link.url.startsWith('http');
+          return (
+            <li class="links-item">
+              <a
+                href={link.url}
+                class="links-item__link"
+                target={isExternal ? '_blank' : undefined}
+                rel={isExternal ? 'noopener noreferrer' : undefined}
+                aria-label={isExternal ? `${link.title} (opens in new tab)` : undefined}
+              >
+                {theme.showIcons !== false && link.icon && (
+                  <span class="links-item__icon">
+                    <LinkIcon name={link.icon} />
+                  </span>
+                )}
+                <span>{link.title}</span>
+              </a>
+            </li>
+          );
+        })
       }
     </ul>
   </div>
