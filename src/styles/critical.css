@@ -1,0 +1,181 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'M PLUS Rounded 1c';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/m-plus-rounded-1c-latin-400-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'M PLUS Rounded 1c';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/m-plus-rounded-1c-latin-500-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'M PLUS Rounded 1c';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(/fonts/m-plus-rounded-1c-latin-700-normal.woff2) format('woff2');
+}
+
+:root {
+  --font-body: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --text-sm: 0.875rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --leading-body: 1.75;
+  --leading-tight: 1.3;
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
+  --max-width: 38rem;
+  --max-width-wide: 70rem;
+  --page-padding: 1.5rem;
+}
+
+:root,
+[data-theme],
+[data-theme='dark'] {
+  --color-text-primary: #e8e4ee;
+  --color-text-secondary: #b7b1c4;
+  --color-text-muted: #9892a5;
+  --color-text-disabled: #777282;
+  --color-text-accent: #a78bfa;
+  --color-text-interactive: #a78bfa;
+  --color-text-interactive-hover: #c4b5fd;
+  --color-text-success: #7fcf9c;
+  --color-text-warning: #e8bd6a;
+  --color-text-error: #ff8585;
+  --color-text-on-accent: #121018;
+  --color-surface: color-mix(in srgb, #0b0c0f 96%, #8b5cf6 4%);
+  --color-surface-raised: color-mix(in srgb, #121317 94%, #8b5cf6 6%);
+  --color-surface-elevated: color-mix(in srgb, #17181d 91%, #8b5cf6 9%);
+  --color-surface-glass: color-mix(
+    in srgb,
+    var(--color-surface-elevated) 84%,
+    transparent
+  );
+  --color-surface-overlay: color-mix(
+    in srgb,
+    var(--color-surface-raised) 95%,
+    transparent
+  );
+  --color-accent: var(--color-text-accent);
+  --color-accent-soft: var(--color-text-interactive);
+  --color-accent-hover: var(--color-text-interactive-hover);
+  --color-rule: color-mix(in srgb, #8b5cf6 10%, transparent);
+  --color-rule-strong: color-mix(in srgb, #8b5cf6 18%, transparent);
+  --color-overlay-soft: color-mix(in srgb, #8b5cf6 6%, transparent);
+  --color-overlay-strong: color-mix(in srgb, #8b5cf6 12%, transparent);
+  --color-shadow: color-mix(in srgb, #8b5cf6 10%, transparent);
+  --color-focus-ring: color-mix(in srgb, #8b5cf6 28%, transparent);
+  --color-selection: color-mix(in srgb, #8b5cf6 24%, transparent);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-text-primary);
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+a {
+  color: var(--color-text-interactive);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--color-text-interactive-hover);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-body);
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+}
+
+h2 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-sm);
+}
+
+h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-xs);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--color-rule);
+  margin: var(--space-lg) 0;
+}
