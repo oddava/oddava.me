@@ -14,6 +14,8 @@ export interface Props {
   description?: string;
   image?: string;
   type?: 'website' | 'article';
+  hideNav?: boolean;
+  hideFooter?: boolean;
 }
 
 const {
@@ -21,6 +23,8 @@ const {
   description = SITE_DESCRIPTION,
   image = '/favicon.svg',
   type = 'website',
+  hideNav = false,
+  hideFooter = false,
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
@@ -104,13 +108,13 @@ const socialImage = new URL(image, Astro.url).toString();
   </head>
   <body>
     <div class="page">
-      <Nav />
+      {!hideNav && <Nav />}
 
       <main>
         <slot />
       </main>
 
-      <Footer />
+      {!hideFooter && <Footer />}
     </div>
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
 
