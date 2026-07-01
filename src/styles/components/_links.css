@@ -3,7 +3,8 @@
    =================================================== */
 
 /* Full-page reset — overrides .page wrapper and body defaults */
-html, body {
+html,
+body {
   overflow: hidden !important;
   height: 100dvh !important;
   background: var(--links-bg, #0a0a0a) !important;

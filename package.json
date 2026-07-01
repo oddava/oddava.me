@@ -19,7 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "format:check": "prettier --check README.md .github docs src tests astro.config.mjs keystatic.config.ts package.json pnpm-workspace.yaml tsconfig.json vitest.config.ts wrangler.jsonc",
+    "format:check": "prettier --check README.md .github src tests astro.config.mjs keystatic.config.ts package.json pnpm-workspace.yaml tsconfig.json vitest.config.ts wrangler.jsonc",
     "audit": "pnpm audit --prod --audit-level high",
     "spotify:token": "node get-spotify-token.js",
     "verify": "pnpm run format:check && pnpm run check && pnpm run test && pnpm run build",
