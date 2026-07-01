@@ -1,0 +1,120 @@
+---
+const performanceLoggerScript = `
+(function () {
+  function log(msg, ms) {
+    console.log(
+      '%c' + msg + '%c ' + ms + 'ms',
+      'color:#a78bfa;font-weight:bold',
+      'color:inherit'
+    );
+  }
+
+  window.addEventListener('load', function () {
+    var navigation = performance.getEntriesByType('navigation')[0];
+    var paint = performance.getEntriesByType('paint');
+
+    if (navigation) {
+      log('TTFB', Math.round(navigation.responseStart - navigation.requestStart));
+      log(
+        'DNS',
+        Math.round(navigation.domainLookupEnd - navigation.domainLookupStart)
+      );
+      log(
+        'Connect',
+        Math.round(navigation.connectEnd - navigation.connectStart)
+      );
+      log(
+        'Response',
+        Math.round(navigation.responseEnd - navigation.responseStart)
+      );
+      log(
+        'DOM Interactive',
+        Math.round(navigation.domInteractive - navigation.startTime)
+      );
+      log(
+        'DOMContentLoaded',
+        Math.round(navigation.domContentLoadedEventEnd - navigation.startTime)
+      );
+      log('Load Event', Math.round(navigation.loadEventEnd - navigation.startTime));
+    }
+
+    var fcp = paint.find(function (entry) {
+      return entry.name === 'first-contentful-paint';
+    });
+    if (fcp) log('FCP', Math.round(fcp.startTime));
+
+    try {
+      new PerformanceObserver(function (observer) {
+        var entries = observer.getEntries();
+        var lcp = entries[entries.length - 1];
+        if (lcp) log('LCP', Math.round(lcp.startTime));
+      }).observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch {}
+
+    var cls = 0;
+    try {
+      new PerformanceObserver(function (observer) {
+        observer.getEntries().forEach(function (entry) {
+          if (!entry.hadRecentInput) cls += entry.value;
+        });
+        console.log(
+          '%cCLS' + '%c ' + cls.toFixed(4),
+          'color:#a78bfa;font-weight:bold',
+          'color:inherit'
+        );
+      }).observe({ type: 'layout-shift', buffered: true });
+    } catch {}
+
+    var resources = performance.getEntriesByType('resource');
+    var cssCount = 0;
+    var fontCount = 0;
+    var jsCount = 0;
+
+    resources.forEach(function (resource) {
+      if (
+        resource.initiatorType === 'css' ||
+        resource.name.endsWith('.css')
+      ) {
+        cssCount++;
+      }
+      if (
+        resource.name.endsWith('.woff2') ||
+        resource.name.endsWith('.woff')
+      ) {
+        fontCount++;
+      }
+      if (resource.initiatorType === 'script') {
+        jsCount++;
+      }
+    });
+
+    console.log(
+      '%cResources:%c ' +
+        resources.length +
+        ' total (' +
+        cssCount +
+        ' css, ' +
+        fontCount +
+        ' fonts, ' +
+        jsCount +
+        ' js)',
+      'color:#a78bfa;font-weight:bold',
+      'color:inherit'
+    );
+    console.log(
+      '%cTransfer:%c ' +
+        (
+          resources.reduce(function (total, resource) {
+            return total + (resource.transferSize || 0);
+          }, 0) / 1024
+        ).toFixed(1) +
+        ' KB',
+      'color:#a78bfa;font-weight:bold',
+      'color:inherit'
+    );
+  });
+})();
+`;
+---
+
+{import.meta.env.DEV && <script is:inline set:html={performanceLoggerScript} />}
