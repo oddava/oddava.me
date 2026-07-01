@@ -19,7 +19,18 @@ try {
 ---
 
 <Base title="library" description="Things I like.">
-  <h2 class="library-heading">anime</h2>
+  <h2 class="library-heading">
+    anime
+    <a
+      href={`https://anilist.co/user/${import.meta.env.ANILIST_USERNAME ?? 'codeJ'}`}
+      class="library-external-link"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View full list on AniList"
+    >
+      ↗
+    </a>
+  </h2>
 
   <section class="library-section">
     {
@@ -58,5 +69,6 @@ try {
         <p class="library-empty-state">Favorites are offline right now.</p>
       )
     }
+
   </section>
 </Base>
