@@ -20,52 +20,19 @@ const { Content } = await render(project);
 
 <Base title={project.data.title} description={project.data.description}>
   <article class="project-page">
-    <a href="/projects" class="project-back">back to projects</a>
-
-    <header class="project-hero">
-      <div class="project-hero__copy">
-        <p class="project-hero__eyebrow">project</p>
-        <h1>{project.data.title}</h1>
-        <p class="project-hero__description">{project.data.description}</p>
-      </div>
-
-      <div class="project-hero__meta">
-        <div class="project-hero__section">
-          <span>stack</span>
-          <div class="project-hero__chips">
-            {
-              (project.data.tech ?? []).map((item: string) => (
-                <span class="tag-chip">{item}</span>
-              ))
-            }
-          </div>
-        </div>
-
-        <div class="project-hero__links">
-          {
-            project.data.url && (
-              <a
-                href={project.data.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                live
-              </a>
-            )
-          }
-          {
-            project.data.repo && (
-              <a
-                href={project.data.repo}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                source
-              </a>
-            )
-          }
-        </div>
-      </div>
+    <header class="project-header">
+      {
+        project.data.repo ? (
+          <h1>
+            <a href={project.data.repo} target="_blank" rel="noopener noreferrer">
+              {project.data.title}
+            </a>
+          </h1>
+        ) : (
+          <h1>{project.data.title}</h1>
+        )
+      }
+      <p class="project-description">{project.data.description}</p>
     </header>
 
     <div class="prose">
@@ -76,88 +43,38 @@ const { Content } = await render(project);
 
 <style>
   .project-page {
-    display: grid;
-    gap: var(--space-md);
+    padding-top: var(--space-sm);
   }
 
-  .project-back {
-    color: var(--color-text-muted);
+  .project-header {
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-rule);
+  }
+
+  .project-header h1 {
+    margin: 0 0 0.35rem;
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+
+  .project-header h1 a {
+    color: inherit;
     text-decoration: none;
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
+    transition: color 0.15s ease;
   }
 
-  .project-hero {
-    display: grid;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    border: 1px solid var(--color-rule);
-    border-radius: 16px;
-    background: transparent;
-    box-shadow: none;
+  .project-header h1 a:hover {
+    color: var(--color-text-interactive-hover);
   }
 
-  .project-hero__eyebrow {
-    margin: 0 0 0.5rem;
-    color: var(--color-text-interactive);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    font-family: var(--font-mono);
-  }
-
-  .project-hero h1 {
+  .project-description {
     margin: 0;
-  }
-
-  .project-hero__description {
-    margin: 0.75rem 0 0;
     color: var(--color-text-secondary);
-    line-height: 1.6;
-    max-width: 60ch;
-  }
-
-  .project-hero__meta {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .project-hero__section > span {
-    display: inline-block;
-    margin-bottom: 0.5rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-muted);
-    font-family: var(--font-mono);
-  }
-
-  .project-hero__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .project-hero__links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .project-hero__links a {
-    color: var(--color-text-interactive);
-    text-decoration: none;
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-  }
-
-  .tag-chip {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    text-transform: lowercase;
-    color: var(--color-text-muted);
-    border: 1px solid var(--color-rule);
-    border-radius: 999px;
-    padding: 0.08rem 0.45rem;
+    font-size: var(--text-base);
+    line-height: var(--leading-body);
+    max-width: 55ch;
   }
 </style>

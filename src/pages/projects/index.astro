@@ -15,28 +15,15 @@ const projects = await getAllProjects();
     {
       projects.map((project) => (
         <li class="project-item">
-          <div class="project-item__main">
-            <a href={`/projects/${project.id}`} class="project-item__title">
+          <a href={`/projects/${project.id}`} class="project-item__link">
+            <div class="project-item__title">
               {project.title}
-            </a>
-            {project.featured && (
-              <span class="project-item__badge">featured</span>
-            )}
-          </div>
-
-          <div class="project-item__meta">
-            <span>{project.description}</span>
-            {project.url && (
-              <a href={project.url} target="_blank" rel="noopener noreferrer">
-                live
-              </a>
-            )}
-            {project.repo && (
-              <a href={project.repo} target="_blank" rel="noopener noreferrer">
-                source
-              </a>
-            )}
-          </div>
+              {project.featured && (
+                <span class="project-item__badge">featured</span>
+              )}
+            </div>
+            <div class="project-item__meta">{project.description}</div>
+          </a>
         </li>
       ))
     }
