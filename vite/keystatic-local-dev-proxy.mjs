@@ -113,7 +113,9 @@ async function importNodeGenericApi() {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   const entry = pkg.exports?.['./api/generic']?.node?.default;
   if (!entry) {
-    throw new Error('Could not resolve @keystatic/core/api/generic node entry.');
+    throw new Error(
+      'Could not resolve @keystatic/core/api/generic node entry.',
+    );
   }
   return import(pathToFileURL(path.resolve(path.dirname(pkgPath), entry)).href);
 }

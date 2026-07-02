@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   clearGuestbookEntries,
   fetchAdminOverview,
   fetchGuestbookEntries,
   updateGuestbookEntryStatus,
+  updateIntegrationSetting,
 } from './api';
-import { ContentManagement } from './ContentManagement';
 import { GuestbookModeration } from './GuestbookModeration';
 import { IntegrationStatusList } from './IntegrationStatusList';
 import { KeystaticEditor } from './KeystaticEditor';
@@ -31,17 +31,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  const contentMetrics = useMemo(() => {
-    if (!overview) return null;
-    return {
-      posts: overview.metrics.posts,
-      drafts: overview.metrics.drafts,
-      projects: overview.metrics.projects,
-      featuredProjects: overview.metrics.featuredProjects,
-      books: overview.metrics.books,
-    };
-  }, [overview]);
 
   const loadOverview = async () => {
     setOverview(await fetchAdminOverview());
@@ -141,6 +130,27 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
 
   const pendingCount = overview?.metrics.pendingGuestbook ?? 0;
 
+  const handleToggleIntegration = async (
+    key: string,
+    name: string,
+    enabled: boolean,
+  ) => {
+    setBusyKey(key);
+    setNotice(null);
+    setGlobalError(null);
+    try {
+      await updateIntegrationSetting(key, enabled);
+      setNotice(`${name} integration ${enabled ? 'enabled' : 'disabled'}.`);
+      await loadOverview();
+    } catch (error) {
+      setGlobalError(
+        error instanceof Error ? error.message : 'Request failed.',
+      );
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       {globalError && (
@@ -154,38 +164,26 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
         </p>
       )}
 
-      <nav className="admin-anchor-nav admin-card">
-        <a href="#content">Content</a>
-        <a href="#editor">Editor</a>
-        <a href="#guestbook">
-          Guestbook
-          {pendingCount > 0 && (
-            <span className="admin-badge">{pendingCount}</span>
-          )}
-        </a>
-        <a href="#integrations">Integrations</a>
-      </nav>
-
+      
       <MetricGrid overview={overview} />
 
       <section className="admin-split">
-        <ContentManagement
-          metrics={contentMetrics}
-          keystaticHref={keystaticHref}
+        <GuestbookModeration
+          busyKey={busyKey}
+          entries={guestbookEntries}
+          status={guestbookStatus}
+          onClearAll={handleClearGuestbook}
+          onModerate={handleModerateGuestbookEntry}
+          onStatusChange={setGuestbookStatus}
         />
-        <IntegrationStatusList statuses={overview?.integrations ?? []} />
+        <IntegrationStatusList
+          statuses={overview?.integrations ?? []}
+          onToggle={handleToggleIntegration}
+          busyKey={busyKey}
+        />
       </section>
 
       <KeystaticEditor keystaticHref={keystaticHref} />
-
-      <GuestbookModeration
-        busyKey={busyKey}
-        entries={guestbookEntries}
-        status={guestbookStatus}
-        onClearAll={handleClearGuestbook}
-        onModerate={handleModerateGuestbookEntry}
-        onStatusChange={setGuestbookStatus}
-      />
     </div>
   );
 }

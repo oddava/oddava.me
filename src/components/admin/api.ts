@@ -65,3 +65,18 @@ export function clearGuestbookEntries(): Promise<GuestbookResponse> {
     body: JSON.stringify({ action: 'clear', all: true }),
   });
 }
+
+export interface IntegrationSettingsResponse {
+  integrations: Record<string, boolean>;
+}
+
+export function updateIntegrationSetting(
+  name: string,
+  enabled: boolean,
+): Promise<IntegrationSettingsResponse> {
+  return readJson<IntegrationSettingsResponse>('/api/admin/settings', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, enabled }),
+  });
+}
