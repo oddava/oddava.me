@@ -19,19 +19,19 @@
   gap: 0.4rem;
 }
 
-.anime-grid {
+.library-card-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
-.anime-card {
+.library-card {
   position: relative;
   text-decoration: none;
   font-size: 0;
 }
 
-.anime-card__cover {
+.library-card__cover {
   display: block;
   width: 95px;
   height: 125px;
@@ -40,7 +40,7 @@
   background: var(--color-surface-raised);
 }
 
-.anime-card__tooltip {
+.library-card__tooltip {
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
@@ -58,8 +58,8 @@
   z-index: 10;
 }
 
-.anime-card:hover .anime-card__tooltip,
-.anime-card:focus-visible .anime-card__tooltip {
+.library-card:hover .library-card__tooltip,
+.library-card:focus-visible .library-card__tooltip {
   opacity: 1;
 }
 

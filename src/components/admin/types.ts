@@ -12,6 +12,7 @@ export interface OverviewResponse {
     drafts: number;
     projects: number;
     featuredProjects: number;
+    books: number;
     pendingGuestbook: number;
     approvedGuestbook: number;
   };

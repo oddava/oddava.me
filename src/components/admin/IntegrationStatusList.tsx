@@ -13,25 +13,26 @@ export function IntegrationStatusList({
         <div>
           <p className="admin-kicker">health</p>
           <h2>Integrations</h2>
-          <p>
-            Quick configuration and readiness readout for the services this site
-            depends on.
-          </p>
         </div>
+        <span className="pill">
+          {statuses.filter((s) => s.healthy).length}/{statuses.length}
+        </span>
       </div>
-      <div className="status-list">
-        {statuses.map((status) => (
-          <div key={status.name} className="status-card">
-            <header>
-              <strong>{status.name}</strong>
-              <span className={`pill ${status.healthy ? 'good' : 'bad'}`}>
-                {status.healthy ? 'healthy' : 'attention'}
-              </span>
-            </header>
-            <p className="admin-muted">{status.detail}</p>
-          </div>
-        ))}
-      </div>
+      <table className="admin-table">
+        <tbody>
+          {statuses.map((status) => (
+            <tr key={status.name}>
+              <td className="admin-table__name">{status.name}</td>
+              <td className="admin-table__detail">{status.detail}</td>
+              <td className="admin-table__status">
+                <span className={`pill ${status.healthy ? 'good' : 'bad'}`}>
+                  {status.healthy ? 'ok' : 'bad'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </article>
   );
 }

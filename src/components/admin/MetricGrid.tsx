@@ -10,9 +10,7 @@ export function MetricGrid({ overview }: MetricGridProps) {
         { label: 'Posts', value: overview.metrics.posts },
         { label: 'Drafts', value: overview.metrics.drafts },
         { label: 'Projects', value: overview.metrics.projects },
-        { label: 'Featured', value: overview.metrics.featuredProjects },
-        { label: 'Pending notes', value: overview.metrics.pendingGuestbook },
-        { label: 'Approved notes', value: overview.metrics.approvedGuestbook },
+        { label: 'Books', value: overview.metrics.books },
       ]
     : [];
 

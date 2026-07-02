@@ -5,6 +5,10 @@ import { normalizeKeystaticRequestOrigin } from '../../../lib/server/keystatic/o
 
 const handler = makeHandler({ config });
 
+function withRequest(context: APIContext, request: Request): APIContext {
+  return Object.assign(Object.create(context), { request });
+}
+
 async function all(context: APIContext): Promise<Response> {
   const rewrittenRequest = normalizeKeystaticRequestOrigin(context.request);
 
@@ -12,7 +16,7 @@ async function all(context: APIContext): Promise<Response> {
     return handler(context);
   }
 
-  return handler({ ...context, request: rewrittenRequest });
+  return handler(withRequest(context, rewrittenRequest));
 }
 
 export { all, all as ALL };

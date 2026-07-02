@@ -81,4 +81,18 @@ describe('server community utilities', () => {
     expect(parseGuestbookStatus('archived')).toBeNull();
     expect(parseGuestbookStatus(null)).toBeNull();
   });
+
+  it('can allow development-only rate limiting when Redis is unavailable', async () => {
+    const { enforceRedisRateLimit } =
+      await import('../src/lib/server/community');
+    const request = new Request('https://oddava.me/api/admin/session', {
+      headers: { 'x-forwarded-for': '203.0.113.10' },
+    });
+
+    await expect(
+      enforceRedisRateLimit(request, 'admin-login-test', 1, 60_000, {
+        failOpenInDevelopment: true,
+      }),
+    ).resolves.toBeNull();
+  });
 });

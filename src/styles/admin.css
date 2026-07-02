@@ -1,28 +1,24 @@
 .admin-page {
-  --admin-bg: #f4efe4;
-  --admin-bg-alt: #efe6d5;
-  --admin-surface: rgba(255, 252, 246, 0.88);
-  --admin-surface-strong: #fffaf1;
-  --admin-text-primary: #20180f;
-  --admin-text-secondary: #655849;
-  --admin-text-muted: #756858;
-  --admin-text-disabled: #8a7e70;
-  --admin-text-interactive: #a64222;
-  --admin-text-interactive-hover: #7f2d16;
-  --admin-text-success: #2e6b43;
-  --admin-text-warning: #7d5812;
-  --admin-text-error: #8f2f25;
-  --admin-text-on-accent: #f2e6d7;
-  --admin-text-on-danger: #f1e1de;
-  --admin-line: rgba(63, 47, 34, 0.12);
-  --admin-accent: var(--admin-text-interactive);
-  --admin-danger: var(--admin-text-error);
-  --admin-status-neutral-bg: rgba(101, 88, 73, 0.08);
-  --admin-status-success-bg: rgba(46, 107, 67, 0.12);
-  --admin-status-warning-bg: rgba(125, 88, 18, 0.12);
-  --admin-status-error-bg: rgba(143, 47, 37, 0.1);
-  --admin-radius: 20px;
-  --admin-shadow: 0 24px 80px rgba(63, 42, 20, 0.08);
+  --admin-bg: #0b0c0f;
+  --admin-surface: color-mix(in srgb, #121317 94%, #8b5cf6 6%);
+  --admin-surface-elevated: color-mix(in srgb, #17181d 91%, #8b5cf6 9%);
+  --admin-text-primary: #e8e4ee;
+  --admin-text-secondary: #b7b1c4;
+  --admin-text-muted: #9892a5;
+  --admin-text-disabled: #777282;
+  --admin-accent: #a78bfa;
+  --admin-accent-hover: #c4b5fd;
+  --admin-danger: #ff8585;
+  --admin-success: #7fcf9c;
+  --admin-warning: #e8bd6a;
+  --admin-line: color-mix(in srgb, #8b5cf6 10%, transparent);
+  --admin-line-strong: color-mix(in srgb, #8b5cf6 18%, transparent);
+  --admin-radius: 12px;
+  --admin-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --admin-status-success-bg: rgba(127, 207, 156, 0.1);
+  --admin-status-error-bg: rgba(255, 133, 133, 0.1);
+  --admin-status-warning-bg: rgba(232, 189, 106, 0.1);
+  --admin-status-neutral-bg: rgba(183, 177, 196, 0.06);
 }
 
 .admin-page *,
@@ -38,28 +34,33 @@
 }
 
 .admin-page__body {
-  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-family: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.75;
   color: var(--admin-text-primary);
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(166, 66, 34, 0.12),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at top right,
-      rgba(146, 104, 24, 0.16),
-      transparent 24%
-    ),
-    linear-gradient(180deg, var(--admin-bg), var(--admin-bg-alt));
+  background: var(--admin-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
 }
 
 .admin-page a {
-  color: inherit;
+  color: var(--admin-accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
 }
 
-.admin-page a:not(.admin-button):hover {
-  color: var(--admin-text-interactive-hover);
+.admin-page a:hover {
+  color: var(--admin-accent-hover);
+}
+
+.admin-page code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--admin-surface-elevated);
+  color: var(--admin-accent);
 }
 
 .admin-page button,
@@ -70,9 +71,9 @@
 }
 
 .admin-shell {
-  max-width: 1320px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 32px 20px 56px;
+  padding: 48px 24px 64px;
 }
 
 .admin-header {
@@ -80,42 +81,43 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 40px;
 }
 
 .admin-header h1 {
   margin: 0;
-  font-size: clamp(2.25rem, 4vw, 4rem);
-  line-height: 0.95;
-  letter-spacing: -0.04em;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 
 .admin-header p {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--admin-text-secondary);
   max-width: 54ch;
+  font-size: 0.95rem;
 }
 
 .admin-kicker {
-  margin: 0 0 8px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
+  margin: 0 0 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--admin-text-interactive);
+  letter-spacing: 0.16em;
+  color: var(--admin-accent);
 }
 
 .admin-card {
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
   border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow);
-  backdrop-filter: blur(14px);
 }
 
 .admin-toolbar {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -123,11 +125,12 @@
 .admin-button,
 .admin-input,
 .admin-select {
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid var(--admin-line);
-  background: rgba(255, 250, 241, 0.92);
+  background: var(--admin-surface);
   color: var(--admin-text-primary);
-  min-height: 44px;
+  min-height: 40px;
+  font-size: 0.875rem;
 }
 
 .admin-input::placeholder,
@@ -137,17 +140,19 @@
 
 .admin-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
   color: var(--admin-text-secondary);
 }
 
 .admin-button {
-  padding: 0 18px;
+  padding: 0 16px;
   cursor: pointer;
   transition:
-    transform 140ms ease,
-    background 140ms ease,
-    color 140ms ease;
+    transform 120ms ease,
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
 .admin-button:hover {
@@ -162,18 +167,32 @@
 
 .admin-button.primary {
   background: var(--admin-accent);
-  color: var(--admin-text-on-accent);
+  color: #121018;
   border-color: transparent;
+  font-weight: 500;
+}
+
+.admin-button.primary:hover {
+  background: var(--admin-accent-hover);
 }
 
 .admin-button.danger {
   background: var(--admin-danger);
-  color: var(--admin-text-on-danger);
+  color: #1a0a0a;
   border-color: transparent;
+  font-weight: 500;
 }
 
 .admin-button.ghost {
   background: transparent;
+  color: var(--admin-text-secondary);
+  border-color: var(--admin-line);
+}
+
+.admin-button.ghost:hover {
+  color: var(--admin-text-primary);
+  border-color: var(--admin-line-strong);
+  background: var(--admin-surface-elevated);
 }
 
 .admin-button.primary:disabled,
@@ -186,7 +205,7 @@
 .admin-input,
 .admin-select {
   width: 100%;
-  padding: 0 16px;
+  padding: 0 14px;
 }
 
 .admin-main {
@@ -195,42 +214,44 @@
 }
 
 .admin-login {
-  max-width: 520px;
-  margin: 9vh auto 0;
-  padding: 28px;
+  max-width: 420px;
+  margin: 12vh auto 0;
+  padding: 32px;
 }
 
 .admin-login form {
   display: grid;
   gap: 14px;
+  margin-top: 20px;
 }
 
 .admin-note,
 .admin-error,
 .admin-success {
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.875rem;
 }
 
 .admin-note {
   background: var(--admin-status-warning-bg);
-  color: var(--admin-text-warning);
+  color: var(--admin-warning);
 }
 
 .admin-error {
   background: var(--admin-status-error-bg);
-  color: var(--admin-text-error);
+  color: var(--admin-danger);
 }
 
 .admin-success {
   background: var(--admin-status-success-bg);
-  color: var(--admin-text-success);
+  color: var(--admin-success);
 }
 
 @media (max-width: 720px) {
   .admin-shell {
-    padding: 20px 14px 40px;
+    padding: 24px 16px 48px;
   }
 
   .admin-header {

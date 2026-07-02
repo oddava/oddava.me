@@ -1,4 +1,8 @@
-import { acquireBuildLock, prepareBuildEnvironment, releaseBuildLock } from './build-utils.mjs';
+import {
+  acquireBuildLock,
+  prepareBuildEnvironment,
+  releaseBuildLock,
+} from './build-utils.mjs';
 
 const releaseOnly = process.argv.includes('--release');
 

@@ -8,9 +8,15 @@ import {
 } from './signing';
 import {
   hasRedisConfig,
+  isStorageUnavailableError,
   redisCommand,
   rejectIfStorageUnavailable,
 } from './storage';
+import { isDevelopmentEnv } from './config';
+
+type RedisRateLimitOptions = {
+  failOpenInDevelopment?: boolean;
+};
 
 export async function enforceSignedCooldown(
   cookies: AstroCookies,
@@ -64,7 +70,10 @@ export async function enforceRedisRateLimit(
   feature: string,
   limit: number,
   windowMs: number,
+  options: RedisRateLimitOptions = {},
 ): Promise<Response | null> {
+  if (options.failOpenInDevelopment && isDevelopmentEnv()) return null;
+
   if (!hasRedisConfig()) {
     return rejectIfStorageUnavailable();
   }
@@ -89,6 +98,18 @@ export async function enforceRedisRateLimit(
       windowMs,
     ]);
   } catch (error) {
+    if (
+      options.failOpenInDevelopment &&
+      isDevelopmentEnv() &&
+      isStorageUnavailableError(error)
+    ) {
+      console.warn(
+        `[rate-limit] ${feature} unavailable in development; allowing request.`,
+        error,
+      );
+      return null;
+    }
+
     console.error(`[rate-limit] ${feature} failed`, error);
     return json(
       {

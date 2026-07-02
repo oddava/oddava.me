@@ -11,12 +11,14 @@ export const GET: APIRoute = async ({ cookies }) => {
   const authError = await requireSecuredAdminApi(cookies);
   if (authError) return authError;
 
-  const [posts, projects, guestbookEntries, integrations] = await Promise.all([
-    getCollection('blog'),
-    getCollection('projects'),
-    readGuestbookEntries(),
-    getAdminIntegrationStatuses(),
-  ]);
+  const [posts, projects, books, guestbookEntries, integrations] =
+    await Promise.all([
+      getCollection('blog'),
+      getCollection('projects'),
+      getCollection('books'),
+      readGuestbookEntries(),
+      getAdminIntegrationStatuses(),
+    ]);
 
   const pending = guestbookEntries.filter(
     (entry) => entry.status === 'pending',
@@ -35,6 +37,7 @@ export const GET: APIRoute = async ({ cookies }) => {
       drafts,
       projects: projects.length,
       featuredProjects,
+      books: books.length,
       pendingGuestbook: pending,
       approvedGuestbook: approved,
     },

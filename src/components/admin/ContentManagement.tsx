@@ -3,6 +3,7 @@ interface ContentMetrics {
   drafts: number;
   projects: number;
   featuredProjects: number;
+  books: number;
 }
 
 interface ContentManagementProps {
@@ -19,54 +20,47 @@ export function ContentManagement({
       <div className="admin-section-head">
         <div>
           <p className="admin-kicker">content</p>
-          <h2>Content management</h2>
-          <p>
-            Keystatic stays the editor for MDX content, but it now lives inside
-            the main admin workflow.
-          </p>
+          <h2>Content</h2>
         </div>
+        <a
+          className="admin-button primary"
+          href={keystaticHref}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open editor
+        </a>
       </div>
       {metrics && (
         <div className="content-list">
           <div className="content-card">
             <header>
               <strong>Blog</strong>
-              <span className="pill">{metrics.posts} total</span>
+              <span className="pill">{metrics.posts}</span>
             </header>
-            <p className="admin-muted">
-              {metrics.drafts} drafts currently hidden from the public site.
-            </p>
+            {metrics.drafts > 0 && (
+              <p className="admin-muted">
+                {metrics.drafts} draft{metrics.drafts !== 1 ? 's' : ''} hidden
+              </p>
+            )}
           </div>
           <div className="content-card">
             <header>
               <strong>Projects</strong>
-              <span className="pill">{metrics.projects} total</span>
+              <span className="pill">{metrics.projects}</span>
             </header>
-            <p className="admin-muted">
-              {metrics.featuredProjects} projects are marked featured.
-            </p>
+            {metrics.featuredProjects > 0 && (
+              <p className="admin-muted">{metrics.featuredProjects} featured</p>
+            )}
+          </div>
+          <div className="content-card">
+            <header>
+              <strong>Books</strong>
+              <span className="pill">{metrics.books}</span>
+            </header>
           </div>
         </div>
       )}
-      <div className="admin-content-links">
-        <a className="admin-button primary" href="#content-editor">
-          Jump to editor
-        </a>
-        <a
-          className="admin-button ghost"
-          href={keystaticHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open raw Keystatic
-        </a>
-        <a className="admin-button ghost" href="/blog">
-          View blog
-        </a>
-        <a className="admin-button ghost" href="/projects">
-          View projects
-        </a>
-      </div>
     </article>
   );
 }
