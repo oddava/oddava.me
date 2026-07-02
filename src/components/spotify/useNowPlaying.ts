@@ -4,12 +4,35 @@ import { getNowPlayingPollInterval, hasTrackChanged } from './polling';
 import { fetchNowPlaying } from './spotifyApi';
 
 const PROGRESS_INTERVAL_MS = 1000;
+const IDLE_CONFIRMATIONS_REQUIRED = 2;
+
+function acceptNowPlayingUpdate(
+  previous: SpotifyNowPlaying,
+  next: SpotifyNowPlaying,
+  idleStreak: number,
+): { accepted: SpotifyNowPlaying; idleStreak: number } {
+  if (next.isPlaying) {
+    return { accepted: next, idleStreak: 0 };
+  }
+
+  if (!previous.isPlaying) {
+    return { accepted: next, idleStreak: 0 };
+  }
+
+  const nextStreak = idleStreak + 1;
+  if (nextStreak < IDLE_CONFIRMATIONS_REQUIRED) {
+    return { accepted: previous, idleStreak: nextStreak };
+  }
+
+  return { accepted: next, idleStreak: 0 };
+}
 
 export function useNowPlaying() {
   const [data, setData] = useState<SpotifyNowPlaying>({ isPlaying: false });
   const [loading, setLoading] = useState(true);
   const [currentProgress, setCurrentProgress] = useState(0);
   const dataRef = useRef(data);
+  const idleStreakRef = useRef(0);
 
   useEffect(() => {
     dataRef.current = data;
@@ -19,19 +42,25 @@ export function useNowPlaying() {
     try {
       const next = await fetchNowPlaying();
       const previous = dataRef.current;
+      const { accepted, idleStreak } = acceptNowPlayingUpdate(
+        previous,
+        next,
+        idleStreakRef.current,
+      );
+      idleStreakRef.current = idleStreak;
 
       if (
-        hasTrackChanged(previous, next) ||
-        next.isPlaying !== previous.isPlaying
+        hasTrackChanged(previous, accepted) ||
+        accepted.isPlaying !== previous.isPlaying
       ) {
-        setCurrentProgress(next.progressMs ?? 0);
-      } else if (typeof next.progressMs === 'number') {
-        setCurrentProgress(next.progressMs);
+        setCurrentProgress(accepted.progressMs ?? 0);
+      } else if (typeof accepted.progressMs === 'number') {
+        setCurrentProgress(accepted.progressMs);
       }
 
-      setData(next);
+      setData(accepted);
     } catch {
-      setData((previous) => ({ ...previous, isPlaying: false }));
+      // Keep the last known state during transient network or API failures.
     } finally {
       setLoading(false);
     }

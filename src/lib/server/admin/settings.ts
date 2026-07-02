@@ -14,11 +14,28 @@ const DEFAULT_SETTINGS: IntegrationSettings = {
   },
 };
 
+const SETTINGS_READ_TIMEOUT_MS = 4_000;
+
+async function readSettingsFromStorage(): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      redisCommand<string | null>(['GET', SETTINGS_KEY]),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), SETTINGS_READ_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function getIntegrationSettings(): Promise<IntegrationSettings> {
   if (!hasRedisConfig()) return DEFAULT_SETTINGS;
 
   try {
-    const raw = await redisCommand<string | null>(['GET', SETTINGS_KEY]);
+    const raw = await readSettingsFromStorage();
     if (!raw) return DEFAULT_SETTINGS;
 
     const parsed = JSON.parse(raw) as Partial<IntegrationSettings>;

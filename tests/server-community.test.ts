@@ -95,4 +95,13 @@ describe('server community utilities', () => {
       }),
     ).resolves.toBeNull();
   });
+
+  it('classifies local Redis connection timeouts as storage unavailable', async () => {
+    const { isStorageUnavailableError } =
+      await import('../src/lib/server/community');
+
+    expect(isStorageUnavailableError(new Error('Connection timeout'))).toBe(
+      true,
+    );
+  });
 });

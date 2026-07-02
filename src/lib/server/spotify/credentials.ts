@@ -1,5 +1,6 @@
 import { hasRedisConfig, redisCommand } from '../community';
 import { getServerEnv } from '../env';
+import { SITE_DISCORD_USER_ID } from '../../site';
 
 const CREDENTIALS_KEY = 'admin:spotify-credentials';
 
@@ -28,7 +29,7 @@ export interface SpotifyCredentialsRecord {
   lanyard: LanyardCredentials;
 }
 
-export type CredentialSource = 'override' | 'env' | 'none';
+export type CredentialSource = 'override' | 'env' | 'default' | 'none';
 
 export interface CredentialFieldStatus {
   set: boolean;
@@ -51,7 +52,18 @@ const EMPTY_RECORD: SpotifyCredentialsRecord = {
   lanyard: {},
 };
 
+function firstConfiguredSecret(
+  ...values: Array<string | undefined>
+): string | undefined {
+  return values.find(isConfiguredSecret);
+}
+
 function envCredentials(): SpotifyCredentialsRecord {
+  const discordUserId =
+    getServerEnv('DISCORD_USER_ID') ??
+    getServerEnv('LANYARD_DISCORD_USER_ID') ??
+    getServerEnv('SPOTIFY_DISCORD_USER_ID');
+
   return {
     spotify: {
       clientId: getServerEnv('SPOTIFY_CLIENT_ID'),
@@ -59,7 +71,7 @@ function envCredentials(): SpotifyCredentialsRecord {
       refreshToken: getServerEnv('SPOTIFY_REFRESH_TOKEN'),
     },
     lanyard: {
-      discordUserId: getServerEnv('DISCORD_USER_ID'),
+      discordUserId,
     },
   };
 }
@@ -93,12 +105,25 @@ export async function getSpotifyCredentials(): Promise<SpotifyCredentialsRecord>
 
   return {
     spotify: {
-      clientId: redis.spotify.clientId ?? env.spotify.clientId,
-      clientSecret: redis.spotify.clientSecret ?? env.spotify.clientSecret,
-      refreshToken: redis.spotify.refreshToken ?? env.spotify.refreshToken,
+      clientId: firstConfiguredSecret(
+        redis.spotify.clientId,
+        env.spotify.clientId,
+      ),
+      clientSecret: firstConfiguredSecret(
+        redis.spotify.clientSecret,
+        env.spotify.clientSecret,
+      ),
+      refreshToken: firstConfiguredSecret(
+        redis.spotify.refreshToken,
+        env.spotify.refreshToken,
+      ),
     },
     lanyard: {
-      discordUserId: redis.lanyard.discordUserId ?? env.lanyard.discordUserId,
+      discordUserId: firstConfiguredSecret(
+        redis.lanyard.discordUserId,
+        env.lanyard.discordUserId,
+        SITE_DISCORD_USER_ID,
+      ),
     },
   };
 }
@@ -106,12 +131,16 @@ export async function getSpotifyCredentials(): Promise<SpotifyCredentialsRecord>
 function fieldSource(
   redisValue: string | undefined,
   envValue: string | undefined,
+  defaultValue?: string,
 ): CredentialFieldStatus {
   if (isConfiguredSecret(redisValue)) {
     return { set: true, source: 'override' };
   }
   if (isConfiguredSecret(envValue)) {
     return { set: true, source: 'env' };
+  }
+  if (isConfiguredSecret(defaultValue)) {
+    return { set: true, source: 'default' };
   }
   return { set: false, source: 'none' };
 }
@@ -136,6 +165,7 @@ export async function getSpotifyCredentialsStatus(): Promise<SpotifyCredentialsS
       discordUserId: fieldSource(
         redis.lanyard.discordUserId,
         env.lanyard.discordUserId,
+        SITE_DISCORD_USER_ID,
       ),
     },
   };

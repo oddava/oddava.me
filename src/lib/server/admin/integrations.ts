@@ -20,7 +20,22 @@ export async function getAdminIntegrationStatuses(): Promise<
   const aniListConfigured = Boolean(aniListUsername);
 
   const spotifyEnabled = settings.integrations.spotify;
-  const spotifyCheck = spotifyEnabled ? await checkSpotifyConnection() : null;
+  let spotifyCheck: Awaited<ReturnType<typeof checkSpotifyConnection>> | null =
+    null;
+
+  if (spotifyEnabled) {
+    try {
+      spotifyCheck = await checkSpotifyConnection();
+    } catch (error) {
+      spotifyCheck = {
+        healthy: false,
+        detail:
+          error instanceof Error
+            ? error.message
+            : 'Spotify connection check failed.',
+      };
+    }
+  }
 
   return [
     {

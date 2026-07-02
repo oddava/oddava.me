@@ -2,6 +2,7 @@
 import type { APIRoute } from 'astro';
 import {
   ensureSameOrigin,
+  isStorageUnavailableError,
   readJsonBody,
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
@@ -53,6 +54,10 @@ export const GET: APIRoute = async ({ cookies, url }) => {
       : entries;
     return adminJson({ entries: filteredEntries }, { status: 200 });
   } catch (error) {
+    if (isStorageUnavailableError(error)) {
+      return adminJson({ entries: [] }, { status: 200 });
+    }
+
     console.error('[guestbook-admin] GET failed', error);
     return adminJson(
       { error: 'Failed to load entries.', code: 'admin_unavailable' },

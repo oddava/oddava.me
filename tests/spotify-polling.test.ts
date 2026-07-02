@@ -11,7 +11,7 @@ describe('spotify polling helpers', () => {
         isPlaying: true,
         integrations: { spotify: true, lanyard: false },
       }),
-    ).toBe(10_000);
+    ).toBe(5_000);
   });
 
   it('polls slowly when integrations exist but nothing is playing', () => {
@@ -20,7 +20,7 @@ describe('spotify polling helpers', () => {
         isPlaying: false,
         integrations: { spotify: true, lanyard: true },
       }),
-    ).toBe(30_000);
+    ).toBe(12_000);
   });
 
   it('barely polls when no integrations are configured', () => {

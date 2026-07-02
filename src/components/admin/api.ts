@@ -32,9 +32,12 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+const ADMIN_OVERVIEW_TIMEOUT_MS = 12_000;
+
 export function fetchAdminOverview(): Promise<OverviewResponse> {
   return readJson<OverviewResponse>('/api/admin/overview', {
     cache: 'no-store',
+    signal: AbortSignal.timeout(ADMIN_OVERVIEW_TIMEOUT_MS),
   });
 }
 

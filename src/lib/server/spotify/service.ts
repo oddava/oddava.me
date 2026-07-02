@@ -37,7 +37,11 @@ export async function getSpotifyNowPlayingWithFallback(): Promise<SpotifyNowPlay
   if (await isLanyardConfigured(creds)) {
     const lanyardState = await fetchLanyardNowPlaying(creds);
     if (lanyardState.isPlaying) {
-      return withIntegrations({ ...lanyardState, source: 'lanyard' });
+      return withIntegrations({
+        ...lanyardState,
+        fromFallback: true,
+        source: 'lanyard',
+      });
     }
 
     if (spotifyState) {
@@ -88,10 +92,19 @@ export async function checkSpotifyConnection(): Promise<SpotifyConnectionCheck> 
 
   if (isConfiguredSecret(creds.lanyard.discordUserId)) {
     try {
-      await fetchLanyardNowPlaying(creds);
+      const lanyardState = await fetchLanyardNowPlaying(creds);
+      if (lanyardState.error) {
+        return {
+          healthy: false,
+          detail: lanyardState.error,
+        };
+      }
+
       return {
         healthy: true,
-        detail: 'Spotify credentials missing; Lanyard fallback is reachable.',
+        detail: lanyardState.isPlaying
+          ? 'Spotify credentials missing; Lanyard is reporting a track.'
+          : 'Spotify credentials missing; Lanyard is reachable but not reporting a track.',
       };
     } catch (error) {
       return {

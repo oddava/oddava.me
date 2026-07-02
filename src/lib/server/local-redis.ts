@@ -1,9 +1,11 @@
 import type { RedisClientType } from 'redis';
+import { fetchWithTimeout } from './community';
 import { getServerEnv } from './env';
 
 let client: RedisClientType | null = null;
 
 const DEFAULT_LOCAL_REDIS_PROXY_PORT = 45555;
+const LOCAL_REDIS_PROXY_TIMEOUT_MS = 3_000;
 
 function getLocalRedisDevProxyUrl(): string {
   const configured = getServerEnv('LOCAL_REDIS_PROXY_URL');
@@ -23,11 +25,15 @@ async function executeViaDevProxy<T>(
   command: string[],
   url: string,
 ): Promise<T> {
-  const response = await fetch(getLocalRedisDevProxyUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ command, url }),
-  });
+  const response = await fetchWithTimeout(
+    getLocalRedisDevProxyUrl(),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command, url }),
+    },
+    LOCAL_REDIS_PROXY_TIMEOUT_MS,
+  );
   const payload = (await response.json().catch(() => ({}))) as {
     result?: T;
     error?: string;
@@ -55,7 +61,13 @@ export async function executeLocalRedisCommand<T>(
     const { createClient } = (await import(
       /* @vite-ignore */ packageName
     )) as typeof import('redis');
-    client = createClient({ url });
+    client = createClient({
+      socket: {
+        connectTimeout: 500,
+        reconnectStrategy: false,
+      },
+      url,
+    });
   }
 
   if (!client.isOpen) {
