@@ -1,7 +1,6 @@
 // @ts-check
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEnv } from 'vite';
 import { defineConfig, sessionDrivers } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
@@ -12,30 +11,10 @@ import { patchKeystaticAstroV6 } from './vite/patch-keystatic-astro-v6.mjs';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
-/** @param {string | undefined} value */
-function isConfiguredSecret(value) {
-  if (!value?.trim()) return false;
-
-  const normalized = value.trim().toLowerCase();
-  if (normalized.startsWith('your_')) return false;
-  if (normalized.endsWith('_here')) return false;
-
-  return true;
-}
-
-function hasSpotifyWidgetIntegration() {
-  const env = {
-    ...loadEnv('development', projectRoot, ''),
-    ...loadEnv('production', projectRoot, ''),
-  };
-
-  return (
-    (isConfiguredSecret(env.SPOTIFY_CLIENT_ID) &&
-      isConfiguredSecret(env.SPOTIFY_CLIENT_SECRET) &&
-      isConfiguredSecret(env.SPOTIFY_REFRESH_TOKEN)) ||
-    isConfiguredSecret(env.DISCORD_USER_ID)
-  );
-}
+// The Spotify widget is always bundled; credentials are resolved at runtime
+// from persistent storage (with environment fallback) so the admin panel can
+// configure Spotify/Lanyard without a redeploy.
+const spotifyWidgetEnabled = true;
 
 // Pre-bundle island deps for the workerd SSR environment in one pass so Vite does
 // not discover them lazily and reload React mid-render (invalid hook call).
@@ -148,8 +127,6 @@ function devCloudflareWorkersEnv() {
     },
   };
 }
-
-const spotifyWidgetEnabled = hasSpotifyWidgetIntegration();
 
 export default defineConfig({
   integrations: [react(), mdx()],

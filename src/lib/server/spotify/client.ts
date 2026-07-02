@@ -1,7 +1,7 @@
 import type { SpotifyNowPlaying } from '../../contracts';
 import { fetchWithTimeout } from '../community';
-import { getServerEnv } from '../env';
-import { isSpotifyConfigured } from './config';
+import { getSpotifyCredentials } from './credentials';
+import { isConfiguredSecret } from './config';
 import type { SpotifyApiPayload, SpotifyTokenResponse } from './types';
 
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
@@ -13,14 +13,24 @@ const MIN_TOKEN_TTL_SECONDS = 60;
 let cachedAccessToken: string | null = null;
 let tokenExpirationTime = 0;
 
-async function getAccessToken(): Promise<string> {
-  if (cachedAccessToken && Date.now() < tokenExpirationTime) {
+export function clearSpotifyTokenCache(): void {
+  cachedAccessToken = null;
+  tokenExpirationTime = 0;
+}
+
+async function getAccessToken(options?: { force?: boolean }): Promise<string> {
+  if (
+    !options?.force &&
+    cachedAccessToken &&
+    Date.now() < tokenExpirationTime
+  ) {
     return cachedAccessToken;
   }
 
-  const clientId = getServerEnv('SPOTIFY_CLIENT_ID');
-  const clientSecret = getServerEnv('SPOTIFY_CLIENT_SECRET');
-  const refreshToken = getServerEnv('SPOTIFY_REFRESH_TOKEN');
+  const creds = await getSpotifyCredentials();
+  const clientId = creds.spotify.clientId;
+  const clientSecret = creds.spotify.clientSecret;
+  const refreshToken = creds.spotify.refreshToken;
 
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error('Spotify credentials are missing.');
@@ -83,12 +93,22 @@ function mapSpotifyPayload(
   };
 }
 
-export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying> {
-  if (!isSpotifyConfigured()) {
+export async function fetchSpotifyNowPlaying(options?: {
+  forceTokenRefresh?: boolean;
+}): Promise<SpotifyNowPlaying> {
+  const creds = await getSpotifyCredentials();
+
+  if (
+    !isConfiguredSecret(creds.spotify.clientId) ||
+    !isConfiguredSecret(creds.spotify.clientSecret) ||
+    !isConfiguredSecret(creds.spotify.refreshToken)
+  ) {
     return SPOTIFY_IDLE;
   }
 
-  const accessToken = await getAccessToken();
+  const accessToken = await getAccessToken({
+    force: options?.forceTokenRefresh,
+  });
   const response = await fetchWithTimeout(NOW_PLAYING_ENDPOINT, {
     headers: {
       Authorization: `Bearer ${accessToken}`,

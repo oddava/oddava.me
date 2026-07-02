@@ -1,0 +1,18 @@
+
+> oddava.me@1.0.0 dev C:\Projects\oddava.me
+> astro dev --mode development
+
+[2m17:12:26[22m [34m[@astrojs/cloudflare][39m Enabling compile-time image optimization. Images will be pre-optimized at build time.
+[local-redis] Dev proxy listening on http://127.0.0.1:45555/__local_redis
+Using secrets defined in .env
+[vite] connected.
+[2m17:12:29[22m [34m[types][39m Generated [2m3ms[22m
+[2m17:12:30[22m [34m[content][39m Syncing content
+[2m17:12:30[22m [34m[content][39m Synced content
+[42m[1m astro [22m[49m [32mv6.4.8[39m [2mready in[22m 6437 [2mms[22m
+[2m┃[22m Local    [36mhttp://localhost:4321/[39m
+[2m┃[22m Network  [2muse --host to expose[22m
+[2m17:12:30[22m [32mwatching for file changes...[39m
+[2m17:12:40[22m [34m[vite][39m [runtime] APP_ENV=development REDIS_MODE=local TURNSTILE_BYPASS_IN_DEV=true
+
+C:\Projects\oddava.me>

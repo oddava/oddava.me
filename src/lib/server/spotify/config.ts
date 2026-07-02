@@ -1,39 +1,44 @@
 import type { SpotifyIntegrations, SpotifyNowPlaying } from '../../contracts';
-import { getServerEnv } from '../env';
+import type { SpotifyCredentialsRecord } from './credentials';
+import { getSpotifyCredentials, isConfiguredSecret } from './credentials';
+
+export { isConfiguredSecret };
 
 export const SPOTIFY_UNAVAILABLE: SpotifyNowPlaying = { isPlaying: false };
 
-export function getSpotifyIntegrations(): SpotifyIntegrations {
+export async function getSpotifyIntegrations(
+  creds?: SpotifyCredentialsRecord,
+): Promise<SpotifyIntegrations> {
+  const c = creds ?? (await getSpotifyCredentials());
   return {
-    spotify: isSpotifyConfigured(),
-    lanyard: isLanyardConfigured(),
+    spotify:
+      isConfiguredSecret(c.spotify.clientId) &&
+      isConfiguredSecret(c.spotify.clientSecret) &&
+      isConfiguredSecret(c.spotify.refreshToken),
+    lanyard: isConfiguredSecret(c.lanyard.discordUserId),
   };
 }
 
 export function hasAnySpotifyIntegration(
-  integrations: SpotifyIntegrations = getSpotifyIntegrations(),
+  integrations: SpotifyIntegrations,
 ): boolean {
   return integrations.spotify || integrations.lanyard;
 }
 
-function isConfiguredSecret(value: string | undefined): boolean {
-  if (!value?.trim()) return false;
-
-  const normalized = value.trim().toLowerCase();
-  if (normalized.startsWith('your_')) return false;
-  if (normalized.endsWith('_here')) return false;
-
-  return true;
-}
-
-export function isSpotifyConfigured(): boolean {
+export async function isSpotifyConfigured(
+  creds?: SpotifyCredentialsRecord,
+): Promise<boolean> {
+  const c = creds ?? (await getSpotifyCredentials());
   return (
-    isConfiguredSecret(getServerEnv('SPOTIFY_CLIENT_ID')) &&
-    isConfiguredSecret(getServerEnv('SPOTIFY_CLIENT_SECRET')) &&
-    isConfiguredSecret(getServerEnv('SPOTIFY_REFRESH_TOKEN'))
+    isConfiguredSecret(c.spotify.clientId) &&
+    isConfiguredSecret(c.spotify.clientSecret) &&
+    isConfiguredSecret(c.spotify.refreshToken)
   );
 }
 
-export function isLanyardConfigured(): boolean {
-  return isConfiguredSecret(getServerEnv('DISCORD_USER_ID'));
+export async function isLanyardConfigured(
+  creds?: SpotifyCredentialsRecord,
+): Promise<boolean> {
+  const c = creds ?? (await getSpotifyCredentials());
+  return isConfiguredSecret(c.lanyard.discordUserId);
 }

@@ -27,14 +27,23 @@ describe('server Spotify helpers', () => {
   });
 
   it('treats placeholder integration secrets as unavailable', async () => {
+    vi.doMock('../src/lib/server/community', () => ({
+      hasRedisConfig: () => false,
+      redisCommand: vi.fn(),
+    }));
+
     const { isLanyardConfigured, isSpotifyConfigured } =
       await import('../src/lib/server/spotify/config');
 
-    expect(isSpotifyConfigured()).toBe(false);
-    expect(isLanyardConfigured()).toBe(false);
+    expect(await isSpotifyConfigured()).toBe(false);
+    expect(await isLanyardConfigured()).toBe(false);
   });
 
   it('returns unavailable state without calling providers when integrations are not configured', async () => {
+    vi.doMock('../src/lib/server/community', () => ({
+      hasRedisConfig: () => false,
+      redisCommand: vi.fn(),
+    }));
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const { getSpotifyNowPlayingWithFallback } =
@@ -111,6 +120,10 @@ describe('server Spotify helpers', () => {
   });
 
   it('reports an unhealthy Spotify connection without fetching when unconfigured', async () => {
+    vi.doMock('../src/lib/server/community', () => ({
+      hasRedisConfig: () => false,
+      redisCommand: vi.fn(),
+    }));
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const { checkSpotifyConnection } =
@@ -124,9 +137,27 @@ describe('server Spotify helpers', () => {
   });
 
   it('reports a healthy Spotify connection when the now-playing call succeeds', async () => {
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'real-client-id');
-    vi.stubEnv('SPOTIFY_CLIENT_SECRET', 'real-client-secret');
-    vi.stubEnv('SPOTIFY_REFRESH_TOKEN', 'real-refresh-token');
+    vi.doMock('../src/lib/server/spotify/credentials', () => ({
+      getSpotifyCredentials: async () => ({
+        spotify: {
+          clientId: 'real-client-id',
+          clientSecret: 'real-client-secret',
+          refreshToken: 'real-refresh-token',
+        },
+        lanyard: {},
+      }),
+      getSpotifyCredentialsStatus: async () => ({
+        spotify: {
+          clientId: { set: true, source: 'env' as const },
+          clientSecret: { set: true, source: 'env' as const },
+          refreshToken: { set: true, source: 'env' as const },
+        },
+        lanyard: { discordUserId: { set: false, source: 'none' as const } },
+      }),
+      isConfiguredSecret: (v: string | undefined) => Boolean(v?.trim()),
+      updateSpotifyCredentials: vi.fn(),
+      clearSpotifyCredentials: vi.fn(),
+    }));
 
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
@@ -142,7 +173,5 @@ describe('server Spotify helpers', () => {
       healthy: true,
     });
     expect(fetchSpy).toHaveBeenCalled();
-
-    vi.unstubAllEnvs();
   });
 });

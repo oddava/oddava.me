@@ -1,6 +1,8 @@
 import type { SpotifyNowPlaying } from '../../contracts';
+import { getSpotifyCredentials } from './credentials';
 import {
   getSpotifyIntegrations,
+  isConfiguredSecret,
   isLanyardConfigured,
   isSpotifyConfigured,
   SPOTIFY_UNAVAILABLE,
@@ -8,17 +10,20 @@ import {
 import { fetchSpotifyNowPlaying } from './client';
 import { fetchLanyardNowPlaying } from './fallback';
 
-function withIntegrations(state: SpotifyNowPlaying): SpotifyNowPlaying {
+async function withIntegrations(
+  state: SpotifyNowPlaying,
+): Promise<SpotifyNowPlaying> {
   return {
     ...state,
-    integrations: getSpotifyIntegrations(),
+    integrations: await getSpotifyIntegrations(),
   };
 }
 
 export async function getSpotifyNowPlayingWithFallback(): Promise<SpotifyNowPlaying> {
+  const creds = await getSpotifyCredentials();
   let spotifyState: SpotifyNowPlaying | null = null;
 
-  if (isSpotifyConfigured()) {
+  if (await isSpotifyConfigured(creds)) {
     try {
       spotifyState = await fetchSpotifyNowPlaying();
       if (spotifyState.isPlaying) {
@@ -29,8 +34,8 @@ export async function getSpotifyNowPlayingWithFallback(): Promise<SpotifyNowPlay
     }
   }
 
-  if (isLanyardConfigured()) {
-    const lanyardState = await fetchLanyardNowPlaying();
+  if (await isLanyardConfigured(creds)) {
+    const lanyardState = await fetchLanyardNowPlaying(creds);
     if (lanyardState.isPlaying) {
       return withIntegrations({ ...lanyardState, source: 'lanyard' });
     }
@@ -55,12 +60,18 @@ export interface SpotifyConnectionCheck {
 }
 
 export async function checkSpotifyConnection(): Promise<SpotifyConnectionCheck> {
-  if (isSpotifyConfigured()) {
+  const creds = await getSpotifyCredentials();
+  const spotifyConfigured =
+    isConfiguredSecret(creds.spotify.clientId) &&
+    isConfiguredSecret(creds.spotify.clientSecret) &&
+    isConfiguredSecret(creds.spotify.refreshToken);
+
+  if (spotifyConfigured) {
     try {
-      await fetchSpotifyNowPlaying();
+      await fetchSpotifyNowPlaying({ forceTokenRefresh: true });
       return {
         healthy: true,
-        detail: isLanyardConfigured()
+        detail: isConfiguredSecret(creds.lanyard.discordUserId)
           ? 'Spotify API connection is working (Lanyard fallback available).'
           : 'Spotify API connection is working.',
       };
@@ -75,9 +86,9 @@ export async function checkSpotifyConnection(): Promise<SpotifyConnectionCheck> 
     }
   }
 
-  if (isLanyardConfigured()) {
+  if (isConfiguredSecret(creds.lanyard.discordUserId)) {
     try {
-      await fetchLanyardNowPlaying();
+      await fetchLanyardNowPlaying(creds);
       return {
         healthy: true,
         detail: 'Spotify credentials missing; Lanyard fallback is reachable.',

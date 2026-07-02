@@ -35,3 +35,25 @@ export interface GuestbookEntry {
 export interface GuestbookResponse {
   entries: GuestbookEntry[];
 }
+
+export type CredentialSource = 'override' | 'env' | 'none';
+
+export interface CredentialFieldStatus {
+  set: boolean;
+  source: CredentialSource;
+}
+
+export interface SpotifyCredentialsStatus {
+  spotify: {
+    clientId: CredentialFieldStatus;
+    clientSecret: CredentialFieldStatus;
+    refreshToken: CredentialFieldStatus;
+  };
+  lanyard: {
+    discordUserId: CredentialFieldStatus;
+  };
+}
+
+export interface SpotifyCredentialsResponse {
+  credentials: SpotifyCredentialsStatus;
+}

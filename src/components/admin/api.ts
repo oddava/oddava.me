@@ -3,6 +3,7 @@ import type {
   GuestbookResponse,
   GuestbookStatus,
   OverviewResponse,
+  SpotifyCredentialsResponse,
 } from './types';
 
 function withJsonAccept(init: RequestInit = {}): RequestInit {
@@ -79,4 +80,29 @@ export function updateIntegrationSetting(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, enabled }),
   });
+}
+
+export function fetchSpotifyCredentials(): Promise<SpotifyCredentialsResponse> {
+  return readJson<SpotifyCredentialsResponse>(
+    '/api/admin/spotify-credentials',
+    { cache: 'no-store' },
+  );
+}
+
+export function updateSpotifyCredentials(body: {
+  spotify?: {
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+  };
+  lanyard?: { discordUserId?: string };
+}): Promise<SpotifyCredentialsResponse> {
+  return readJson<SpotifyCredentialsResponse>(
+    '/api/admin/spotify-credentials',
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
 }

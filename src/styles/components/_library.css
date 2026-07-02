@@ -81,3 +81,34 @@
 .library-external-link:focus-visible {
   color: var(--color-text-primary);
 }
+
+@media (max-width: 640px) {
+  .library-section {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .library-card-grid {
+    gap: 0.75rem;
+  }
+
+  .library-heading {
+    margin-left: 0.35rem;
+    font-size: 0.875rem;
+  }
+
+  .library-card__tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .library-card-grid {
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .library-card__cover {
+    width: 85px;
+    height: 112px;
+  }
+}

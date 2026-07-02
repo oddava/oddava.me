@@ -13,6 +13,7 @@
 .home p {
   margin: 0 auto;
   color: var(--color-text-primary);
+  overflow-wrap: break-word;
 }
 
 .home__links {
