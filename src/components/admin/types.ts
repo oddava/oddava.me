@@ -2,8 +2,11 @@ export type GuestbookStatus = 'pending' | 'approved' | 'rejected';
 
 export interface IntegrationStatus {
   name: string;
+  key?: string;
   healthy: boolean;
   detail: string;
+  manageable?: boolean;
+  enabled?: boolean;
 }
 
 export interface OverviewResponse {

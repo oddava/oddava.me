@@ -95,4 +95,54 @@ describe('server Spotify helpers', () => {
     expect(fallback.headers.has('Cache-Control')).toBe(false);
     expect(error.headers.has('Cache-Control')).toBe(false);
   });
+
+  it('clearCachedSpotifyState invalidates the in-memory cache', async () => {
+    const {
+      clearCachedSpotifyState,
+      getCachedSpotifyState,
+      setCachedSpotifyState,
+    } = await import('../src/lib/server/spotify/cache');
+
+    setCachedSpotifyState({ isPlaying: true, title: 'track' });
+    expect(getCachedSpotifyState()).not.toBeNull();
+
+    clearCachedSpotifyState();
+    expect(getCachedSpotifyState()).toBeNull();
+  });
+
+  it('reports an unhealthy Spotify connection without fetching when unconfigured', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const { checkSpotifyConnection } =
+      await import('../src/lib/server/spotify/service');
+
+    await expect(checkSpotifyConnection()).resolves.toEqual({
+      healthy: false,
+      detail: 'Spotify credentials and Discord fallback are both missing.',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('reports a healthy Spotify connection when the now-playing call succeeds', async () => {
+    vi.stubEnv('SPOTIFY_CLIENT_ID', 'real-client-id');
+    vi.stubEnv('SPOTIFY_CLIENT_SECRET', 'real-client-secret');
+    vi.stubEnv('SPOTIFY_REFRESH_TOKEN', 'real-refresh-token');
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ access_token: 'token', expires_in: 3600 }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const { checkSpotifyConnection } =
+      await import('../src/lib/server/spotify/service');
+
+    await expect(checkSpotifyConnection()).resolves.toMatchObject({
+      healthy: true,
+    });
+    expect(fetchSpy).toHaveBeenCalled();
+
+    vi.unstubAllEnvs();
+  });
 });
