@@ -136,8 +136,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
       `Guestbook entry ${status}.`,
     );
 
-  const pendingCount = overview?.metrics.pendingGuestbook ?? 0;
-
   const handleToggleIntegration = async (
     key: string,
     name: string,
