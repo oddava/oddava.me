@@ -32,10 +32,10 @@ function shouldHoldPlayingState(
 
   return (
     fresh.source === 'lanyard' ||
-    fresh.fromFallback ||
+    Boolean(fresh.fromFallback) ||
     Boolean(fresh.error) ||
     lastConfirmedPlaying.source === 'lanyard' ||
-    lastConfirmedPlaying.fromFallback
+    Boolean(lastConfirmedPlaying.fromFallback)
   );
 }
 
