@@ -7,9 +7,7 @@ describe('spotify playback stability', () => {
   });
 
   it('holds the last Lanyard playing state through a brief idle response', async () => {
-    vi.spyOn(Date, 'now')
-      .mockReturnValueOnce(1_000)
-      .mockReturnValueOnce(4_000);
+    vi.spyOn(Date, 'now').mockReturnValueOnce(1_000).mockReturnValueOnce(4_000);
 
     const { stabilizeNowPlayingState, clearCachedSpotifyState } =
       await import('../src/lib/server/spotify/cache');
