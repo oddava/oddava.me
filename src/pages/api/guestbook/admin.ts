@@ -2,12 +2,12 @@
 import type { APIRoute } from 'astro';
 import {
   ensureSameOrigin,
-  json,
   readJsonBody,
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
 } from '../../../lib/server/community';
 import {
+  adminJson,
   requireSecuredAdminApi,
   withAdminSecurityHeaders,
 } from '../../../lib/server/admin';
@@ -51,16 +51,12 @@ export const GET: APIRoute = async ({ cookies, url }) => {
     const filteredEntries = statusFilter
       ? entries.filter((entry) => entry.status === statusFilter)
       : entries;
-    return withAdminSecurityHeaders(
-      json({ entries: filteredEntries }, { status: 200 }),
-    );
+    return adminJson({ entries: filteredEntries }, { status: 200 });
   } catch (error) {
     console.error('[guestbook-admin] GET failed', error);
-    return withAdminSecurityHeaders(
-      json(
-        { error: 'Failed to load entries.', code: 'admin_unavailable' },
-        { status: 500 },
-      ),
+    return adminJson(
+      { error: 'Failed to load entries.', code: 'admin_unavailable' },
+      { status: 500 },
     );
   }
 };
@@ -79,54 +75,47 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
 
   const status = parseGuestbookStatus(body.status);
   if (!body.id || !status) {
-    return withAdminSecurityHeaders(
-      json(
-        { error: 'Missing id or valid status.', code: 'invalid_request' },
-        { status: 400 },
-      ),
+    return adminJson(
+      { error: 'Missing id or valid status.', code: 'invalid_request' },
+      { status: 400 },
     );
   }
 
   try {
     const updated = await updateGuestbookEntryStatus(body.id, status);
     if (!updated) {
-      return withAdminSecurityHeaders(
-        json({ error: 'Entry not found.', code: 'not_found' }, { status: 404 }),
+      return adminJson(
+        { error: 'Entry not found.', code: 'not_found' },
+        { status: 404 },
       );
     }
     const next = await readGuestbookEntries();
-    return withAdminSecurityHeaders(json({ entries: next }, { status: 200 }));
+    return adminJson({ entries: next }, { status: 200 });
   } catch (error) {
     console.error('[guestbook-admin] PATCH failed', error);
-    return withAdminSecurityHeaders(
-      json(
-        { error: 'Failed to update entry.', code: 'admin_unavailable' },
-        { status: 500 },
-      ),
+    return adminJson(
+      { error: 'Failed to update entry.', code: 'admin_unavailable' },
+      { status: 500 },
     );
   }
 };
 
 async function handleClearAllRequest(clearAll: boolean): Promise<Response> {
   if (!clearAll) {
-    return withAdminSecurityHeaders(
-      json(
-        { error: 'Missing all=true.', code: 'invalid_request' },
-        { status: 400 },
-      ),
+    return adminJson(
+      { error: 'Missing all=true.', code: 'invalid_request' },
+      { status: 400 },
     );
   }
 
   try {
     await writeGuestbookEntries([]);
-    return withAdminSecurityHeaders(json({ entries: [] }, { status: 200 }));
+    return adminJson({ entries: [] }, { status: 200 });
   } catch (error) {
     console.error('[guestbook-admin] clear-all failed', error);
-    return withAdminSecurityHeaders(
-      json(
-        { error: 'Failed to clear entries.', code: 'admin_unavailable' },
-        { status: 500 },
-      ),
+    return adminJson(
+      { error: 'Failed to clear entries.', code: 'admin_unavailable' },
+      { status: 500 },
     );
   }
 }
@@ -144,11 +133,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   if (body.action !== 'clear') {
-    return withAdminSecurityHeaders(
-      json(
-        { error: 'Invalid action.', code: 'invalid_request' },
-        { status: 400 },
-      ),
+    return adminJson(
+      { error: 'Invalid action.', code: 'invalid_request' },
+      { status: 400 },
     );
   }
 

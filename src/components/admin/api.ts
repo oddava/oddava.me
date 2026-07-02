@@ -5,11 +5,26 @@ import type {
   OverviewResponse,
 } from './types';
 
+function withJsonAccept(init: RequestInit = {}): RequestInit {
+  const headers = new Headers(init.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+  return { ...init, headers };
+}
+
 async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  const payload = (await response.json().catch(() => ({}))) as T & {
+  const response = await fetch(input, withJsonAccept(init));
+  let payload: T & {
     error?: string;
   };
+
+  try {
+    payload = (await response.json()) as T & { error?: string };
+  } catch {
+    throw new Error('Admin API returned an invalid JSON response.');
+  }
+
   if (!response.ok) {
     throw new Error(payload.error || 'Request failed.');
   }

@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import {
+  adminJson,
   getAdminIntegrationStatuses,
   requireSecuredAdminApi,
-  withAdminSecurityHeaders,
 } from '../../../lib/server/admin';
-import { json } from '../../../lib/server/community';
 import { getCollection } from 'astro:content';
 import { readGuestbookEntries } from '../../../lib/server/guestbook';
 
@@ -30,17 +29,15 @@ export const GET: APIRoute = async ({ cookies }) => {
     (project) => project.data.featured,
   ).length;
 
-  return withAdminSecurityHeaders(
-    json({
-      metrics: {
-        posts: posts.length,
-        drafts,
-        projects: projects.length,
-        featuredProjects,
-        pendingGuestbook: pending,
-        approvedGuestbook: approved,
-      },
-      integrations,
-    }),
-  );
+  return adminJson({
+    metrics: {
+      posts: posts.length,
+      drafts,
+      projects: projects.length,
+      featuredProjects,
+      pendingGuestbook: pending,
+      approvedGuestbook: approved,
+    },
+    integrations,
+  });
 };

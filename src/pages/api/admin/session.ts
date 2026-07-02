@@ -1,14 +1,16 @@
 import type { APIRoute } from 'astro';
 import {
+  adminJson,
+  adminRedirect,
   createAdminSessionValue,
   isAdminConfigured,
   setAdminSession,
   verifyAdminToken,
+  withAdminSecurityHeaders,
 } from '../../../lib/server/admin';
 import {
   ensureSameOrigin,
   enforceRedisRateLimit,
-  json,
   prefersJsonResponse,
   readJsonBody,
   readUrlEncodedBody,
@@ -21,12 +23,12 @@ const LOGIN_RATE_LIMIT = { limit: 8, windowMs: 15 * 60 * 1000 };
 
 const safeNextPath = (value: string) => safeRedirectPath(value, '/admin');
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   const sameOriginError = ensureSameOrigin(request);
-  if (sameOriginError) return sameOriginError;
+  if (sameOriginError) return withAdminSecurityHeaders(sameOriginError);
 
   const signingUnavailable = rejectIfSigningUnavailable();
-  if (signingUnavailable) return signingUnavailable;
+  if (signingUnavailable) return withAdminSecurityHeaders(signingUnavailable);
 
   const rateLimitError = await enforceRedisRateLimit(
     request,
@@ -34,7 +36,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     LOGIN_RATE_LIMIT.limit,
     LOGIN_RATE_LIMIT.windowMs,
   );
-  if (rateLimitError) return rateLimitError;
+  if (rateLimitError) return withAdminSecurityHeaders(rateLimitError);
 
   let token = '';
   let next = '/admin';
@@ -52,23 +54,25 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       next = String(formData.get('next') ?? '/admin');
     }
   } catch (error) {
-    return requestBodyErrorResponse(error);
+    return withAdminSecurityHeaders(requestBodyErrorResponse(error));
   }
 
   if (!isAdminConfigured()) {
     return prefersJsonResponse(request)
-      ? json(
+      ? adminJson(
           { error: 'Admin authentication is not configured.' },
           { status: 503 },
         )
-      : new Response('Admin authentication is not configured.', {
-          status: 503,
-        });
+      : withAdminSecurityHeaders(
+          new Response('Admin authentication is not configured.', {
+            status: 503,
+          }),
+        );
   }
 
   if (!(await verifyAdminToken(token))) {
     if (prefersJsonResponse(request)) {
-      return json(
+      return adminJson(
         {
           error: 'The admin token was rejected.',
           next: '/admin/login?error=invalid',
@@ -79,12 +83,12 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('error', 'invalid');
     loginUrl.searchParams.set('next', safeNextPath(next));
-    return redirect(loginUrl.pathname + loginUrl.search, 302);
+    return adminRedirect(loginUrl.pathname + loginUrl.search);
   }
 
   setAdminSession(cookies, request, await createAdminSessionValue(token));
   if (prefersJsonResponse(request)) {
-    return json({ ok: true, next: safeNextPath(next) }, { status: 200 });
+    return adminJson({ ok: true, next: safeNextPath(next) }, { status: 200 });
   }
-  return redirect(safeNextPath(next), 302);
+  return adminRedirect(safeNextPath(next));
 };
