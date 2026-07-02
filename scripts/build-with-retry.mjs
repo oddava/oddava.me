@@ -17,7 +17,7 @@ async function runBuild() {
     .filter(Boolean)
     .join(' ');
 
-  execSync('pnpm exec astro build --mode production', {
+  execSync('npx astro build --mode production', {
     cwd: projectRoot,
     stdio: 'inherit',
     env: {
