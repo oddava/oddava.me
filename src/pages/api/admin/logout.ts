@@ -1,18 +1,21 @@
 import type { APIRoute } from 'astro';
-import { clearAdminSession } from '../../../lib/server/admin';
+import {
+  adminRedirect,
+  clearAdminSession,
+  withAdminSecurityHeaders,
+} from '../../../lib/server/admin';
 import { ensureSameOrigin } from '../../../lib/server/community';
 
 async function handleLogout(
   request: Request,
   cookies: Parameters<APIRoute>[0]['cookies'],
-  redirect: Parameters<APIRoute>[0]['redirect'],
 ) {
   clearAdminSession(cookies, request);
-  return redirect('/admin/login?logged_out=1', 302);
+  return adminRedirect('/admin/login?logged_out=1');
 }
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   const sameOriginError = ensureSameOrigin(request);
-  if (sameOriginError) return sameOriginError;
-  return handleLogout(request, cookies, redirect);
+  if (sameOriginError) return withAdminSecurityHeaders(sameOriginError);
+  return handleLogout(request, cookies);
 };
