@@ -149,3 +149,33 @@
     max-width: 160px;
   }
 }
+
+@media (max-width: 380px) {
+  .spotify-widget-full-view .spotify-widget-container {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  .spotify-widget-album {
+    width: 40px;
+    height: 40px;
+  }
+
+  .spotify-widget-info {
+    min-width: 100px;
+  }
+
+  .spotify-widget-title {
+    font-size: 0.75rem;
+    max-width: 120px;
+  }
+
+  .spotify-widget-artist {
+    font-size: 0.65rem;
+    max-width: 120px;
+  }
+
+  .spotify-widget-time {
+    font-size: 0.55rem;
+  }
+}

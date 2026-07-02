@@ -1,7 +1,8 @@
 import type { SpotifyNowPlaying } from '../../contracts';
 import { fetchWithTimeout } from '../community';
-import { getServerEnv } from '../env';
-import { isLanyardConfigured, SPOTIFY_UNAVAILABLE } from './config';
+import type { SpotifyCredentialsRecord } from './credentials';
+import { getSpotifyCredentials } from './credentials';
+import { isConfiguredSecret, SPOTIFY_UNAVAILABLE } from './config';
 import type { LanyardPayload } from './types';
 
 function mapLanyardPayload(payload: LanyardPayload): SpotifyNowPlaying {
@@ -28,16 +29,19 @@ function mapLanyardPayload(payload: LanyardPayload): SpotifyNowPlaying {
   };
 }
 
-export async function fetchLanyardNowPlaying(): Promise<SpotifyNowPlaying> {
-  if (!isLanyardConfigured()) {
+export async function fetchLanyardNowPlaying(
+  creds?: SpotifyCredentialsRecord,
+): Promise<SpotifyNowPlaying> {
+  const resolved = creds ?? (await getSpotifyCredentials());
+  const discordId = resolved.lanyard.discordUserId;
+
+  if (!isConfiguredSecret(discordId)) {
     return SPOTIFY_UNAVAILABLE;
   }
 
-  const discordId = getServerEnv('DISCORD_USER_ID')!.trim();
-
   try {
     const response = await fetchWithTimeout(
-      `https://api.lanyard.rest/v1/users/${discordId}`,
+      `https://api.lanyard.rest/v1/users/${discordId!.trim()}`,
     );
     if (!response.ok) {
       return SPOTIFY_UNAVAILABLE;

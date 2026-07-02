@@ -256,5 +256,70 @@
 
   .admin-header {
     flex-direction: column;
+    gap: 16px;
+  }
+
+  .admin-login {
+    margin-top: 8vh;
+    padding: 24px;
+  }
+
+  .admin-login h1 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-shell {
+    padding: 16px 12px 32px;
+  }
+
+  .admin-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .admin-header p {
+    font-size: 0.875rem;
+  }
+
+  .admin-login {
+    padding: 20px;
+    margin-top: 6vh;
+  }
+
+  .admin-button,
+  .admin-input,
+  .admin-select {
+    min-height: 44px;
+  }
+
+  .admin-input,
+  .admin-select {
+    font-size: 16px;
+  }
+
+  .entry-card header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .admin-entry-actions {
+    margin-top: 12px;
+  }
+
+  .admin-entry-actions .admin-button {
+    flex: 1 1 auto;
+    min-width: 80px;
+  }
+
+  .admin-toolbar {
+    width: 100%;
+  }
+
+  .admin-toolbar .admin-select,
+  .admin-toolbar .admin-button {
+    flex: 1 1 auto;
+    min-width: 120px;
   }
 }

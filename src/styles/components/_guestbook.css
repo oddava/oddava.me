@@ -150,3 +150,39 @@
   font-size: 0.8rem;
   font-family: var(--font-mono);
 }
+
+@media (max-width: 640px) {
+  .guestbook {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .guestbook__form {
+    padding: var(--space-sm) 0;
+    gap: var(--space-sm);
+  }
+
+  .guestbook__field input,
+  .guestbook__field textarea {
+    font-size: 16px;
+  }
+
+  .guestbook__entry {
+    padding: var(--space-sm) 0;
+  }
+
+  .guestbook__entry p {
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 480px) {
+  .guestbook__meta {
+    gap: 0.4rem;
+  }
+
+  .guestbook__meta span + span::before {
+    margin-right: 0.4rem;
+  }
+}

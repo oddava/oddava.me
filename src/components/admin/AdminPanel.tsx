@@ -151,6 +151,22 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
     }
   };
 
+  const handleCredentialsSaved = async () => {
+    setBusyKey('spotify-credentials');
+    setNotice(null);
+    setGlobalError(null);
+    try {
+      await loadOverview();
+      setNotice('Spotify credentials saved. Connection status refreshed.');
+    } catch (error) {
+      setGlobalError(
+        error instanceof Error ? error.message : 'Request failed.',
+      );
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       {globalError && (
@@ -164,7 +180,6 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
         </p>
       )}
 
-      
       <MetricGrid overview={overview} />
 
       <section className="admin-split">
@@ -179,6 +194,7 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
         <IntegrationStatusList
           statuses={overview?.integrations ?? []}
           onToggle={handleToggleIntegration}
+          onCredentialsSaved={handleCredentialsSaved}
           busyKey={busyKey}
         />
       </section>

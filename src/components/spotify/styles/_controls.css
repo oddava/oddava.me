@@ -55,4 +55,8 @@
   .spotify-widget-controls {
     opacity: 1;
   }
+
+  .action-btn {
+    padding: 8px;
+  }
 }

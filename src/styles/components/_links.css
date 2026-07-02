@@ -5,8 +5,7 @@
 /* Full-page reset — overrides .page wrapper and body defaults */
 html,
 body {
-  overflow: hidden !important;
-  height: 100dvh !important;
+  min-height: 100dvh !important;
   background: var(--links-bg, #0a0a0a) !important;
 }
 
@@ -14,18 +13,15 @@ body {
   max-width: none !important;
   margin: 0 !important;
   padding: 0 !important;
-  min-height: unset !important;
-  height: 100dvh !important;
-  overflow: hidden !important;
+  min-height: 100dvh !important;
 }
 
 .page > main {
   padding: 0 !important;
-  overflow: hidden !important;
 }
 
 .page > main .links-page {
-  min-height: unset;
+  min-height: 100dvh;
 }
 
 h1 {
