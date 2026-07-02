@@ -40,6 +40,32 @@ describe('admin integration statuses', () => {
     expect(spotify.healthy).toBe(true);
   });
 
+  it('reports Spotify as unhealthy when the connection probe throws', async () => {
+    vi.doMock('../src/lib/server/admin/settings', () => ({
+      getIntegrationSettings: async () => ({
+        integrations: { spotify: true },
+      }),
+      setIntegrationSetting: async () => ({ integrations: { spotify: true } }),
+    }));
+    vi.doMock('../src/lib/server/spotify/service', () => ({
+      checkSpotifyConnection: async () => {
+        throw new Error('Spotify API timed out.');
+      },
+      getSpotifyNowPlayingWithFallback: async () => ({
+        isPlaying: false,
+        integrations: { spotify: true, lanyard: false },
+      }),
+    }));
+
+    const { getAdminIntegrationStatuses } =
+      await import('../src/lib/server/admin/integrations');
+
+    const [, spotify] = await getAdminIntegrationStatuses();
+
+    expect(spotify.healthy).toBe(false);
+    expect(spotify.detail).toBe('Spotify API timed out.');
+  });
+
   it('skips the Spotify probe when the integration is disabled', async () => {
     const checkSpotifyConnection = vi.fn(async () => ({
       healthy: true,

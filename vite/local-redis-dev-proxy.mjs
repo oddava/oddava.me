@@ -54,7 +54,13 @@ export function localRedisDevProxy() {
               if (client?.isOpen) {
                 await client.quit();
               }
-              client = createClient({ url });
+              client = createClient({
+                socket: {
+                  connectTimeout: 500,
+                  reconnectStrategy: false,
+                },
+                url,
+              });
               connectedUrl = url;
               await client.connect();
             }

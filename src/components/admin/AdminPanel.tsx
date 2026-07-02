@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   clearGuestbookEntries,
   fetchAdminOverview,
@@ -29,8 +29,10 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
     [],
   );
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const overviewRequestRef = useRef(0);
 
   const loadOverview = async () => {
     setOverview(await fetchAdminOverview());
@@ -42,18 +44,24 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
 
   useEffect(() => {
     let active = true;
+    const requestId = ++overviewRequestRef.current;
 
     void fetchAdminOverview()
       .then((data) => {
-        if (!active) return;
+        if (!active || requestId !== overviewRequestRef.current) return;
         setOverview(data);
         setGlobalError(null);
       })
       .catch((error) => {
-        if (!active) return;
+        if (!active || requestId !== overviewRequestRef.current) return;
         setGlobalError(
           error instanceof Error ? error.message : 'Could not load admin data.',
         );
+      })
+      .finally(() => {
+        if (requestId === overviewRequestRef.current) {
+          setOverviewLoading(false);
+        }
       });
 
     return () => {
@@ -193,6 +201,7 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
         />
         <IntegrationStatusList
           statuses={overview?.integrations ?? []}
+          loading={overviewLoading}
           onToggle={handleToggleIntegration}
           onCredentialsSaved={handleCredentialsSaved}
           busyKey={busyKey}

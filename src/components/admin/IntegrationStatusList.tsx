@@ -4,6 +4,7 @@ import { SpotifyCredentialsForm } from './SpotifyCredentialsForm';
 
 interface IntegrationStatusListProps {
   statuses: IntegrationStatus[];
+  loading?: boolean;
   onToggle?: (key: string, name: string, enabled: boolean) => void;
   onCredentialsSaved?: () => Promise<void>;
   busyKey?: string | null;
@@ -33,6 +34,7 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
 
 export function IntegrationStatusList({
   statuses,
+  loading = false,
   onToggle,
   onCredentialsSaved,
   busyKey,
@@ -49,6 +51,17 @@ export function IntegrationStatusList({
         </div>
       </div>
       <div className="admin-integration-list">
+        {loading && (
+          <p className="admin-empty" role="status">
+            Loading integrations…
+          </p>
+        )}
+        {!loading && statuses.length === 0 && (
+          <p className="admin-empty" role="status">
+            Integration statuses are unavailable right now. Refresh the page or
+            check the overview API response in the network tab.
+          </p>
+        )}
         {statuses.map((status) => {
           const manageable = status.manageable !== false;
           const isEnabled = status.enabled ?? true;

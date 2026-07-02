@@ -149,13 +149,6 @@ export default defineConfig({
       __SPOTIFY_WIDGET_ENABLED__: JSON.stringify(spotifyWidgetEnabled),
     },
     server: {
-      warmup: {
-        clientFiles: [
-          './src/layouts/Base.astro',
-          './src/pages/index.astro',
-          './src/styles/global.css',
-        ],
-      },
       watch: {
         ignored: ['**/dist/**', '**/.pnpm-store/**'],
       },

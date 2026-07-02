@@ -98,8 +98,11 @@ export function isStorageUnavailableError(error: unknown): boolean {
     'ENOTFOUND',
     'EAI_AGAIN',
     'The client is closed',
+    'Connection timeout',
     'Socket closed unexpectedly',
     'fetch failed',
+    'aborted',
+    'AbortError',
     'No such module',
     'Local Redis proxy failed',
   ].some((fragment) => message.includes(fragment));

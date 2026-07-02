@@ -7,7 +7,15 @@ import type { LanyardPayload } from './types';
 
 function mapLanyardPayload(payload: LanyardPayload): SpotifyNowPlaying {
   const spotify = payload.data?.spotify;
-  if (!payload.success || !spotify?.song) {
+  if (!payload.success) {
+    return {
+      error: 'Lanyard did not find that Discord user.',
+      fromFallback: true,
+      isPlaying: false,
+    };
+  }
+
+  if (!spotify?.song) {
     return { fromFallback: true, isPlaying: false };
   }
 
@@ -18,6 +26,7 @@ function mapLanyardPayload(payload: LanyardPayload): SpotifyNowPlaying {
       spotify.timestamps?.end && spotify.timestamps.start
         ? spotify.timestamps.end - spotify.timestamps.start
         : 0,
+    fromFallback: true,
     isPlaying: true,
     progressMs: spotify.timestamps?.start
       ? Date.now() - spotify.timestamps.start
@@ -44,11 +53,19 @@ export async function fetchLanyardNowPlaying(
       `https://api.lanyard.rest/v1/users/${discordId!.trim()}`,
     );
     if (!response.ok) {
-      return SPOTIFY_UNAVAILABLE;
+      return {
+        error: `Lanyard API returned ${response.status}.`,
+        fromFallback: true,
+        isPlaying: false,
+      };
     }
 
     return mapLanyardPayload((await response.json()) as LanyardPayload);
   } catch {
-    return SPOTIFY_UNAVAILABLE;
+    return {
+      error: 'Lanyard API request failed.',
+      fromFallback: true,
+      isPlaying: false,
+    };
   }
 }
