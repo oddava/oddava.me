@@ -11,7 +11,10 @@ import { readGuestbookEntries } from '../../../lib/server/guestbook';
 
 const STORAGE_READ_TIMEOUT_MS = 4_000;
 
-async function withStorageTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
+async function withStorageTimeout<T>(
+  promise: Promise<T>,
+  fallback: T,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   try {
