@@ -35,6 +35,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     'admin-login',
     LOGIN_RATE_LIMIT.limit,
     LOGIN_RATE_LIMIT.windowMs,
+    { failOpenInDevelopment: true },
   );
   if (rateLimitError) return withAdminSecurityHeaders(rateLimitError);
 

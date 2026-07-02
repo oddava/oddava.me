@@ -12,13 +12,72 @@ const pageTitle = `${title} | oddava admin`;
 ---
 
 <!doctype html>
-<html lang="en" class="admin-page">
+<html lang="en" data-theme="dark" class="admin-page">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
+
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/m-plus-rounded-1c-latin-400-normal.woff2"
+      crossorigin
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/m-plus-rounded-1c-latin-700-normal.woff2"
+      crossorigin
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/jetbrains-mono-latin-400-normal.woff2"
+      crossorigin
+      fetchpriority="high"
+    />
+
+    <style is:inline>
+      @font-face {
+        font-family: 'JetBrains Mono';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400;
+        src: url(/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'M PLUS Rounded 1c';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 400;
+        src: url(/fonts/m-plus-rounded-1c-latin-400-normal.woff2)
+          format('woff2');
+      }
+      @font-face {
+        font-family: 'M PLUS Rounded 1c';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 500;
+        src: url(/fonts/m-plus-rounded-1c-latin-500-normal.woff2)
+          format('woff2');
+      }
+      @font-face {
+        font-family: 'M PLUS Rounded 1c';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 700;
+        src: url(/fonts/m-plus-rounded-1c-latin-700-normal.woff2)
+          format('woff2');
+      }
+    </style>
   </head>
   <body class="admin-page__body">
     <div class="admin-shell">

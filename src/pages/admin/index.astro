@@ -20,12 +20,8 @@ const keystaticHref = '/keystatic';
       <>
         <header class="admin-header">
           <div>
-            <p class="admin-kicker">oddava control plane</p>
-            <h1>Unified admin panel</h1>
-            <p>
-              Manage content, moderate community features, and inspect service
-              readiness without leaving one surface.
-            </p>
+            <p class="admin-kicker">oddava</p>
+            <h1>Admin</h1>
           </div>
           <form method="post" action="/api/admin/logout">
             <button class="admin-button ghost" type="submit">
@@ -39,11 +35,12 @@ const keystaticHref = '/keystatic';
       </>
     ) : (
       <section class="admin-card admin-login">
-        <p class="admin-kicker">oddava control plane</p>
+        <p class="admin-kicker">oddava</p>
         <h1>Admin unavailable</h1>
         <p class="admin-note">
-          Set `ADMIN_PANEL_TOKEN` or `GUESTBOOK_ADMIN_TOKEN` in the environment,
-          then reload this page.
+          Set <code>ADMIN_PANEL_TOKEN</code> or{' '}
+          <code>GUESTBOOK_ADMIN_TOKEN</code> in the environment, then reload
+          this page.
         </p>
       </section>
     )

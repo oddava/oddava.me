@@ -13,6 +13,10 @@ interface GuestbookModerationProps {
   onStatusChange: (status: GuestbookStatus) => void;
 }
 
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + '...' : str;
+}
+
 export function GuestbookModeration({
   busyKey,
   entries,
@@ -21,13 +25,18 @@ export function GuestbookModeration({
   onModerate,
   onStatusChange,
 }: GuestbookModerationProps) {
+  const handleClear = () => {
+    if (window.confirm('Clear all guestbook entries? This cannot be undone.')) {
+      onClearAll();
+    }
+  };
+
   return (
     <article id="guestbook" className="admin-card admin-panel">
       <div className="admin-section-head">
         <div>
-          <p className="admin-kicker">moderation</p>
+          <p className="admin-kicker">community</p>
           <h2>Guestbook</h2>
-          <p>Review notes before they reach the public page.</p>
         </div>
         <div className="admin-toolbar">
           <select
@@ -41,19 +50,24 @@ export function GuestbookModeration({
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          <button
-            className="admin-button danger"
-            type="button"
-            disabled={busyKey === 'guestbook-clear'}
-            onClick={onClearAll}
-          >
-            Clear all
-          </button>
+          {status === 'pending' && entries.length > 0 && (
+            <button
+              className="admin-button danger"
+              type="button"
+              disabled={busyKey === 'guestbook-clear'}
+              onClick={handleClear}
+            >
+              Clear all
+            </button>
+          )}
         </div>
       </div>
       <div className="entry-list">
         {entries.length === 0 && (
-          <p className="admin-empty">No entries in this state.</p>
+          <div className="admin-empty-state">
+            <p className="admin-empty-icon">&#10003;</p>
+            <p className="admin-empty">No {status} entries.</p>
+          </div>
         )}
         {entries.map((entry) => (
           <article key={entry.id} className="entry-card">
@@ -65,11 +79,13 @@ export function GuestbookModeration({
             <p className="admin-entry-meta">
               {formatDate(entry.createdAt)}
               {entry.ipFingerprint
-                ? ` - ${entry.ipFingerprint.slice(0, 12)}...`
+                ? ` \u00b7 ${truncate(entry.ipFingerprint, 12)}`
                 : ''}
             </p>
             {entry.userAgent && (
-              <p className="admin-entry-meta">{entry.userAgent}</p>
+              <p className="admin-entry-meta" title={entry.userAgent}>
+                {truncate(entry.userAgent, 60)}
+              </p>
             )}
             <div className="admin-entry-actions">
               {entry.status !== 'approved' && (

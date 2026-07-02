@@ -7,6 +7,16 @@ const safeExternalUrl = z.url().refine((value) => {
   return protocol === 'https:' || protocol === 'http:';
 }, 'URL must use http or https.');
 
+const optionalExternalUrl = z.preprocess(
+  (value) => value || undefined,
+  safeExternalUrl.optional(),
+);
+
+const optionalInteger = z.preprocess(
+  (value) => (value === null || value === '' ? undefined : value),
+  z.number().int().optional(),
+);
+
 const blog = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: './src/content/blog' }),
   schema: z.object({
@@ -30,4 +40,14 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { blog, projects };
+const books = defineCollection({
+  loader: glob({ pattern: '**/*.yaml', base: './src/content/books' }),
+  schema: z.object({
+    title: z.string(),
+    coverImage: z.string(),
+    href: optionalExternalUrl,
+    order: optionalInteger,
+  }),
+});
+
+export const collections = { blog, books, projects };

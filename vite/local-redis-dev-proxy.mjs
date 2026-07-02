@@ -42,7 +42,9 @@ export function localRedisDevProxy() {
             if (!Array.isArray(command) || typeof url !== 'string') {
               res.statusCode = 400;
               res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ error: 'Invalid Redis proxy payload.' }));
+              res.end(
+                JSON.stringify({ error: 'Invalid Redis proxy payload.' }),
+              );
               return;
             }
 

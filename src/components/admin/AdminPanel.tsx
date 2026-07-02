@@ -39,6 +39,7 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
       drafts: overview.metrics.drafts,
       projects: overview.metrics.projects,
       featuredProjects: overview.metrics.featuredProjects,
+      books: overview.metrics.books,
     };
   }, [overview]);
 
@@ -138,6 +139,8 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
       `Guestbook entry ${status}.`,
     );
 
+  const pendingCount = overview?.metrics.pendingGuestbook ?? 0;
+
   return (
     <div className="admin-dashboard">
       {globalError && (
@@ -153,7 +156,13 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
 
       <nav className="admin-anchor-nav admin-card">
         <a href="#content">Content</a>
-        <a href="#guestbook">Guestbook</a>
+        <a href="#editor">Editor</a>
+        <a href="#guestbook">
+          Guestbook
+          {pendingCount > 0 && (
+            <span className="admin-badge">{pendingCount}</span>
+          )}
+        </a>
         <a href="#integrations">Integrations</a>
       </nav>
 
@@ -169,16 +178,14 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
 
       <KeystaticEditor keystaticHref={keystaticHref} />
 
-      <section className="admin-grid">
-        <GuestbookModeration
-          busyKey={busyKey}
-          entries={guestbookEntries}
-          status={guestbookStatus}
-          onClearAll={handleClearGuestbook}
-          onModerate={handleModerateGuestbookEntry}
-          onStatusChange={setGuestbookStatus}
-        />
-      </section>
+      <GuestbookModeration
+        busyKey={busyKey}
+        entries={guestbookEntries}
+        status={guestbookStatus}
+        onClearAll={handleClearGuestbook}
+        onModerate={handleModerateGuestbookEntry}
+        onStatusChange={setGuestbookStatus}
+      />
     </div>
   );
 }

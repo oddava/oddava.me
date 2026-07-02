@@ -18,6 +18,7 @@ describe('admin API client', () => {
       Response.json({
         metrics: {
           approvedGuestbook: 0,
+          books: 3,
           drafts: 0,
           featuredProjects: 0,
           pendingGuestbook: 0,
@@ -28,11 +29,12 @@ describe('admin API client', () => {
       }),
     );
 
-    await fetchAdminOverview();
+    const overview = await fetchAdminOverview();
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(new Headers(init.headers).get('Accept')).toBe('application/json');
     expect(init.cache).toBe('no-store');
+    expect(overview.metrics.books).toBe(3);
   });
 
   it('preserves mutation headers while adding JSON accept headers', async () => {

@@ -4,12 +4,15 @@ import Base from '../../layouts/Base.astro';
 import '../../styles/components/_library.css';
 import {
   getAnimeFavorites,
+  getBookCards,
   toAnimeFavoriteCards,
   type AnimeFavoriteCard,
+  type BookCard,
 } from '../../lib/content';
 
 let animeCards: AnimeFavoriteCard[] = [];
 let animeAvailable = true;
+const bookCards: BookCard[] = await getBookCards();
 
 try {
   animeCards = toAnimeFavoriteCards(await getAnimeFavorites());
@@ -35,23 +38,23 @@ try {
   <section class="library-section">
     {
       animeAvailable && (
-        <div class="anime-grid">
+        <div class="library-card-grid">
           {animeCards.map((card) => (
             <a
               href={card.href}
-              class="anime-card"
+              class="library-card"
               target="_blank"
               rel="noopener noreferrer"
             >
               <img
                 src={card.coverImage}
                 alt={card.title}
-                class="anime-card__cover"
+                class="library-card__cover"
                 width="95"
                 height="125"
                 loading="lazy"
               />
-              <span class="anime-card__tooltip">{card.title}</span>
+              <span class="library-card__tooltip">{card.title}</span>
             </a>
           ))}
         </div>
@@ -67,6 +70,43 @@ try {
     {
       !animeAvailable && (
         <p class="library-empty-state">Favorites are offline right now.</p>
+      )
+    }
+  </section>
+
+  <h2 class="library-heading">books</h2>
+
+  <section class="library-section">
+    {
+      bookCards.length > 0 && (
+        <div class="library-card-grid">
+          {bookCards.map((card) => (
+            <a
+              href={card.href}
+              class="library-card"
+              target={card.href.startsWith('#') ? undefined : '_blank'}
+              rel={
+                card.href.startsWith('#') ? undefined : 'noopener noreferrer'
+              }
+            >
+              <img
+                src={card.coverImage}
+                alt={card.title}
+                class="library-card__cover"
+                width="95"
+                height="125"
+                loading="lazy"
+              />
+              <span class="library-card__tooltip">{card.title}</span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      bookCards.length === 0 && (
+        <p class="library-empty-state">Nothing here yet.</p>
       )
     }
   </section>

@@ -101,6 +101,31 @@ export default config({
     brand: { name: 'Oddava' },
   },
   collections: {
+    books: collection({
+      label: 'Books',
+      slugField: 'title',
+      path: 'src/content/books/*',
+      format: 'yaml',
+      entryLayout: 'form',
+      columns: ['title', 'order'],
+      schema: {
+        title: fields.slug({ name: { label: 'Title' } }),
+        coverImage: fields.image({
+          label: 'Cover Image',
+          directory: 'public/images/books',
+          publicPath: '/images/books/',
+          validation: { isRequired: true },
+        }),
+        href: fields.url({
+          label: 'Link',
+          description: 'Optional page for the book.',
+        }),
+        order: fields.integer({
+          label: 'Order',
+          description: 'Lower numbers appear first.',
+        }),
+      },
+    }),
     posts: collection({
       label: 'Blog Posts',
       slugField: 'title',
