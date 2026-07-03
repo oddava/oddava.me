@@ -57,3 +57,91 @@ export interface SpotifyCredentialsStatus {
 export interface SpotifyCredentialsResponse {
   credentials: SpotifyCredentialsStatus;
 }
+
+export type ContentFieldType =
+  | 'text'
+  | 'textarea'
+  | 'date'
+  | 'boolean'
+  | 'url'
+  | 'integer'
+  | 'string-list'
+  | 'image';
+
+export interface ContentFieldDefinition {
+  name: string;
+  label: string;
+  type: ContentFieldType;
+  required?: boolean;
+  description?: string;
+  hidden?: boolean;
+}
+
+export interface ContentCollectionMeta {
+  id: string;
+  label: string;
+  singularLabel: string;
+  format: 'mdx' | 'yaml';
+  body: boolean;
+  count: number;
+  reorderable: boolean;
+  fields: ContentFieldDefinition[];
+  media: {
+    publicPath: string;
+    groupByEntry: boolean;
+  };
+}
+
+export interface ContentWriteResult {
+  provider: 'github' | 'local';
+  commitUrl?: string;
+  revision?: string;
+  message: string;
+}
+
+export interface ContentEntryListItem {
+  id: string;
+  title: string;
+  path: string;
+  revision?: string;
+  meta: Record<string, unknown>;
+}
+
+export interface ContentEntryDetail extends ContentEntryListItem {
+  fields: Record<string, unknown>;
+  body: string;
+}
+
+export interface ContentCollectionsResponse {
+  collections: ContentCollectionMeta[];
+  provider: 'github' | 'local';
+}
+
+export interface ContentEntriesResponse {
+  collection: Omit<ContentCollectionMeta, 'count'>;
+  entries: ContentEntryListItem[];
+  provider: 'github' | 'local';
+}
+
+export interface ContentEntryResponse {
+  collection: Omit<ContentCollectionMeta, 'count'>;
+  entry: ContentEntryDetail;
+  provider: 'github' | 'local';
+}
+
+export interface ContentSaveResponse {
+  entry: ContentEntryDetail | null;
+  result: ContentWriteResult;
+}
+
+export interface ContentDeleteResponse {
+  result: ContentWriteResult;
+}
+
+export interface ContentMediaResponse {
+  media: {
+    url: string;
+    path: string;
+  };
+  result: ContentWriteResult;
+}

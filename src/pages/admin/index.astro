@@ -10,8 +10,6 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
     `/admin/login?next=${encodeURIComponent(Astro.url.pathname)}`,
   );
 }
-
-const keystaticHref = '/keystatic';
 ---
 
 <AdminLayout title="Admin" description="Unified admin panel for oddava.me.">
@@ -30,7 +28,7 @@ const keystaticHref = '/keystatic';
           </form>
         </header>
         <main class="admin-main">
-          <AdminPanel client:only="react" keystaticHref={keystaticHref} />
+          <AdminPanel client:only="react" />
         </main>
       </>
     ) : (

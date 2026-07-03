@@ -1,0 +1,26 @@
+
+> oddava.me@1.0.0 dev C:\Projects\oddava.me
+> astro dev --mode development "--" "--host" "127.0.0.1" "--port" "4321"
+
+[2m15:53:01[22m [34m[@astrojs/cloudflare][39m Enabling compile-time image optimization. Images will be pre-optimized at build time.
+[2m15:53:01[22m [34m[vite][39m Re-optimizing dependencies because vite config has changed
+[local-redis] Dev proxy listening on http://127.0.0.1:45555/__local_redis
+[33m[1m15:53:02[22m [WARN] [vite][39m [2mDefault inspector port 9229 not available, using 9250 instead
+[22m
+Using secrets defined in .env
+[vite] connected.
+[2m15:53:14[22m [34m[types][39m Generated [2m3ms[22m
+[2m15:53:15[22m [34m[content][39m Syncing content
+[2m15:53:15[22m [34m[content][39m Content config changed
+[2m15:53:15[22m [34m[content][39m Clearing content store
+[2m15:53:15[22m [34m[content][39m Synced content
+[2m15:53:15[22m [34m[vite][39m Re-optimizing dependencies because vite config has changed
+[2m15:53:15[22m [34m[vite][39m Re-optimizing dependencies because vite config has changed
+[42m[1m astro [22m[49m [32mv6.4.8[39m [2mready in[22m 17873 [2mms[22m
+[2m┃[22m Local    [36mhttp://localhost:4321/[39m
+[2m┃[22m Network  [2muse --host to expose[22m
+[2m15:53:16[22m [32mwatching for file changes...[39m
+[2m15:53:40[22m [34m[vite][39m [32m✨ new dependencies optimized: [33myaml[32m[39m
+[2m15:53:40[22m [34m[vite][39m [32m✨ optimized dependencies changed. reloading[39m
+[2m15:53:40[22m [34m[vite][39m [vite] program reload
+[2m15:54:49[22m [34m[vite][39m [runtime] APP_ENV=development REDIS_MODE=local TURNSTILE_BYPASS_IN_DEV=true

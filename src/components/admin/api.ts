@@ -2,6 +2,12 @@ import type {
   GuestbookEntry,
   GuestbookResponse,
   GuestbookStatus,
+  ContentCollectionsResponse,
+  ContentDeleteResponse,
+  ContentEntriesResponse,
+  ContentEntryResponse,
+  ContentMediaResponse,
+  ContentSaveResponse,
   OverviewResponse,
   SpotifyCredentialsResponse,
 } from './types';
@@ -18,6 +24,7 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, withJsonAccept(init));
   let payload: T & {
     error?: string;
+    issues?: { path?: unknown[]; message?: string }[];
   };
 
   try {
@@ -27,7 +34,22 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new Error(payload.error || 'Request failed.');
+    const issueText = Array.isArray(payload.issues)
+      ? payload.issues
+          .map((issue) => {
+            const path = Array.isArray(issue.path)
+              ? issue.path.join('.')
+              : undefined;
+            return path && issue.message
+              ? `${path}: ${issue.message}`
+              : issue.message;
+          })
+          .filter(Boolean)
+          .join(' ')
+      : '';
+    throw new Error(
+      [payload.error || 'Request failed.', issueText].filter(Boolean).join(' '),
+    );
   }
   return payload;
 }
@@ -108,4 +130,119 @@ export function updateSpotifyCredentials(body: {
       body: JSON.stringify(body),
     },
   );
+}
+
+export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
+  return readJson<ContentCollectionsResponse>(
+    '/api/admin/content/collections',
+    {
+      cache: 'no-store',
+    },
+  );
+}
+
+export function fetchContentEntries(
+  collection: string,
+): Promise<ContentEntriesResponse> {
+  return readJson<ContentEntriesResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}`,
+    { cache: 'no-store' },
+  );
+}
+
+export function fetchContentEntry(
+  collection: string,
+  id: string,
+): Promise<ContentEntryResponse> {
+  return readJson<ContentEntryResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
+      id,
+    )}`,
+    { cache: 'no-store' },
+  );
+}
+
+export function createContentEntry(
+  collection: string,
+  body: {
+    slug?: string;
+    fields: Record<string, unknown>;
+    body?: string;
+  },
+): Promise<ContentSaveResponse> {
+  return readJson<ContentSaveResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function updateContentEntry(
+  collection: string,
+  id: string,
+  body: {
+    fields: Record<string, unknown>;
+    body?: string;
+    revision?: string;
+  },
+): Promise<ContentSaveResponse> {
+  return readJson<ContentSaveResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
+      id,
+    )}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function deleteContentEntry(
+  collection: string,
+  id: string,
+): Promise<ContentDeleteResponse> {
+  return readJson<ContentDeleteResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
+      id,
+    )}`,
+    { method: 'DELETE' },
+  );
+}
+
+export interface ContentReorderResponse {
+  reordered: { id: string; ok: boolean }[];
+}
+
+export function reorderContentEntries(
+  collection: string,
+  ids: string[],
+): Promise<ContentReorderResponse> {
+  return readJson<ContentReorderResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/reorder`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    },
+  );
+}
+
+export function uploadContentMedia(
+  collection: string,
+  entryId: string,
+  file: File,
+): Promise<ContentMediaResponse> {
+  const formData = new FormData();
+  formData.set('collection', collection);
+  formData.set('entryId', entryId);
+  formData.set('file', file);
+
+  return readJson<ContentMediaResponse>('/api/admin/content/media', {
+    method: 'POST',
+    body: formData,
+  });
 }

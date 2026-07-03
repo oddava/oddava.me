@@ -47,6 +47,5 @@ describe('security header middleware helpers', () => {
     expect(shouldApplyContentSecurityPolicy('/about')).toBe(true);
     expect(shouldApplyContentSecurityPolicy('/api/spotify')).toBe(false);
     expect(shouldApplyContentSecurityPolicy('/admin')).toBe(false);
-    expect(shouldApplyContentSecurityPolicy('/keystatic/api')).toBe(false);
   });
 });
