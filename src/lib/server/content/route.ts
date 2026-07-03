@@ -20,7 +20,8 @@ import {
 
 const PROJECT_ROOT = path.resolve(fileURLToPath(import.meta.url), '../../../');
 
-let cachedProvider: ReturnType<typeof provider> | null = null;
+import type { ContentProvider } from './types';
+let cachedProvider: ContentProvider | null = null;
 
 function provider() {
   if (cachedProvider) return cachedProvider;
