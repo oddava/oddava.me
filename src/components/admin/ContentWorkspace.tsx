@@ -508,68 +508,69 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
               {selectedCollection.fields
                 .filter((field) => !field.hidden)
                 .map((field) => (
-                <label className="content-field" key={field.name}>
-                  <span>
-                    {field.label}
-                    {field.required ? ' *' : ''}
-                  </span>
-                  {field.description && (
-                    <small className="admin-muted">{field.description}</small>
-                  )}
-                  {field.type === 'textarea' || field.type === 'string-list' ? (
-                    <textarea
-                      className="admin-input content-textarea"
-                      value={fieldValueAsText(fields[field.name])}
-                      onChange={(event) =>
-                        updateField(field, event.target.value)
-                      }
-                    />
-                  ) : field.type === 'boolean' ? (
-                    <label className="admin-toggle content-toggle">
-                      <input
-                        type="checkbox"
-                        checked={fields[field.name] === true}
+                  <label className="content-field" key={field.name}>
+                    <span>
+                      {field.label}
+                      {field.required ? ' *' : ''}
+                    </span>
+                    {field.description && (
+                      <small className="admin-muted">{field.description}</small>
+                    )}
+                    {field.type === 'textarea' ||
+                    field.type === 'string-list' ? (
+                      <textarea
+                        className="admin-input content-textarea"
+                        value={fieldValueAsText(fields[field.name])}
                         onChange={(event) =>
-                          updateField(field, event.target.checked)
+                          updateField(field, event.target.value)
                         }
                       />
-                      <span className="admin-toggle__track">
-                        <span className="admin-toggle__thumb" />
-                      </span>
-                    </label>
-                  ) : (
-                    <input
-                      className="admin-input"
-                      type={
-                        field.type === 'date'
-                          ? 'date'
-                          : field.type === 'integer'
-                            ? 'number'
-                            : 'text'
-                      }
-                      value={fieldValueAsText(fields[field.name])}
-                      onChange={(event) =>
-                        updateField(field, event.target.value)
-                      }
-                    />
-                  )}
-                  {field.type === 'image' && (
-                    <input
-                      className="content-upload-input"
-                      type="file"
-                      accept="image/webp,image/jpeg,image/png,image/gif"
-                      disabled={busyKey === `upload-${field.name}`}
-                      onChange={(event) => {
-                        const file = event.currentTarget.files?.[0];
-                        event.currentTarget.value = '';
-                        if (file) {
-                          void uploadImage(file, { fieldName: field.name });
+                    ) : field.type === 'boolean' ? (
+                      <label className="admin-toggle content-toggle">
+                        <input
+                          type="checkbox"
+                          checked={fields[field.name] === true}
+                          onChange={(event) =>
+                            updateField(field, event.target.checked)
+                          }
+                        />
+                        <span className="admin-toggle__track">
+                          <span className="admin-toggle__thumb" />
+                        </span>
+                      </label>
+                    ) : (
+                      <input
+                        className="admin-input"
+                        type={
+                          field.type === 'date'
+                            ? 'date'
+                            : field.type === 'integer'
+                              ? 'number'
+                              : 'text'
                         }
-                      }}
-                    />
-                  )}
-                </label>
-              ))}
+                        value={fieldValueAsText(fields[field.name])}
+                        onChange={(event) =>
+                          updateField(field, event.target.value)
+                        }
+                      />
+                    )}
+                    {field.type === 'image' && (
+                      <input
+                        className="content-upload-input"
+                        type="file"
+                        accept="image/webp,image/jpeg,image/png,image/gif"
+                        disabled={busyKey === `upload-${field.name}`}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          event.currentTarget.value = '';
+                          if (file) {
+                            void uploadImage(file, { fieldName: field.name });
+                          }
+                        }}
+                      />
+                    )}
+                  </label>
+                ))}
 
               {selectedCollection.body && (
                 <label className="content-field">

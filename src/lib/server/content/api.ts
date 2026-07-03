@@ -51,7 +51,10 @@ function publicCollection(collection: ContentCollectionDefinition) {
 
 function notReorderable(): Response {
   return adminJson(
-    { error: 'This collection does not support reordering.', code: 'not_reorderable' },
+    {
+      error: 'This collection does not support reordering.',
+      code: 'not_reorderable',
+    },
     { status: 400 },
   );
 }
@@ -63,7 +66,8 @@ export async function handleContentReorder(
 ): Promise<Response> {
   const collection = getContentCollection(collectionId);
   if (!collection) return missingCollection();
-  if (!collection.reorderable || !collection.orderField) return notReorderable();
+  if (!collection.reorderable || !collection.orderField)
+    return notReorderable();
 
   let body: { ids?: unknown };
   try {
@@ -75,7 +79,10 @@ export async function handleContentReorder(
   const ids = Array.isArray(body.ids) ? body.ids : null;
   if (!ids || ids.length === 0 || ids.some((id) => !isValidSlug(String(id)))) {
     return adminJson(
-      { error: 'A non-empty array of valid entry ids is required.', code: 'invalid_ids' },
+      {
+        error: 'A non-empty array of valid entry ids is required.',
+        code: 'invalid_ids',
+      },
       { status: 400 },
     );
   }
