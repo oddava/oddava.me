@@ -436,6 +436,17 @@
   border-color: var(--admin-accent);
 }
 
+.admin-button.primary {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+  color: #121018;
+}
+
+.admin-button--danger {
+  border-color: color-mix(in srgb, var(--admin-danger), transparent 35%);
+  color: var(--admin-danger);
+}
+
 .admin-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -508,26 +519,161 @@
   background: #fff;
 }
 
-/* --- Editor section --- */
+/* --- Content workspace --- */
 
-.admin-editor-section {
-  scroll-margin-top: 20px;
+.content-workspace {
+  display: grid;
+  gap: 16px;
 }
 
-.admin-iframe-shell {
+.content-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.content-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
   border: 1px solid var(--admin-line);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #1a1a1a;
-  min-height: 920px;
+  background: var(--admin-surface);
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
 }
 
-.admin-iframe {
-  display: block;
+.content-tab.is-active {
+  border-color: var(--admin-accent);
+  color: var(--admin-text-primary);
+  background: var(--admin-surface-elevated);
+}
+
+.content-workspace__grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.content-entry-list {
+  display: grid;
+  gap: 8px;
+}
+
+.content-entry-button {
+  display: grid;
+  grid-template-columns: min-content 1fr;
+  grid-template-areas:
+    'handle title'
+    'handle id';
+  align-items: center;
+  gap: 4px 8px;
   width: 100%;
-  min-height: 920px;
-  border: 0;
-  background: #1a1a1a;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  color: var(--admin-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.content-entry-button:hover:not(:disabled),
+.content-entry-button.is-active {
+  border-color: var(--admin-accent);
+  background: var(--admin-surface-elevated);
+}
+
+.content-entry-button span {
+  color: var(--admin-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  grid-area: id;
+}
+
+.content-entry-button strong {
+  grid-area: title;
+  min-width: 0;
+}
+
+.content-drag-handle {
+  grid-area: handle !important;
+  cursor: grab;
+  color: var(--admin-text-muted) !important;
+  font-size: 0.85rem !important;
+  line-height: 1;
+  user-select: none;
+  opacity: 0.7;
+}
+
+.content-drag-handle:hover {
+  color: var(--admin-text-primary) !important;
+  opacity: 1;
+}
+
+.content-entry-button[draggable='true']:active .content-drag-handle {
+  cursor: grabbing;
+}
+
+.content-entry-button.is-dragging {
+  opacity: 0.45;
+}
+
+.content-entry-button.is-drag-over {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent), transparent 60%);
+}
+
+.content-editor-panel {
+  min-width: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  background: var(--admin-surface);
+}
+
+.content-editor-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.content-field {
+  display: grid;
+  gap: 6px;
+  color: var(--admin-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.content-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.content-body-editor {
+  min-height: 360px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.content-toggle {
+  width: max-content;
+}
+
+.content-upload-input {
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+}
+
+.content-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* --- Entry list --- */
@@ -629,9 +775,8 @@
     font-size: 0.75rem;
   }
 
-  .admin-iframe-shell,
-  .admin-iframe {
-    min-height: 520px;
+  .content-workspace__grid {
+    grid-template-columns: 1fr;
   }
 
   .content-card header {
@@ -660,11 +805,6 @@
 
   .admin-panel h2 {
     font-size: 0.95rem;
-  }
-
-  .admin-iframe-shell,
-  .admin-iframe {
-    min-height: 420px;
   }
 
   .entry-card {

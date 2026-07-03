@@ -19,7 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "format:check": "prettier --check README.md .github src tests astro.config.mjs keystatic.config.ts package.json pnpm-workspace.yaml tsconfig.json vitest.config.ts wrangler.jsonc",
+    "format:check": "prettier --check README.md .github src tests astro.config.mjs package.json pnpm-workspace.yaml tsconfig.json vitest.config.ts wrangler.jsonc",
     "audit": "pnpm audit --prod --audit-level high",
     "spotify:token": "node get-spotify-token.js",
     "verify": "pnpm run format:check && pnpm run check && pnpm run test && pnpm run build",
@@ -28,14 +28,13 @@
   "dependencies": {
     "@astrojs/mdx": "^6.0.3",
     "@astrojs/react": "^5.0.7",
-    "@keystatic/astro": "^5.1.0",
-    "@keystatic/core": "^0.5.50",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/m-plus-rounded-1c": "^5.2.5",
     "astro": "^6.4.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "redis": "^4.7.1",
-    "@fontsource/jetbrains-mono": "^5.2.5",
-    "@fontsource/m-plus-rounded-1c": "^5.2.5"
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",

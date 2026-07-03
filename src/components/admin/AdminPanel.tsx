@@ -6,9 +6,9 @@ import {
   updateGuestbookEntryStatus,
   updateIntegrationSetting,
 } from './api';
+import { ContentWorkspace } from './ContentWorkspace';
 import { GuestbookModeration } from './GuestbookModeration';
 import { IntegrationStatusList } from './IntegrationStatusList';
-import { KeystaticEditor } from './KeystaticEditor';
 import { MetricGrid } from './MetricGrid';
 import type {
   GuestbookEntry,
@@ -17,11 +17,7 @@ import type {
 } from './types';
 import './AdminPanel.css';
 
-interface AdminPanelProps {
-  keystaticHref: string;
-}
-
-export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
+export default function AdminPanel() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [guestbookStatus, setGuestbookStatus] =
     useState<GuestbookStatus>('pending');
@@ -206,7 +202,7 @@ export default function AdminPanel({ keystaticHref }: AdminPanelProps) {
         />
       </section>
 
-      <KeystaticEditor keystaticHref={keystaticHref} />
+      <ContentWorkspace onContentChanged={loadOverview} />
     </div>
   );
 }

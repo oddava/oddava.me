@@ -20,7 +20,7 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
 ].join('; ');
 
-const CSP_EXCLUDED_PATH_PREFIXES = ['/admin', '/keystatic', '/api'];
+const CSP_EXCLUDED_PATH_PREFIXES = ['/admin', '/api'];
 const STRICT_TRANSPORT_SECURITY = 'max-age=31536000; includeSubDomains';
 
 export function shouldApplyContentSecurityPolicy(pathname: string): boolean {

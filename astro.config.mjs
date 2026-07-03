@@ -6,8 +6,7 @@ import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
 import react from '@astrojs/react';
 import { localRedisDevProxy } from './vite/local-redis-dev-proxy.mjs';
-import { keystaticLocalDevProxy } from './vite/keystatic-local-dev-proxy.mjs';
-import { patchKeystaticAstroV6 } from './vite/patch-keystatic-astro-v6.mjs';
+import { localContentAdminDevProxy } from './vite/local-content-admin-dev-proxy.mjs';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,25 +36,6 @@ const CLIENT_OPTIMIZE_DEPS = [
   'react-dom',
   'react-dom/client',
   'react/jsx-runtime',
-  '@keystatic/core',
-  '@keystatic/core/ui',
-  '@keystatic/core/content-components',
-  // Keystatic's editor loads slate-react, which imports lodash/debounce as a
-  // default export. Its React Aria UI also imports named exports from
-  // CommonJS shims. Pre-bundle them so Vite serves ESM-compatible wrappers.
-  'slate-react',
-  'lodash/debounce',
-  '@react-stately/toast',
-  'use-sync-external-store/shim',
-  'use-sync-external-store/shim/index.js',
-  'cookie',
-  'cookie/dist/index.js',
-  'remove-accents',
-  'remove-accents/index.js',
-  'brace-expansion',
-  'brace-expansion/index.js',
-  'debug',
-  'debug/src/browser.js',
 ];
 
 /** @returns {import('vite').Plugin} */
@@ -156,19 +136,9 @@ export default defineConfig({
     plugins: [
       spotifyWidgetBuildStub(spotifyWidgetEnabled),
       localRedisDevProxy(),
-      keystaticLocalDevProxy(projectRoot),
-      patchKeystaticAstroV6(),
+      localContentAdminDevProxy(projectRoot),
       optimizeServerDeps(),
       devCloudflareWorkersEnv(),
-      {
-        name: 'keystatic-virtual-config',
-        resolveId(id) {
-          if (id === 'virtual:keystatic-config') {
-            return this.resolve('./keystatic.config', './a');
-          }
-          return null;
-        },
-      },
     ],
     resolve: {
       dedupe: [
@@ -186,9 +156,6 @@ export default defineConfig({
     optimizeDeps: {
       include: CLIENT_OPTIMIZE_DEPS,
       holdUntilCrawlEnd: false,
-    },
-    ssr: {
-      external: ['@keystatic/core'],
     },
   },
 });
