@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import type { APIContext } from 'astro';
 import {
   adminJson,
@@ -5,6 +7,8 @@ import {
   withAdminSecurityHeaders,
 } from '../admin';
 import { ensureSameOrigin } from '../community';
+import { getServerEnv } from '../env';
+import { createLocalContentProvider } from './local-provider';
 import { createGithubContentProvider } from './github-provider';
 import {
   handleContentCollection,
@@ -14,8 +18,17 @@ import {
   handleContentReorder,
 } from './api';
 
+const PROJECT_ROOT = path.resolve(fileURLToPath(import.meta.url), '../../../');
+
+let cachedProvider: ReturnType<typeof provider> | null = null;
+
 function provider() {
-  return createGithubContentProvider();
+  if (cachedProvider) return cachedProvider;
+  cachedProvider =
+    getServerEnv('CONTENT_WRITE_MODE') === 'local'
+      ? createLocalContentProvider(PROJECT_ROOT)
+      : createGithubContentProvider();
+  return cachedProvider;
 }
 
 async function safeContentResponse(
@@ -109,6 +122,10 @@ export async function adminContentReorderRoute(
   const authError = await requireMutation(context);
   if (authError) return authError;
   return safeContentResponse(() =>
-    handleContentReorder(provider(), context.params.collection, context.request),
+    handleContentReorder(
+      provider(),
+      context.params.collection,
+      context.request,
+    ),
   );
 }
