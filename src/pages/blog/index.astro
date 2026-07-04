@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import '../../styles/components/_lists.css';
 import {
   formatPostDate,
+  getPostStats,
   getPublishedPosts,
   groupEntriesByYear,
 } from '../../lib/content';
@@ -30,6 +31,14 @@ const postsByYear = groupEntriesByYear(posts);
                       <time datetime={post.data.date}>
                         {formatPostDate(post.data.date, 'short')}
                       </time>
+                      {post.body && (
+                        <>
+                          <span aria-hidden="true"> · </span>
+                          <span>
+                            {getPostStats(post.body).readingTimeMinutes} min
+                          </span>
+                        </>
+                      )}
                       {post.data.updated && (
                         <>
                           <span aria-hidden="true"> / </span>

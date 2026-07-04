@@ -30,7 +30,7 @@ describe('spotify credentials store', () => {
     expect(status.lanyard.discordUserId).toEqual({ set: true, source: 'env' });
   });
 
-  it('uses the public site Discord ID when Lanyard env and Redis values are absent', async () => {
+  it('returns no Discord user id when Lanyard env and Redis values are absent', async () => {
     vi.doMock('../src/lib/server/community', () => ({
       hasRedisConfig: () => false,
       redisCommand: vi.fn(),
@@ -40,12 +40,12 @@ describe('spotify credentials store', () => {
       await import('../src/lib/server/spotify/credentials');
 
     const creds = await getSpotifyCredentials();
-    expect(creds.lanyard.discordUserId).toBe('970369176277516288');
+    expect(creds.lanyard.discordUserId).toBeUndefined();
 
     const status = await getSpotifyCredentialsStatus();
     expect(status.lanyard.discordUserId).toEqual({
-      set: true,
-      source: 'default',
+      set: false,
+      source: 'none',
     });
   });
 

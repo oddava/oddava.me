@@ -1,19 +1,22 @@
+/* Admin tokens alias the public design-system tokens from _variables.css
+   so there is a single source-of-truth. The --admin-* names are kept because
+   component-loaded CSS (Batch C) references them directly. */
 .admin-page {
-  --admin-bg: #0b0c0f;
-  --admin-surface: color-mix(in srgb, #121317 94%, #8b5cf6 6%);
-  --admin-surface-elevated: color-mix(in srgb, #17181d 91%, #8b5cf6 9%);
-  --admin-text-primary: #e8e4ee;
-  --admin-text-secondary: #b7b1c4;
-  --admin-text-muted: #9892a5;
-  --admin-text-disabled: #777282;
-  --admin-accent: #a78bfa;
-  --admin-accent-hover: #c4b5fd;
-  --admin-danger: #ff8585;
-  --admin-success: #7fcf9c;
-  --admin-warning: #e8bd6a;
-  --admin-line: color-mix(in srgb, #8b5cf6 10%, transparent);
-  --admin-line-strong: color-mix(in srgb, #8b5cf6 18%, transparent);
-  --admin-radius: 12px;
+  --admin-bg: var(--color-surface);
+  --admin-surface: var(--color-surface-raised);
+  --admin-surface-elevated: var(--color-surface-elevated);
+  --admin-text-primary: var(--color-text-primary);
+  --admin-text-secondary: var(--color-text-secondary);
+  --admin-text-muted: var(--color-text-muted);
+  --admin-text-disabled: var(--color-text-disabled);
+  --admin-accent: var(--color-text-accent);
+  --admin-accent-hover: var(--color-text-interactive-hover);
+  --admin-danger: var(--color-text-error);
+  --admin-success: var(--color-text-success);
+  --admin-warning: var(--color-text-warning);
+  --admin-line: var(--color-rule);
+  --admin-line-strong: var(--color-rule-strong);
+  --admin-radius: var(--radius-lg);
   --admin-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   --admin-status-success-bg: rgba(127, 207, 156, 0.1);
   --admin-status-error-bg: rgba(255, 133, 133, 0.1);
@@ -34,7 +37,7 @@
 }
 
 .admin-page__body {
-  font-family: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.75;
   color: var(--admin-text-primary);
@@ -55,10 +58,10 @@
 }
 
 .admin-page code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.8em;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--admin-surface-elevated);
   color: var(--admin-accent);
 }
@@ -101,7 +104,7 @@
 
 .admin-kicker {
   margin: 0 0 6px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -125,7 +128,7 @@
 .admin-button,
 .admin-input,
 .admin-select {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--admin-line);
   background: var(--admin-surface);
   color: var(--admin-text-primary);
@@ -167,7 +170,7 @@
 
 .admin-button.primary {
   background: var(--admin-accent);
-  color: #121018;
+  color: var(--color-text-on-accent);
   border-color: transparent;
   font-weight: 500;
 }
@@ -178,7 +181,7 @@
 
 .admin-button.danger {
   background: var(--admin-danger);
-  color: #1a0a0a;
+  color: var(--color-on-danger);
   border-color: transparent;
   font-weight: 500;
 }
@@ -230,7 +233,7 @@
 .admin-success {
   margin: 0;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
 }
 

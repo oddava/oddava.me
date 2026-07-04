@@ -22,7 +22,7 @@
   gap: 6px;
   min-height: 34px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--admin-line);
   background: var(--admin-surface);
   color: var(--admin-text-muted);
@@ -48,10 +48,10 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: var(--radius-pill);
   background: var(--admin-accent);
-  color: #121018;
-  font-family: 'JetBrains Mono', monospace;
+  color: var(--color-text-on-accent);
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   font-weight: 700;
   line-height: 1;
@@ -74,7 +74,7 @@
 
 .metric-card__label {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -130,7 +130,7 @@
 .content-card {
   padding: 12px 14px;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-surface);
 }
 
@@ -154,8 +154,8 @@
   align-items: center;
   justify-content: center;
   padding: 2px 8px;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono', monospace;
+  border-radius: var(--radius-sm-2);
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -274,7 +274,7 @@
 }
 
 .admin-integration-row__state {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -289,7 +289,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm-2);
   border: 1px solid var(--admin-line);
   background: transparent;
   color: var(--admin-text-muted);
@@ -378,7 +378,7 @@
 }
 
 .admin-credentials__status {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   color: var(--admin-text-muted);
   text-transform: uppercase;
@@ -388,12 +388,12 @@
 .admin-input {
   width: 100%;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm-2);
   border: 1px solid var(--admin-line);
   background: var(--admin-surface);
   color: var(--admin-text-primary);
   font-size: 0.78rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .admin-input::placeholder {
@@ -420,7 +420,7 @@
   align-items: center;
   justify-content: center;
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm-2);
   border: 1px solid var(--admin-line-strong);
   background: var(--admin-surface);
   color: var(--admin-text-primary);
@@ -439,7 +439,7 @@
 .admin-button.primary {
   background: var(--admin-accent);
   border-color: var(--admin-accent);
-  color: #121018;
+  color: var(--color-text-on-accent);
 }
 
 .admin-button--danger {
@@ -476,7 +476,7 @@
   display: inline-block;
   width: 40px;
   height: 22px;
-  border-radius: 11px;
+  border-radius: var(--radius-pill);
   background: var(--admin-line-strong);
   transition: background 0.2s ease;
   position: relative;
@@ -538,7 +538,7 @@
   gap: 8px;
   min-height: 38px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--admin-line);
   background: var(--admin-surface);
   color: var(--admin-text-muted);
@@ -575,7 +575,7 @@
   gap: 4px 8px;
   width: 100%;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--admin-line);
   background: var(--admin-surface);
   color: var(--admin-text-primary);
@@ -591,7 +591,7 @@
 
 .content-entry-button span {
   color: var(--admin-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   grid-area: id;
 }
@@ -632,7 +632,7 @@
 .content-editor-panel {
   min-width: 0;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-surface);
 }
 
@@ -709,7 +709,7 @@
 .studio-inspector {
   min-width: 0;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-surface);
 }
 
@@ -762,7 +762,7 @@
   width: 100%;
   padding: 11px;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--admin-text-primary);
   text-align: left;
@@ -780,7 +780,7 @@
 .studio-entry em,
 .studio-surface code {
   color: var(--admin-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.64rem;
   font-style: normal;
   overflow-wrap: anywhere;
@@ -825,7 +825,7 @@
   margin: 0 0 14px;
   padding: 18px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--admin-surface), transparent 20%);
   color: var(--admin-text-primary);
   text-align: left;
@@ -843,7 +843,7 @@
   display: inline-block;
   margin-bottom: 8px;
   color: var(--admin-accent);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -879,14 +879,14 @@
 .studio-book-preview img,
 .studio-media-item img {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .studio-preview-block pre,
 .studio-preview-block aside {
   margin: 0;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--admin-line);
   background: var(--admin-status-neutral-bg);
   color: var(--admin-text-secondary);
@@ -907,7 +907,7 @@
   aspect-ratio: 95 / 125;
   object-fit: cover;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-status-neutral-bg);
 }
 
@@ -931,7 +931,7 @@
 .content-field.is-selected {
   padding: 10px;
   border: 1px solid var(--admin-accent);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-status-neutral-bg);
 }
 
@@ -963,7 +963,7 @@
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-status-neutral-bg);
 }
 
@@ -994,7 +994,7 @@
 .studio-media-item button:first-child {
   padding: 0;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   cursor: pointer;
   overflow: hidden;
@@ -1010,7 +1010,7 @@
 
 .studio-media-item span {
   color: var(--admin-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.6rem;
 }
 
@@ -1021,7 +1021,7 @@
   align-items: center;
   padding: 10px;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .studio-revision div {
@@ -1063,7 +1063,7 @@
 .entry-card {
   padding: 14px;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--admin-surface);
 }
 
@@ -1081,7 +1081,7 @@
 
 .admin-entry-meta {
   color: var(--admin-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
 }
 

@@ -12,10 +12,7 @@ export {
   prefersJsonResponse,
   safeRedirectPath,
 } from './community/request';
-export {
-  enforceRedisRateLimit,
-  enforceSignedCooldown,
-} from './community/rate-limit';
+export { enforceRedisRateLimit } from './community/rate-limit';
 export {
   hasRedisConfig,
   isStorageUnavailableError,
@@ -29,6 +26,7 @@ export {
   readSignedValue,
   rejectIfSigningUnavailable,
 } from './community/signing';
+export { sanitizePlainText } from './community/sanitize';
 export {
   getTurnstileSiteKey,
   hasTurnstileConfig,

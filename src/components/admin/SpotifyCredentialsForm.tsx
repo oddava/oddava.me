@@ -7,6 +7,9 @@ interface SpotifyCredentialsFormProps {
   busyKey?: string | null;
 }
 
+const ERROR_REGION_ID = 'spotify-credentials-error';
+const errorRegionId = (hasError: boolean) => (hasError ? ERROR_REGION_ID : undefined);
+
 interface FieldState {
   clientId: string;
   clientSecret: string;
@@ -56,7 +59,8 @@ export function SpotifyCredentialsForm({
     setFields((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (event: { preventDefault(): void }) => {
+    event.preventDefault();
     setSaving(true);
     setError(null);
     try {
@@ -85,7 +89,7 @@ export function SpotifyCredentialsForm({
   };
 
   return (
-    <div className="admin-credentials">
+    <form className="admin-credentials" onSubmit={handleSave}>
       <div className="admin-credentials__header">
         <h3 className="admin-credentials__title">
           Spotify &amp; Lanyard credentials
@@ -108,6 +112,8 @@ export function SpotifyCredentialsForm({
               isSet(status?.spotify.clientId) ? '•••• set' : 'Not set'
             }
             disabled={saving || isBusy}
+            aria-describedby={errorRegionId(Boolean(error))}
+            aria-invalid={error ? true : undefined}
             onChange={(e) => handleField('clientId', e.target.value)}
           />
           <span className="admin-credentials__status">
@@ -128,6 +134,8 @@ export function SpotifyCredentialsForm({
               isSet(status?.spotify.clientSecret) ? '•••• set' : 'Not set'
             }
             disabled={saving || isBusy}
+            aria-describedby={errorRegionId(Boolean(error))}
+            aria-invalid={error ? true : undefined}
             onChange={(e) => handleField('clientSecret', e.target.value)}
           />
           <span className="admin-credentials__status">
@@ -148,6 +156,8 @@ export function SpotifyCredentialsForm({
               isSet(status?.spotify.refreshToken) ? '•••• set' : 'Not set'
             }
             disabled={saving || isBusy}
+            aria-describedby={errorRegionId(Boolean(error))}
+            aria-invalid={error ? true : undefined}
             onChange={(e) => handleField('refreshToken', e.target.value)}
           />
           <span className="admin-credentials__status">
@@ -168,6 +178,8 @@ export function SpotifyCredentialsForm({
               isSet(status?.lanyard.discordUserId) ? '•••• set' : 'Not set'
             }
             disabled={saving || isBusy}
+            aria-describedby={errorRegionId(Boolean(error))}
+            aria-invalid={error ? true : undefined}
             onChange={(e) => handleField('discordUserId', e.target.value)}
           />
           <span className="admin-credentials__status">
@@ -177,21 +189,25 @@ export function SpotifyCredentialsForm({
       </div>
 
       {error && (
-        <p className="admin-error admin-credentials__error" role="alert">
+        <p
+          id={ERROR_REGION_ID}
+          className="admin-error admin-credentials__error"
+          role="alert"
+          aria-live="assertive"
+        >
           {error}
         </p>
       )}
 
       <div className="admin-credentials__actions">
         <button
-          type="button"
+          type="submit"
           className="admin-button"
           disabled={saving || isBusy}
-          onClick={handleSave}
         >
           {saving ? 'Saving…' : 'Save credentials'}
         </button>
       </div>
-    </div>
+    </form>
   );
 }

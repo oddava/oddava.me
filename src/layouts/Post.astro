@@ -15,6 +15,21 @@ export interface Props {
 }
 
 const { frontmatter } = Astro.props;
+
+// Reading time: render the default slot to HTML, strip tags, count words.
+// 200 wpm is a comfortable reading pace for technical prose.
+const renderedBody = await Astro.slots.render('default');
+const bodyText = renderedBody
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&[a-z]+;/gi, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+const wordCount = bodyText ? bodyText.split(' ').length : 0;
+const readingMinutes = Math.max(1, Math.round(wordCount / 200));
+const readingTimeLabel = `${readingMinutes} min read · ${wordCount} ${
+  wordCount === 1 ? 'word' : 'words'
+}`;
+
 const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
@@ -57,6 +72,8 @@ const serializedArticleSchema = JSON.stringify(articleSchema)
         <time datetime={frontmatter.date}>
           {formatPostDate(frontmatter.date)}
         </time>
+        <span aria-hidden="true"> · </span>
+        <span>{readingTimeLabel}</span>
         {
           frontmatter.updated && (
             <>

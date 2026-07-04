@@ -2,8 +2,51 @@
 /**
  * Site footer with links and copyright info.
  */
+import LinkIcon from './LinkIcon.astro';
+
+type FooterLink = {
+  href: string;
+  label: string;
+  icon?: string;
+  external?: boolean;
+};
+
+const footerLinks: FooterLink[] = [
+  { href: '/rss.xml', label: 'rss', icon: 'rss' },
+  {
+    href: 'https://github.com/oddava',
+    label: 'github',
+    icon: 'github',
+    external: true,
+  },
+  {
+    href: 'https://x.com/oddava',
+    label: 'x',
+    icon: 'twitter',
+    external: true,
+  },
+  { href: '/links', label: 'links' },
+  { href: '/sitemap-index.xml', label: 'sitemap' },
+];
 ---
 
 <footer class="site-footer">
+  <ul class="site-footer__links">
+    {
+      footerLinks.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            class="site-footer__link"
+            target={link.external ? '_blank' : undefined}
+            rel={link.external ? 'noopener noreferrer' : undefined}
+          >
+            {link.icon && <LinkIcon name={link.icon} />}
+            <span>{link.label}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
   <div class="site-footer__colophon">© 2026 oddava</div>
 </footer>

@@ -8,3 +8,18 @@
 /* Non-critical layout and responsive styles */
 @import './_layout.css';
 @import './_responsive.css';
+
+/* A11Y-11: Global reduced-motion override. Complements component-specific
+   overrides (Batch C). Suppresses transitions/animations site-wide when the
+   user prefers reduced motion, including the link transition in _typography.css
+   and admin button transforms in admin.css / AdminPanel.css. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

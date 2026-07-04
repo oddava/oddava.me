@@ -4,7 +4,12 @@ import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import DevPerformanceLogger from '../components/DevPerformanceLogger.astro';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER_HANDLE } from '../lib/site';
+import {
+  SITE_AUTHOR_NAME,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TWITTER_HANDLE,
+} from '../lib/site';
 import criticalCss from '../styles/critical.css?raw';
 
 const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
@@ -21,15 +26,19 @@ export interface Props {
 const {
   title = SITE_NAME,
   description = SITE_DESCRIPTION,
-  image = '/favicon.svg',
+  // Default OG/social image. SVG is parsed by some consumers (X, Slack) but
+  // not all (e.g. some messengers) — a PNG should eventually replace this.
+  image = '/og-default.svg',
   type = 'website',
   hideNav = false,
   hideFooter = false,
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
-const canonicalUrl = Astro.url.toString();
-const socialImage = new URL(image, Astro.url).toString();
+// Pin canonical to the site origin + pathname so trailing-slash drift
+// (and dev/preview host drift) cannot split the canonical from production.
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+const socialImage = new URL(image, Astro.site ?? Astro.url).href;
 ---
 
 <!doctype html>
@@ -38,6 +47,7 @@ const socialImage = new URL(image, Astro.url).toString();
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    <meta name="author" content={SITE_AUTHOR_NAME} />
     <title>{pageTitle}</title>
     <link rel="canonical" href={canonicalUrl} />
 
@@ -108,9 +118,18 @@ const socialImage = new URL(image, Astro.url).toString();
   </head>
   <body>
     <div class="page">
-      {!hideNav && <Nav />}
+      {
+        !hideNav && (
+          <>
+            <a href="#main" class="skip-link">
+              Skip to content
+            </a>
+            <Nav />
+          </>
+        )
+      }
 
-      <main>
+      <main id="main">
         <slot />
       </main>
 

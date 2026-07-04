@@ -1,0 +1,98 @@
+---
+export const prerender = true;
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { getPublishedPosts, formatPostDate } from '../lib/content';
+import '../styles/components/_home.css';
+import '../styles/components/_lists.css';
+
+const [posts, projects, books] = await Promise.all([
+  getPublishedPosts(),
+  getCollection('projects'),
+  getCollection('books'),
+]);
+
+const latestPost = posts[0];
+const latestProject = projects[0];
+
+const currentlyReading = [...books]
+  .sort((a, b) => (b.data.order ?? 0) - (a.data.order ?? 0))
+  .slice(0, 3)
+  .filter((book) => book.data.href);
+---
+
+<Base
+  title="now"
+  description="A running snapshot of what i'm reading, building, and writing."
+  image="/og-default.svg"
+>
+  <section class="home-hero">
+    <h1>now</h1>
+    <p class="home-hero__tagline">
+      a running snapshot of what i'm reading, building, and writing. updated
+      whenever something changes.
+    </p>
+  </section>
+
+  <section class="home-section" aria-labelledby="now-working-heading">
+    <h2 id="now-working-heading" class="section-heading">
+      what i'm working on
+    </h2>
+    {
+      latestProject ? (
+        <a href={`/projects/${latestProject.id}`} class="now-card">
+          <span class="now-card__label">
+            {latestProject.data.title} — {latestProject.data.description}
+          </span>
+          <span class="now-card__link">see project →</span>
+        </a>
+      ) : (
+        <p class="home-empty">no active project right now.</p>
+      )
+    }
+  </section>
+
+  <section class="home-section" aria-labelledby="now-reading-heading">
+    <h2 id="now-reading-heading" class="section-heading">currently reading</h2>
+    {
+      currentlyReading.length > 0 ? (
+        <ul class="home-card-list">
+          {currentlyReading.map((book) => (
+            <li>
+              <a
+                href={book.data.href ?? '#'}
+                class="home-card"
+                target={book.data.href ? '_blank' : undefined}
+                rel={book.data.href ? 'noopener noreferrer' : undefined}
+              >
+                <span class="home-card__title">{book.data.title}</span>
+                <span class="home-card__desc">book</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="home-empty">nothing on the shelf right now.</p>
+      )
+    }
+  </section>
+
+  <section class="home-section" aria-labelledby="now-writing-heading">
+    <h2 id="now-writing-heading" class="section-heading">latest writing</h2>
+    {
+      latestPost ? (
+        <a href={`/blog/${latestPost.id}`} class="now-card">
+          <span class="home-card__title">{latestPost.data.title}</span>
+          <span class="home-card__desc">
+            <time datetime={latestPost.data.date}>
+              {formatPostDate(latestPost.data.date, 'short')}
+            </time>
+          </span>
+          <span class="now-card__link">read →</span>
+        </a>
+      ) : (
+        <p class="home-empty">nothing published yet.</p>
+      )
+    }
+  </section>
+</Base>

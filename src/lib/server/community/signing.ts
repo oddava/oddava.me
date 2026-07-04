@@ -54,12 +54,20 @@ export async function verifyStringSignature(
   expected: string,
 ): Promise<boolean> {
   try {
-    return crypto.subtle.verify(
-      'HMAC',
-      await getHmacKey(),
-      base64UrlToBytes(expected).buffer as ArrayBuffer,
-      new TextEncoder().encode(value),
-    );
+    // `crypto.subtle.verify` rejects asynchronously when the key/inputs are
+    // malformed; convert those rejections to `false` instead of letting them
+    // escape. The synchronous try/catch still guards importKey/coercion.
+    return await crypto.subtle
+      .verify(
+        'HMAC',
+        await getHmacKey(),
+        base64UrlToBytes(expected).buffer as ArrayBuffer,
+        new TextEncoder().encode(value),
+      )
+      .then(
+        (ok) => ok,
+        () => false,
+      );
   } catch {
     return false;
   }

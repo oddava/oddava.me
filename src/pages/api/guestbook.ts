@@ -23,12 +23,12 @@ import {
   readGuestbookEntries,
   toPublicGuestbookEntries,
 } from '../../lib/server/guestbook';
+import { sanitizePlainText } from '../../lib/server/community/sanitize';
 
 const GUESTBOOK_RATE_LIMIT = { limit: 3, windowMs: 10 * 60 * 1000 };
 
-function sanitizeText(value: string, limit: number): string {
-  return value.trim().slice(0, limit);
-}
+const NAME_MAX_LENGTH = 32;
+const MESSAGE_MAX_LENGTH = 280;
 
 export const GET: APIRoute = async () => {
   try {
@@ -117,8 +117,8 @@ export const POST: APIRoute = async ({ request }) => {
   const captchaError = await verifyTurnstileToken(request, body.captchaToken);
   if (captchaError) return captchaError;
 
-  const name = sanitizeText(body.name ?? '', 32) || 'anon';
-  const message = sanitizeText(body.message ?? '', 280);
+  const name = sanitizePlainText(body.name ?? '', NAME_MAX_LENGTH) || 'anon';
+  const message = sanitizePlainText(body.message ?? '', MESSAGE_MAX_LENGTH);
 
   if (!message) {
     return json(

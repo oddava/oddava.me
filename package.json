@@ -10,8 +10,9 @@
   },
   "scripts": {
     "install:deps": "pnpm install --dir ../oddava-tmp-install",
-    "dev": "astro dev --mode development",
-    "build": "node scripts/build-with-retry.mjs",
+    "gen:critical": "node scripts/gen-critical.mjs",
+    "dev": "pnpm run gen:critical && astro dev --mode development",
+    "build": "pnpm run gen:critical && node scripts/build-with-retry.mjs",
     "build:dev": "astro build --mode development",
     "deploy": "wrangler deploy --keep-vars",
     "preview": "astro preview --mode production",

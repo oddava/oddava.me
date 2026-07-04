@@ -27,7 +27,7 @@ describe('security header middleware helpers', () => {
     await expect(response.text()).resolves.toBe('ok');
   });
 
-  it('preserves existing baseline headers and skips CSP for app routes', () => {
+  it('preserves existing baseline headers and skips CSP only for /admin', () => {
     const response = applySecurityHeaders(
       new Response(null, {
         headers: {
@@ -42,10 +42,57 @@ describe('security header middleware helpers', () => {
     expect(response.headers.has('Content-Security-Policy')).toBe(false);
   });
 
+  it('applies CSP to /api/* paths (admin UI is the only exemption)', () => {
+    const response = applySecurityHeaders(
+      new Response('{"ok":true}', {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      'https://oddava.me/api/guestbook',
+    );
+
+    expect(response.headers.has('Content-Security-Policy')).toBe(true);
+    expect(response.headers.get('Content-Security-Policy')).toContain(
+      "default-src 'self'",
+    );
+  });
+
   it('keeps the CSP route rule explicit', () => {
     expect(shouldApplyContentSecurityPolicy('/')).toBe(true);
     expect(shouldApplyContentSecurityPolicy('/about')).toBe(true);
-    expect(shouldApplyContentSecurityPolicy('/api/spotify')).toBe(false);
+    expect(shouldApplyContentSecurityPolicy('/api/spotify')).toBe(true);
+    expect(shouldApplyContentSecurityPolicy('/api/guestbook')).toBe(true);
     expect(shouldApplyContentSecurityPolicy('/admin')).toBe(false);
+    expect(shouldApplyContentSecurityPolicy('/admin/login')).toBe(false);
+  });
+
+  it('omits report-to directive when CSP_REPORT_ENDPOINT is unset', () => {
+    const previous = process.env.CSP_REPORT_ENDPOINT;
+    delete process.env.CSP_REPORT_ENDPOINT;
+    try {
+      const response = applySecurityHeaders(
+        new Response('ok'),
+        'https://oddava.me/blog',
+      );
+      const csp = response.headers.get('Content-Security-Policy') ?? '';
+      expect(csp).not.toContain('report-to');
+    } finally {
+      if (previous !== undefined) process.env.CSP_REPORT_ENDPOINT = previous;
+    }
+  });
+
+  it('adds report-to directive when CSP_REPORT_ENDPOINT is set', () => {
+    const previous = process.env.CSP_REPORT_ENDPOINT;
+    process.env.CSP_REPORT_ENDPOINT = 'my-endpoint';
+    try {
+      const response = applySecurityHeaders(
+        new Response('ok'),
+        'https://oddava.me/blog',
+      );
+      const csp = response.headers.get('Content-Security-Policy') ?? '';
+      expect(csp).toContain('report-to my-endpoint');
+    } finally {
+      if (previous !== undefined) process.env.CSP_REPORT_ENDPOINT = previous;
+      else delete process.env.CSP_REPORT_ENDPOINT;
+    }
   });
 });

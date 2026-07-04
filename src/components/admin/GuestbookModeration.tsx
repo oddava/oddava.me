@@ -1,5 +1,7 @@
+import { useCallback } from 'react';
 import { formatDate } from './format';
 import type { GuestbookEntry, GuestbookStatus } from './types';
+import { useDialogConfirm } from './useDialogConfirm';
 
 interface GuestbookModerationProps {
   busyKey: string | null;
