@@ -34,6 +34,38 @@
   line-height: var(--leading-body);
 }
 
+/* --- Heading anchor links (POLISH-01) --- */
+.prose :is(h2, h3, h4) {
+  position: relative;
+  scroll-margin-top: 2rem;
+}
+
+.prose :is(h2, h3, h4) .anchor {
+  position: absolute;
+  left: -1.1em;
+  top: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 0.25em;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+
+.prose :is(h2, h3, h4):hover .anchor,
+.prose :is(h2, h3, h4) .anchor:focus-visible {
+  opacity: 1;
+}
+
+.prose :is(h2, h3, h4) .anchor:hover,
+.prose :is(h2, h3, h4) .anchor:focus-visible {
+  color: var(--color-text-interactive);
+}
+
 .prose p {
   margin-bottom: 1.5em;
   overflow-wrap: break-word;

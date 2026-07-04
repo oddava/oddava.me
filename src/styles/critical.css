@@ -1,3 +1,11 @@
+/* === _fonts.css === */
+/* ===================================================
+   ODDAVA.ME — @font-face declarations
+   Single source-of-truth for fonts. Concatenated into
+   critical.css by scripts/gen-critical.mjs and mirrored
+   into AdminLayout.astro inline <style>. Keep in sync.
+   =================================================== */
+
 @font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
@@ -38,29 +46,69 @@
   src: url(/fonts/m-plus-rounded-1c-latin-700-normal.woff2) format('woff2');
 }
 
+/* === _variables.css === */
+/* ===================================================
+   ODDAVA.ME — Custom Properties & Theme Tokens
+   =================================================== */
+
+/* --- Custom Properties --- */
 :root {
+  /* Typography */
   --font-body: 'M PLUS Rounded 1c', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
   --text-sm: 0.875rem;
   --text-base: 1.125rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
   --text-2xl: 2rem;
+  /* Minor text steps — capture scattered 0.6–0.85rem sizes
+     used across component CSS for future token migration. */
+  --text-2xs: 0.65rem;
+  --text-xs: 0.75rem;
+
   --leading-body: 1.75;
   --leading-tight: 1.3;
+
+  /* Spacing
+     Base scale: 0.25, 0.5, 1, 2, 4, 6rem.
+     Intermediate steps (1.5, 2.5) cover common magic numbers
+     (e.g. _responsive.css ≤480 padding overrides). */
+  --space-0.25: 0.25rem;
+  --space-0.5: 0.5rem;
   --space-xs: 0.5rem;
   --space-sm: 1rem;
+  --space-1.5: 1.5rem;
   --space-md: 2rem;
+  --space-2.5: 2.5rem;
   --space-lg: 4rem;
   --space-xl: 6rem;
+
+  /* Border radius
+     sm 4px / md 8px / lg 12px / xl 16px / pill 999px.
+     --radius-sm-2 (6px) captures odd 6px values in admin CSS. */
+  --radius-sm: 4px;
+  --radius-sm-2: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Layout */
   --max-width: 38rem;
   --max-width-wide: 70rem;
   --page-padding: 1.5rem;
 }
 
+/* --- Site Palette --- */
 :root,
 [data-theme],
 [data-theme='dark'] {
+  /* Brand */
+  --color-brand: #8b5cf6;
+  --color-brand-strong: #a78bfa;
+
+  /* Semantic text roles. All text colors should reference this group. */
   --color-text-primary: #e8e4ee;
   --color-text-secondary: #b7b1c4;
   --color-text-muted: #9892a5;
@@ -72,9 +120,12 @@
   --color-text-warning: #e8bd6a;
   --color-text-error: #ff8585;
   --color-text-on-accent: #121018;
-  --color-surface: color-mix(in srgb, #0b0c0f 96%, #8b5cf6 4%);
-  --color-surface-raised: color-mix(in srgb, #121317 94%, #8b5cf6 6%);
-  --color-surface-elevated: color-mix(in srgb, #17181d 91%, #8b5cf6 9%);
+  --color-on-danger: #1a0a0a;
+
+  /* Surfaces and non-text decoration. */
+  --color-surface: color-mix(in srgb, #0b0c0f 96%, var(--color-brand) 4%);
+  --color-surface-raised: color-mix(in srgb, #121317 94%, var(--color-brand) 6%);
+  --color-surface-elevated: color-mix(in srgb, #17181d 91%, var(--color-brand) 9%);
   --color-surface-glass: color-mix(
     in srgb,
     var(--color-surface-elevated) 84%,
@@ -88,15 +139,21 @@
   --color-accent: var(--color-text-accent);
   --color-accent-soft: var(--color-text-interactive);
   --color-accent-hover: var(--color-text-interactive-hover);
-  --color-rule: color-mix(in srgb, #8b5cf6 10%, transparent);
-  --color-rule-strong: color-mix(in srgb, #8b5cf6 18%, transparent);
-  --color-overlay-soft: color-mix(in srgb, #8b5cf6 6%, transparent);
-  --color-overlay-strong: color-mix(in srgb, #8b5cf6 12%, transparent);
-  --color-shadow: color-mix(in srgb, #8b5cf6 10%, transparent);
-  --color-focus-ring: color-mix(in srgb, #8b5cf6 28%, transparent);
-  --color-selection: color-mix(in srgb, #8b5cf6 24%, transparent);
+  --color-rule: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  --color-rule-strong: color-mix(in srgb, var(--color-brand) 18%, transparent);
+  --color-overlay-soft: color-mix(in srgb, var(--color-brand) 6%, transparent);
+  --color-overlay-strong: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  --color-shadow: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  --color-focus-ring: color-mix(in srgb, var(--color-brand) 28%, transparent);
+  --color-selection: color-mix(in srgb, var(--color-brand) 24%, transparent);
+
   color-scheme: dark;
 }
+
+/* === _reset.css === */
+/* ===================================================
+   CSS Reset
+   =================================================== */
 
 *,
 *::before,
@@ -118,6 +175,11 @@ html {
   color: var(--color-text-primary);
 }
 
+/* === _typography.css === */
+/* ===================================================
+   Base Typography
+   =================================================== */
+
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -134,6 +196,7 @@ body {
   outline-offset: 3px;
 }
 
+/* --- Links --- */
 a {
   color: var(--color-text-interactive);
   text-decoration: none;
@@ -144,6 +207,7 @@ a:hover {
   color: var(--color-text-interactive-hover);
 }
 
+/* --- Headings --- */
 h1,
 h2,
 h3,
@@ -174,6 +238,7 @@ h3 {
   margin-bottom: var(--space-xs);
 }
 
+/* --- Horizontal Rule --- */
 hr {
   border: none;
   border-top: 1px solid var(--color-rule);

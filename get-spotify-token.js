@@ -83,6 +83,11 @@ const server = http.createServer(async (req, res) => {
 
         fs.writeFileSync(envPath, envContent);
         console.log('Done. You can close this window now.');
+        console.warn(
+          '\u001b[33m\u001b[1m' +
+            'Reminder: .env contains secrets. Do NOT commit it (it is git-ignored).' +
+            '\u001b[0m',
+        );
 
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(

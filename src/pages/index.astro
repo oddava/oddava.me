@@ -1,18 +1,102 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { getPublishedPosts, formatPostDate } from '../lib/content';
 import '../styles/components/_home.css';
+import '../styles/components/_lists.css';
+
+const [posts, projects] = await Promise.all([
+  getPublishedPosts(),
+  getCollection('projects'),
+]);
+
+const featuredProjects = projects
+  .filter((p) => p.data.featured)
+  .slice(0, 3)
+  .concat(projects.filter((p) => !p.data.featured))
+  .slice(0, 3);
+
+const latestPosts = posts.slice(0, 3);
 ---
 
 <Base
   title="oddava"
   description="Software, AI, and personal projects by oddava."
+  image="/og-default.svg"
 >
-  <section class="home">
-    <p>
-      hi, i'm <a href="/about">oddava</a>. i spend most of my time building
-      things, reading, and learning. this is my corner of the web where i share
-      projects, thoughts, and things i find interesting
+  <section class="home-hero">
+    <h1>oddava</h1>
+    <p class="home-hero__tagline">
+      i'm oddava. i build things, read a lot, and document the process —
+      software, side projects, and notes worth keeping.
     </p>
+    <div class="home-hero__cta">
+      <a href="/blog" class="home-cta">writing</a>
+      <a href="/projects" class="home-cta">projects</a>
+      <a href="/about" class="home-cta">about</a>
+    </div>
+  </section>
+
+  <section class="home-section" aria-labelledby="home-now-heading">
+    <h2 id="home-now-heading" class="section-heading">what i'm doing now</h2>
+    <a href="/now" class="now-card">
+      <span class="now-card__label">
+        a running snapshot of what i'm reading, building, and writing —
+      </span>
+      <span class="now-card__link">see /now →</span>
+    </a>
+  </section>
+
+  <section class="home-section" aria-labelledby="home-projects-heading">
+    <h2 id="home-projects-heading" class="section-heading">
+      featured projects
+    </h2>
+    {
+      featuredProjects.length > 0 ? (
+        <ul class="home-card-list">
+          {featuredProjects.map((project) => (
+            <li>
+              <a href={`/projects/${project.id}`} class="home-card">
+                <span class="home-card__title">{project.data.title}</span>
+                <span class="home-card__desc">{project.data.description}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="home-empty">nothing shipped yet — check back soon.</p>
+      )
+    }
+  </section>
+
+  <section class="home-section" aria-labelledby="home-writing-heading">
+    <h2 id="home-writing-heading" class="section-heading">latest writing</h2>
+    {
+      latestPosts.length > 0 ? (
+        <ul class="home-card-list">
+          {latestPosts.map((post) => (
+            <li>
+              <a href={`/blog/${post.id}`} class="home-card">
+                <span class="home-card__title">{post.data.title}</span>
+                <span class="home-card__desc">
+                  <time datetime={post.data.date}>
+                    {formatPostDate(post.data.date, 'short')}
+                  </time>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="home-empty">no posts yet.</p>
+      )
+    }
+  </section>
+
+  <section class="home-section home-section--cta">
+    <a href="/blog" class="home-cta">read the writing</a>
+    <a href="/projects" class="home-cta">see the projects</a>
+    <a href="/about" class="home-cta">who's oddava</a>
   </section>
 </Base>

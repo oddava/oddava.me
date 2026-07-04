@@ -1,18 +1,21 @@
 import type { OverviewResponse } from './types';
+import { SkeletonGrid } from './Skeleton';
 
 interface MetricGridProps {
   overview: OverviewResponse | null;
 }
 
 export function MetricGrid({ overview }: MetricGridProps) {
-  const cards = overview
-    ? [
-        { label: 'Posts', value: overview.metrics.posts },
-        { label: 'Drafts', value: overview.metrics.drafts },
-        { label: 'Projects', value: overview.metrics.projects },
-        { label: 'Books', value: overview.metrics.books },
-      ]
-    : [];
+  if (!overview) {
+    return <SkeletonGrid cols={4} rows={1} ariaLabel="Loading metrics" />;
+  }
+
+  const cards = [
+    { label: 'Posts', value: overview.metrics.posts },
+    { label: 'Drafts', value: overview.metrics.drafts },
+    { label: 'Projects', value: overview.metrics.projects },
+    { label: 'Books', value: overview.metrics.books },
+  ];
 
   return (
     <section className="admin-grid cols-4">

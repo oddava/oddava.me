@@ -171,11 +171,49 @@ export function useWidgetPosition({
     };
   }, [isDragging, isMinimized, onExpandFromDrag]);
 
+  const nudgeBy = useCallback((deltaX: number, deltaY: number) => {
+    setPosition((current) => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const next = clampWidgetPosition(
+        {
+          ...current,
+          offsetX: current.offsetX + deltaX,
+          offsetY: current.offsetY + deltaY,
+        },
+        { width, height },
+      );
+      positionRef.current = next;
+      try {
+        localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* Ignore storage failures. */
+      }
+      return next;
+    });
+  }, []);
+
+  const resetPosition = useCallback(() => {
+    const next = clampWidgetPosition(DEFAULT_WIDGET_POSITION, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+    positionRef.current = next;
+    setPosition(next);
+    try {
+      localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* Ignore storage failures. */
+    }
+  }, []);
+
   return {
     handlePointerDown,
     isDragging,
-    position,
+    nudgeBy,
     preventClickRef,
+    position,
+    resetPosition,
     widgetRef,
   };
 }

@@ -66,6 +66,8 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
     <p
       id="admin-login-error"
       class="admin-error"
+      role="alert"
+      aria-live="assertive"
       style="display:none; margin-top: 12px;"
     >
     </p>

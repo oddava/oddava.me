@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useGuestbookEntries } from './guestbook/useGuestbookEntries';
 import { useGuestbookSubmit } from './guestbook/useGuestbookSubmit';
 import { useTurnstile } from './guestbook/useTurnstile';
+import { SkeletonRow } from './admin/Skeleton';
 
 const MAX_MESSAGE_LENGTH = 280;
 
@@ -88,9 +89,12 @@ export function Guestbook() {
             maxLength={MAX_MESSAGE_LENGTH}
             rows={3}
             required
+            aria-required="true"
           />
           <span
             className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}
+            aria-live="polite"
+            aria-atomic="true"
           >
             {remaining}
           </span>
@@ -116,7 +120,13 @@ export function Guestbook() {
       </form>
 
       <div className="guestbook__entries">
-        {loading && <p className="guestbook__empty">Loading notes...</p>}
+        {loading && (
+          <div className="guestbook__skeletons" role="status" aria-live="polite">
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
+          </div>
+        )}
         {!loading && entries.length === 0 && (
           <p className="guestbook__empty">No notes yet.</p>
         )}

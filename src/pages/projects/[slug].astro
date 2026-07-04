@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import '../../styles/components/_prose.css';
 import { getCollection, render } from 'astro:content';
 import { mdxComponents } from '../../components/mdx/components';
+import { SITE_AUTHOR_NAME, siteUrl } from '../../lib/site';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
@@ -16,9 +17,40 @@ export async function getStaticPaths() {
 
 const { project } = Astro.props;
 const { Content } = await render(project);
+
+const projectSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'CreativeWork',
+  name: project.data.title,
+  description: project.data.description,
+  url:
+    project.data.url ?? project.data.repo ?? siteUrl(`/projects/${project.id}`),
+  codeRepository: project.data.repo,
+  author: {
+    '@type': 'Person',
+    name: SITE_AUTHOR_NAME,
+    url: siteUrl('/about'),
+  },
+  mainEntityOfPage: siteUrl(`/projects/${project.id}`),
+};
+const serializedProjectSchema = JSON.stringify(projectSchema)
+  .replaceAll('<', '\\u003c')
+  .replaceAll('>', '\\u003e')
+  .replaceAll('&', '\\u0026');
 ---
 
-<Base title={project.data.title} description={project.data.description}>
+<Base
+  title={project.data.title}
+  description={project.data.description}
+  type="article"
+  image="/og-default.svg"
+>
+  <script
+    slot="head"
+    is:inline
+    type="application/ld+json"
+    set:html={serializedProjectSchema}
+  />
   <article class="project-page">
     <header class="project-header">
       {

@@ -1,3 +1,4 @@
+import { getServerEnv } from '../env';
 import { json } from './http';
 
 function getRequestOrigin(request: Request): string | null {
@@ -77,9 +78,30 @@ export function safeRedirectPath(value: string, fallback = '/'): string {
 }
 
 export function getClientIp(request: Request): string {
+  // Cloudflare sets `cf-connecting-ip` on every request it proxies. When it
+  // is present we trust it unconditionally as the client address.
   const cloudflareIp = request.headers.get('cf-connecting-ip');
   if (cloudflareIp) return cloudflareIp.trim();
 
+  const isProduction =
+    getServerEnv('APP_ENV') === 'production' ||
+    import.meta.env.MODE === 'production';
+
+  if (isProduction) {
+    // In production we expect to be running behind Cloudflare, so a missing
+    // `cf-connecting-ip` is suspicious: the request may be reaching the
+    // worker through an unproxied path, in which case `x-forwarded-for` is
+    // client-controlled and trivially spoofable. Return a sentinel rather
+    // than trusting it, so rate-limiting/analytics don't silently honor
+    // attacker-chosen IPs.
+    console.warn(
+      '[request] cf-connecting-ip absent in production; refusing to fall back to spoofable x-forwarded-for.',
+    );
+    return 'unknown';
+  }
+
+  // Dev: behind `vite dev` / local proxies, the XFF chain is the best signal
+  // we have and spoofing is not a concern.
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
     return forwardedFor.split(',')[0]?.trim() || 'unknown';

@@ -1,6 +1,5 @@
 import { hasRedisConfig, redisCommand } from '../community';
 import { getServerEnv } from '../env';
-import { SITE_DISCORD_USER_ID } from '../../site';
 
 const CREDENTIALS_KEY = 'admin:spotify-credentials';
 
@@ -122,7 +121,6 @@ export async function getSpotifyCredentials(): Promise<SpotifyCredentialsRecord>
       discordUserId: firstConfiguredSecret(
         redis.lanyard.discordUserId,
         env.lanyard.discordUserId,
-        SITE_DISCORD_USER_ID,
       ),
     },
   };
@@ -165,7 +163,6 @@ export async function getSpotifyCredentialsStatus(): Promise<SpotifyCredentialsS
       discordUserId: fieldSource(
         redis.lanyard.discordUserId,
         env.lanyard.discordUserId,
-        SITE_DISCORD_USER_ID,
       ),
     },
   };

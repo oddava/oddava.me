@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { CSSProperties, MouseEvent } from 'react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from 'react';
 import './SpotifyWidget.css';
 import { formatDuration } from './spotify/format';
 import { useNowPlaying } from './spotify/useNowPlaying';
@@ -18,13 +18,46 @@ export default function SpotifyWidget() {
   const {
     handlePointerDown,
     isDragging,
-    position,
+    nudgeBy,
     preventClickRef,
+    position,
+    resetPosition,
     widgetRef,
   } = useWidgetPosition({
     isMinimized,
     onExpandFromDrag: expandFromDrag,
   });
+
+  const handleDragKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      const STEP = 16;
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault();
+          nudgeBy(0, -STEP);
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          nudgeBy(0, STEP);
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          nudgeBy(-STEP, 0);
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          nudgeBy(STEP, 0);
+          break;
+        case 'Home':
+          event.preventDefault();
+          resetPosition();
+          break;
+        default:
+          break;
+      }
+    },
+    [nudgeBy, resetPosition],
+  );
 
   if (renderState === 'hidden' || !displayData) {
     return null;
@@ -59,7 +92,12 @@ export default function SpotifyWidget() {
       ref={widgetRef}
       className={`spotify-widget-positioner ${isDragging ? 'dragging' : ''}`}
       style={style}
+      tabIndex={0}
+      aria-label="Spotify now playing widget — use arrow keys to reposition"
+      aria-roledescription="movable widget"
+      role="group"
       onPointerDown={handlePointerDown}
+      onKeyDown={handleDragKeyDown}
     >
       <div
         className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''} ${alignmentClasses}`}
@@ -103,13 +141,20 @@ export default function SpotifyWidget() {
 
               {displayData.durationMs && (
                 <div className="spotify-widget-progress-container">
-                  <div className="spotify-widget-progress-bar">
+                  <div
+                    className="spotify-widget-progress-bar"
+                    role="progressbar"
+                    aria-label={`${displayData.title} playback progress`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(progressPercent)}
+                  >
                     <div
                       className="spotify-widget-progress-fill"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
-                  <div className="spotify-widget-time">
+                  <div className="spotify-widget-time" aria-hidden="true">
                     <span>{formatDuration(currentProgress)}</span>
                     <span>{formatDuration(displayData.durationMs)}</span>
                   </div>

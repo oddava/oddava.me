@@ -1,7 +1,7 @@
 // @ts-check
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, sessionDrivers } from 'astro/config';
+import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
 import react from '@astrojs/react';
@@ -10,10 +10,14 @@ import { localContentAdminDevProxy } from './vite/local-content-admin-dev-proxy.
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
-// The Spotify widget is always bundled; credentials are resolved at runtime
-// from persistent storage (with environment fallback) so the admin panel can
-// configure Spotify/Lanyard without a redeploy.
-const spotifyWidgetEnabled = true;
+// The Spotify widget is bundled by default. Set the build-time env var
+// `SPOTIFY_WIDGET_ENABLED=false` to swap the loader for a stub and omit the
+// widget bundle. Credentials are resolved at runtime from persistent storage
+// (with environment fallback) so the admin panel can configure Spotify/Lanyard
+// without a redeploy.
+const spotifyWidgetEnabled =
+  String(process.env.SPOTIFY_WIDGET_ENABLED ?? 'true').toLowerCase() !==
+  'false';
 
 // Pre-bundle island deps for the workerd SSR environment in one pass so Vite does
 // not discover them lazily and reload React mid-render (invalid hook call).
@@ -120,9 +124,6 @@ export default defineConfig({
   adapter: cloudflare({
     imageService: 'compile',
   }),
-  session: {
-    driver: sessionDrivers.lruCache(),
-  },
   site: 'https://oddava.me',
   vite: {
     define: {

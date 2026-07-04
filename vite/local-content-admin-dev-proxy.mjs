@@ -1,10 +1,13 @@
 import http from 'node:http';
-import { createHmac, createHash } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import path from 'node:path';
 import { loadEnv, runnerImport } from 'vite';
 
-const ADMIN_COOKIE = 'oddava-admin-session';
+// The admin cookie name and session TTL live in
+// `src/lib/server/admin/auth-shared.ts` so the Worker path (`auth.ts`) and
+// this Node dev proxy stay in sync. We import that module via Vite's
+// `runnerImport` (which transpiles TS on the fly) instead of re-implementing
+// HMAC/SHA-256 with `node:crypto`.
 const DEFAULT_PROXY_PORT = 45556;
 
 /**
@@ -30,6 +33,29 @@ export function localContentAdminDevProxy(projectRoot) {
   let server = null;
   /** @type {Promise<(request: Request) => Promise<Response>> | null} */
   let routeHandlerPromise = null;
+  /** @type {Promise<any> | null} */
+  let authSharedPromise = null;
+
+  /**
+   * Load the shared admin-auth TS module via Vite so it is transpiled into
+   * Node-runnable code. Cached for the lifetime of the dev server.
+   * @returns {Promise<any>}
+   */
+  function loadAuthShared() {
+    if (!authSharedPromise) {
+      authSharedPromise = runnerImport(
+        path.join(projectRoot, 'src/lib/server/admin/auth-shared.ts'),
+        {
+          root: projectRoot,
+          cacheDir: path.join(
+            projectRoot,
+            'node_modules/.vite/local-content-proxy',
+          ),
+        },
+      ).then(({ module }) => module);
+    }
+    return authSharedPromise;
+  }
 
   return {
     name: 'local-content-admin-dev-proxy',
@@ -55,9 +81,12 @@ export function localContentAdminDevProxy(projectRoot) {
           if (!routeHandlerPromise) {
             routeHandlerPromise = createRouteHandler(projectRoot);
           }
-          const routeHandler = await routeHandlerPromise;
+          const [routeHandler, authShared] = await Promise.all([
+            routeHandlerPromise,
+            loadAuthShared(),
+          ]);
           const request = await toFetchRequest(req, proxyPort);
-          if (!(await isAdminRequest(request, env))) {
+          if (!(await isAdminRequest(request, env, authShared))) {
             sendResponse(
               res,
               Response.json(
@@ -125,6 +154,7 @@ export function localContentAdminDevProxy(projectRoot) {
       server?.close();
       server = null;
       routeHandlerPromise = null;
+      authSharedPromise = null;
     },
   };
 }
@@ -206,56 +236,26 @@ function getCookieValue(request, name) {
   return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
 }
 
-async function isAdminRequest(request, env) {
+/**
+ * Verify the admin session cookie using the shared auth module (WebCrypto
+ * based, identical to the Worker path in `src/lib/server/admin/auth.ts`).
+ * @param {Request} request
+ * @param {Record<string, string | undefined>} env
+ * @param {any} authShared
+ */
+async function isAdminRequest(request, env, authShared) {
   const adminToken = env.ADMIN_PANEL_TOKEN ?? env.GUESTBOOK_ADMIN_TOKEN;
   const signingSecret = env.COMMUNITY_SIGNING_SECRET;
   if (!adminToken || !signingSecret) return false;
 
-  const session = readSignedSession(
-    getCookieValue(request, ADMIN_COOKIE),
+  const session = await authShared.verifySession(
+    getCookieValue(request, authShared.ADMIN_COOKIE),
     signingSecret,
   );
-  if (!session || session.role !== 'admin' || !session.tokenHash) return false;
+  if (!session) return false;
 
-  const ageMs = Date.now() - Number(session.issuedAt ?? 0);
-  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 12 * 60 * 60 * 1000) {
-    return false;
-  }
-
-  return session.tokenHash === sha256(adminToken);
-}
-
-function readSignedSession(value, signingSecret) {
-  if (!value) return null;
-  const separatorIndex = value.lastIndexOf('.');
-  if (separatorIndex === -1) return null;
-
-  const body = value.slice(0, separatorIndex);
-  const signature = value.slice(separatorIndex + 1);
-  if (signString(body, signingSecret) !== signature) return null;
-
-  try {
-    return JSON.parse(
-      Buffer.from(base64UrlToBase64(body), 'base64').toString(),
-    );
-  } catch {
-    return null;
-  }
-}
-
-function signString(value, secret) {
-  return createHmac('sha256', secret).update(value).digest('base64url');
-}
-
-function sha256(value) {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function base64UrlToBase64(value) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padding =
-    normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
-  return `${normalized}${padding}`;
+  const expectedHash = await authShared.computeTokenHash(adminToken);
+  return authShared.constantTimeCompare(session.tokenHash, expectedHash);
 }
 
 function isSameOriginRequest(request) {

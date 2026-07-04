@@ -28,7 +28,13 @@
 .library-card {
   position: relative;
   text-decoration: none;
-  font-size: 0;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  max-width: 95px;
 }
 
 .library-card__cover {
@@ -40,7 +46,8 @@
   background: var(--color-surface-raised);
 }
 
-.library-card__tooltip {
+/* Label: hover tooltip on desktop, always-visible caption on mobile. */
+.library-card__label {
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
@@ -58,8 +65,8 @@
   z-index: 10;
 }
 
-.library-card:hover .library-card__tooltip,
-.library-card:focus-visible .library-card__tooltip {
+.library-card:hover .library-card__label,
+.library-card:focus-visible .library-card__label {
   opacity: 1;
 }
 
@@ -96,8 +103,19 @@
     font-size: 0.875rem;
   }
 
-  .library-card__tooltip {
-    display: none;
+  /* On mobile the tooltip becomes a visible caption below the cover so the
+     card always has a visible (and accessible) label. */
+  .library-card__label {
+    position: static;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    background: transparent;
+    padding: 0;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    white-space: normal;
+    text-align: center;
   }
 }
 

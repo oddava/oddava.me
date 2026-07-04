@@ -1,22 +1,37 @@
 import type { AstroCookies } from 'astro';
 import { getServerEnv } from '../env';
+import { hasCommunitySigningSecret, isSecureRequest, json } from '../community';
 import {
-  createSignedValue,
-  hasCommunitySigningSecret,
-  isSecureRequest,
-  json,
-  readSignedValue,
-} from '../community';
+  ADMIN_COOKIE,
+  ADMIN_SESSION_TTL_SECONDS,
+  constantTimeCompare,
+  computeTokenHash,
+  createSignedSessionValue,
+  parseSessionValue,
+  verifySession,
+  type AdminSession,
+} from './auth-shared';
 import { withAdminSecurityHeaders } from './response';
 
-const ADMIN_COOKIE = 'oddava-admin-session';
-const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 12;
-
-interface AdminSession {
-  role: 'admin';
-  tokenHash: string;
-  issuedAt: number;
-}
+// Re-export the shared primitives so existing callers of `auth.ts` keep
+// working without changing their import sites.
+export {
+  ADMIN_COOKIE,
+  ADMIN_SESSION_TTL_SECONDS,
+  ADMIN_SESSION_TTL_MS,
+  computeTokenHash,
+  constantTimeCompare,
+  parseSessionValue,
+  verifySession,
+  signSessionValue,
+  verifySessionSignature,
+  createSignedSessionValue,
+  bytesToBase64Url,
+  base64UrlToBytes,
+  encodeTextToBase64Url,
+  decodeBase64UrlToText,
+  type AdminSession,
+} from './auth-shared';
 
 function getAdminToken(): string | null {
   return (
@@ -26,23 +41,8 @@ function getAdminToken(): string | null {
   );
 }
 
-async function sha256Hex(value: string): Promise<string> {
-  const bytes = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(value),
-  );
-  return Array.from(new Uint8Array(bytes))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length) return false;
-  let mismatch = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
-  }
-  return mismatch === 0;
+function getSigningSecret(): string | null {
+  return getServerEnv('COMMUNITY_SIGNING_SECRET')?.trim() || null;
 }
 
 function getCookieOptions(
@@ -68,25 +68,35 @@ export function isAdminConfigured(): boolean {
 export async function verifyAdminToken(token: string): Promise<boolean> {
   const configured = getAdminToken();
   if (!configured) return false;
-  return constantTimeEqual(await sha256Hex(token), await sha256Hex(configured));
+  return constantTimeCompare(
+    await computeTokenHash(token),
+    await computeTokenHash(configured),
+  );
 }
 
 export async function createAdminSessionValue(token: string): Promise<string> {
-  return createSignedValue({
-    role: 'admin',
-    tokenHash: await sha256Hex(token),
-    issuedAt: Date.now(),
-  } satisfies AdminSession);
+  return createSignedSessionValue(
+    {
+      role: 'admin',
+      tokenHash: await computeTokenHash(token),
+      issuedAt: Date.now(),
+    } satisfies AdminSession,
+    getSigningSecret() ?? '',
+  );
 }
 
 export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
   const configured = getAdminToken();
   if (!configured) return false;
+  const secret = getSigningSecret();
+  if (!secret) return false;
 
-  const session = await readSignedValue<AdminSession>(
+  const session = await parseSessionValue(
     cookies.get(ADMIN_COOKIE)?.value,
+    secret,
   );
-  if (!session || session.role !== 'admin' || !session.tokenHash) return false;
+  if (!session) return false;
+
   const ageMs = Date.now() - session.issuedAt;
   if (
     !Number.isFinite(ageMs) ||
@@ -96,7 +106,10 @@ export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
     return false;
   }
 
-  return constantTimeEqual(session.tokenHash, await sha256Hex(configured));
+  return constantTimeCompare(
+    session.tokenHash,
+    await computeTokenHash(configured),
+  );
 }
 
 export async function requireAdminApi(
