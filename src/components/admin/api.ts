@@ -2,13 +2,19 @@ import type {
   GuestbookEntry,
   GuestbookResponse,
   GuestbookStatus,
+  ContentBlock,
   ContentCollectionsResponse,
   ContentDeleteResponse,
+  ContentDraft,
   ContentEntriesResponse,
   ContentEntryResponse,
+  ContentMediaListResponse,
   ContentMediaResponse,
+  ContentRevision,
   ContentSaveResponse,
+  ContentSurface,
   OverviewResponse,
+  PublishJob,
   SpotifyCredentialsResponse,
 } from './types';
 
@@ -144,12 +150,68 @@ export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
   );
 }
 
+export function fetchContentSurfaces(path: string): Promise<{
+  surfaces: ContentSurface[];
+}> {
+  return readJson<{ surfaces: ContentSurface[] }>(
+    `/api/admin/content/surfaces?path=${encodeURIComponent(path)}`,
+    { cache: 'no-store' },
+  );
+}
+
 export function fetchContentEntries(
   collection: string,
 ): Promise<ContentEntriesResponse> {
   return readJson<ContentEntriesResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}`,
     { cache: 'no-store' },
+  );
+}
+
+export function fetchContentDraft(
+  collection: string,
+  id: string,
+): Promise<{
+  draft: ContentDraft | null;
+  source: ContentEntryResponse['entry'] | null;
+}> {
+  return readJson<{
+    draft: ContentDraft | null;
+    source: ContentEntryResponse['entry'] | null;
+  }>(
+    `/api/admin/content/drafts/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
+    { cache: 'no-store' },
+  );
+}
+
+export function saveContentDraft(
+  collection: string,
+  id: string,
+  body: {
+    fields: Record<string, unknown>;
+    body?: string;
+    blocks?: ContentBlock[];
+    sourceRevision?: string;
+    isNew?: boolean;
+  },
+): Promise<{ draft: ContentDraft }> {
+  return readJson<{ draft: ContentDraft }>(
+    `/api/admin/content/drafts/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function deleteContentDraft(
+  collection: string,
+  id: string,
+): Promise<{ deleted: boolean }> {
+  return readJson<{ deleted: boolean }>(
+    `/api/admin/content/drafts/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
   );
 }
 
@@ -248,4 +310,72 @@ export function uploadContentMedia(
     method: 'POST',
     body: formData,
   });
+}
+
+export function fetchContentMedia(): Promise<ContentMediaListResponse> {
+  return readJson<ContentMediaListResponse>('/api/admin/content/media', {
+    cache: 'no-store',
+  });
+}
+
+export function deleteContentMedia(url: string): Promise<{ deleted: string }> {
+  return readJson<{ deleted: string }>('/api/admin/content/media', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+}
+
+export function fetchContentHistory(
+  collection: string,
+  id: string,
+): Promise<{ revisions: ContentRevision[] }> {
+  return readJson<{ revisions: ContentRevision[] }>(
+    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
+      id,
+    )}/history`,
+    { cache: 'no-store' },
+  );
+}
+
+export function restoreContentRevision(
+  collection: string,
+  id: string,
+  hash: string,
+): Promise<{ draft: ContentDraft }> {
+  return readJson<{ draft: ContentDraft }>(
+    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
+      id,
+    )}/restore`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hash }),
+    },
+  );
+}
+
+export function publishContentDraft(body: {
+  collection: string;
+  id: string;
+  runChecks?: boolean;
+  commit?: boolean;
+  push?: boolean;
+  deploy?: boolean;
+}): Promise<{ job: PublishJob; entry: ContentEntryResponse['entry'] | null }> {
+  return readJson<{
+    job: PublishJob;
+    entry: ContentEntryResponse['entry'] | null;
+  }>('/api/admin/content/publish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export function fetchPublishJob(id: string): Promise<{ job: PublishJob }> {
+  return readJson<{ job: PublishJob }>(
+    `/api/admin/content/publish/${encodeURIComponent(id)}`,
+    { cache: 'no-store' },
+  );
 }

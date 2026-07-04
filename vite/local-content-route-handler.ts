@@ -1,9 +1,16 @@
 import {
   handleContentCollection,
   handleContentCollections,
+  handleContentDraft,
   handleContentEntry,
+  handleContentHistory,
   handleContentMedia,
+  handleContentPreview,
+  handleContentPublish,
+  handleContentPublishJob,
   handleContentReorder,
+  handleContentRestore,
+  handleContentSurfaces,
 } from '../src/lib/server/content/api';
 import { createLocalContentProvider } from '../src/lib/server/content/local-provider';
 
@@ -19,16 +26,49 @@ export function createLocalContentRouteHandler(projectRoot: string) {
       .map((part) => decodeURIComponent(part));
 
     if (parts.length === 1 && parts[0] === 'collections') {
-      return handleContentCollections(provider);
+      return handleContentCollections(provider, projectRoot);
+    }
+    if (parts.length === 1 && parts[0] === 'surfaces') {
+      return handleContentSurfaces(projectRoot, provider, request);
+    }
+    if (parts.length === 1 && parts[0] === 'preview') {
+      return handleContentPreview(projectRoot, provider, request);
+    }
+    if (parts.length === 1 && parts[0] === 'publish') {
+      return handleContentPublish(projectRoot, provider, request);
+    }
+    if (parts.length === 2 && parts[0] === 'publish') {
+      return handleContentPublishJob(projectRoot, parts[1]);
+    }
+    if (parts.length === 3 && parts[0] === 'drafts') {
+      return handleContentDraft(
+        projectRoot,
+        provider,
+        parts[1],
+        parts[2],
+        request,
+      );
     }
     if (parts.length === 1 && parts[0] === 'media') {
-      return handleContentMedia(provider, request);
+      return handleContentMedia(provider, request, projectRoot);
     }
     if (parts.length === 2 && parts[1] === 'reorder') {
       return handleContentReorder(provider, parts[0], request);
     }
+    if (parts.length === 3 && parts[2] === 'history') {
+      return handleContentHistory(projectRoot, parts[0], parts[1]);
+    }
+    if (parts.length === 3 && parts[2] === 'restore') {
+      return handleContentRestore(
+        projectRoot,
+        provider,
+        parts[0],
+        parts[1],
+        request,
+      );
+    }
     if (parts.length === 1) {
-      return handleContentCollection(provider, parts[0], request);
+      return handleContentCollection(provider, parts[0], request, projectRoot);
     }
     if (parts.length === 2) {
       return handleContentEntry(provider, parts[0], parts[1], request);
