@@ -1,5 +1,14 @@
 import type { z } from 'astro/zod';
 
+export class ContentRevisionConflictError extends Error {
+  readonly code = 'revision_conflict';
+
+  constructor() {
+    super('This content changed since you opened it. Refresh and try again.');
+    this.name = 'ContentRevisionConflictError';
+  }
+}
+
 export type ContentCollectionId = 'blog' | 'projects' | 'books';
 
 export type ContentFormat = 'mdx' | 'yaml';
@@ -47,14 +56,13 @@ export interface ContentSourceFile {
 }
 
 export interface ContentWriteResult {
-  provider: 'github' | 'local';
-  commitUrl?: string;
+  provider: 'local';
   revision?: string;
   message: string;
 }
 
 export interface ContentProvider {
-  kind: 'github' | 'local';
+  kind: 'local';
   listFiles(directory: string, extension: string): Promise<ContentSourceFile[]>;
   readFile(path: string): Promise<ContentSourceFile | null>;
   writeTextFile(

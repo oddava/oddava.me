@@ -1,43 +1,62 @@
+import http from 'node:http';
 import { createHmac, createHash } from 'node:crypto';
 import { Buffer } from 'node:buffer';
+import path from 'node:path';
+import { loadEnv, runnerImport } from 'vite';
 
 const ADMIN_COOKIE = 'oddava-admin-session';
+const DEFAULT_PROXY_PORT = 45556;
 
 /**
- * Serves the local-file content admin API from Node.js during `astro dev`.
+ * Exposes a local-file content admin API from a standalone Node.js HTTP server
+ * during `astro dev`.
  *
  * The Cloudflare adapter runs Astro API routes in workerd, where repository
- * file writes are unavailable. This proxy is enabled only when
- * CONTENT_WRITE_MODE=local and reuses the same signed admin cookie contract.
+ * file writes are unavailable. Because workerd's fetch pipeline bypasses
+ * Vite's `server.middlewares`, this plugin spawns its own HTTP server
+ * (listening on 127.0.0.1) and `src/lib/server/content/route.ts` forwards
+ * admin content requests to it when `CONTENT_WRITE_MODE=local`.
+ *
+ * Env vars are loaded from `.env` via Vite's `loadEnv` (empty prefix, so
+ * non-`VITE_`-prefixed vars like `CONTENT_WRITE_MODE` are picked up the same
+ * way Astro exposes them to `import.meta.env`). `process.env` is layered on
+ * top so explicit shell exports still win.
  *
  * @param {string} projectRoot
  * @returns {import('vite').Plugin}
  */
 export function localContentAdminDevProxy(projectRoot) {
-  /** @type {Promise<((request: Request) => Promise<Response>)> | null} */
+  /** @type {http.Server | null} */
+  let server = null;
+  /** @type {Promise<(request: Request) => Promise<Response>> | null} */
   let routeHandlerPromise = null;
 
   return {
     name: 'local-content-admin-dev-proxy',
-    configureServer(server) {
-      if (server.config.command !== 'serve') return;
-      if (server.config.mode !== 'development') return;
-      const env = { ...server.config.env, ...process.env };
+    configureServer(viteServer) {
+      if (viteServer.config.command !== 'serve') return;
+      if (viteServer.config.mode !== 'development') return;
+      const envDir = path.dirname(
+        viteServer.config.configFile ??
+          path.join(projectRoot, 'astro.config.mjs'),
+      );
+      const env = {
+        ...loadEnv(viteServer.config.mode, envDir, ''),
+        ...process.env,
+      };
       if (env.CONTENT_WRITE_MODE !== 'local') return;
 
-      server.middlewares.use(async (req, res, next) => {
-        const url = req.url ?? '';
-        if (!url.startsWith('/api/admin/content')) {
-          next();
-          return;
-        }
+      const proxyPort = Number(
+        env.LOCAL_CONTENT_PROXY_PORT ?? DEFAULT_PROXY_PORT,
+      );
 
+      server = http.createServer(async (req, res) => {
         try {
           if (!routeHandlerPromise) {
-            routeHandlerPromise = createRouteHandler(server, projectRoot);
+            routeHandlerPromise = createRouteHandler(projectRoot);
           }
-
-          const request = await toFetchRequest(req, server);
+          const routeHandler = await routeHandlerPromise;
+          const request = await toFetchRequest(req, proxyPort);
           if (!(await isAdminRequest(request, env))) {
             sendResponse(
               res,
@@ -49,10 +68,16 @@ export function localContentAdminDevProxy(projectRoot) {
             return;
           }
 
-          if (
-            request.method !== 'GET' &&
-            !isSameOriginRequest(request, server)
-          ) {
+          const original = req.headers['x-original-url'];
+          if (typeof original === 'string') {
+            const rewritten = new URL(original);
+            Object.defineProperty(request, 'url', {
+              value: rewritten.toString(),
+              configurable: true,
+            });
+          }
+
+          if (request.method !== 'GET' && !isSameOriginRequest(request)) {
             sendResponse(
               res,
               Response.json(
@@ -63,7 +88,6 @@ export function localContentAdminDevProxy(projectRoot) {
             return;
           }
 
-          const routeHandler = await routeHandlerPromise;
           sendResponse(res, await routeHandler(request));
         } catch (error) {
           sendResponse(
@@ -80,52 +104,55 @@ export function localContentAdminDevProxy(projectRoot) {
           );
         }
       });
+
+      server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+          console.warn(
+            `[local-content] Port ${proxyPort} is busy; set LOCAL_CONTENT_PROXY_PORT to use another port.`,
+          );
+          return;
+        }
+        throw error;
+      });
+
+      server.listen(proxyPort, '127.0.0.1', () => {
+        console.info(
+          `[local-content] Dev proxy listening on http://127.0.0.1:${proxyPort}`,
+        );
+      });
+    },
+    buildEnd() {
+      server?.close();
+      server = null;
+      routeHandlerPromise = null;
     },
   };
 }
 
-async function createRouteHandler(server, projectRoot) {
-  const [{ createLocalContentProvider }, api] = await Promise.all([
-    server.ssrLoadModule('/src/lib/server/content/local-provider.ts'),
-    server.ssrLoadModule('/src/lib/server/content/api.ts'),
-  ]);
-  const provider = createLocalContentProvider(projectRoot);
-
-  return async (request) => {
-    const url = new URL(request.url);
-    const parts = url.pathname
-      .replace(/^\/api\/admin\/content\/?/, '')
-      .split('/')
-      .filter(Boolean)
-      .map((part) => decodeURIComponent(part));
-
-    if (parts.length === 1 && parts[0] === 'collections') {
-      return api.handleContentCollections(provider);
-    }
-    if (parts.length === 1 && parts[0] === 'media') {
-      return api.handleContentMedia(provider, request);
-    }
-    if (parts.length === 2 && parts[1] === 'reorder') {
-      return api.handleContentReorder(provider, parts[0], request);
-    }
-    if (parts.length === 1) {
-      return api.handleContentCollection(provider, parts[0], request);
-    }
-    if (parts.length === 2) {
-      return api.handleContentEntry(provider, parts[0], parts[1], request);
-    }
-
-    return Response.json(
-      { error: 'Content admin route was not found.', code: 'not_found' },
-      { status: 404 },
-    );
+async function createRouteHandler(projectRoot) {
+  const runnerConfig = {
+    root: projectRoot,
+    cacheDir: path.join(projectRoot, 'node_modules/.vite/local-content-proxy'),
+    resolve: {
+      alias: {
+        'cloudflare:workers': path.join(
+          projectRoot,
+          'vite/local-content-proxy-cloudflare-shim.mjs',
+        ),
+      },
+    },
   };
+
+  const { module } = await runnerImport(
+    path.join(projectRoot, 'vite/local-content-route-handler.ts'),
+    runnerConfig,
+  );
+
+  return module.createLocalContentRouteHandler(projectRoot);
 }
 
-async function toFetchRequest(req, server) {
-  const protocol = 'http';
-  const host = req.headers.host ?? `localhost:${server.config.server.port}`;
-  const url = `${protocol}://${host}${req.url ?? '/'}`;
+async function toFetchRequest(req, port) {
+  const url = `http://127.0.0.1:${port}${req.url ?? '/'}`;
   const method = req.method ?? 'GET';
   const headers = new Headers();
 
@@ -158,6 +185,7 @@ async function toFetchRequest(req, server) {
 async function sendResponse(res, response) {
   res.statusCode = response.status;
   response.headers.forEach((value, key) => {
+    if (key.toLowerCase() === 'content-encoding') return;
     res.setHeader(key, value);
   });
 
@@ -231,9 +259,12 @@ function base64UrlToBase64(value) {
 }
 
 function isSameOriginRequest(request) {
+  const original = request.headers.get('x-original-url') ?? request.url ?? '';
+  if (!original) return false;
+  const expectedOrigin = new URL(original).origin;
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
   const submittedOrigin = origin || (referer ? new URL(referer).origin : null);
   if (!submittedOrigin) return false;
-  return submittedOrigin === new URL(request.url).origin;
+  return submittedOrigin === expectedOrigin;
 }

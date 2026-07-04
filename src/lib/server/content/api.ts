@@ -1,5 +1,5 @@
-import { adminJson } from '../admin';
-import { readJsonBody, requestBodyErrorResponse } from '../community';
+import { adminJson } from '../admin/response';
+import { readJsonBody, requestBodyErrorResponse } from '../community/body';
 import { getContentCollection, getContentCollections } from './registry';
 import {
   entryIdFromPath,
@@ -9,6 +9,7 @@ import {
   sourcePath,
 } from './paths';
 import { parseContentDocument, serializeContentDocument } from './serializers';
+import { ContentRevisionConflictError } from './types';
 import type {
   ContentCollectionDefinition,
   ContentEntryDetail,
@@ -16,6 +17,7 @@ import type {
   ContentFieldDefinition,
   ContentProvider,
   ContentSourceFile,
+  ContentWriteResult,
 } from './types';
 
 const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
@@ -76,8 +78,8 @@ export async function handleContentReorder(
     return requestBodyErrorResponse(error);
   }
 
-  const ids = Array.isArray(body.ids) ? body.ids : null;
-  if (!ids || ids.length === 0 || ids.some((id) => !isValidSlug(String(id)))) {
+  const ids = Array.isArray(body.ids) ? body.ids.map((id) => String(id)) : null;
+  if (!ids || ids.length === 0 || ids.some((id) => !isValidSlug(id))) {
     return adminJson(
       {
         error: 'A non-empty array of valid entry ids is required.',
@@ -87,11 +89,31 @@ export async function handleContentReorder(
     );
   }
 
+  const entries = await readCollectionEntries(provider, collection);
+  const existingIds = new Set(entries.map((entry) => entry.id));
+  const uniqueIds = new Set(ids);
+  if (
+    uniqueIds.size !== ids.length ||
+    ids.length !== entries.length ||
+    ids.some((id) => !existingIds.has(id))
+  ) {
+    return adminJson(
+      {
+        error: 'Reorder ids must include every current entry exactly once.',
+        code: 'invalid_reorder_ids',
+      },
+      { status: 400 },
+    );
+  }
+
+  const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
   const orderField = collection.orderField;
   const results: { id: string; ok: boolean }[] = [];
   for (let index = 0; index < ids.length; index += 1) {
-    const id = String(ids[index]!);
-    const path = sourcePath(collection.sourceDir, id, collection.extension);
+    const id = ids[index]!;
+    const path =
+      entriesById.get(id)?.path ??
+      sourcePath(collection.sourceDir, id, collection.extension);
     const existing = await provider.readFile(path);
     if (!existing) {
       results.push({ id, ok: false });
@@ -105,12 +127,18 @@ export async function handleContentReorder(
       collection.body ? parsed.body : '',
       collection.format,
     );
-    await provider.writeTextFile(
-      path,
-      next,
-      `content: reorder ${collection.id}/${id} -> ${index}`,
-      existing.revision,
-    );
+    try {
+      await provider.writeTextFile(
+        path,
+        next,
+        `content: reorder ${collection.id}/${id} -> ${index}`,
+        existing.revision,
+      );
+    } catch (error) {
+      const response = writeConflictResponse(error);
+      if (response) return response;
+      throw error;
+    }
     results.push({ id, ok: true });
   }
 
@@ -179,6 +207,28 @@ function validationError(error: unknown): Response {
       issues,
     },
     { status: 400 },
+  );
+}
+
+function writeConflictResponse(error: unknown): Response | null {
+  const isRevisionConflict =
+    error instanceof ContentRevisionConflictError ||
+    (error !== null &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'revision_conflict');
+
+  if (!isRevisionConflict) return null;
+
+  return adminJson(
+    {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'This content changed since you opened it. Refresh and try again.',
+      code: 'revision_conflict',
+    },
+    { status: 409 },
   );
 }
 
@@ -341,15 +391,22 @@ export async function handleContentCollection(
   }
 
   const message = `content: create ${collection.id}/${slug}`;
-  const result = await provider.writeTextFile(
-    path,
-    serializeContentDocument(
-      validatedFields,
-      collection.body ? String(body.body ?? '') : '',
-      collection.format,
-    ),
-    message,
-  );
+  let result: ContentWriteResult;
+  try {
+    result = await provider.writeTextFile(
+      path,
+      serializeContentDocument(
+        validatedFields,
+        collection.body ? String(body.body ?? '') : '',
+        collection.format,
+      ),
+      message,
+    );
+  } catch (error) {
+    const response = writeConflictResponse(error);
+    if (response) return response;
+    throw error;
+  }
   const saved = await provider.readFile(path);
 
   return adminJson(
@@ -384,11 +441,18 @@ export async function handleContentEntry(
   }
 
   if (request.method === 'DELETE') {
-    const result = await provider.deleteFile(
-      path,
-      `content: delete ${collection.id}/${id}`,
-      existing.revision,
-    );
+    let result: ContentWriteResult;
+    try {
+      result = await provider.deleteFile(
+        path,
+        `content: delete ${collection.id}/${id}`,
+        existing.revision,
+      );
+    } catch (error) {
+      const response = writeConflictResponse(error);
+      if (response) return response;
+      throw error;
+    }
     return adminJson({ result });
   }
 
@@ -410,16 +474,23 @@ export async function handleContentEntry(
     return validationError(error);
   }
 
-  const result = await provider.writeTextFile(
-    path,
-    serializeContentDocument(
-      validatedFields,
-      collection.body ? String(body.body ?? '') : '',
-      collection.format,
-    ),
-    `content: update ${collection.id}/${id}`,
-    body.revision ?? existing.revision,
-  );
+  let result: ContentWriteResult;
+  try {
+    result = await provider.writeTextFile(
+      path,
+      serializeContentDocument(
+        validatedFields,
+        collection.body ? String(body.body ?? '') : '',
+        collection.format,
+      ),
+      `content: update ${collection.id}/${id}`,
+      body.revision ?? existing.revision,
+    );
+  } catch (error) {
+    const response = writeConflictResponse(error);
+    if (response) return response;
+    throw error;
+  }
   const saved = await provider.readFile(path);
 
   return adminJson({

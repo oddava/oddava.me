@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 import type { APIContext } from 'astro';
 import {
   adminJson,
@@ -8,28 +6,74 @@ import {
 } from '../admin';
 import { ensureSameOrigin } from '../community';
 import { getServerEnv } from '../env';
-import { createLocalContentProvider } from './local-provider';
-import { createGithubContentProvider } from './github-provider';
-import {
-  handleContentCollection,
-  handleContentCollections,
-  handleContentEntry,
-  handleContentMedia,
-  handleContentReorder,
-} from './api';
 
-const PROJECT_ROOT = path.resolve(fileURLToPath(import.meta.url), '../../../');
+const DEFAULT_LOCAL_CONTENT_PROXY_PORT = '45556';
 
-import type { ContentProvider } from './types';
-let cachedProvider: ContentProvider | null = null;
+class ContentProxyUnavailableError extends Error {
+  constructor() {
+    super(
+      'Local content proxy is not running. Restart `pnpm run dev` after setting CONTENT_WRITE_MODE=local.',
+    );
+  }
+}
 
-function provider() {
-  if (cachedProvider) return cachedProvider;
-  cachedProvider =
+function getLocalContentProxyUrl(): string {
+  return (
+    getServerEnv('LOCAL_CONTENT_PROXY_URL') ??
+    `http://127.0.0.1:${
+      getServerEnv('LOCAL_CONTENT_PROXY_PORT') ??
+      DEFAULT_LOCAL_CONTENT_PROXY_PORT
+    }`
+  );
+}
+
+function isLocalContentDev(): boolean {
+  return (
+    import.meta.env.DEV === true &&
     getServerEnv('CONTENT_WRITE_MODE') === 'local'
-      ? createLocalContentProvider(PROJECT_ROOT)
-      : createGithubContentProvider();
-  return cachedProvider;
+  );
+}
+
+function contentEditingUnavailable(): Response {
+  return adminJson(
+    {
+      error:
+        'Content editing is only available in local development. Edit files under src/content/, then commit, push, and run `pnpm run deploy`.',
+      code: 'content_editing_unavailable',
+    },
+    { status: 503 },
+  );
+}
+
+async function forwardToLocalProxy(
+  context: APIContext,
+  pathSuffix: string,
+): Promise<Response> {
+  const proxyUrl = new URL(pathSuffix, getLocalContentProxyUrl()).href;
+  const headers = new Headers(context.request.headers);
+  headers.set('x-original-url', context.request.url);
+  const init: RequestInit = {
+    method: context.request.method,
+    headers,
+    redirect: 'manual',
+  };
+  if (context.request.method !== 'GET' && context.request.method !== 'HEAD') {
+    init.body = await context.request.arrayBuffer();
+  }
+  const upstream = await fetch(proxyUrl, init).catch(() => {
+    throw new ContentProxyUnavailableError();
+  });
+  const body =
+    upstream.body && upstream.status !== 204
+      ? await upstream.arrayBuffer()
+      : null;
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.delete('content-encoding');
+  return new Response(body ?? null, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders,
+  });
 }
 
 async function safeContentResponse(
@@ -38,6 +82,16 @@ async function safeContentResponse(
   try {
     return await action();
   } catch (error) {
+    if (error instanceof ContentProxyUnavailableError) {
+      return adminJson(
+        {
+          error: error.message,
+          code: 'content_proxy_unavailable',
+        },
+        { status: 503 },
+      );
+    }
+
     return adminJson(
       {
         error:
@@ -67,7 +121,10 @@ export async function adminContentCollectionsRoute(
 ): Promise<Response> {
   const authError = await requireAdmin(context);
   if (authError) return authError;
-  return safeContentResponse(() => handleContentCollections(provider()));
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(context, '/api/admin/content/collections'),
+  );
 }
 
 export async function adminContentCollectionRoute(
@@ -79,11 +136,12 @@ export async function adminContentCollectionRoute(
       : await requireMutation(context);
   if (authError) return authError;
 
+  const collectionId = context.params.collection ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
   return safeContentResponse(() =>
-    handleContentCollection(
-      provider(),
-      context.params.collection,
-      context.request,
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}`,
     ),
   );
 }
@@ -97,12 +155,13 @@ export async function adminContentEntryRoute(
       : await requireMutation(context);
   if (authError) return authError;
 
+  const collectionId = context.params.collection ?? '';
+  const id = context.params.id ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
   return safeContentResponse(() =>
-    handleContentEntry(
-      provider(),
-      context.params.collection,
-      context.params.id,
-      context.request,
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}/${encodeURIComponent(id)}`,
     ),
   );
 }
@@ -112,8 +171,9 @@ export async function adminContentMediaRoute(
 ): Promise<Response> {
   const authError = await requireMutation(context);
   if (authError) return authError;
+  if (!isLocalContentDev()) return contentEditingUnavailable();
   return safeContentResponse(() =>
-    handleContentMedia(provider(), context.request),
+    forwardToLocalProxy(context, '/api/admin/content/media'),
   );
 }
 
@@ -122,11 +182,12 @@ export async function adminContentReorderRoute(
 ): Promise<Response> {
   const authError = await requireMutation(context);
   if (authError) return authError;
+  const collectionId = context.params.collection ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
   return safeContentResponse(() =>
-    handleContentReorder(
-      provider(),
-      context.params.collection,
-      context.request,
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}/reorder`,
     ),
   );
 }

@@ -93,8 +93,7 @@ export interface ContentCollectionMeta {
 }
 
 export interface ContentWriteResult {
-  provider: 'github' | 'local';
-  commitUrl?: string;
+  provider: 'local';
   revision?: string;
   message: string;
 }
@@ -114,19 +113,19 @@ export interface ContentEntryDetail extends ContentEntryListItem {
 
 export interface ContentCollectionsResponse {
   collections: ContentCollectionMeta[];
-  provider: 'github' | 'local';
+  provider: 'local';
 }
 
 export interface ContentEntriesResponse {
   collection: Omit<ContentCollectionMeta, 'count'>;
   entries: ContentEntryListItem[];
-  provider: 'github' | 'local';
+  provider: 'local';
 }
 
 export interface ContentEntryResponse {
   collection: Omit<ContentCollectionMeta, 'count'>;
   entry: ContentEntryDetail;
-  provider: 'github' | 'local';
+  provider: 'local';
 }
 
 export interface ContentSaveResponse {
