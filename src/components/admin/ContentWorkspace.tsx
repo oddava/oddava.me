@@ -14,7 +14,6 @@ import type {
   ContentEntryDetail,
   ContentEntryListItem,
   ContentFieldDefinition,
-  ContentWriteResult,
 } from './types';
 
 interface ContentWorkspaceProps {
@@ -51,12 +50,7 @@ function defaultFields(
   );
 }
 
-function formatResult(result: ContentWriteResult): string {
-  if (result.provider === 'github') {
-    return result.commitUrl
-      ? 'Saved to GitHub. Deploy is pending.'
-      : 'Saved to GitHub. Deploy is pending.';
-  }
+function formatResult(): string {
   return 'Saved locally.';
 }
 
@@ -80,18 +74,9 @@ function coerceFieldValue(
   return String(value);
 }
 
-function ResultLink({ result }: { result: ContentWriteResult | null }) {
-  if (!result?.commitUrl) return null;
-  return (
-    <a href={result.commitUrl} target="_blank" rel="noreferrer">
-      View commit
-    </a>
-  );
-}
-
 export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
   const [collections, setCollections] = useState<ContentCollectionMeta[]>([]);
-  const [provider, setProvider] = useState<'github' | 'local'>('github');
+  const [provider, setProvider] = useState<'local' | 'unavailable'>('local');
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [entries, setEntries] = useState<ContentEntryListItem[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<ContentEntryDetail | null>(
@@ -105,7 +90,6 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<ContentWriteResult | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -145,9 +129,18 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
       })
       .catch((caught) => {
         if (!active) return;
-        setError(
-          caught instanceof Error ? caught.message : 'Could not load content.',
-        );
+        const code = (caught as Error & { code?: string }).code;
+        if (code === 'content_editing_unavailable') {
+          setProvider('unavailable');
+          setCollections([]);
+          setError(null);
+        } else {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'Could not load content.',
+          );
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -194,7 +187,6 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
     setFields(nextFields);
     setBody('');
     setNotice(null);
-    setLastResult(null);
   }
 
   async function editEntry(entry: ContentEntryListItem) {
@@ -212,7 +204,6 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
       setSlug(response.entry.id);
       setMode('edit');
       setNotice(null);
-      setLastResult(null);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Could not load entry.',
@@ -245,8 +236,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
       setSelectedEntry(response.entry);
       setSlug(response.entry?.id ?? entrySlug);
       setMode('edit');
-      setNotice(formatResult(response.result));
-      setLastResult(response.result);
+      setNotice(formatResult());
       await Promise.all([
         refreshCollections(),
         refreshEntries(selectedCollection.id),
@@ -269,12 +259,8 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
     setError(null);
     setNotice(null);
     try {
-      const response = await deleteContentEntry(
-        selectedCollection.id,
-        entry.id,
-      );
-      setNotice(formatResult(response.result));
-      setLastResult(response.result);
+      await deleteContentEntry(selectedCollection.id, entry.id);
+      setNotice(formatResult());
       if (selectedEntry?.id === entry.id) {
         setSelectedEntry(null);
         setMode('empty');
@@ -350,7 +336,6 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
         );
       }
       setNotice('Image uploaded.');
-      setLastResult(response.result);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Could not upload image.',
@@ -374,19 +359,21 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
           <p className="admin-kicker">content</p>
           <h2>Content</h2>
           <p className="admin-muted">
-            {provider === 'github'
-              ? 'Saves commit to GitHub and deploy from main.'
+            {provider === 'unavailable'
+              ? 'Content editing is unavailable in this environment.'
               : 'Saves directly to local content files.'}
           </p>
         </div>
-        <button
-          type="button"
-          className="admin-button primary"
-          onClick={startNewEntry}
-          disabled={!selectedCollection}
-        >
-          New {selectedCollection?.singularLabel ?? 'Entry'}
-        </button>
+        {provider !== 'unavailable' && (
+          <button
+            type="button"
+            className="admin-button primary"
+            onClick={startNewEntry}
+            disabled={!selectedCollection}
+          >
+            New {selectedCollection?.singularLabel ?? 'Entry'}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -396,227 +383,252 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
       )}
       {notice && (
         <p className="admin-success" role="status">
-          {notice} <ResultLink result={lastResult} />
+          {notice}
         </p>
       )}
 
-      <div
-        className="content-tabs"
-        role="tablist"
-        aria-label="Content collections"
-      >
-        {collections.map((collection) => (
-          <button
-            type="button"
-            className={`content-tab ${
-              collection.id === selectedCollectionId ? 'is-active' : ''
-            }`}
-            key={collection.id}
-            onClick={() => setSelectedCollectionId(collection.id)}
-          >
-            <span>{collection.label}</span>
-            <span className="pill">{collection.count}</span>
-          </button>
-        ))}
-      </div>
+      {provider === 'unavailable' && !loading && !error && (
+        <div className="admin-empty-state" role="status">
+          <p className="admin-muted">
+            Content editing is only available when running the site locally.
+            Edit files in <code>src/content/</code>, commit, push, and run{' '}
+            <code>pnpm run deploy</code>.
+          </p>
+        </div>
+      )}
 
-      <div className="content-workspace__grid">
-        <section className="content-entry-list" aria-label="Content entries">
-          {loading || busyKey === 'entries' ? (
-            <p className="admin-empty" role="status">
-              Loading content...
-            </p>
-          ) : entries.length === 0 ? (
-            <p className="admin-empty">No entries yet.</p>
-          ) : (
-            entries.map((entry) => {
-              const draggable =
-                selectedCollection?.reorderable === true && !reordering;
-              return (
-                <button
-                  type="button"
-                  className={`content-entry-button ${
-                    selectedEntry?.id === entry.id ? 'is-active' : ''
-                  } ${dragId === entry.id ? 'is-dragging' : ''} ${
-                    dragOverId === entry.id ? 'is-drag-over' : ''
-                  }`}
-                  key={entry.id}
-                  onClick={() => void editEntry(entry)}
-                  disabled={busyKey === `entry-${entry.id}` || reordering}
-                  draggable={draggable}
-                  onDragStart={(event) => {
-                    setDragId(entry.id);
-                    if (event.dataTransfer) {
-                      event.dataTransfer.effectAllowed = 'move';
-                      event.dataTransfer.setData('text/plain', entry.id);
-                    }
-                  }}
-                  onDragOver={(event) => {
-                    if (!draggable) return;
+      {provider !== 'unavailable' && (
+        <>
+          <div
+            className="content-tabs"
+            role="tablist"
+            aria-label="Content collections"
+          >
+            {collections.map((collection) => (
+              <button
+                type="button"
+                className={`content-tab ${
+                  collection.id === selectedCollectionId ? 'is-active' : ''
+                }`}
+                key={collection.id}
+                onClick={() => setSelectedCollectionId(collection.id)}
+              >
+                <span>{collection.label}</span>
+                <span className="pill">{collection.count}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="content-workspace__grid">
+            <section
+              className="content-entry-list"
+              aria-label="Content entries"
+            >
+              {loading || busyKey === 'entries' ? (
+                <p className="admin-empty" role="status">
+                  Loading content...
+                </p>
+              ) : entries.length === 0 ? (
+                <p className="admin-empty">No entries yet.</p>
+              ) : (
+                entries.map((entry) => {
+                  const draggable =
+                    selectedCollection?.reorderable === true && !reordering;
+                  return (
+                    <button
+                      type="button"
+                      className={`content-entry-button ${
+                        selectedEntry?.id === entry.id ? 'is-active' : ''
+                      } ${dragId === entry.id ? 'is-dragging' : ''} ${
+                        dragOverId === entry.id ? 'is-drag-over' : ''
+                      }`}
+                      key={entry.id}
+                      onClick={() => void editEntry(entry)}
+                      disabled={busyKey === `entry-${entry.id}` || reordering}
+                      draggable={draggable}
+                      onDragStart={(event) => {
+                        setDragId(entry.id);
+                        if (event.dataTransfer) {
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', entry.id);
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        if (!draggable) return;
+                        event.preventDefault();
+                        if (event.dataTransfer) {
+                          event.dataTransfer.dropEffect = 'move';
+                        }
+                        if (dragOverId !== entry.id) setDragOverId(entry.id);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (dragId && dragId !== entry.id) {
+                          void reorderEntries(dragId, entry.id);
+                        } else {
+                          setDragId(null);
+                          setDragOverId(null);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setDragOverId(null);
+                      }}
+                    >
+                      {selectedCollection?.reorderable && (
+                        <span
+                          className="content-drag-handle"
+                          aria-hidden="true"
+                          title="Drag to reorder"
+                        >
+                          ⣿
+                        </span>
+                      )}
+                      <strong>{entry.title}</strong>
+                      <span>{entry.id}</span>
+                    </button>
+                  );
+                })
+              )}
+            </section>
+
+            <section
+              className="content-editor-panel"
+              aria-label="Content editor"
+            >
+              {mode === 'empty' || !selectedCollection ? (
+                <div className="admin-empty-state">
+                  <p className="admin-empty">
+                    Select an entry or create a new one.
+                  </p>
+                </div>
+              ) : (
+                <form
+                  className="content-editor-form"
+                  onSubmit={(event) => {
                     event.preventDefault();
-                    if (event.dataTransfer) {
-                      event.dataTransfer.dropEffect = 'move';
-                    }
-                    if (dragOverId !== entry.id) setDragOverId(entry.id);
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (dragId && dragId !== entry.id) {
-                      void reorderEntries(dragId, entry.id);
-                    } else {
-                      setDragId(null);
-                      setDragOverId(null);
-                    }
-                  }}
-                  onDragEnd={() => {
-                    setDragId(null);
-                    setDragOverId(null);
+                    void saveEntry();
                   }}
                 >
-                  {selectedCollection?.reorderable && (
-                    <span
-                      className="content-drag-handle"
-                      aria-hidden="true"
-                      title="Drag to reorder"
-                    >
-                      ⣿
-                    </span>
-                  )}
-                  <strong>{entry.title}</strong>
-                  <span>{entry.id}</span>
-                </button>
-              );
-            })
-          )}
-        </section>
-
-        <section className="content-editor-panel" aria-label="Content editor">
-          {mode === 'empty' || !selectedCollection ? (
-            <div className="admin-empty-state">
-              <p className="admin-empty">
-                Select an entry or create a new one.
-              </p>
-            </div>
-          ) : (
-            <form
-              className="content-editor-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void saveEntry();
-              }}
-            >
-              {selectedCollection.fields
-                .filter((field) => !field.hidden)
-                .map((field) => (
-                  <label className="content-field" key={field.name}>
-                    <span>
-                      {field.label}
-                      {field.required ? ' *' : ''}
-                    </span>
-                    {field.description && (
-                      <small className="admin-muted">{field.description}</small>
-                    )}
-                    {field.type === 'textarea' ||
-                    field.type === 'string-list' ? (
-                      <textarea
-                        className="admin-input content-textarea"
-                        value={fieldValueAsText(fields[field.name])}
-                        onChange={(event) =>
-                          updateField(field, event.target.value)
-                        }
-                      />
-                    ) : field.type === 'boolean' ? (
-                      <label className="admin-toggle content-toggle">
-                        <input
-                          type="checkbox"
-                          checked={fields[field.name] === true}
-                          onChange={(event) =>
-                            updateField(field, event.target.checked)
-                          }
-                        />
-                        <span className="admin-toggle__track">
-                          <span className="admin-toggle__thumb" />
+                  {selectedCollection.fields
+                    .filter((field) => !field.hidden)
+                    .map((field) => (
+                      <label className="content-field" key={field.name}>
+                        <span>
+                          {field.label}
+                          {field.required ? ' *' : ''}
                         </span>
+                        {field.description && (
+                          <small className="admin-muted">
+                            {field.description}
+                          </small>
+                        )}
+                        {field.type === 'textarea' ||
+                        field.type === 'string-list' ? (
+                          <textarea
+                            className="admin-input content-textarea"
+                            value={fieldValueAsText(fields[field.name])}
+                            onChange={(event) =>
+                              updateField(field, event.target.value)
+                            }
+                          />
+                        ) : field.type === 'boolean' ? (
+                          <label className="admin-toggle content-toggle">
+                            <input
+                              type="checkbox"
+                              checked={fields[field.name] === true}
+                              onChange={(event) =>
+                                updateField(field, event.target.checked)
+                              }
+                            />
+                            <span className="admin-toggle__track">
+                              <span className="admin-toggle__thumb" />
+                            </span>
+                          </label>
+                        ) : (
+                          <input
+                            className="admin-input"
+                            type={
+                              field.type === 'date'
+                                ? 'date'
+                                : field.type === 'integer'
+                                  ? 'number'
+                                  : 'text'
+                            }
+                            value={fieldValueAsText(fields[field.name])}
+                            onChange={(event) =>
+                              updateField(field, event.target.value)
+                            }
+                          />
+                        )}
+                        {field.type === 'image' && (
+                          <input
+                            className="content-upload-input"
+                            type="file"
+                            accept="image/webp,image/jpeg,image/png,image/gif"
+                            disabled={busyKey === `upload-${field.name}`}
+                            onChange={(event) => {
+                              const file = event.currentTarget.files?.[0];
+                              event.currentTarget.value = '';
+                              if (file) {
+                                void uploadImage(file, {
+                                  fieldName: field.name,
+                                });
+                              }
+                            }}
+                          />
+                        )}
                       </label>
-                    ) : (
-                      <input
-                        className="admin-input"
-                        type={
-                          field.type === 'date'
-                            ? 'date'
-                            : field.type === 'integer'
-                              ? 'number'
-                              : 'text'
-                        }
-                        value={fieldValueAsText(fields[field.name])}
-                        onChange={(event) =>
-                          updateField(field, event.target.value)
-                        }
+                    ))}
+
+                  {selectedCollection.body && (
+                    <label className="content-field">
+                      <span>MDX body</span>
+                      <textarea
+                        className="admin-input content-body-editor"
+                        value={body}
+                        onChange={(event) => setBody(event.target.value)}
                       />
-                    )}
-                    {field.type === 'image' && (
                       <input
                         className="content-upload-input"
                         type="file"
                         accept="image/webp,image/jpeg,image/png,image/gif"
-                        disabled={busyKey === `upload-${field.name}`}
+                        disabled={busyKey === 'upload-body'}
                         onChange={(event) => {
                           const file = event.currentTarget.files?.[0];
                           event.currentTarget.value = '';
-                          if (file) {
-                            void uploadImage(file, { fieldName: field.name });
-                          }
+                          if (file)
+                            void uploadImage(file, { appendToBody: true });
                         }}
                       />
+                    </label>
+                  )}
+
+                  <div className="content-editor-actions">
+                    <button
+                      type="submit"
+                      className="admin-button primary"
+                      disabled={busyKey === 'save'}
+                    >
+                      {busyKey === 'save' ? 'Saving...' : 'Save'}
+                    </button>
+                    {mode === 'edit' && selectedEntry && (
+                      <button
+                        type="button"
+                        className="admin-button admin-button--danger"
+                        disabled={busyKey === `delete-${selectedEntry.id}`}
+                        onClick={() => void removeEntry(selectedEntry)}
+                      >
+                        Delete
+                      </button>
                     )}
-                  </label>
-                ))}
-
-              {selectedCollection.body && (
-                <label className="content-field">
-                  <span>MDX body</span>
-                  <textarea
-                    className="admin-input content-body-editor"
-                    value={body}
-                    onChange={(event) => setBody(event.target.value)}
-                  />
-                  <input
-                    className="content-upload-input"
-                    type="file"
-                    accept="image/webp,image/jpeg,image/png,image/gif"
-                    disabled={busyKey === 'upload-body'}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      event.currentTarget.value = '';
-                      if (file) void uploadImage(file, { appendToBody: true });
-                    }}
-                  />
-                </label>
+                  </div>
+                </form>
               )}
-
-              <div className="content-editor-actions">
-                <button
-                  type="submit"
-                  className="admin-button primary"
-                  disabled={busyKey === 'save'}
-                >
-                  {busyKey === 'save' ? 'Saving...' : 'Save'}
-                </button>
-                {mode === 'edit' && selectedEntry && (
-                  <button
-                    type="button"
-                    className="admin-button admin-button--danger"
-                    disabled={busyKey === `delete-${selectedEntry.id}`}
-                    onClick={() => void removeEntry(selectedEntry)}
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-            </form>
-          )}
-        </section>
-      </div>
+            </section>
+          </div>
+        </>
+      )}
     </article>
   );
 }

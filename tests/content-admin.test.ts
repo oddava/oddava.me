@@ -285,6 +285,48 @@ describe('content admin API core', () => {
     );
     expect(blogReorder.status).toBe(400);
   });
+
+  it('rejects reorder lists with duplicate or missing ids', async () => {
+    const provider = new MemoryContentProvider();
+    const bookIds = ['alpha', 'beta', 'gamma'];
+    for (const [index, id] of bookIds.entries()) {
+      await provider.writeTextFile(
+        `src/content/books/${id}.yaml`,
+        `title: ${id}\ncoverImage: /${id}.webp\norder: ${index}\n`,
+        `content: create books/${id}`,
+      );
+    }
+
+    const duplicateResponse = await handleContentReorder(
+      provider,
+      'books',
+      new Request('https://oddava.me/api/admin/content/books/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: ['gamma', 'gamma', 'alpha'] }),
+      }),
+    );
+
+    expect(duplicateResponse.status).toBe(400);
+    await expect(duplicateResponse.json()).resolves.toMatchObject({
+      code: 'invalid_reorder_ids',
+    });
+
+    const missingResponse = await handleContentReorder(
+      provider,
+      'books',
+      new Request('https://oddava.me/api/admin/content/books/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: ['gamma', 'alpha'] }),
+      }),
+    );
+
+    expect(missingResponse.status).toBe(400);
+    await expect(missingResponse.json()).resolves.toMatchObject({
+      code: 'invalid_reorder_ids',
+    });
+  });
 });
 
 describe('local content provider', () => {
@@ -310,5 +352,36 @@ describe('local content provider', () => {
     await expect(
       provider.writeTextFile('../bad.yaml', '', 'bad'),
     ).rejects.toThrow('Unsafe content path.');
+  });
+
+  it('returns a conflict response when a local edit uses a stale revision', async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'oddava-content-'));
+    const provider = createLocalContentProvider(tempDir);
+
+    await provider.writeTextFile(
+      'src/content/blog/example.mdx',
+      '---\ntitle: Example\ndate: 2026-07-04\ndraft: false\n---\n\nBody\n',
+      'content: create blog/example',
+    );
+
+    const response = await handleContentEntry(
+      provider,
+      'blog',
+      'example',
+      jsonRequest('PUT', {
+        fields: {
+          title: 'Updated',
+          date: '2026-07-04',
+          draft: false,
+        },
+        body: 'Updated body',
+        revision: 'local:stale',
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'revision_conflict',
+    });
   });
 });

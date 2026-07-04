@@ -24,6 +24,7 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, withJsonAccept(init));
   let payload: T & {
     error?: string;
+    code?: string;
     issues?: { path?: unknown[]; message?: string }[];
   };
 
@@ -47,9 +48,11 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
           .filter(Boolean)
           .join(' ')
       : '';
-    throw new Error(
+    const error = new Error(
       [payload.error || 'Request failed.', issueText].filter(Boolean).join(' '),
     );
+    if (payload.code) (error as Error & { code?: string }).code = payload.code;
+    throw error;
   }
   return payload;
 }
