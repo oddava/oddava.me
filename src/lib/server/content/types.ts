@@ -32,6 +32,93 @@ export interface ContentFieldDefinition {
   hidden?: boolean;
 }
 
+export type ContentBlockType =
+  'paragraph' | 'heading' | 'image' | 'code' | 'callout' | 'raw-mdx';
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  value?: string;
+  level?: 1 | 2 | 3;
+  src?: string;
+  alt?: string;
+  language?: string;
+  title?: string;
+}
+
+export interface ContentTemplate {
+  id: string;
+  label: string;
+  description: string;
+  fields: Record<string, unknown>;
+  blocks: ContentBlock[];
+}
+
+export interface ContentSurface {
+  id: string;
+  collection: ContentCollectionId;
+  entryId: string;
+  routePath: string;
+  label: string;
+  regions: {
+    id: string;
+    label: string;
+    kind: 'field' | 'blocks';
+    fieldName?: string;
+  }[];
+}
+
+export interface ContentDocument {
+  fields: Record<string, unknown>;
+  body: string;
+  blocks: ContentBlock[];
+}
+
+export interface ContentDraft extends ContentDocument {
+  collection: ContentCollectionId;
+  id: string;
+  title: string;
+  sourcePath: string;
+  sourceRevision?: string;
+  isNew: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaAsset {
+  path: string;
+  url: string;
+  name: string;
+  collection?: ContentCollectionId;
+  entryId?: string;
+  size: number;
+  modifiedAt: string;
+  referenced: boolean;
+}
+
+export interface ContentRevision {
+  hash: string;
+  shortHash: string;
+  author: string;
+  authoredAt: string;
+  subject: string;
+}
+
+export interface PublishJob {
+  id: string;
+  collection: ContentCollectionId;
+  entryId: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  createdAt: string;
+  updatedAt: string;
+  steps: {
+    label: string;
+    status: 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
+    detail?: string;
+  }[];
+  error?: string;
+}
+
 export interface ContentCollectionDefinition {
   id: ContentCollectionId;
   label: string;
@@ -45,6 +132,17 @@ export interface ContentCollectionDefinition {
   groupMediaByEntry: boolean;
   reorderable?: boolean;
   orderField?: string;
+  routePattern: string;
+  indexRoute: string;
+  supportsDrafts: boolean;
+  supportsBlocks: boolean;
+  templates: ContentTemplate[];
+  surfaces: {
+    id: string;
+    label: string;
+    kind: 'field' | 'blocks';
+    fieldName?: string;
+  }[];
   fields: ContentFieldDefinition[];
   schema: z.ZodType<Record<string, unknown>>;
 }

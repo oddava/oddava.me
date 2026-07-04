@@ -4,10 +4,14 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   handleContentCollection,
+  handleContentDraft,
   handleContentEntry,
   handleContentMedia,
+  handleContentPreview,
+  handleContentPublish,
   handleContentReorder,
 } from '../src/lib/server/content/api';
+import { blocksToBody, bodyToBlocks } from '../src/lib/server/content/blocks';
 import { createLocalContentProvider } from '../src/lib/server/content/local-provider';
 import {
   assertSafeRepositoryPath,
@@ -108,6 +112,27 @@ describe('content admin serializers and paths', () => {
     );
     expect(sanitizeFilename('My Cover.PNG')).toMatch(/^my-cover-.+\.png$/);
   });
+
+  it('converts MDX bodies into editable blocks without losing raw MDX', () => {
+    const blocks = bodyToBlocks(
+      [
+        '## Hello',
+        'Opening paragraph.',
+        '![](/images/blog/example/cover.webp)',
+        '<CardComparison before="a" after="b" />',
+      ].join('\n\n'),
+    );
+
+    expect(blocks.map((block) => block.type)).toEqual([
+      'heading',
+      'paragraph',
+      'image',
+      'raw-mdx',
+    ]);
+    expect(blocksToBody(blocks)).toContain(
+      '<CardComparison before="a" after="b" />',
+    );
+  });
 });
 
 describe('content admin API core', () => {
@@ -196,6 +221,90 @@ describe('content admin API core', () => {
     await expect(response.json()).resolves.toMatchObject({
       code: 'validation_failed',
     });
+  });
+
+  it('saves drafts, previews them, and publishes back to MDX files', async () => {
+    const provider = new MemoryContentProvider();
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'oddava-studio-'));
+
+    try {
+      const draftResponse = await handleContentDraft(
+        tempDir,
+        provider,
+        'blog',
+        'hello-studio',
+        new Request(
+          'https://oddava.me/api/admin/content/drafts/blog/hello-studio',
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                title: 'Hello Studio',
+                date: '2026-07-04',
+                draft: true,
+              },
+              blocks: [
+                {
+                  id: 'intro',
+                  type: 'paragraph',
+                  value: 'Drafted visually.',
+                },
+              ],
+              isNew: true,
+            }),
+          },
+        ),
+      );
+
+      expect(draftResponse.status).toBe(200);
+      await expect(draftResponse.json()).resolves.toMatchObject({
+        draft: { id: 'hello-studio', title: 'Hello Studio', isNew: true },
+      });
+
+      const previewResponse = await handleContentPreview(
+        tempDir,
+        provider,
+        new Request(
+          'https://oddava.me/api/admin/content/preview?collection=blog&id=hello-studio',
+        ),
+      );
+
+      expect(previewResponse.headers.get('Content-Type')).toContain(
+        'text/html',
+      );
+      await expect(previewResponse.text()).resolves.toContain('Hello Studio');
+
+      const publishResponse = await handleContentPublish(
+        tempDir,
+        provider,
+        new Request('https://oddava.me/api/admin/content/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection: 'blog', id: 'hello-studio' }),
+        }),
+      );
+
+      expect(publishResponse.status).toBe(200);
+      expect(
+        provider.files.get('src/content/blog/hello-studio.mdx')?.content,
+      ).toContain('Drafted visually.');
+
+      const deletedDraftResponse = await handleContentDraft(
+        tempDir,
+        provider,
+        'blog',
+        'hello-studio',
+        new Request(
+          'https://oddava.me/api/admin/content/drafts/blog/hello-studio',
+        ),
+      );
+      await expect(deletedDraftResponse.json()).resolves.toMatchObject({
+        draft: null,
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it('accepts supported media uploads and rejects unsupported files', async () => {

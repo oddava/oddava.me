@@ -191,3 +191,109 @@ export async function adminContentReorderRoute(
     ),
   );
 }
+
+export async function adminContentSurfacesRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError = await requireAdmin(context);
+  if (authError) return authError;
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+
+  const query = new URL(context.request.url).search;
+  return safeContentResponse(() =>
+    forwardToLocalProxy(context, `/api/admin/content/surfaces${query}`),
+  );
+}
+
+export async function adminContentDraftRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError =
+    context.request.method === 'GET'
+      ? await requireAdmin(context)
+      : await requireMutation(context);
+  if (authError) return authError;
+
+  const collectionId = context.params.collection ?? '';
+  const id = context.params.id ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/drafts/${encodeURIComponent(collectionId)}/${encodeURIComponent(id)}`,
+    ),
+  );
+}
+
+export async function adminContentPreviewRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError =
+    context.request.method === 'GET'
+      ? await requireAdmin(context)
+      : await requireMutation(context);
+  if (authError) return authError;
+
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  const query = new URL(context.request.url).search;
+  return safeContentResponse(() =>
+    forwardToLocalProxy(context, `/api/admin/content/preview${query}`),
+  );
+}
+
+export async function adminContentPublishRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError = await requireMutation(context);
+  if (authError) return authError;
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(context, '/api/admin/content/publish'),
+  );
+}
+
+export async function adminContentPublishJobRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError = await requireAdmin(context);
+  if (authError) return authError;
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/publish/${encodeURIComponent(context.params.jobId ?? '')}`,
+    ),
+  );
+}
+
+export async function adminContentHistoryRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError = await requireAdmin(context);
+  if (authError) return authError;
+  const collectionId = context.params.collection ?? '';
+  const id = context.params.id ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}/${encodeURIComponent(id)}/history`,
+    ),
+  );
+}
+
+export async function adminContentRestoreRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError = await requireMutation(context);
+  if (authError) return authError;
+  const collectionId = context.params.collection ?? '';
+  const id = context.params.id ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}/${encodeURIComponent(id)}/restore`,
+    ),
+  );
+}

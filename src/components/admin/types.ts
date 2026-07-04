@@ -84,12 +84,57 @@ export interface ContentCollectionMeta {
   format: 'mdx' | 'yaml';
   body: boolean;
   count: number;
+  drafts?: number;
   reorderable: boolean;
+  routePattern: string;
+  indexRoute: string;
+  supportsDrafts: boolean;
+  supportsBlocks: boolean;
+  templates: ContentTemplate[];
+  surfaces: ContentSurfaceRegion[];
   fields: ContentFieldDefinition[];
   media: {
     publicPath: string;
     groupByEntry: boolean;
   };
+}
+
+export type ContentBlockType =
+  'paragraph' | 'heading' | 'image' | 'code' | 'callout' | 'raw-mdx';
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  value?: string;
+  level?: 1 | 2 | 3;
+  src?: string;
+  alt?: string;
+  language?: string;
+  title?: string;
+}
+
+export interface ContentTemplate {
+  id: string;
+  label: string;
+  description: string;
+  fields: Record<string, unknown>;
+  blocks: ContentBlock[];
+}
+
+export interface ContentSurfaceRegion {
+  id: string;
+  label: string;
+  kind: 'field' | 'blocks';
+  fieldName?: string;
+}
+
+export interface ContentSurface {
+  id: string;
+  collection: string;
+  entryId: string;
+  routePath: string;
+  label: string;
+  regions: ContentSurfaceRegion[];
 }
 
 export interface ContentWriteResult {
@@ -111,6 +156,54 @@ export interface ContentEntryDetail extends ContentEntryListItem {
   body: string;
 }
 
+export interface ContentDraft {
+  collection: string;
+  id: string;
+  title: string;
+  sourcePath: string;
+  sourceRevision?: string;
+  fields: Record<string, unknown>;
+  body: string;
+  blocks: ContentBlock[];
+  isNew: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaAsset {
+  path: string;
+  url: string;
+  name: string;
+  collection?: string;
+  entryId?: string;
+  size: number;
+  modifiedAt: string;
+  referenced: boolean;
+}
+
+export interface ContentRevision {
+  hash: string;
+  shortHash: string;
+  author: string;
+  authoredAt: string;
+  subject: string;
+}
+
+export interface PublishJob {
+  id: string;
+  collection: string;
+  entryId: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  createdAt: string;
+  updatedAt: string;
+  steps: {
+    label: string;
+    status: 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
+    detail?: string;
+  }[];
+  error?: string;
+}
+
 export interface ContentCollectionsResponse {
   collections: ContentCollectionMeta[];
   provider: 'local';
@@ -119,6 +212,7 @@ export interface ContentCollectionsResponse {
 export interface ContentEntriesResponse {
   collection: Omit<ContentCollectionMeta, 'count'>;
   entries: ContentEntryListItem[];
+  drafts: ContentDraft[];
   provider: 'local';
 }
 
@@ -143,4 +237,8 @@ export interface ContentMediaResponse {
     path: string;
   };
   result: ContentWriteResult;
+}
+
+export interface ContentMediaListResponse {
+  media: MediaAsset[];
 }
