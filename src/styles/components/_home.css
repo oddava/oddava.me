@@ -71,7 +71,7 @@
   gap: var(--space-sm);
 }
 
-.home-hero h1 {
+.home-hero h1:not(.home-hero__tagline) {
   font-family: var(--font-body);
   font-size: clamp(2rem, 5.5vw, 2.75rem);
   font-weight: 700;
@@ -86,6 +86,9 @@
   color: var(--color-text-secondary);
   margin: 0;
   line-height: var(--leading-body);
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
 }
 
 .home-hero__cta {
@@ -104,7 +107,9 @@
 
 .home-hero--intro .home-hero__tagline {
   font-size: var(--text-lg);
+  font-weight: 400;
   max-width: 28rem;
+  color: var(--color-text-secondary);
 }
 
 .home-hero--intro .home-hero__cta {
