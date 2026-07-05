@@ -63,25 +63,26 @@
 
 /* --- Homepage layout --- */
 .home-hero {
-  text-align: center;
+  position: relative;
   padding: var(--space-lg) 0 var(--space-md);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  justify-content: center;
   gap: var(--space-sm);
 }
 
 .home-hero h1 {
   font-family: var(--font-body);
-  font-size: clamp(2.5rem, 9vw, 3.5rem);
+  font-size: clamp(2rem, 5.5vw, 2.75rem);
   font-weight: 700;
   margin: 0;
+  line-height: 1.1;
   letter-spacing: -0.03em;
   color: var(--color-text-primary);
 }
 
 .home-hero__tagline {
-  max-width: 34rem;
+  max-width: 32rem;
   color: var(--color-text-secondary);
   margin: 0;
   line-height: var(--leading-body);
@@ -90,9 +91,25 @@
 .home-hero__cta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 0.75rem;
   margin-top: var(--space-sm);
+}
+
+.home-hero--intro {
+  min-height: clamp(26rem, 58vh, 38rem);
+  text-align: center;
+  align-items: center;
+  padding: var(--space-xl) 0 var(--space-lg);
+}
+
+.home-hero--intro .home-hero__tagline {
+  font-size: var(--text-lg);
+  max-width: 28rem;
+}
+
+.home-hero--intro .home-hero__cta {
+  justify-content: center;
+  margin-top: var(--space-md);
 }
 
 .home-section {
@@ -218,8 +235,9 @@
 }
 
 @media (max-width: 640px) {
-  .home-hero {
-    padding-top: var(--space-md);
+  .home-hero--intro {
+    min-height: clamp(22rem, 52vh, 30rem);
+    padding: var(--space-lg) 0 var(--space-md);
   }
 
   .now-card__link {
