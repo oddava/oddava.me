@@ -25,27 +25,17 @@ const latestPosts = posts.slice(0, 3);
   description="Software, AI, and personal projects by oddava."
   image="/og-default.svg"
 >
-  <section class="home-hero">
+  <section class="home-hero home-hero--intro">
     <h1>oddava</h1>
     <p class="home-hero__tagline">
-      i'm oddava. i build things, read a lot, and document the process —
-      software, side projects, and notes worth keeping.
+      i build things, read a lot, and write about whatever i'm working on.
+      mostly software, side projects, and notes i want to keep around.
     </p>
     <div class="home-hero__cta">
       <a href="/blog" class="home-cta">writing</a>
       <a href="/projects" class="home-cta">projects</a>
       <a href="/about" class="home-cta">about</a>
     </div>
-  </section>
-
-  <section class="home-section" aria-labelledby="home-now-heading">
-    <h2 id="home-now-heading" class="section-heading">what i'm doing now</h2>
-    <a href="/now" class="now-card">
-      <span class="now-card__label">
-        a running snapshot of what i'm reading, building, and writing —
-      </span>
-      <span class="now-card__link">see /now →</span>
-    </a>
   </section>
 
   <section class="home-section" aria-labelledby="home-projects-heading">
@@ -92,11 +82,5 @@ const latestPosts = posts.slice(0, 3);
         <p class="home-empty">no posts yet.</p>
       )
     }
-  </section>
-
-  <section class="home-section home-section--cta">
-    <a href="/blog" class="home-cta">read the writing</a>
-    <a href="/projects" class="home-cta">see the projects</a>
-    <a href="/about" class="home-cta">who's oddava</a>
   </section>
 </Base>

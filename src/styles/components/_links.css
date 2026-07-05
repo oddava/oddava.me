@@ -6,7 +6,7 @@
 html,
 body {
   min-height: 100dvh !important;
-  background: var(--links-bg, #0a0a0a) !important;
+  background: var(--color-surface) !important;
 }
 
 .page {
@@ -36,13 +36,8 @@ h1 {
   height: 100dvh;
   padding: var(--page-padding);
   font-family: var(--links-font, var(--font-body));
-  background: var(--links-bg, #0a0a0a);
-  /* Theme overrides via inline style on wrapper */
-  --links-accent: var(--color-text-interactive);
-  --links-bg: #0a0a0a;
-  --links-card-bg: var(--color-surface-raised);
-  --links-card-border: var(--color-rule);
-  --links-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 /* --- Profile --- */
@@ -61,8 +56,8 @@ h1 {
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--links-card-border);
-  background: var(--links-card-bg);
+  border: 2px solid var(--color-rule-strong);
+  background: var(--color-surface-raised);
 }
 
 .links-profile__name {
@@ -104,19 +99,24 @@ h1 {
   display: block;
   width: 100%;
   padding: 0.6rem 1rem;
-  background: var(--links-card-bg);
-  border: 1px solid var(--links-card-border);
-  border-radius: var(--links-radius);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-lg);
   text-decoration: none;
   color: var(--color-text-primary);
   font-size: var(--text-sm);
   font-weight: 600;
   text-align: center;
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.links-item__link:hover {
-  background: color-mix(in srgb, var(--links-card-bg) 92%, #666);
+.links-item__link:hover,
+.links-item__link:focus-visible {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-accent);
   color: var(--color-text-primary);
 }
 
@@ -129,7 +129,7 @@ h1 {
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  color: var(--links-accent);
+  color: var(--color-text-interactive);
 }
 
 /* --- Responsive --- */

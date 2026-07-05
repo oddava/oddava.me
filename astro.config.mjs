@@ -27,7 +27,6 @@ const SERVER_OPTIMIZE_DEPS = [
   'react-dom/server.edge',
   'react-dom/client',
   'react/jsx-runtime',
-  'react/jsx-dev-runtime',
   'astro/zod',
   'astro/assets/services/noop',
   'astro/content/runtime',
@@ -50,7 +49,15 @@ function optimizeServerDeps() {
     /** @param {string} name */
     configEnvironment(name) {
       if (name !== 'client') {
-        return { optimizeDeps: { include: SERVER_OPTIMIZE_DEPS } };
+        return {
+          optimizeDeps: { include: SERVER_OPTIMIZE_DEPS },
+          // SSR dep prebundling runs with production defines, so jsx-dev-runtime
+          // resolves to a stub where jsxDEV is undefined. Use jsx-runtime instead.
+          esbuild: {
+            jsx: 'automatic',
+            jsxDev: false,
+          },
+        };
       }
     },
   };
@@ -141,12 +148,15 @@ export default defineConfig({
       optimizeServerDeps(),
       devCloudflareWorkersEnv(),
     ],
+    esbuild: {
+      jsx: 'automatic',
+      jsxDev: false,
+    },
     resolve: {
       dedupe: [
         'react',
         'react-dom',
         'react/jsx-runtime',
-        'react/jsx-dev-runtime',
       ],
       alias: {
         react: path.resolve(projectRoot, 'node_modules/react'),

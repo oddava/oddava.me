@@ -19,9 +19,7 @@ export const GET: APIRoute = async () => {
     getCollection('projects'),
   ]);
 
-  const staticEntries = [...getStaticSitemapPaths(), '/now'].map((path) =>
-    makeEntry(path),
-  );
+  const staticEntries = getStaticSitemapPaths().map((path) => makeEntry(path));
 
   const postEntries = posts.map((post) =>
     makeEntry(`/blog/${post.id}`, post.data.date),

@@ -16,30 +16,6 @@
     padding-bottom: var(--space-md);
   }
 
-  .site-nav {
-    padding: var(--space-md) 0 var(--space-sm);
-  }
-
-  .site-nav__track {
-    justify-content: flex-start;
-    gap: 0.25rem 0.8rem;
-    min-height: 0;
-  }
-
-  .site-nav__label {
-    font-size: 0.84rem;
-  }
-
-  .site-nav__link--home .site-nav__label {
-    font-size: 1.25rem;
-  }
-
-  .site-nav__link--home {
-    width: 100%;
-    margin-right: 0;
-    margin-bottom: 0.1rem;
-  }
-
   .home {
     padding: var(--space-md) 0;
   }
@@ -106,18 +82,6 @@
     --page-padding: 1rem;
     --space-md: 1.5rem;
     --space-lg: 2.5rem;
-  }
-
-  .site-nav__track {
-    gap: 0.15rem 0.65rem;
-  }
-
-  .site-nav__label {
-    font-size: 0.8rem;
-  }
-
-  .site-nav__link--home .site-nav__label {
-    font-size: 1.15rem;
   }
 
   .post-item__link,

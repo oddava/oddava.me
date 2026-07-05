@@ -1,4 +1,3 @@
-/** @jsxImportSource react */
 import '../styles/components/_guestbook.css';
 import { useCallback, useMemo, useState } from 'react';
 import { useGuestbookEntries } from './guestbook/useGuestbookEntries';
