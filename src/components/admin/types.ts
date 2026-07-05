@@ -36,7 +36,7 @@ export interface GuestbookResponse {
   entries: GuestbookEntry[];
 }
 
-export type CredentialSource = 'override' | 'env' | 'default' | 'none';
+export type CredentialSource = 'override' | 'env' | 'none';
 
 export interface CredentialFieldStatus {
   set: boolean;

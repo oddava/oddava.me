@@ -113,9 +113,7 @@ export function IntegrationStatusList({
           const isExpanded = expandedKey === status.key;
           const showCredentials =
             status.key === 'spotify' && hasSpotify && onCredentialsSaved;
-          const toggleId = `integration-toggle-${
-            status.key ?? status.name
-          }`;
+          const toggleId = `integration-toggle-${status.key ?? status.name}`;
 
           return (
             <div
@@ -169,7 +167,9 @@ export function IntegrationStatusList({
                         type="checkbox"
                         checked={isEnabled}
                         disabled={isBusy}
-                        onChange={() => void handleToggleChange(status, !isEnabled)}
+                        onChange={() =>
+                          void handleToggleChange(status, !isEnabled)
+                        }
                       />
                       <span className="admin-toggle__track">
                         <span className="admin-toggle__thumb" />

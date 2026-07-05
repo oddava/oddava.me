@@ -25,6 +25,7 @@ import type {
   MediaAsset,
   PublishJob,
 } from './types';
+import { useDialogConfirm } from './useDialogConfirm';
 
 interface ContentWorkspaceProps {
   onContentChanged?: () => Promise<void>;
@@ -190,6 +191,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [publishJob, setPublishJob] = useState<PublishJob | null>(null);
+  const { confirm, dialog } = useDialogConfirm();
 
   const selectedCollection = useMemo(
     () =>
@@ -569,7 +571,13 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
   }
 
   async function removeMedia(asset: MediaAsset) {
-    if (!window.confirm(`Delete ${asset.name}?`)) return;
+    const ok = await confirm({
+      title: 'Delete media',
+      message: `Delete ${asset.name}? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     setBusyKey(`media-${asset.url}`);
     setError(null);
     try {
@@ -1321,6 +1329,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
           )}
         </aside>
       </div>
+      {dialog}
     </article>
   );
 }

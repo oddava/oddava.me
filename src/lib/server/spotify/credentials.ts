@@ -28,7 +28,7 @@ export interface SpotifyCredentialsRecord {
   lanyard: LanyardCredentials;
 }
 
-export type CredentialSource = 'override' | 'env' | 'default' | 'none';
+export type CredentialSource = 'override' | 'env' | 'none';
 
 export interface CredentialFieldStatus {
   set: boolean;
@@ -129,16 +129,12 @@ export async function getSpotifyCredentials(): Promise<SpotifyCredentialsRecord>
 function fieldSource(
   redisValue: string | undefined,
   envValue: string | undefined,
-  defaultValue?: string,
 ): CredentialFieldStatus {
   if (isConfiguredSecret(redisValue)) {
     return { set: true, source: 'override' };
   }
   if (isConfiguredSecret(envValue)) {
     return { set: true, source: 'env' };
-  }
-  if (isConfiguredSecret(defaultValue)) {
-    return { set: true, source: 'default' };
   }
   return { set: false, source: 'none' };
 }

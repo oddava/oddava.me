@@ -8,7 +8,8 @@ interface SpotifyCredentialsFormProps {
 }
 
 const ERROR_REGION_ID = 'spotify-credentials-error';
-const errorRegionId = (hasError: boolean) => (hasError ? ERROR_REGION_ID : undefined);
+const errorRegionId = (hasError: boolean) =>
+  hasError ? ERROR_REGION_ID : undefined;
 
 interface FieldState {
   clientId: string;

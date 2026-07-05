@@ -28,7 +28,11 @@
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--admin-text-muted, var(--color-text-muted)) 8%, transparent),
+    color-mix(
+      in srgb,
+      var(--admin-text-muted, var(--color-text-muted)) 8%,
+      transparent
+    ),
     transparent
   );
   animation: skeleton-shine 1.4s linear infinite;

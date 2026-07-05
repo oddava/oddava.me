@@ -71,16 +71,16 @@
   --leading-tight: 1.3;
 
   /* Spacing
-     Base scale: 0.25, 0.5, 1, 2, 4, 6rem.
+     Base scale: quarter, half, 1, 2, 4, 6rem.
      Intermediate steps (1.5, 2.5) cover common magic numbers
      (e.g. _responsive.css ≤480 padding overrides). */
-  --space-0.25: 0.25rem;
-  --space-0.5: 0.5rem;
+  --space-quarter: 0.25rem;
+  --space-half: 0.5rem;
   --space-xs: 0.5rem;
   --space-sm: 1rem;
-  --space-1.5: 1.5rem;
+  --space-1-5: 1.5rem;
   --space-md: 2rem;
-  --space-2.5: 2.5rem;
+  --space-2-5: 2.5rem;
   --space-lg: 4rem;
   --space-xl: 6rem;
 
@@ -124,8 +124,16 @@
 
   /* Surfaces and non-text decoration. */
   --color-surface: color-mix(in srgb, #0b0c0f 96%, var(--color-brand) 4%);
-  --color-surface-raised: color-mix(in srgb, #121317 94%, var(--color-brand) 6%);
-  --color-surface-elevated: color-mix(in srgb, #17181d 91%, var(--color-brand) 9%);
+  --color-surface-raised: color-mix(
+    in srgb,
+    #121317 94%,
+    var(--color-brand) 6%
+  );
+  --color-surface-elevated: color-mix(
+    in srgb,
+    #17181d 91%,
+    var(--color-brand) 9%
+  );
   --color-surface-glass: color-mix(
     in srgb,
     var(--color-surface-elevated) 84%,
@@ -142,7 +150,11 @@
   --color-rule: color-mix(in srgb, var(--color-brand) 10%, transparent);
   --color-rule-strong: color-mix(in srgb, var(--color-brand) 18%, transparent);
   --color-overlay-soft: color-mix(in srgb, var(--color-brand) 6%, transparent);
-  --color-overlay-strong: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  --color-overlay-strong: color-mix(
+    in srgb,
+    var(--color-brand) 12%,
+    transparent
+  );
   --color-shadow: color-mix(in srgb, var(--color-brand) 10%, transparent);
   --color-focus-ring: color-mix(in srgb, var(--color-brand) 28%, transparent);
   --color-selection: color-mix(in srgb, var(--color-brand) 24%, transparent);
