@@ -735,7 +735,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
               className="admin-input"
               placeholder="Search content"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => setQuery(event.currentTarget.value)}
             />
           </div>
           <div className="studio-entry-list">
@@ -935,7 +935,9 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                     className="admin-input"
                     value={currentId}
                     disabled={mode === 'edit' && !isNew}
-                    onChange={(event) => setSlug(slugify(event.target.value))}
+                    onChange={(event) =>
+                      setSlug(slugify(event.currentTarget.value))
+                    }
                   />
                 </label>
 
@@ -964,7 +966,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                           value={fieldValueAsText(fields[field.name])}
                           onFocus={() => setSelectedRegion(field.name)}
                           onChange={(event) =>
-                            updateField(field, event.target.value)
+                            updateField(field, event.currentTarget.value)
                           }
                         />
                       ) : field.type === 'boolean' ? (
@@ -974,7 +976,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                             checked={fields[field.name] === true}
                             onFocus={() => setSelectedRegion(field.name)}
                             onChange={(event) =>
-                              updateField(field, event.target.checked)
+                              updateField(field, event.currentTarget.checked)
                             }
                           />
                           <span className="admin-toggle__track">
@@ -994,7 +996,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                           value={fieldValueAsText(fields[field.name])}
                           onFocus={() => setSelectedRegion(field.name)}
                           onChange={(event) =>
-                            updateField(field, event.target.value)
+                            updateField(field, event.currentTarget.value)
                           }
                         />
                       )}
@@ -1047,7 +1049,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                             onChange={(event) =>
                               changeBlockType(
                                 block.id,
-                                event.target.value as ContentBlockType,
+                                event.currentTarget.value as ContentBlockType,
                               )
                             }
                           >
@@ -1096,7 +1098,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.level ?? 2}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  level: Number(event.target.value) as
+                                  level: Number(event.currentTarget.value) as
                                     1 | 2 | 3,
                                 })
                               }
@@ -1106,7 +1108,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.value ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  value: event.target.value,
+                                  value: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1120,7 +1122,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.src ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  src: event.target.value,
+                                  src: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1130,7 +1132,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.alt ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  alt: event.target.value,
+                                  alt: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1144,7 +1146,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.language ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  language: event.target.value,
+                                  language: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1153,7 +1155,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.value ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  value: event.target.value,
+                                  value: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1167,7 +1169,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.title ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  title: event.target.value,
+                                  title: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1176,7 +1178,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                               value={block.value ?? ''}
                               onChange={(event) =>
                                 updateBlock(block.id, {
-                                  value: event.target.value,
+                                  value: event.currentTarget.value,
                                 })
                               }
                             />
@@ -1189,7 +1191,7 @@ export function ContentWorkspace({ onContentChanged }: ContentWorkspaceProps) {
                             value={block.value ?? ''}
                             onChange={(event) =>
                               updateBlock(block.id, {
-                                value: event.target.value,
+                                value: event.currentTarget.value,
                               })
                             }
                           />

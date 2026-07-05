@@ -6,7 +6,18 @@ import LinkIcon from '../components/LinkIcon.astro';
 import '../styles/components/_links.css';
 import linksData from '../data/links.json';
 
-const { profile, links, theme } = linksData;
+const { profile, links } = linksData;
+// The theme block supports optional presentational overrides that may be absent
+// from links.json; type them optional so the fallbacks below type-check.
+const theme = linksData.theme as {
+  showIcons?: boolean;
+  accentColor?: string;
+  bgColor?: string;
+  cardBg?: string;
+  cardBorder?: string;
+  borderRadius?: string;
+  fontFamily?: string;
+};
 
 const themeVars = [
   theme.accentColor && `--links-accent: ${theme.accentColor}`,

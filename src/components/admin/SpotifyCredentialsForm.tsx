@@ -115,7 +115,7 @@ export function SpotifyCredentialsForm({
             disabled={saving || isBusy}
             aria-describedby={errorRegionId(Boolean(error))}
             aria-invalid={error ? true : undefined}
-            onChange={(e) => handleField('clientId', e.target.value)}
+            onChange={(e) => handleField('clientId', e.currentTarget.value)}
           />
           <span className="admin-credentials__status">
             {isSet(status?.spotify.clientId) ? 'set' : 'not set'}
@@ -137,7 +137,7 @@ export function SpotifyCredentialsForm({
             disabled={saving || isBusy}
             aria-describedby={errorRegionId(Boolean(error))}
             aria-invalid={error ? true : undefined}
-            onChange={(e) => handleField('clientSecret', e.target.value)}
+            onChange={(e) => handleField('clientSecret', e.currentTarget.value)}
           />
           <span className="admin-credentials__status">
             {isSet(status?.spotify.clientSecret) ? 'set' : 'not set'}
@@ -159,7 +159,7 @@ export function SpotifyCredentialsForm({
             disabled={saving || isBusy}
             aria-describedby={errorRegionId(Boolean(error))}
             aria-invalid={error ? true : undefined}
-            onChange={(e) => handleField('refreshToken', e.target.value)}
+            onChange={(e) => handleField('refreshToken', e.currentTarget.value)}
           />
           <span className="admin-credentials__status">
             {isSet(status?.spotify.refreshToken) ? 'set' : 'not set'}
@@ -181,7 +181,9 @@ export function SpotifyCredentialsForm({
             disabled={saving || isBusy}
             aria-describedby={errorRegionId(Boolean(error))}
             aria-invalid={error ? true : undefined}
-            onChange={(e) => handleField('discordUserId', e.target.value)}
+            onChange={(e) =>
+              handleField('discordUserId', e.currentTarget.value)
+            }
           />
           <span className="admin-credentials__status">
             {isSet(status?.lanyard.discordUserId) ? 'set' : 'not set'}

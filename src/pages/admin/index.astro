@@ -51,7 +51,7 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
           </form>
         </header>
         <main class="admin-main">
-          <AdminPanel client:only="react" />
+          <AdminPanel client:only="preact" />
         </main>
       </>
     ) : (

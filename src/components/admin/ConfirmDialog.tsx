@@ -100,11 +100,11 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const handleOverlayMouseDown = (event: ReactMouseEvent) => {
+  const handleOverlayMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onCancel();
   };
 
-  const stopPropagation = (event: ReactMouseEvent) => {
+  const stopPropagation = (event: ReactMouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
   };
 

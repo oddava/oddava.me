@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
-import react from '@astrojs/react';
+import preact from '@astrojs/preact';
 import { localRedisDevProxy } from './vite/local-redis-dev-proxy.mjs';
 import { localContentAdminDevProxy } from './vite/local-content-admin-dev-proxy.mjs';
 
@@ -20,13 +20,13 @@ const spotifyWidgetEnabled =
   'false';
 
 // Pre-bundle island deps for the workerd SSR environment in one pass so Vite does
-// not discover them lazily and reload React mid-render (invalid hook call).
+// not discover them lazily and reload Preact mid-render (duplicate hook context).
 const SERVER_OPTIMIZE_DEPS = [
-  'react',
-  'react-dom',
-  'react-dom/server.edge',
-  'react-dom/client',
-  'react/jsx-runtime',
+  'preact',
+  'preact/hooks',
+  'preact/compat',
+  'preact/jsx-runtime',
+  'preact-render-to-string',
   'astro/zod',
   'astro/assets/services/noop',
   'astro/content/runtime',
@@ -35,10 +35,10 @@ const SERVER_OPTIMIZE_DEPS = [
 ];
 
 const CLIENT_OPTIMIZE_DEPS = [
-  'react',
-  'react-dom',
-  'react-dom/client',
-  'react/jsx-runtime',
+  'preact',
+  'preact/hooks',
+  'preact/compat',
+  'preact/jsx-runtime',
 ];
 
 /** @returns {import('vite').Plugin} */
@@ -55,6 +55,7 @@ function optimizeServerDeps() {
           // resolves to a stub where jsxDEV is undefined. Use jsx-runtime instead.
           esbuild: {
             jsx: 'automatic',
+            jsxImportSource: 'preact',
             jsxDev: false,
           },
         };
@@ -120,7 +121,7 @@ function devCloudflareWorkersEnv() {
 }
 
 export default defineConfig({
-  integrations: [react(), mdx()],
+  integrations: [preact({ compat: true }), mdx()],
   compressHTML: true,
   devToolbar: { enabled: false },
   prefetch: {
@@ -150,19 +151,14 @@ export default defineConfig({
     ],
     esbuild: {
       jsx: 'automatic',
+      jsxImportSource: 'preact',
       jsxDev: false,
     },
     resolve: {
-      dedupe: [
-        'react',
-        'react-dom',
-        'react/jsx-runtime',
-      ],
-      alias: {
-        react: path.resolve(projectRoot, 'node_modules/react'),
-        'react-dom': path.resolve(projectRoot, 'node_modules/react-dom'),
-        'react-dom/server': 'react-dom/server.edge',
-      },
+      // Keep a single Preact copy across the SSR + client graphs so hooks share
+      // one dispatcher (mixing copies throws "invalid hook call"-style errors).
+      // react/react-dom are aliased to preact/compat by @astrojs/preact.
+      dedupe: ['preact', 'preact/hooks', 'preact/compat', 'preact/jsx-runtime'],
     },
     optimizeDeps: {
       include: CLIENT_OPTIMIZE_DEPS,
