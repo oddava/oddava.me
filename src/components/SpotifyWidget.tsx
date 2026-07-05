@@ -1,5 +1,9 @@
 import { useCallback } from 'react';
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from 'react';
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent,
+} from 'react';
 import './SpotifyWidget.css';
 import { formatDuration } from './spotify/format';
 import { useNowPlaying } from './spotify/useNowPlaying';

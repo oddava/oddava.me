@@ -27,7 +27,7 @@ describe('server Spotify helpers', () => {
     expect(getCachedSpotifyState()?.progressMs).toBe(23_000);
   });
 
-  it('treats placeholder Spotify secrets as unavailable while using the default Lanyard user', async () => {
+  it('treats placeholder Spotify secrets and missing Discord credentials as unavailable', async () => {
     vi.doMock('../src/lib/server/community', () => ({
       hasRedisConfig: () => false,
       redisCommand: vi.fn(),
@@ -37,31 +37,33 @@ describe('server Spotify helpers', () => {
       await import('../src/lib/server/spotify/config');
 
     expect(await isSpotifyConfigured()).toBe(false);
-    expect(await isLanyardConfigured()).toBe(true);
+    expect(await isLanyardConfigured()).toBe(false);
   });
 
-  it('uses the default Lanyard user when explicit Discord credentials are absent', async () => {
+  it('does not use Lanyard when explicit Discord credentials are absent', async () => {
     vi.doMock('../src/lib/server/community', () => ({
       fetchWithTimeout: (input: RequestInfo | URL, init?: RequestInit) =>
         fetch(input, init),
       hasRedisConfig: () => false,
       redisCommand: vi.fn(),
     }));
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      Response.json({ success: true, data: { spotify: null } }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ success: true, data: { spotify: null } }),
+      );
 
     const { getSpotifyNowPlayingWithFallback } =
       await import('../src/lib/server/spotify/service');
 
     await expect(getSpotifyNowPlayingWithFallback()).resolves.toEqual({
-      fromFallback: true,
       isPlaying: false,
       integrations: {
         spotify: false,
-        lanyard: true,
+        lanyard: false,
       },
     });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('uses a shorter cache window while a track is actively playing', async () => {
@@ -124,13 +126,14 @@ describe('server Spotify helpers', () => {
     expect(getCachedSpotifyState()).toBeNull();
   });
 
-  it('reports a healthy Lanyard connection from the default user when Spotify is unconfigured', async () => {
+  it('reports a healthy Lanyard connection when Discord credentials are configured', async () => {
     vi.doMock('../src/lib/server/community', () => ({
       fetchWithTimeout: (input: RequestInfo | URL, init?: RequestInit) =>
         fetch(input, init),
       hasRedisConfig: () => false,
       redisCommand: vi.fn(),
     }));
+    vi.stubEnv('DISCORD_USER_ID', '123456789');
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       Response.json({ success: true, data: { spotify: null } }),
     );

@@ -27,11 +27,16 @@ export function GuestbookModeration({
   onModerate,
   onStatusChange,
 }: GuestbookModerationProps) {
-  const handleClear = () => {
-    if (window.confirm('Clear all guestbook entries? This cannot be undone.')) {
-      onClearAll();
-    }
-  };
+  const { confirm, dialog } = useDialogConfirm();
+  const handleClear = useCallback(async () => {
+    const ok = await confirm({
+      title: 'Clear guestbook entries',
+      message: 'Clear all pending guestbook entries? This cannot be undone.',
+      confirmLabel: 'Clear all',
+      danger: true,
+    });
+    if (ok) onClearAll();
+  }, [confirm, onClearAll]);
 
   return (
     <article id="guestbook" className="admin-card admin-panel">
@@ -67,7 +72,9 @@ export function GuestbookModeration({
       <div className="entry-list">
         {entries.length === 0 && (
           <div className="admin-empty-state">
-            <p className="admin-empty-icon">&#10003;</p>
+            <p className="admin-empty-icon" aria-hidden="true">
+              &#10003;
+            </p>
             <p className="admin-empty">No {status} entries.</p>
           </div>
         )}
@@ -114,6 +121,7 @@ export function GuestbookModeration({
           </article>
         ))}
       </div>
+      {dialog}
     </article>
   );
 }

@@ -121,7 +121,11 @@ export function Guestbook() {
 
       <div className="guestbook__entries">
         {loading && (
-          <div className="guestbook__skeletons" role="status" aria-live="polite">
+          <div
+            className="guestbook__skeletons"
+            role="status"
+            aria-live="polite"
+          >
             <SkeletonRow />
             <SkeletonRow />
             <SkeletonRow />

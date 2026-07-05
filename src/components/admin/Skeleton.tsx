@@ -32,7 +32,11 @@ export function SkeletonGrid({
       aria-live="polite"
     >
       {Array.from({ length: cols * rows }).map((_, index) => (
-        <div className="skeleton skeleton-card" key={index} aria-hidden="true" />
+        <div
+          className="skeleton skeleton-card"
+          key={index}
+          aria-hidden="true"
+        />
       ))}
     </section>
   );

@@ -8,7 +8,6 @@ import {
   computeTokenHash,
   createSignedSessionValue,
   parseSessionValue,
-  verifySession,
   type AdminSession,
 } from './auth-shared';
 import { withAdminSecurityHeaders } from './response';
