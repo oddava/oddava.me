@@ -80,7 +80,7 @@ export default function SpotifyWidget() {
     touchAction: 'none',
   } satisfies CSSProperties;
 
-  const toggleMinimize = (event: MouseEvent) => {
+  const toggleMinimize = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setPersistedMinimized(!isMinimized);
@@ -117,12 +117,12 @@ export default function SpotifyWidget() {
               <MinimizeIcon />
             </button>
           </div>
-          <div className="spotify-widget-container" draggable="false">
+          <div className="spotify-widget-container" draggable={false}>
             <img
               src={displayData.albumImageUrl}
               alt={displayData.title}
               className="spotify-widget-album"
-              draggable="false"
+              draggable={false}
               onDragStart={(event) => event.preventDefault()}
             />
             <div className="spotify-widget-info">

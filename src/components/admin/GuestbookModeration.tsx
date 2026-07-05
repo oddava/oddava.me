@@ -50,7 +50,7 @@ export function GuestbookModeration({
             className="admin-select"
             value={status}
             onChange={(event) =>
-              onStatusChange(event.target.value as GuestbookStatus)
+              onStatusChange(event.currentTarget.value as GuestbookStatus)
             }
           >
             <option value="pending">Pending</option>
