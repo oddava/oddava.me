@@ -62,6 +62,7 @@ export const CONTENT_COLLECTIONS = {
         description: 'Short summary for archive and social cards.',
       },
       { name: 'draft', label: 'Draft', type: 'boolean' },
+      { name: 'featured', label: 'Featured', type: 'boolean' },
     ],
   },
   projects: {
