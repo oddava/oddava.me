@@ -81,39 +81,11 @@
 
 .admin-header {
   position: relative;
-  min-height: 172px;
+  min-height: 64px;
   margin-bottom: 24px;
-  overflow: hidden;
   border: 1px solid var(--admin-line);
   border-radius: var(--radius-md);
   background: var(--admin-surface);
-}
-
-.admin-header::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--admin-bg) 72%, transparent),
-      transparent 58%
-    ),
-    linear-gradient(
-      0deg,
-      color-mix(in srgb, var(--admin-bg) 46%, transparent),
-      transparent 70%
-    );
-}
-
-.admin-header__image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: inherit;
-  object-fit: cover;
-  object-position: center 36%;
 }
 
 .admin-header form {
@@ -301,11 +273,6 @@
     padding: 24px 16px 48px;
   }
 
-  .admin-header {
-    min-height: 148px;
-    margin-bottom: 18px;
-  }
-
   .admin-login {
     margin-top: 8vh;
     padding: 24px;
@@ -319,10 +286,6 @@
 @media (max-width: 480px) {
   .admin-shell {
     padding: 16px 12px 32px;
-  }
-
-  .admin-header {
-    min-height: 128px;
   }
 
   .admin-login {

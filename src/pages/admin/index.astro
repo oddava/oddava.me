@@ -17,13 +17,6 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
     configured ? (
       <>
         <header class="admin-header">
-          <img
-            class="admin-header__image"
-            src="/images/twt-pfp.jpg"
-            alt=""
-            loading="eager"
-            decoding="async"
-          />
           <form method="post" action="/api/admin/logout">
             <button
               class="admin-header__action"
