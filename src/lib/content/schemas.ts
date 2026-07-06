@@ -26,6 +26,7 @@ export const blogDataSchema = z.object({
   updated: dateString.optional(),
   description: z.string().optional(),
   draft: z.boolean().optional().default(false),
+  featured: z.boolean().optional().default(false),
 });
 
 export const projectDataSchema = z.object({

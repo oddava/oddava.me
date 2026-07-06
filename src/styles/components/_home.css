@@ -71,6 +71,16 @@
   gap: var(--space-sm);
 }
 
+.home-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-rule-strong);
+  margin-bottom: var(--space-sm);
+}
+
+.home-hero__title,
 .home-hero h1:not(.home-hero__tagline) {
   font-family: var(--font-body);
   font-size: clamp(2rem, 5.5vw, 2.75rem);
