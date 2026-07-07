@@ -113,7 +113,7 @@
 }
 
 .home-hero--intro {
-  min-height: 100svh;
+  flex: 1;
   text-align: center;
   align-items: center;
   justify-content: center;
@@ -311,7 +311,6 @@
 
 @media (max-width: 640px) {
   .home-hero--intro {
-    min-height: 100svh;
     padding: var(--space-lg) 0 var(--space-md);
   }
 
