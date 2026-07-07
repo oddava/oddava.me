@@ -1,6 +1,7 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
+import LinkIcon from '../components/LinkIcon.astro';
 import '../styles/components/_home.css';
 import { getFeaturedPosts, formatPostDate, getPostStats } from '../lib/content';
 import { getAllProjects } from '../lib/projects';
@@ -33,12 +34,23 @@ const featuredProjects = projects.filter((project) => project.featured);
       streak), reading webtoon/novels and occasionally watching anime
     </p>
 
-    <div class="home-hero__cta">
-      <a href="/blog" class="home-cta">writing</a>
-      <a href="/projects" class="home-cta">projects</a>
-      <a href="/library" class="home-cta">library</a>
-      <a href="/about" class="home-cta">about</a>
-    </div>
+    <nav class="home-hero__cta" aria-label="primary">
+      <a href="/blog" class="home-cta home-cta--icon" aria-label="writing">
+        <LinkIcon name="pen" />
+      </a>
+      <a href="/projects" class="home-cta home-cta--icon" aria-label="projects">
+        <LinkIcon name="code" />
+      </a>
+      <a href="/library" class="home-cta home-cta--icon" aria-label="library">
+        <LinkIcon name="book" />
+      </a>
+      <a href="/about" class="home-cta home-cta--icon" aria-label="about">
+        <LinkIcon name="user" />
+      </a>
+      <a href="/links" class="home-cta home-cta--icon" aria-label="links">
+        <LinkIcon name="link" />
+      </a>
+    </nav>
   </section>
 
   {
@@ -79,7 +91,9 @@ const featuredProjects = projects.filter((project) => project.featured);
                   {post.body && (
                     <>
                       <span aria-hidden="true"> · </span>
-                      <span>{getPostStats(post.body).readingTimeMinutes} min</span>
+                      <span>
+                        {getPostStats(post.body).readingTimeMinutes} min
+                      </span>
                     </>
                   )}
                 </span>
