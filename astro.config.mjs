@@ -148,7 +148,9 @@ export default defineConfig({
       localContentAdminDevProxy(projectRoot),
       optimizeServerDeps(),
       devCloudflareWorkersEnv(),
-    ],
+      // Cast avoids a Vite 7 vs Vite 8 type mismatch in the @astrojs/cloudflare
+      // transitive dependency tree. Runtime behavior is unaffected.
+    ].map((plugin) => /** @type {any} */ (plugin)),
     esbuild: {
       jsx: 'automatic',
       jsxImportSource: 'preact',
