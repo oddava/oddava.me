@@ -76,7 +76,6 @@
   height: 96px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--color-rule-strong);
   margin-bottom: var(--space-sm);
 }
 
