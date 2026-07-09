@@ -2,6 +2,10 @@ import http from 'node:http';
 import { Buffer } from 'node:buffer';
 import path from 'node:path';
 import { loadEnv, runnerImport } from 'vite';
+import {
+  closeHttpServer,
+  registerDevProxyCleanup,
+} from './dev-proxy-lifecycle.mjs';
 
 // The admin cookie name and session TTL live in
 // `src/lib/server/admin/auth-shared.ts` so the Worker path (`auth.ts`) and
@@ -35,6 +39,17 @@ export function localContentAdminDevProxy(projectRoot) {
   let routeHandlerPromise = null;
   /** @type {Promise<any> | null} */
   let authSharedPromise = null;
+  /** @type {(() => void) | null} */
+  let disposeCleanup = null;
+
+  function shutdown() {
+    disposeCleanup?.();
+    disposeCleanup = null;
+    closeHttpServer(server);
+    server = null;
+    routeHandlerPromise = null;
+    authSharedPromise = null;
+  }
 
   /**
    * Load the shared admin-auth TS module via Vite so it is transpiled into
@@ -71,6 +86,9 @@ export function localContentAdminDevProxy(projectRoot) {
         ...process.env,
       };
       if (env.CONTENT_WRITE_MODE !== 'local') return;
+
+      // Hot-reload / reconfigure: tear down previous instance first.
+      shutdown();
 
       const proxyPort = Number(
         env.LOCAL_CONTENT_PROXY_PORT ?? DEFAULT_PROXY_PORT,
@@ -137,7 +155,7 @@ export function localContentAdminDevProxy(projectRoot) {
       server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
           console.warn(
-            `[local-content] Port ${proxyPort} is busy; set LOCAL_CONTENT_PROXY_PORT to use another port.`,
+            `[local-content] Port ${proxyPort} is busy; run pnpm free:ports or stop the old dev session.`,
           );
           return;
         }
@@ -149,12 +167,11 @@ export function localContentAdminDevProxy(projectRoot) {
           `[local-content] Dev proxy listening on http://127.0.0.1:${proxyPort}`,
         );
       });
+
+      disposeCleanup = registerDevProxyCleanup(viteServer, shutdown);
     },
     buildEnd() {
-      server?.close();
-      server = null;
-      routeHandlerPromise = null;
-      authSharedPromise = null;
+      shutdown();
     },
   };
 }

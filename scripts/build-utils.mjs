@@ -6,8 +6,11 @@ import { platform } from 'node:os';
 
 export const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const lockPath = join(projectRoot, '.astro-build.lock');
-const DEV_PORTS = [4321, 4322, 45555];
+
+/** Astro dev + local Redis/content HTTP proxies. */
+export const DEV_PORTS = [4321, 4322, 45555, 45556];
 const SETTLE_MS = 2000;
+const DEV_SETTLE_MS = 500;
 
 export function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -54,9 +57,13 @@ export function releaseBuildLock() {
   }
 }
 
-/** @param {number} port */
-function freeWindowsPort(port) {
-  const portPattern = new RegExp(`:${port}(?:\\s|$)`);
+/**
+ * @param {number[]} ports
+ * @returns {Map<string, number[]>} pid → ports
+ */
+function findWindowsListeners(ports) {
+  /** @type {Map<string, number[]>} */
+  const byPid = new Map();
 
   try {
     const output = execSync('netstat -ano -p tcp', {
@@ -64,38 +71,117 @@ function freeWindowsPort(port) {
       stdio: ['ignore', 'pipe', 'ignore'],
     });
 
-    const pids = new Set();
+    for (const line of output.split(/\r?\n/)) {
+      if (!line.includes('LISTENING')) continue;
 
-    for (const line of output.split('\n')) {
-      if (!line.includes('LISTENING') || !portPattern.test(line)) continue;
+      for (const port of ports) {
+        // Match :PORT as a full port token (avoid 14321 matching 4321).
+        const portPattern = new RegExp(`:${port}(?=\\s)`);
+        if (!portPattern.test(line)) continue;
 
-      const pid = line.trim().split(/\s+/).at(-1);
-      if (pid && /^\d+$/.test(pid) && pid !== '0') {
-        pids.add(pid);
-      }
-    }
+        const pid = line.trim().split(/\s+/).at(-1);
+        if (!pid || !/^\d+$/.test(pid) || pid === '0') continue;
+        if (pid === String(process.pid) || pid === String(process.ppid)) {
+          continue;
+        }
 
-    for (const pid of pids) {
-      if (pid === String(process.ppid) || pid === String(process.pid)) continue;
-
-      try {
-        execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
-        console.info(`[build] Freed port ${port} (pid ${pid})`);
-      } catch {
-        /* Process may have already exited. */
+        const list = byPid.get(pid) ?? [];
+        if (!list.includes(port)) list.push(port);
+        byPid.set(pid, list);
       }
     }
   } catch {
-    /* Port is not in use. */
+    /* netstat unavailable */
   }
+
+  return byPid;
+}
+
+/**
+ * @param {number[]} ports
+ * @returns {Map<string, number[]>}
+ */
+function findUnixListeners(ports) {
+  /** @type {Map<string, number[]>} */
+  const byPid = new Map();
+
+  for (const port of ports) {
+    try {
+      const output = execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+
+      if (!output) continue;
+
+      for (const pid of output.split(/\s+/)) {
+        if (
+          !pid ||
+          pid === String(process.pid) ||
+          pid === String(process.ppid)
+        ) {
+          continue;
+        }
+        const list = byPid.get(pid) ?? [];
+        if (!list.includes(port)) list.push(port);
+        byPid.set(pid, list);
+      }
+    } catch {
+      /* Port free or lsof missing */
+    }
+  }
+
+  return byPid;
+}
+
+/**
+ * Kill listeners on dev/proxy ports left over from previous runs.
+ * @param {{ ports?: number[], settleMs?: number }} [options]
+ * @returns {Promise<boolean>} whether any process was killed
+ */
+export async function freeDevPorts(options = {}) {
+  const ports = options.ports ?? DEV_PORTS;
+  const settleMs = options.settleMs ?? DEV_SETTLE_MS;
+  const byPid =
+    platform() === 'win32'
+      ? findWindowsListeners(ports)
+      : findUnixListeners(ports);
+
+  if (byPid.size === 0) {
+    return false;
+  }
+
+  let freed = false;
+
+  for (const [pid, heldPorts] of byPid) {
+    try {
+      if (platform() === 'win32') {
+        execSync(`taskkill /F /PID ${pid}`, {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } else {
+        process.kill(Number(pid), 'SIGTERM');
+      }
+      console.info(
+        `[dev-ports] Freed port(s) ${heldPorts.join(', ')} (pid ${pid})`,
+      );
+      freed = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `[dev-ports] Could not free port(s) ${heldPorts.join(', ')} (pid ${pid}): ${message}`,
+      );
+    }
+  }
+
+  if (freed) {
+    await sleep(settleMs);
+  }
+
+  return freed;
 }
 
 export async function prepareBuildEnvironment() {
-  if (platform() === 'win32') {
-    for (const port of DEV_PORTS) {
-      freeWindowsPort(port);
-    }
-
-    await sleep(SETTLE_MS);
-  }
+  await freeDevPorts({ settleMs: SETTLE_MS });
 }
