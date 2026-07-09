@@ -11,7 +11,8 @@
   "scripts": {
     "install:deps": "pnpm install --dir ../oddava-tmp-install",
     "gen:critical": "node scripts/gen-critical.mjs",
-    "dev": "pnpm run gen:critical && astro dev --mode development",
+    "free:ports": "node scripts/free-dev-ports.mjs",
+    "dev": "node scripts/dev.mjs",
     "build": "pnpm run gen:critical && node scripts/build-with-retry.mjs",
     "build:dev": "astro build --mode development",
     "deploy": "wrangler deploy --keep-vars",
@@ -44,7 +45,13 @@
     "prettier": "^3.8.3",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^5.9.3",
+    "vite": "^7.3.6",
     "vitest": "^4.1.8",
     "wrangler": "^4.95.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "^7.3.6"
+    }
   }
 }
