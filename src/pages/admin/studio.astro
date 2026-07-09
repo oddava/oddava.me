@@ -1,6 +1,6 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import AdminPanel from '../../components/admin/AdminPanel';
+import { ContentWorkspace } from '../../components/admin/ContentWorkspace';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
 
 const configured = isAdminConfigured();
@@ -12,19 +12,37 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
 }
 ---
 
-<AdminLayout title="Admin" description="Unified admin panel for oddava.me.">
+<AdminLayout
+  title="Studio"
+  description="Visual content editor for oddava.me."
+  fullWidth
+>
   {
     configured ? (
       <>
-        <header class="admin-header admin-header--with-nav">
+        <header class="admin-header admin-header--with-nav admin-header--compact">
           <nav class="admin-header__nav" aria-label="Admin navigation">
-            <span class="admin-header__current">Dashboard</span>
+            <a href="/admin" class="admin-header__link">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              Dashboard
+            </a>
             <span class="admin-header__sep" aria-hidden="true">
               /
             </span>
-            <a href="/admin/studio" class="admin-header__link">
-              Studio
-            </a>
+            <span class="admin-header__current">Studio</span>
           </nav>
           <form method="post" action="/api/admin/logout">
             <button
@@ -34,8 +52,8 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
               title="Sign out"
             >
               <svg
-                width="18"
-                height="18"
+                width="15"
+                height="15"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -52,8 +70,8 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
             </button>
           </form>
         </header>
-        <main class="admin-main">
-          <AdminPanel client:load />
+        <main class="admin-main admin-main--full">
+          <ContentWorkspace client:load fullWidth />
         </main>
       </>
     ) : (

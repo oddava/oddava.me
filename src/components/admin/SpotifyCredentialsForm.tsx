@@ -91,15 +91,10 @@ export function SpotifyCredentialsForm({
 
   return (
     <form className="admin-credentials" onSubmit={handleSave}>
-      <div className="admin-credentials__header">
-        <h3 className="admin-credentials__title">
-          Spotify &amp; Lanyard credentials
-        </h3>
-        <p className="admin-credentials__hint">
-          Stored securely in persistent storage. Leave a field blank to keep its
-          current value.
-        </p>
-      </div>
+      <p className="admin-credentials__hint">
+        Stored securely in persistent storage. Leave a field blank to keep its
+        current value.
+      </p>
 
       <div className="admin-credentials__grid">
         <label className="admin-credentials__field">

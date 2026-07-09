@@ -79,6 +79,19 @@
   padding: 48px 24px 64px;
 }
 
+.admin-shell--full {
+  max-width: none;
+  min-height: 100vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shell--full .admin-header {
+  margin-bottom: 0;
+  border-radius: 0;
+}
+
 .admin-header {
   position: relative;
   min-height: 64px;
@@ -88,11 +101,81 @@
   background: var(--admin-surface);
 }
 
+.admin-header--with-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 14px;
+}
+
+/* Studio trades header height for editor height: one 40px strip, no card
+   chrome, only a bottom rule separating it from the workspace. */
+.admin-header--compact {
+  min-height: 40px;
+  padding: 0 10px 0 6px;
+  border-width: 0 0 1px;
+}
+
+.admin-header--compact .admin-header__nav {
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.admin-header--compact .admin-header__link {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm-2);
+}
+
+.admin-header--compact .admin-header__link:hover {
+  background: var(--admin-surface-elevated);
+}
+
+.admin-header--compact .admin-header__action {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.admin-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-header__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-text-secondary);
+  transition: color 0.15s ease;
+}
+
+.admin-header__link:hover {
+  color: var(--admin-text-primary);
+}
+
+.admin-header__current {
+  color: var(--admin-text-primary);
+  font-weight: 500;
+}
+
+.admin-header__sep {
+  color: var(--admin-line-strong);
+}
+
 .admin-header form {
   position: absolute;
   top: 14px;
   right: 14px;
   z-index: 1;
+}
+
+.admin-header--with-nav form {
+  position: static;
 }
 
 .admin-header__action {
@@ -230,6 +313,14 @@
 .admin-main {
   display: grid;
   gap: 20px;
+}
+
+.admin-main--full {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
 }
 
 .admin-login {

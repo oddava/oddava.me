@@ -5,11 +5,16 @@ import '../styles/admin.css';
 export interface Props {
   title?: string;
   description?: string;
+  fullWidth?: boolean;
 }
 
-const { title = 'admin', description = 'Site administration for oddava.me.' } =
-  Astro.props;
+const {
+  title = 'admin',
+  description = 'Site administration for oddava.me.',
+  fullWidth = false,
+} = Astro.props;
 const pageTitle = `${title} | oddava admin`;
+const shellClass = fullWidth ? 'admin-shell admin-shell--full' : 'admin-shell';
 ---
 
 <!doctype html>
@@ -90,7 +95,7 @@ const pageTitle = `${title} | oddava admin`;
     </style>
   </head>
   <body class="admin-page__body">
-    <div class="admin-shell">
+    <div class={shellClass}>
       <slot />
     </div>
   </body>

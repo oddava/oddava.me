@@ -6,7 +6,6 @@ import {
   updateGuestbookEntryStatus,
   updateIntegrationSetting,
 } from './api';
-import { ContentWorkspace } from './ContentWorkspace';
 import { GuestbookModeration } from './GuestbookModeration';
 import { IntegrationStatusList } from './IntegrationStatusList';
 import { MetricGrid } from './MetricGrid';
@@ -201,8 +200,6 @@ export default function AdminPanel() {
           busyKey={busyKey}
         />
       </section>
-
-      <ContentWorkspace onContentChanged={loadOverview} />
     </div>
   );
 }

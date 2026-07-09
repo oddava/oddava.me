@@ -1068,7 +1068,12 @@ export async function handleContentPublish(
 
     job = await updateJobStep(projectRoot, job, 'Validate draft', 'running');
     const fields = validateFields(collection, draft.fields);
-    const bodyText = collection.body ? blocksToBody(draft.blocks) : '';
+    // Publish the draft's Markdown verbatim. Re-serializing from `blocks`
+    // is lossy: bodyToBlocks splits on blank lines (shredding fenced code
+    // that contains one) and rewrites a plain `>` quote as a [!NOTE] callout.
+    const bodyText = collection.body
+      ? (draft.body ?? blocksToBody(draft.blocks))
+      : '';
     job = await updateJobStep(projectRoot, job, 'Validate draft', 'succeeded');
 
     job = await updateJobStep(

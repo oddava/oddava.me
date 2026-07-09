@@ -1,0 +1,1166 @@
+/* Oddava Studio — a Markdown writing environment.
+
+   Loaded by ContentWorkspace.tsx, which renders standalone on /admin/studio
+   without AdminPanel. Every rule is scoped under .content-workspace so the
+   shared primitives redefined here (buttons, inputs, pills) win over the
+   unscoped versions in admin.css regardless of stylesheet order. */
+
+.content-workspace {
+  --studio-gutter: 16px;
+  --studio-pad: 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Card presentation for the "unavailable" state, which renders without
+   .studio--full and therefore keeps the .admin-panel card chrome. */
+.content-workspace.admin-panel {
+  padding: 20px;
+}
+
+.content-workspace .admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.content-workspace .admin-section-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.content-workspace.studio--full {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 0;
+}
+
+/* --- Shared primitives --- */
+
+.content-workspace .admin-muted {
+  margin: 4px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.content-workspace .admin-empty {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.82rem;
+}
+
+.content-workspace .admin-empty-state {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.content-workspace .pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-status-neutral-bg);
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 500;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.content-workspace .pill.good {
+  color: var(--admin-success);
+  background: var(--admin-status-success-bg);
+}
+
+.content-workspace .pill.bad {
+  color: var(--admin-danger);
+  background: var(--admin-status-error-bg);
+}
+
+.content-workspace .admin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-surface);
+  color: var(--admin-text-primary);
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.content-workspace .admin-button:hover:not(:disabled) {
+  border-color: var(--admin-accent);
+  background: var(--admin-surface-elevated);
+  transform: none;
+}
+
+.content-workspace .admin-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.content-workspace .admin-button.primary {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+  color: var(--color-text-on-accent);
+  font-weight: 600;
+}
+
+.content-workspace .admin-button.primary:hover:not(:disabled) {
+  background: var(--admin-accent-hover);
+  border-color: var(--admin-accent-hover);
+}
+
+.content-workspace .admin-button--ghost {
+  border-color: var(--admin-line);
+  background: transparent;
+  color: var(--admin-text-secondary);
+}
+
+.content-workspace .admin-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.content-workspace .admin-input::placeholder {
+  color: var(--admin-text-disabled);
+}
+
+.content-workspace .admin-input:hover:not(:disabled) {
+  border-color: var(--admin-line-strong);
+}
+
+.content-workspace .admin-input:focus-visible {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.content-workspace .admin-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.content-workspace .content-textarea {
+  min-height: 60px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  resize: vertical;
+}
+
+.content-workspace .content-upload-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.68rem;
+}
+
+.content-workspace .content-upload-input::file-selector-button {
+  margin-right: 8px;
+  padding: 4px 9px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-surface);
+  color: var(--admin-text-secondary);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+/* --- Icon buttons --- */
+
+.content-workspace .studio-icon-button {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.content-workspace .studio-icon-button:hover:not(:disabled) {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+}
+
+.content-workspace .studio-icon-button--danger:hover:not(:disabled) {
+  background: var(--admin-status-error-bg);
+  color: var(--admin-danger);
+}
+
+.content-workspace .studio-icon-button:focus-visible {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+/* --- Toggle switch --- */
+
+.content-workspace .admin-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  cursor: pointer;
+}
+
+.content-workspace .admin-toggle input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.content-workspace .admin-toggle__track {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--admin-line-strong);
+  transition: background 0.2s ease;
+}
+
+.content-workspace .admin-toggle__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--admin-text-muted);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.content-workspace .admin-toggle input:checked ~ .admin-toggle__track {
+  background: var(--admin-accent);
+}
+
+.content-workspace
+  .admin-toggle
+  input:checked
+  ~ .admin-toggle__track
+  .admin-toggle__thumb {
+  transform: translateX(16px);
+  background: var(--color-text-on-accent);
+}
+
+.content-workspace .admin-toggle input:focus-visible ~ .admin-toggle__track {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+/* --- Alerts --- */
+
+.studio-alerts {
+  display: grid;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px var(--studio-gutter);
+  border-bottom: 1px solid var(--admin-line);
+}
+
+/* --- Shell --- */
+
+/* Widths come from inline custom properties the component persists, so a drag
+   only writes a variable — no layout classes churn while resizing. */
+.studio-grid {
+  display: grid;
+  grid-template-columns:
+    var(--studio-library-w, 240px)
+    minmax(0, 1fr)
+    var(--studio-inspector-w, 300px);
+  align-items: stretch;
+  min-height: 640px;
+}
+
+/* height:0 + flex-grow gives the grid exactly the shell's leftover space, so
+   the panes scroll internally instead of stretching the page. */
+.studio--full .studio-grid {
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
+}
+
+.studio-library,
+.studio-editor,
+.studio-inspector {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-lg);
+  background: var(--admin-surface);
+}
+
+.studio-editor {
+  overflow: hidden;
+}
+
+.studio--full .studio-library,
+.studio--full .studio-editor,
+.studio--full .studio-inspector {
+  border-width: 0;
+  border-radius: 0;
+}
+
+.studio--full .studio-library {
+  border-right-width: 1px;
+}
+
+.studio--full .studio-inspector {
+  border-left-width: 1px;
+}
+
+.studio--full .studio-editor {
+  background: var(--admin-bg);
+}
+
+/* --- Resize handles --- */
+
+.studio-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  z-index: 2;
+  width: 7px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.studio-resizer--start {
+  right: auto;
+  left: -3px;
+}
+
+.studio-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.studio-resizer:hover::after,
+.studio-resizer:focus-visible::after {
+  background: var(--admin-accent);
+}
+
+.studio-resizer:focus-visible {
+  outline: none;
+}
+
+/* --- Library --- */
+
+.content-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 8px 8px 0;
+}
+
+.content-workspace .content-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.content-workspace .content-tab:hover {
+  color: var(--admin-text-primary);
+  background: var(--admin-surface-elevated);
+}
+
+.content-workspace .content-tab.is-active {
+  background: var(--color-overlay-strong);
+  color: var(--admin-text-primary);
+}
+
+.studio-library__search {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.studio-entry-list {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.studio-surfaces {
+  display: grid;
+  gap: 4px;
+  flex-shrink: 0;
+  max-height: 30%;
+  padding: 8px;
+  border-top: 1px solid var(--admin-line);
+  background: var(--admin-bg);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.studio-surfaces h3 {
+  margin: 0 0 2px;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.studio-entry,
+.studio-surface {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--admin-text-primary);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.studio-entry:hover:not(:disabled),
+.studio-surface:hover {
+  border-color: var(--admin-line);
+  background: var(--admin-surface-elevated);
+}
+
+.studio-entry.is-active {
+  border-color: var(--color-rule-strong);
+  background: var(--color-overlay-strong);
+}
+
+.studio-entry:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.studio-entry strong,
+.studio-surface span {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-entry span,
+.studio-entry em,
+.studio-surface code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-surface code {
+  padding: 0;
+  background: transparent;
+}
+
+.studio-entry em {
+  justify-self: start;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--admin-status-success-bg);
+  color: var(--admin-success);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* --- Editor toolbar --- */
+
+.studio-editor-toolbar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+}
+
+.studio-editor-toolbar code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-editor-toolbar__end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.studio-view-switch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-bg);
+}
+
+.content-workspace .studio-view-switch button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.content-workspace .studio-view-switch button:hover {
+  color: var(--admin-text-primary);
+}
+
+.content-workspace .studio-view-switch button.is-active {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+}
+
+/* --- Panes --- */
+
+.studio-panes {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.studio-panes.is-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.studio-write,
+.studio-preview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.studio-panes.is-split .studio-preview {
+  border-left: 1px solid var(--admin-line);
+}
+
+/* --- Writing surface --- */
+
+.studio-textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 28px max(24px, calc((100% - 42rem) / 2));
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  line-height: 1.75;
+  tab-size: 2;
+  resize: none;
+  outline: none;
+}
+
+.studio-textarea::placeholder {
+  color: var(--admin-text-disabled);
+}
+
+.studio-editor-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--admin-line);
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+
+/* --- Preview --- */
+
+.studio-preview {
+  overflow-y: auto;
+  background: var(--admin-bg);
+}
+
+.studio-preview__page {
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+.studio-preview__page > h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.studio-preview__lede {
+  margin: 10px 0 0;
+  color: var(--admin-text-secondary);
+  font-size: 1rem;
+  line-height: var(--leading-body);
+}
+
+.studio-preview__cover {
+  display: block;
+  width: 160px;
+  margin-top: 20px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-md);
+}
+
+/* --- Rendered Markdown --- */
+
+.studio-prose {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--admin-line);
+  color: var(--admin-text-secondary);
+  font-size: 1rem;
+  line-height: var(--leading-body);
+  overflow-wrap: break-word;
+}
+
+.studio-prose > *:first-child {
+  margin-top: 0;
+}
+
+.studio-prose h1,
+.studio-prose h2,
+.studio-prose h3,
+.studio-prose h4 {
+  margin: 1.6em 0 0.5em;
+  color: var(--admin-text-primary);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.studio-prose h1 {
+  font-size: 1.6rem;
+}
+.studio-prose h2 {
+  font-size: 1.35rem;
+}
+.studio-prose h3 {
+  font-size: 1.1rem;
+}
+.studio-prose h4 {
+  font-size: 0.95rem;
+}
+
+.studio-prose p,
+.studio-prose ul,
+.studio-prose ol {
+  margin: 0 0 1em;
+}
+
+.studio-prose ul,
+.studio-prose ol {
+  padding-left: 1.4em;
+}
+
+.studio-prose li {
+  margin-bottom: 0.35em;
+}
+
+.studio-prose a {
+  color: var(--admin-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.studio-prose strong {
+  color: var(--admin-text-primary);
+}
+
+.studio-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.2em 0;
+  border-radius: var(--radius-md);
+}
+
+.studio-prose blockquote {
+  margin: 1.2em 0;
+  padding: 2px 0 2px 16px;
+  border-left: 2px solid var(--admin-accent);
+  color: var(--admin-text-muted);
+}
+
+.studio-prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.studio-prose code {
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--admin-surface-elevated);
+  color: var(--admin-accent);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+}
+
+.studio-prose pre {
+  margin: 1.2em 0;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-md);
+  background: var(--admin-surface);
+  overflow-x: auto;
+}
+
+.studio-prose pre code {
+  padding: 0;
+  background: transparent;
+  color: var(--admin-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.studio-prose hr {
+  margin: 2em 0;
+  border: 0;
+  border-top: 1px solid var(--admin-line);
+}
+
+.studio-prose table {
+  width: 100%;
+  margin: 1.2em 0;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.studio-prose th,
+.studio-prose td {
+  padding: 8px 10px;
+  border: 1px solid var(--admin-line);
+  text-align: left;
+}
+
+.studio-prose th {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+  font-weight: 600;
+}
+
+/* --- Inspector --- */
+
+/* minmax(0,1fr) is what actually kills horizontal overflow: a grid track
+   defaults to min-content, so a long slug or URL would otherwise widen it. */
+.studio-inspector-scroll {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--studio-pad);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.content-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--admin-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.content-field > span:first-child {
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.content-field small {
+  margin: -1px 0 1px;
+  color: var(--admin-text-disabled);
+  font-weight: 400;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* --- Inspector sections --- */
+
+.studio-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-line);
+}
+
+.studio-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.studio-section__head h3 {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* --- Media --- */
+
+.studio-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+}
+
+.studio-media-item {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+}
+
+.studio-media-item > button:first-child {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.studio-media-item > button:first-child:hover:not(:disabled) {
+  border-color: var(--admin-accent);
+}
+
+.studio-media-item > button:first-child:disabled {
+  cursor: default;
+}
+
+.studio-media-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.studio-media-item figcaption {
+  overflow: hidden;
+  color: var(--admin-text-disabled);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-media-item__delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--admin-bg) 80%, transparent);
+  color: var(--admin-text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.studio-media-item:hover .studio-media-item__delete,
+.studio-media-item__delete:focus-visible {
+  opacity: 1;
+}
+
+.studio-media-item__delete:hover {
+  color: var(--admin-danger);
+}
+
+/* --- History & publish job --- */
+
+.studio-revision {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-md);
+}
+
+.studio-revision > div {
+  display: grid;
+  min-width: 0;
+}
+
+.studio-revision strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-revision span {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-job-step {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  font-size: 0.7rem;
+}
+
+.studio-job-step strong {
+  overflow: hidden;
+  color: var(--admin-text-secondary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-job-step span {
+  flex-shrink: 0;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+
+/* --- Publish bar --- */
+
+.studio-publish-bar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 10px var(--studio-pad);
+  border-top: 1px solid var(--admin-line);
+  background: var(--admin-surface-elevated);
+}
+
+.studio-publish-bar .admin-button {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.studio-publish-bar .studio-icon-button {
+  flex: 0 0 auto;
+  margin-left: 2px;
+}
+
+/* --- Responsive --- */
+
+/* Below this width the panes stack, so the persisted pixel widths and the
+   drag handles no longer apply. */
+@media (max-width: 1180px) {
+  .studio-grid {
+    grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .studio--full .studio-grid {
+    flex: none;
+    height: auto;
+  }
+
+  .studio-resizer {
+    display: none;
+  }
+
+  .studio-inspector {
+    grid-column: 1 / -1;
+    max-height: 640px;
+  }
+
+  .studio--full .studio-inspector {
+    border-top-width: 1px;
+    border-left-width: 0;
+  }
+
+  .studio-library,
+  .studio-editor {
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 860px) {
+  /* Side-by-side stops being readable; fall back to one pane at a time. */
+  .studio-panes.is-split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
+  }
+
+  .studio-panes.is-split .studio-preview {
+    border-left: 0;
+    border-top: 1px solid var(--admin-line);
+  }
+}
+
+@media (max-width: 720px) {
+  .content-workspace {
+    --studio-gutter: 12px;
+  }
+
+  .studio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .studio--full .studio-library {
+    border-right-width: 0;
+    border-bottom-width: 1px;
+  }
+
+  .studio-library,
+  .studio-editor {
+    min-height: 380px;
+  }
+
+  .studio-textarea {
+    padding: 18px 16px;
+    font-size: 0.88rem;
+  }
+
+  .studio-preview__page {
+    padding: 18px 16px 48px;
+  }
+}
