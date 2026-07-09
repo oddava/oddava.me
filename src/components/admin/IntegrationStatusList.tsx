@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { IntegrationStatus } from './types';
 import { SkeletonRow } from './Skeleton';
 import { SpotifyCredentialsForm } from './SpotifyCredentialsForm';
+import { Modal } from './Modal';
 import { useDialogConfirm } from './useDialogConfirm';
 import { VisuallyHidden } from './VisuallyHidden';
 
@@ -14,28 +15,6 @@ interface IntegrationStatusListProps {
   busyKey?: string | null;
 }
 
-function ChevronIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{
-        transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-        transition: 'transform 0.2s ease',
-      }}
-    >
-      <path d="M2 4.5L6 8.5L10 4.5" />
-    </svg>
-  );
-}
-
 export function IntegrationStatusList({
   statuses,
   loading = false,
@@ -44,9 +23,14 @@ export function IntegrationStatusList({
   onRetry,
   busyKey,
 }: IntegrationStatusListProps) {
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   const { confirm, dialog } = useDialogConfirm();
   const hasSpotify = statuses.some((status) => status.key === 'spotify');
+
+  const handleCredentialsSaved = async () => {
+    await onCredentialsSaved?.();
+    setCredentialsOpen(false);
+  };
 
   const handleToggleChange = async (
     status: IntegrationStatus,
@@ -110,16 +94,13 @@ export function IntegrationStatusList({
             ? 'pill'
             : `pill ${status.healthy ? 'good' : 'bad'}`;
           const pillLabel = isOff ? 'off' : status.healthy ? 'ok' : 'bad';
-          const isExpanded = expandedKey === status.key;
           const showCredentials =
             status.key === 'spotify' && hasSpotify && onCredentialsSaved;
           const toggleId = `integration-toggle-${status.key ?? status.name}`;
 
           return (
             <div
-              className={`admin-integration-row ${
-                isExpanded ? 'is-expanded' : ''
-              }`}
+              className="admin-integration-row"
               key={status.key ?? status.name}
             >
               <div className="admin-integration-row__info">
@@ -135,15 +116,10 @@ export function IntegrationStatusList({
                 {showCredentials && (
                   <button
                     type="button"
-                    className="admin-integration-row__expand"
-                    onClick={() =>
-                      setExpandedKey(isExpanded ? null : (status.key ?? null))
-                    }
-                    aria-expanded={isExpanded}
-                    aria-controls={`${status.key}-credentials`}
+                    className="admin-integration-row__credentials-btn"
+                    onClick={() => setCredentialsOpen(true)}
                   >
-                    <span>Credentials</span>
-                    <ChevronIcon expanded={isExpanded} />
+                    Credentials
                   </button>
                 )}
                 {manageable && (
@@ -182,22 +158,21 @@ export function IntegrationStatusList({
                   </>
                 )}
               </div>
-              {showCredentials && isExpanded && (
-                <div
-                  id={`${status.key}-credentials`}
-                  className="admin-integration-row__credentials"
-                >
-                  <SpotifyCredentialsForm
-                    onSaved={onCredentialsSaved}
-                    busyKey={busyKey}
-                  />
-                </div>
-              )}
             </div>
           );
         })}
       </div>
       {dialog}
+      <Modal
+        open={credentialsOpen}
+        title="Spotify & Lanyard credentials"
+        onClose={() => setCredentialsOpen(false)}
+      >
+        <SpotifyCredentialsForm
+          onSaved={handleCredentialsSaved}
+          busyKey={busyKey}
+        />
+      </Modal>
     </article>
   );
 }

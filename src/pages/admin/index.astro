@@ -16,7 +16,16 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
   {
     configured ? (
       <>
-        <header class="admin-header">
+        <header class="admin-header admin-header--with-nav">
+          <nav class="admin-header__nav" aria-label="Admin navigation">
+            <span class="admin-header__current">Dashboard</span>
+            <span class="admin-header__sep" aria-hidden="true">
+              /
+            </span>
+            <a href="/admin/studio" class="admin-header__link">
+              Studio
+            </a>
+          </nav>
           <form method="post" action="/api/admin/logout">
             <button
               class="admin-header__action"
