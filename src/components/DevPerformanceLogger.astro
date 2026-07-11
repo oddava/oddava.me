@@ -4,7 +4,7 @@ const performanceLoggerScript = `
   function log(msg, ms) {
     console.log(
       '%c' + msg + '%c ' + ms + 'ms',
-      'color:#a78bfa;font-weight:bold',
+      'color:#7aa6cb;font-weight:bold',
       'color:inherit'
     );
   }
@@ -59,7 +59,7 @@ const performanceLoggerScript = `
         });
         console.log(
           '%cCLS' + '%c ' + cls.toFixed(4),
-          'color:#a78bfa;font-weight:bold',
+          'color:#7aa6cb;font-weight:bold',
           'color:inherit'
         );
       }).observe({ type: 'layout-shift', buffered: true });
@@ -98,7 +98,7 @@ const performanceLoggerScript = `
         ' fonts, ' +
         jsCount +
         ' js)',
-      'color:#a78bfa;font-weight:bold',
+      'color:#7aa6cb;font-weight:bold',
       'color:inherit'
     );
     console.log(
@@ -109,7 +109,7 @@ const performanceLoggerScript = `
           }, 0) / 1024
         ).toFixed(1) +
         ' KB',
-      'color:#a78bfa;font-weight:bold',
+      'color:#7aa6cb;font-weight:bold',
       'color:inherit'
     );
   });

@@ -104,34 +104,38 @@
 :root,
 [data-theme],
 [data-theme='dark'] {
-  /* Brand */
-  --color-brand: #8b5cf6;
-  --color-brand-strong: #a78bfa;
+  /* Brand — "Blueprint": a desaturated steel-blue drawn over cool graphite.
+     Everything decorative mixes from --color-brand, so retinting cascades.
+     A cool brand leaves the warm spectrum free for unambiguous semantics. */
+  --color-brand: #5f92bd;
+  --color-brand-strong: #7aa6cb;
 
-  /* Semantic text roles. All text colors should reference this group. */
-  --color-text-primary: #e8e4ee;
-  --color-text-secondary: #b7b1c4;
-  --color-text-muted: #9892a5;
-  --color-text-disabled: #777282;
-  --color-text-accent: #a78bfa;
-  --color-text-interactive: #a78bfa;
-  --color-text-interactive-hover: #c4b5fd;
-  --color-text-success: #7fcf9c;
-  --color-text-warning: #e8bd6a;
-  --color-text-error: #ff8585;
-  --color-text-on-accent: #121018;
-  --color-on-danger: #1a0a0a;
+  /* Semantic text roles. All text colors should reference this group.
+     Cool paper-ink hierarchy; a single steel-blue carries interactivity. */
+  --color-text-primary: #e4e8ee;
+  --color-text-secondary: #aab2bf;
+  --color-text-muted: #828b99;
+  --color-text-disabled: #5e6674;
+  --color-text-accent: #7aa6cb;
+  --color-text-interactive: #7aa6cb;
+  --color-text-interactive-hover: #9cc0dd;
+  --color-text-success: #79ab9a;
+  --color-text-warning: #cbab68;
+  --color-text-error: #cf7f7a;
+  --color-text-on-accent: #0a0f14;
+  --color-on-danger: #160a0a;
 
-  /* Surfaces and non-text decoration. */
-  --color-surface: color-mix(in srgb, #0b0c0f 96%, var(--color-brand) 4%);
+  /* Surfaces and non-text decoration. Cool near-black ground, blended with
+     a trace of brand so the substrate reads as drafting paper, not pure slate. */
+  --color-surface: color-mix(in srgb, #0c0e11 96%, var(--color-brand) 4%);
   --color-surface-raised: color-mix(
     in srgb,
-    #121317 94%,
+    #13161b 94%,
     var(--color-brand) 6%
   );
   --color-surface-elevated: color-mix(
     in srgb,
-    #17181d 91%,
+    #1a1e25 91%,
     var(--color-brand) 9%
   );
   --color-surface-glass: color-mix(

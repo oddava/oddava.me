@@ -51,8 +51,8 @@
   top: 1rem;
   z-index: 100;
   padding: 0.5rem 1rem;
-  background: var(--color-surface-raised, #17181d);
-  color: var(--color-text-primary, #e6e6e7);
+  background: var(--color-surface-raised, #13161b);
+  color: var(--color-text-primary, #e4e8ee);
   border-radius: 6px;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -61,7 +61,7 @@
 
 .skip-link:focus {
   left: 1rem;
-  outline: 2px solid var(--color-focus-ring, #8b5cf6);
+  outline: 2px solid var(--color-focus-ring, #5f92bd);
   outline-offset: 3px;
 }
 
