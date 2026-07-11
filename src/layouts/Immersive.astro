@@ -1,27 +1,13 @@
 ---
 import '../styles/global.css';
-import Footer from '../components/Footer.astro';
 import DevPerformanceLogger from '../components/DevPerformanceLogger.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
-import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
-export interface Props extends SiteHeadProps {
-  hideFooter?: boolean;
-  wide?: boolean;
-}
+export interface Props extends SiteHeadProps {}
 
-const {
-  title,
-  description,
-  image,
-  type,
-  hideFooter = false,
-  wide = false,
-} = Astro.props;
-
-const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
+const { title, description, image, type } = Astro.props;
 ---
 
 <!doctype html>
@@ -31,17 +17,13 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
       <slot name="head" />
     </SiteHead>
   </head>
-  <body>
-    <div class:list={['page', wide && 'page--wide']}>
+  <body class="body--immersive">
+    <div class="page page--immersive">
       <a href="#main" class="skip-link">Skip to content</a>
-
       <main id="main">
         <slot />
       </main>
-
-      {!hideFooter && <Footer />}
     </div>
-    {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
 
     <DevPerformanceLogger />
   </body>
