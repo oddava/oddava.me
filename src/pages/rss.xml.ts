@@ -1,7 +1,7 @@
 export const prerender = true;
 
 import type { APIRoute } from 'astro';
-import { getPublishedPosts } from '../lib/content';
+import { getGardenIndex } from '../lib/garden';
 import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
 
 function escapeXml(value: string): string {
@@ -14,19 +14,23 @@ function escapeXml(value: string): string {
 }
 
 export const GET: APIRoute = async () => {
-  const posts = await getPublishedPosts();
+  // The garden index is already sorted most-recent first and carries a derived
+  // title / summary and a git-based updated date, so the feed reads straight
+  // from it — no separate post metadata to keep in sync.
+  const { documents } = await getGardenIndex();
 
-  const items = posts
-    .map((post) => {
-      const url = siteUrl(`/blog/${post.id}`);
-      const description = post.data.description ?? '';
+  const items = documents
+    .filter((document) => document.id !== 'index')
+    .map((document) => {
+      const url = siteUrl(document.href);
+      const published = document.updated || '1970-01-01';
       return `
         <item>
-          <title>${escapeXml(post.data.title)}</title>
+          <title>${escapeXml(document.title)}</title>
           <link>${url}</link>
           <guid isPermaLink="true">${url}</guid>
-          <pubDate>${new Date(post.data.date).toUTCString()}</pubDate>
-          <description>${escapeXml(description)}</description>
+          <pubDate>${new Date(published).toUTCString()}</pubDate>
+          <description>${escapeXml(document.summary)}</description>
         </item>`;
     })
     .join('');
@@ -34,9 +38,9 @@ export const GET: APIRoute = async () => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${SITE_NAME} writing</title>
+    <title>${SITE_NAME}'s notes</title>
     <link>${SITE_URL}</link>
-    <description>Writing from ${SITE_NAME}.</description>
+    <description>notes, half-formed and otherwise, from ${SITE_NAME}.</description>
     <atom:link href="${siteUrl('/rss.xml')}" rel="self" type="application/rss+xml" />
     ${items}
   </channel>

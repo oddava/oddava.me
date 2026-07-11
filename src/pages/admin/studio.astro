@@ -2,8 +2,11 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ContentWorkspace } from '../../components/admin/ContentWorkspace';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
+import { getServerEnv } from '../../lib/server/env';
 
 const configured = isAdminConfigured();
+const contentEditingEnabled =
+  import.meta.env.DEV && getServerEnv('CONTENT_WRITE_MODE') === 'local';
 
 if (configured && !(await isAdminRequest(Astro.cookies))) {
   return Astro.redirect(
@@ -22,7 +25,11 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
       <>
         <header class="admin-header admin-header--with-nav admin-header--compact">
           <nav class="admin-header__nav" aria-label="Admin navigation">
-            <a href="/admin" class="admin-header__link">
+            <a
+              href="/admin"
+              class="admin-header__link"
+              title="Back to dashboard"
+            >
               <svg
                 width="14"
                 height="14"
@@ -37,11 +44,7 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
                 <path d="M19 12H5" />
                 <path d="M12 19l-7-7 7-7" />
               </svg>
-              Dashboard
             </a>
-            <span class="admin-header__sep" aria-hidden="true">
-              /
-            </span>
             <span class="admin-header__current">Studio</span>
           </nav>
           <form method="post" action="/api/admin/logout">
@@ -71,7 +74,20 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
           </form>
         </header>
         <main class="admin-main admin-main--full">
-          <ContentWorkspace client:load fullWidth />
+          {contentEditingEnabled ? (
+            <ContentWorkspace client:load fullWidth />
+          ) : (
+            <section class="admin-card admin-login">
+              <p class="admin-kicker">studio</p>
+              <h1>Run Studio locally</h1>
+              <p class="admin-note">
+                Studio writes notes and content files to the repository. Start
+                <code>pnpm run dev</code> with{' '}
+                <code>CONTENT_WRITE_MODE=local</code>, then open this page on
+                the local server.
+              </p>
+            </section>
+          )}
         </main>
       </>
     ) : (

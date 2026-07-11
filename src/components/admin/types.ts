@@ -11,11 +11,8 @@ export interface IntegrationStatus {
 
 export interface OverviewResponse {
   metrics: {
-    posts: number;
+    notes: number;
     drafts: number;
-    projects: number;
-    featuredProjects: number;
-    books: number;
     pendingGuestbook: number;
     approvedGuestbook: number;
   };
@@ -60,6 +57,7 @@ export interface SpotifyCredentialsResponse {
 
 export type ContentFieldType =
   | 'text'
+  | 'select'
   | 'textarea'
   | 'date'
   | 'boolean'
@@ -75,6 +73,7 @@ export interface ContentFieldDefinition {
   required?: boolean;
   description?: string;
   hidden?: boolean;
+  options?: { label: string; value: string }[];
 }
 
 export interface ContentCollectionMeta {
@@ -90,6 +89,7 @@ export interface ContentCollectionMeta {
   indexRoute: string;
   supportsDrafts: boolean;
   supportsBlocks: boolean;
+  supportsFolders: boolean;
   templates: ContentTemplate[];
   surfaces: ContentSurfaceRegion[];
   fields: ContentFieldDefinition[];
@@ -146,6 +146,7 @@ export interface ContentWriteResult {
 export interface ContentEntryListItem {
   id: string;
   title: string;
+  folder: string;
   path: string;
   revision?: string;
   meta: Record<string, unknown>;
@@ -160,6 +161,7 @@ export interface ContentDraft {
   collection: string;
   id: string;
   title: string;
+  folder: string;
   sourcePath: string;
   sourceRevision?: string;
   fields: Record<string, unknown>;
@@ -168,6 +170,16 @@ export interface ContentDraft {
   isNew: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ContentFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  depth: number;
+  noteCount: number;
+  totalNoteCount: number;
+  documentId?: string;
 }
 
 export interface MediaAsset {
@@ -212,6 +224,7 @@ export interface ContentCollectionsResponse {
 export interface ContentEntriesResponse {
   collection: Omit<ContentCollectionMeta, 'count'>;
   entries: ContentEntryListItem[];
+  folders: ContentFolder[];
   drafts: ContentDraft[];
   provider: 'local';
 }

@@ -3,8 +3,10 @@ import {
   handleContentCollections,
   handleContentDraft,
   handleContentEntry,
+  handleContentFolders,
   handleContentHistory,
   handleContentMedia,
+  handleContentMove,
   handleContentPreview,
   handleContentPublish,
   handleContentPublishJob,
@@ -55,8 +57,14 @@ export function createLocalContentRouteHandler(projectRoot: string) {
     if (parts.length === 2 && parts[1] === 'reorder') {
       return handleContentReorder(provider, parts[0], request);
     }
+    if (parts.length === 2 && parts[1] === 'folders') {
+      return handleContentFolders(provider, parts[0], request, projectRoot);
+    }
+    if (parts.length === 2 && parts[1] === 'move') {
+      return handleContentMove(provider, parts[0], request, projectRoot);
+    }
     if (parts.length === 3 && parts[2] === 'history') {
-      return handleContentHistory(projectRoot, parts[0], parts[1]);
+      return handleContentHistory(projectRoot, provider, parts[0], parts[1]);
     }
     if (parts.length === 3 && parts[2] === 'restore') {
       return handleContentRestore(

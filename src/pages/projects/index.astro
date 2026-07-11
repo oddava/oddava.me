@@ -1,37 +1,5 @@
 ---
 export const prerender = true;
-import Base from '../../layouts/Base.astro';
-import '../../styles/components/_lists.css';
-import { getAllProjects } from '../../lib/projects';
 
-const projects = await getAllProjects();
+return Astro.redirect('/notes', 301);
 ---
-
-<Base
-  title="projects"
-  description="Things I've built and experiments I've shipped."
->
-  <ul class="project-list">
-    {
-      projects.map((project) => (
-        <li class="project-item">
-          <a href={`/projects/${project.id}`} class="project-item__link">
-            <div class="project-item__title">
-              {project.title}
-              {project.featured && (
-                <span class="project-item__badge">featured</span>
-              )}
-            </div>
-            <div class="project-item__meta">{project.description}</div>
-          </a>
-        </li>
-      ))
-    }
-  </ul>
-
-  {
-    projects.length === 0 && (
-      <p class="empty-state">Nothing here yet - check back soon.</p>
-    )
-  }
-</Base>

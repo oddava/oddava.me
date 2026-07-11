@@ -1,25 +1,26 @@
 ---
 export const prerender = true;
-import Post from '../../layouts/Post.astro';
-import { getCollection, render } from 'astro:content';
-import { mdxComponents } from '../../components/mdx/components';
 
+import { getCollection } from 'astro:content';
+import { noteHrefFromSourceId, noteIdFromSourceId } from '@lib/garden';
+
+// Old /blog/<slug> links redirect into the notes garden, keyed off each note's
+// file name.
 export async function getStaticPaths() {
-  const posts = await getCollection('blog');
+  const notes = await getCollection('notes', ({ data }) => !data.draft);
+  const bySlug = new Map<string, string>();
 
-  return posts
-    .filter((post) => !post.data.draft)
-    .map((post) => ({
-      params: { slug: post.id },
-      props: { post },
-    }));
+  for (const note of notes) {
+    const slug = noteIdFromSourceId(note.id);
+    if (slug === 'index' || bySlug.has(slug)) continue;
+    bySlug.set(slug, noteHrefFromSourceId(note.id));
+  }
+
+  return [...bySlug].map(([slug, redirectTo]) => ({
+    params: { slug },
+    props: { redirectTo },
+  }));
 }
 
-const { post } = Astro.props;
-const { Content } = await render(post);
+return Astro.redirect(Astro.props.redirectTo, 301);
 ---
-
-<Post frontmatter={post.data}>
-  <Content components={mdxComponents} />
-  <a href="/blog" class="post-back">back to journal</a>
-</Post>

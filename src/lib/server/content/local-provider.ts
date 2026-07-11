@@ -2,13 +2,17 @@ import {
   mkdir,
   readFile,
   readdir,
+  rename,
   rm,
   stat,
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
 import { assertSafeRepositoryPath } from './paths';
-import { ContentRevisionConflictError } from './types';
+import {
+  ContentFolderNotEmptyError,
+  ContentRevisionConflictError,
+} from './types';
 import type {
   ContentProvider,
   ContentSourceFile,
@@ -45,6 +49,40 @@ async function collectFiles(
   );
 
   return files.flat();
+}
+
+async function collectDirectories(
+  root: string,
+  directory: string,
+): Promise<string[]> {
+  const absoluteDirectory = resolveSafePath(root, directory);
+  const entries = await readdir(absoluteDirectory, { withFileTypes: true });
+  const directories = entries.filter((entry) => entry.isDirectory());
+  const nested = await Promise.all(
+    directories.map(async (entry) => {
+      const relativePath = `${directory}/${entry.name}`.replace(/\\/g, '/');
+      return [relativePath, ...(await collectDirectories(root, relativePath))];
+    }),
+  );
+  return nested.flat();
+}
+
+async function containsContentFiles(
+  absoluteDirectory: string,
+): Promise<boolean> {
+  const entries = await readdir(absoluteDirectory, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      if (
+        await containsContentFiles(path.join(absoluteDirectory, entry.name))
+      ) {
+        return true;
+      }
+      continue;
+    }
+    if (entry.isFile() && entry.name !== '.gitkeep') return true;
+  }
+  return false;
 }
 
 function resolveSafePath(root: string, repositoryPath: string): string {
@@ -130,6 +168,49 @@ export function createLocalContentProvider(
         }
         throw error;
       }
+    },
+    async listDirectories(directory) {
+      try {
+        return await collectDirectories(projectRoot, directory);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'ENOENT'
+        ) {
+          return [];
+        }
+        throw error;
+      }
+    },
+    async createDirectory(repositoryPath, message) {
+      const absolutePath = resolveSafePath(projectRoot, repositoryPath);
+      await mkdir(absolutePath, { recursive: true });
+      await writeFile(path.join(absolutePath, '.gitkeep'), '', { flag: 'a' });
+      return result(message);
+    },
+    async movePath(from, to, message, revision) {
+      const absoluteFrom = resolveSafePath(projectRoot, from);
+      const absoluteTo = resolveSafePath(projectRoot, to);
+      await assertCurrentRevision(absoluteFrom, revision);
+      await mkdir(path.dirname(absoluteTo), { recursive: true });
+      await rename(absoluteFrom, absoluteTo);
+      let nextRevision: string | undefined;
+      try {
+        const movedStat = await stat(absoluteTo);
+        if (movedStat.isFile()) nextRevision = revisionFromStat(movedStat);
+      } catch {
+        nextRevision = undefined;
+      }
+      return result(message, nextRevision);
+    },
+    async deleteDirectory(repositoryPath, message) {
+      const absolutePath = resolveSafePath(projectRoot, repositoryPath);
+      if (await containsContentFiles(absolutePath)) {
+        throw new ContentFolderNotEmptyError();
+      }
+      await rm(absolutePath, { recursive: true, force: true });
+      return result(message);
     },
     async writeTextFile(repositoryPath, content, message, revision) {
       const absolutePath = resolveSafePath(projectRoot, repositoryPath);

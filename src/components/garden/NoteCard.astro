@@ -1,0 +1,26 @@
+---
+import type { GardenDocument } from '@lib/garden';
+
+interface Props {
+  note: GardenDocument;
+}
+
+const { note } = Astro.props;
+---
+
+<article class="note-card">
+  <a href={note.href} class="note-card__link">
+    <div class="note-card__copy">
+      <h2 class="note-card__title">{note.title}</h2>
+      {
+        note.childIds.length > 0 && (
+          <small class="note-card__meta">
+            {note.childIds.length}{' '}
+            {note.childIds.length === 1 ? 'page' : 'pages'} within
+          </small>
+        )
+      }
+    </div>
+    <span class="note-card__arrow" aria-hidden="true">→</span>
+  </a>
+</article>

@@ -1,0 +1,17 @@
+---
+export const prerender = true;
+
+import { getGardenIndex } from '@lib/garden';
+
+export async function getStaticPaths() {
+  const index = await getGardenIndex();
+  return index.documents
+    .filter((document) => document.path && document.childIds.length > 0)
+    .map((document) => ({
+      params: { path: document.path },
+      props: { redirectTo: document.href },
+    }));
+}
+
+return Astro.redirect(Astro.props.redirectTo, 301);
+---

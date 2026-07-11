@@ -7,6 +7,7 @@ import cloudflare from '@astrojs/cloudflare';
 import preact from '@astrojs/preact';
 import { localRedisDevProxy } from './vite/local-redis-dev-proxy.mjs';
 import { localContentAdminDevProxy } from './vite/local-content-admin-dev-proxy.mjs';
+import { remarkGardenLinks } from './src/lib/garden/remark-wiki-links.mjs';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
@@ -121,7 +122,10 @@ function devCloudflareWorkersEnv() {
 }
 
 export default defineConfig({
-  integrations: [preact({ compat: true }), mdx()],
+  integrations: [
+    preact({ compat: true }),
+    mdx({ remarkPlugins: [remarkGardenLinks] }),
+  ],
   compressHTML: true,
   devToolbar: { enabled: false },
   prefetch: {
@@ -139,7 +143,15 @@ export default defineConfig({
     },
     server: {
       watch: {
-        ignored: ['**/dist/**', '**/.pnpm-store/**'],
+        // Studio autosaves notes straight to src/content/notes. If Vite's
+        // watcher saw those writes it would re-sync the content layer and send
+        // a full page reload, wiping the editor mid-sentence on every save.
+        // Studio reads notes back through the content API (fresh from disk), so
+        // it never needs the watcher; ignore the notes tree in dev. Editing a
+        // note file by hand won't hot-refresh public /notes pages until the dev
+        // server restarts — an acceptable trade-off, since Studio is the way
+        // notes are authored.
+        ignored: ['**/dist/**', '**/.pnpm-store/**', '**/src/content/notes/**'],
       },
     },
     plugins: [

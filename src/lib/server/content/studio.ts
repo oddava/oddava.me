@@ -100,6 +100,7 @@ export async function writeDraft(
   const current = await readDraft(projectRoot, draft.collection, draft.id);
   const next = {
     ...draft,
+    folder: draft.folder ?? '',
     createdAt: current?.createdAt ?? draft.createdAt ?? now,
     updatedAt: now,
   };

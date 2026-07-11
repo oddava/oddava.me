@@ -1,0 +1,42 @@
+---
+import type { GardenDocument, GardenIndex } from '@lib/garden';
+
+interface Props {
+  document: GardenDocument;
+  index: GardenIndex;
+}
+
+const { document, index } = Astro.props;
+const children = document.childIds
+  .map((id) => index.byId.get(id))
+  .filter((child): child is GardenDocument => Boolean(child));
+---
+
+{
+  children.length > 0 && (
+    <section class="note-contents" aria-label={`${document.title} contents`}>
+      <ul class="note-contents__list">
+        {children.map((child) => (
+          <li class="note-content">
+            <a href={child.href} class="note-content__link">
+              <span class="note-content__icon" aria-hidden="true">
+                {child.childIds.length > 0 ? (
+                  <svg viewBox="0 0 20 20" fill="none">
+                    <path d="M2.75 6.25V5.5c0-.97.78-1.75 1.75-1.75h3l1.5 1.5h6.5c.97 0 1.75.78 1.75 1.75v1" />
+                    <path d="M3 7.75h14l-1.2 7.08a1.75 1.75 0 0 1-1.73 1.47H5.93a1.75 1.75 0 0 1-1.73-1.47L3 7.75Z" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" fill="none">
+                    <path d="M5 2.75h6l4 4v10.5H5V2.75Z" />
+                    <path d="M11 2.75v4h4" />
+                  </svg>
+                )}
+              </span>
+              <span class="note-content__title">{child.title}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

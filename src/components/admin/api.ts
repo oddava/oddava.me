@@ -8,6 +8,7 @@ import type {
   ContentDraft,
   ContentEntriesResponse,
   ContentEntryResponse,
+  ContentFolder,
   ContentMediaListResponse,
   ContentMediaResponse,
   ContentRevision,
@@ -18,6 +19,8 @@ import type {
   SpotifyCredentialsResponse,
 } from './types';
 
+const ADMIN_REQUEST_TIMEOUT_MS = 15_000;
+
 function withJsonAccept(init: RequestInit = {}): RequestInit {
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) {
@@ -27,7 +30,9 @@ function withJsonAccept(init: RequestInit = {}): RequestInit {
 }
 
 async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, withJsonAccept(init));
+  const requestInit = withJsonAccept(init);
+  requestInit.signal ??= AbortSignal.timeout(ADMIN_REQUEST_TIMEOUT_MS);
+  const response = await fetch(input, requestInit);
   let payload: T & {
     error?: string;
     code?: string;
@@ -188,6 +193,7 @@ export function saveContentDraft(
   collection: string,
   id: string,
   body: {
+    folder?: string;
     fields: Record<string, unknown>;
     body?: string;
     blocks?: ContentBlock[];
@@ -231,6 +237,7 @@ export function createContentEntry(
   collection: string,
   body: {
     slug?: string;
+    folder?: string;
     fields: Record<string, unknown>;
     body?: string;
   },
@@ -241,6 +248,116 @@ export function createContentEntry(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+    },
+  );
+}
+
+export interface ContentFoldersResponse {
+  folders: ContentFolder[];
+  result?: ContentSaveResponse['result'];
+}
+
+export function createContentFolder(
+  collection: string,
+  path: string,
+): Promise<ContentFoldersResponse> {
+  return readJson<ContentFoldersResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    },
+  );
+}
+
+export function duplicateContentFolder(
+  collection: string,
+  path: string,
+  copyFrom: string,
+): Promise<ContentFoldersResponse> {
+  return readJson<ContentFoldersResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, copyFrom }),
+    },
+  );
+}
+
+export function updateContentFolder(
+  collection: string,
+  path: string,
+  nextPath: string,
+): Promise<ContentFoldersResponse> {
+  return readJson<ContentFoldersResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, nextPath }),
+    },
+  );
+}
+
+export function deleteContentFolder(
+  collection: string,
+  path: string,
+): Promise<ContentFoldersResponse> {
+  return readJson<ContentFoldersResponse>(
+    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    },
+  );
+}
+
+export function moveContentEntry(
+  collection: string,
+  id: string,
+  folder: string,
+): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
+  return readJson<{ entry: ContentEntryResponse['entry'] | null }>(
+    `/api/admin/content/${encodeURIComponent(collection)}/move`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, folder }),
+    },
+  );
+}
+
+export function renameContentEntry(
+  collection: string,
+  id: string,
+  nextId: string,
+  folder: string,
+): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
+  return readJson<{ entry: ContentEntryResponse['entry'] | null }>(
+    `/api/admin/content/${encodeURIComponent(collection)}/move`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, nextId, folder }),
+    },
+  );
+}
+
+export function duplicateContentEntry(
+  collection: string,
+  id: string,
+  nextId: string,
+  folder: string,
+): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
+  return readJson<{ entry: ContentEntryResponse['entry'] | null }>(
+    `/api/admin/content/${encodeURIComponent(collection)}/move`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, nextId, folder, operation: 'duplicate' }),
     },
   );
 }
@@ -284,6 +401,7 @@ export interface ContentReorderResponse {
 
 export function reorderContentEntries(
   collection: string,
+  folder: string,
   ids: string[],
 ): Promise<ContentReorderResponse> {
   return readJson<ContentReorderResponse>(
@@ -291,7 +409,7 @@ export function reorderContentEntries(
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify({ folder, ids }),
     },
   );
 }

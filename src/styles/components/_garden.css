@@ -1,0 +1,980 @@
+/* Notes: a quiet reading surface with just enough structure to explore. */
+
+.garden-page {
+  width: 100%;
+  padding: 0 0 var(--space-md);
+}
+
+.garden-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shared notes navigation */
+
+.garden-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.5rem;
+  margin: 0 -0.6rem clamp(3rem, 7vw, 5.5rem);
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--color-rule);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+}
+
+.garden-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--color-text-primary);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.garden-nav__brand:hover,
+.garden-nav__brand:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.garden-nav__mark {
+  width: 0.58rem;
+  height: 0.58rem;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #c4b5fd, var(--color-brand));
+  box-shadow: 0 0 0.9rem color-mix(in srgb, var(--color-brand) 50%, transparent);
+}
+
+.garden-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.garden-nav__link,
+.site-search-trigger {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: transparent;
+  font: 0.72rem var(--font-mono);
+  cursor: pointer;
+}
+
+.garden-nav__link {
+  display: inline-flex;
+  align-items: center;
+}
+
+.garden-nav__link:hover,
+.garden-nav__link:focus-visible,
+.garden-nav__link.is-current {
+  color: var(--color-text-primary);
+  background: var(--color-overlay-soft);
+}
+
+.site-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.site-search-trigger:hover,
+.site-search-trigger:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--color-overlay-soft);
+}
+
+.site-search-trigger svg,
+.garden-search__field svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* Document paths */
+
+.garden-map-header h1,
+.garden-topic-header h1 {
+  margin: 0;
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.065em;
+}
+
+.garden-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-rule-strong);
+}
+
+.note-card {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.note-card__link {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.35rem 0.4rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 260ms ease;
+}
+
+.note-card__link:hover,
+.note-card__link:focus-visible {
+  color: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-overlay-soft) 62%, transparent),
+    transparent 72%
+  );
+}
+
+.note-card__copy {
+  min-width: 0;
+}
+
+.note-card__title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+  transition: color 260ms ease;
+}
+
+.note-card__summary {
+  max-width: 58ch;
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  transition: color 260ms ease;
+}
+
+.note-card__meta {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--color-text-disabled);
+  font: 0.6rem var(--font-mono);
+}
+
+.note-card__arrow {
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  opacity: 0.2;
+  transition:
+    color 180ms ease,
+    opacity 260ms ease;
+}
+
+.note-card__link:hover .note-card__arrow,
+.note-card__link:focus-visible .note-card__arrow {
+  color: var(--color-text-interactive-hover);
+  opacity: 0.72;
+}
+
+/* Topic index */
+
+.garden-index--topic {
+  width: min(100%, 46rem);
+  margin: 0 auto;
+}
+
+.garden-topic-header {
+  padding: 0 0 clamp(3rem, 7vw, 5rem);
+}
+
+.garden-topic-header__back {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--color-text-muted);
+  font: 0.7rem var(--font-mono);
+}
+
+.garden-topic-header__back:hover,
+.garden-topic-header__back:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.garden-topic-header h1 {
+  font-size: clamp(2.6rem, 7vw, 4.8rem);
+  overflow-wrap: anywhere;
+}
+
+.garden-topic-header p {
+  margin: 1rem 0 0;
+  color: var(--color-text-muted);
+}
+
+/* Document reader */
+
+.garden-document {
+  width: min(100%, 44rem);
+  margin: 0 auto;
+}
+
+.garden-document .prose {
+  color: color-mix(in srgb, var(--color-text-primary) 94%, transparent);
+  font-size: clamp(1rem, 1.6vw, 1.08rem);
+  line-height: 1.85;
+}
+
+.garden-document .prose > :first-child {
+  margin-top: 0;
+}
+
+/* The page opens with whatever heading you write. Keep the default calm — a
+   real title, not a hero. Write a bigger one yourself if you want one. */
+.garden-document .prose h1 {
+  margin: 0 0 0.6em;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.garden-document .prose h1:not(:first-child) {
+  margin-top: 2.4em;
+}
+
+.garden-document .prose h2 {
+  margin-top: 2.8em;
+  font-size: clamp(1.4rem, 3vw, 1.7rem);
+  letter-spacing: -0.035em;
+}
+
+.garden-document .prose h3 {
+  letter-spacing: -0.025em;
+}
+
+.garden-document .prose p {
+  text-wrap: pretty;
+}
+
+.garden-document .prose .wiki-link {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.note-contents {
+  margin-top: 0;
+}
+
+.garden-document__body + .note-contents {
+  margin-top: clamp(2.5rem, 7vw, 4rem);
+}
+
+.note-contents__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-content__link {
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+  margin: 0 -0.55rem;
+  padding: 0.55rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 180ms ease;
+}
+
+.note-content__link:hover,
+.note-content__link:focus-visible {
+  color: inherit;
+  background: color-mix(in srgb, var(--color-overlay-soft) 62%, transparent);
+}
+
+.note-content__icon {
+  display: grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--color-text-disabled);
+  transition: color 180ms ease;
+}
+
+.note-content__icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.note-content__link:hover .note-content__icon,
+.note-content__link:focus-visible .note-content__icon {
+  color: var(--color-text-muted);
+}
+
+.note-content__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 0.96rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Search command palette */
+
+.garden-search {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: start center;
+  padding: min(12vh, 7rem) 1rem 1rem;
+}
+
+.garden-search__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: color-mix(in srgb, #050507 76%, transparent);
+  backdrop-filter: blur(5px);
+  cursor: default;
+  animation: garden-fade-in 150ms ease both;
+}
+
+.garden-search__panel {
+  position: relative;
+  width: min(38rem, 100%);
+  max-height: min(78vh, 42rem);
+  overflow: hidden;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xl);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-elevated) 96%,
+    transparent
+  );
+  box-shadow:
+    0 2rem 6rem color-mix(in srgb, #000 58%, transparent),
+    0 0 0 1px color-mix(in srgb, #fff 3%, transparent) inset;
+  animation: garden-panel-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.garden-search__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem 0.7rem;
+}
+
+.garden-search__topline h2 {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: 0.68rem var(--font-mono);
+  font-weight: 400;
+}
+
+.garden-search__topline button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  font: 0.62rem var(--font-mono);
+  cursor: pointer;
+}
+
+.garden-search__topline kbd {
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-disabled);
+  background: var(--color-surface-raised);
+  font: inherit;
+}
+
+.garden-search__field {
+  position: relative;
+  margin: 0 0.75rem;
+}
+
+.garden-search__field svg {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+}
+
+.garden-search__input {
+  width: 100%;
+  min-height: 3.65rem;
+  padding: 0.8rem 1rem 0.8rem 2.9rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-lg);
+  outline: none;
+  color: var(--color-text-primary);
+  background: var(--color-surface-raised);
+  font: 1rem var(--font-body);
+}
+
+.garden-search__input:focus {
+  border-color: color-mix(in srgb, var(--color-brand) 48%, transparent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.garden-search__input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.garden-search__count {
+  margin: 0;
+  padding: 0.9rem 1rem 0.45rem;
+  color: var(--color-text-disabled);
+  font: 0.62rem var(--font-mono);
+}
+
+.garden-search__results {
+  max-height: min(55vh, 29rem);
+  margin: 0;
+  padding: 0 0.5rem 0.6rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.garden-search__result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0.75rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+}
+
+.garden-search__result:hover,
+.garden-search__result:focus-visible,
+.garden-search__result.is-active {
+  color: inherit;
+  background: var(--color-overlay-soft);
+}
+
+.garden-search__result-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.garden-search__result strong {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-search__result-copy > span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.73rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-search__result-arrow {
+  color: var(--color-text-disabled);
+  opacity: 0;
+  transform: translateX(-0.3rem);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.garden-search__result:hover .garden-search__result-arrow,
+.garden-search__result:focus-visible .garden-search__result-arrow,
+.garden-search__result.is-active .garden-search__result-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.garden-search__empty {
+  padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+/* Knowledge map */
+
+.garden-page--map .garden-nav {
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+.garden-map-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 31rem);
+  gap: 2rem;
+  align-items: end;
+  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+}
+
+.garden-map-header h1 {
+  font-size: clamp(2.9rem, 7vw, 5.25rem);
+}
+
+.garden-map-header p {
+  margin: 0 0 0.35rem;
+  color: var(--color-text-secondary);
+  font-size: 0.94rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.garden-map-section {
+  width: 100%;
+}
+
+.knowledge-map {
+  position: relative;
+  height: clamp(33rem, 68vh, 46rem);
+  min-height: 33rem;
+  overflow: hidden;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: clamp(1rem, 2.5vw, 1.6rem);
+  background:
+    radial-gradient(
+      circle at 48% 44%,
+      color-mix(in srgb, var(--color-brand) 8%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-surface-raised) 94%, #15101f),
+      var(--color-surface)
+    );
+  box-shadow:
+    0 1.75rem 5rem color-mix(in srgb, #000 24%, transparent),
+    0 1px 0 color-mix(in srgb, #fff 4%, transparent) inset;
+  isolation: isolate;
+}
+
+.knowledge-map::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    circle at center,
+    transparent 48%,
+    color-mix(in srgb, var(--color-surface) 62%, transparent) 100%
+  );
+  pointer-events: none;
+  content: '';
+}
+
+.knowledge-map__surface {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.knowledge-map__surface.is-panning {
+  cursor: grabbing;
+}
+
+#map-dot-grid circle {
+  fill: color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+
+.knowledge-map__background {
+  opacity: 0.5;
+}
+
+.knowledge-map__world {
+  transform-origin: 0 0;
+}
+
+.knowledge-map__edge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-brand) 30%, transparent);
+  stroke-width: 1;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+  transition:
+    opacity 220ms ease,
+    stroke 220ms ease,
+    stroke-width 220ms ease;
+}
+
+.knowledge-map__edge.is-authored {
+  stroke: color-mix(in srgb, var(--color-brand-strong) 48%, transparent);
+  stroke-width: 1.4;
+  opacity: 0.8;
+}
+
+.knowledge-map__edge.is-active {
+  stroke: var(--color-brand-strong);
+  stroke-width: 2;
+  opacity: 0.95;
+}
+
+.knowledge-map__edge.is-dimmed {
+  opacity: 0.08;
+}
+
+.knowledge-map__node {
+  cursor: pointer;
+  opacity: 0;
+  animation: map-node-arrive 500ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--node-index) * 45ms + 100ms);
+  transition: opacity 220ms ease;
+}
+
+.knowledge-map__node.is-dimmed {
+  opacity: 0.18 !important;
+}
+
+.knowledge-map__node.is-dragging {
+  cursor: grabbing;
+}
+
+.knowledge-map__node-glow {
+  fill: color-mix(in srgb, var(--color-brand) 42%, transparent);
+  opacity: 0.18;
+  transition: opacity 220ms ease;
+}
+
+.knowledge-map__node-halo {
+  fill: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  stroke: color-mix(in srgb, var(--color-brand-strong) 22%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  transition:
+    fill 220ms ease,
+    stroke 220ms ease,
+    transform 220ms ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.knowledge-map__node-core {
+  stroke: color-mix(in srgb, #fff 55%, var(--color-brand));
+  stroke-width: 1.25;
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, #000 48%, transparent));
+  vector-effect: non-scaling-stroke;
+  transition: transform 220ms ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.knowledge-map__node.is-active .knowledge-map__node-core,
+.knowledge-map__node:focus-visible .knowledge-map__node-core {
+  transform: scale(1.18);
+}
+
+.knowledge-map__node.is-active .knowledge-map__node-halo,
+.knowledge-map__node:focus-visible .knowledge-map__node-halo {
+  fill: color-mix(in srgb, var(--color-brand) 22%, transparent);
+  stroke: var(--color-brand-strong);
+  transform: scale(1.16);
+}
+
+.knowledge-map__node.is-active .knowledge-map__node-glow,
+.knowledge-map__node:focus-visible .knowledge-map__node-glow {
+  opacity: 0.5;
+}
+
+.knowledge-map__node:focus-visible {
+  outline: none;
+}
+
+.knowledge-map__label {
+  fill: var(--color-text-secondary);
+  stroke: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font: 600 12.5px var(--font-body);
+  letter-spacing: -0.01em;
+  pointer-events: none;
+  transition:
+    fill 220ms ease,
+    opacity 220ms ease;
+}
+
+.knowledge-map__node.is-active .knowledge-map__label,
+.knowledge-map__node:focus-visible .knowledge-map__label {
+  fill: var(--color-text-primary);
+}
+
+.knowledge-map__controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 4;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface-glass) 90%, transparent);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, #000 20%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.knowledge-map__controls button {
+  display: grid;
+  place-items: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  border: 0;
+  border-right: 1px solid var(--color-rule);
+  color: var(--color-text-secondary);
+  background: transparent;
+  font: 1.05rem var(--font-mono);
+  cursor: pointer;
+}
+
+.knowledge-map__controls button:last-child {
+  border-right: 0;
+}
+
+.knowledge-map__controls button:hover,
+.knowledge-map__controls button:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--color-overlay-strong);
+}
+
+.knowledge-map__controls svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.knowledge-map__caption {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 4;
+  display: grid;
+  gap: 0.18rem;
+  width: min(24rem, calc(100% - 2rem));
+  min-height: 2.7rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-disabled);
+  background: color-mix(in srgb, var(--color-surface-glass) 88%, transparent);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, #000 18%, transparent);
+  backdrop-filter: blur(14px);
+  font: 0.62rem var(--font-mono);
+  pointer-events: none;
+}
+
+.knowledge-map__caption strong {
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.knowledge-map__caption strong + span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-map__empty {
+  display: grid;
+  min-height: 28rem;
+  place-items: center;
+  margin: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xl);
+  color: var(--color-text-muted);
+}
+
+@keyframes garden-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes garden-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem) scale(0.985);
+  }
+}
+
+@keyframes map-node-arrive {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .garden-nav {
+    margin-bottom: 3rem;
+  }
+
+  .garden-map-header {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+  }
+
+  .garden-map-header p {
+    max-width: 42ch;
+  }
+}
+
+@media (max-width: 640px) {
+  .garden-nav {
+    min-height: 3.25rem;
+    margin-right: -0.25rem;
+    margin-left: -0.25rem;
+    padding-right: 0.25rem;
+    padding-left: 0.25rem;
+  }
+
+  .garden-nav__link,
+  .site-search-trigger {
+    min-width: 2.5rem;
+    justify-content: center;
+    padding-right: 0.55rem;
+    padding-left: 0.55rem;
+  }
+
+  .site-search-trigger span {
+    display: none;
+  }
+
+  .note-card__link {
+    gap: 1rem;
+    padding-top: 1.15rem;
+    padding-bottom: 1.15rem;
+  }
+
+  .note-card__arrow {
+    opacity: 0.6;
+    transform: none;
+  }
+
+  .garden-document .prose :is(h2, h3, h4) .anchor {
+    position: static;
+    margin-right: 0.25rem;
+    opacity: 0.7;
+  }
+
+  .garden-search {
+    padding: 0.75rem;
+  }
+
+  .garden-search__panel {
+    max-height: calc(100dvh - 1.5rem);
+    border-radius: var(--radius-lg);
+  }
+
+  .garden-search__results {
+    max-height: calc(100dvh - 12rem);
+  }
+
+  .knowledge-map {
+    height: 34rem;
+    min-height: 34rem;
+  }
+
+  .knowledge-map__controls {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .knowledge-map__caption {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    width: calc(100% - 1.5rem);
+  }
+}
+
+@media (max-width: 420px) {
+  .garden-nav__brand {
+    gap: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .garden-nav__links {
+    gap: 0;
+  }
+
+  .garden-nav__link,
+  .site-search-trigger {
+    padding-right: 0.4rem;
+    padding-left: 0.4rem;
+  }
+
+  .garden-map-header h1,
+  .garden-topic-header h1 {
+    font-size: clamp(2.55rem, 15vw, 3.35rem);
+  }
+
+  .garden-document .prose h1 {
+    font-size: clamp(1.65rem, 8vw, 2.2rem);
+  }
+
+  .knowledge-map__caption > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

@@ -6,7 +6,9 @@ import {
   handleContentCollection,
   handleContentDraft,
   handleContentEntry,
+  handleContentFolders,
   handleContentMedia,
+  handleContentMove,
   handleContentPreview,
   handleContentPublish,
   handleContentReorder,
@@ -15,6 +17,8 @@ import { blocksToBody, bodyToBlocks } from '../src/lib/server/content/blocks';
 import { createLocalContentProvider } from '../src/lib/server/content/local-provider';
 import {
   assertSafeRepositoryPath,
+  entryFolderFromPath,
+  isValidFolderPath,
   isValidSlug,
   sanitizeFilename,
   slugify,
@@ -34,6 +38,15 @@ class MemoryContentProvider implements ContentProvider {
   files = new Map<string, ContentSourceFile>();
   revision = 0;
   binaries = new Map<string, Uint8Array>();
+  folders = new Set<string>();
+
+  registerParentDirectories(filePath: string) {
+    const segments = filePath.split('/');
+    segments.pop();
+    for (let index = 1; index <= segments.length; index += 1) {
+      this.folders.add(segments.slice(0, index).join('/'));
+    }
+  }
 
   async listFiles(directory: string, extension: string) {
     return [...this.files.values()].filter(
@@ -47,6 +60,66 @@ class MemoryContentProvider implements ContentProvider {
     return this.files.get(path) ?? null;
   }
 
+  async listDirectories(directory: string) {
+    return [...this.folders].filter(
+      (folder) => folder.startsWith(`${directory}/`) && folder !== directory,
+    );
+  }
+
+  async createDirectory(path: string, message: string) {
+    this.registerParentDirectories(`${path}/.gitkeep`);
+    return { provider: 'local' as const, message };
+  }
+
+  async movePath(
+    from: string,
+    to: string,
+    message: string,
+  ): Promise<ContentWriteResult> {
+    const file = this.files.get(from);
+    if (file) {
+      this.files.delete(from);
+      this.files.set(to, { ...file, path: to });
+      this.registerParentDirectories(to);
+      return { provider: 'local', message };
+    }
+
+    const movedFiles = [...this.files.entries()].filter(([filePath]) =>
+      filePath.startsWith(`${from}/`),
+    );
+    for (const [filePath, source] of movedFiles) {
+      this.files.delete(filePath);
+      const nextPath = `${to}${filePath.slice(from.length)}`;
+      this.files.set(nextPath, { ...source, path: nextPath });
+      this.registerParentDirectories(nextPath);
+    }
+    const movedFolders = [...this.folders].filter(
+      (folder) => folder === from || folder.startsWith(`${from}/`),
+    );
+    for (const folder of movedFolders) {
+      this.folders.delete(folder);
+      this.folders.add(`${to}${folder.slice(from.length)}`);
+    }
+    return { provider: 'local', message };
+  }
+
+  async deleteDirectory(
+    path: string,
+    message: string,
+  ): Promise<ContentWriteResult> {
+    if ([...this.files.keys()].some((file) => file.startsWith(`${path}/`))) {
+      throw Object.assign(new Error('Folder is not empty.'), {
+        code: 'folder_not_empty',
+      });
+    }
+    for (const folder of [...this.folders]) {
+      if (folder === path || folder.startsWith(`${path}/`)) {
+        this.folders.delete(folder);
+      }
+    }
+    return { provider: 'local', message };
+  }
+
   async writeTextFile(
     path: string,
     content: string,
@@ -54,6 +127,7 @@ class MemoryContentProvider implements ContentProvider {
   ): Promise<ContentWriteResult> {
     const revision = `rev-${++this.revision}`;
     this.files.set(path, { path, content, revision });
+    this.registerParentDirectories(path);
     return { provider: 'local', revision, message };
   }
 
@@ -74,7 +148,7 @@ class MemoryContentProvider implements ContentProvider {
 }
 
 const jsonRequest = (method: string, body: unknown) =>
-  new Request('https://oddava.me/api/admin/content/blog', {
+  new Request('https://oddava.me/api/admin/content/notes', {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -106,6 +180,15 @@ describe('content admin serializers and paths', () => {
   it('normalizes slugs and rejects unsafe paths', () => {
     expect(slugify('My First Post!')).toBe('my-first-post');
     expect(isValidSlug('my-first-post')).toBe(true);
+    expect(isValidFolderPath('reading/books')).toBe(true);
+    expect(isValidFolderPath('reading//books')).toBe(true);
+    expect(isValidFolderPath('../private')).toBe(false);
+    expect(
+      entryFolderFromPath(
+        'src/content/notes/reading/books/example.mdx',
+        'src/content/notes',
+      ),
+    ).toBe('reading/books');
     expect(isValidSlug('../bad')).toBe(false);
     expect(() => assertSafeRepositoryPath('../bad')).toThrow(
       'Unsafe content path.',
@@ -141,37 +224,36 @@ describe('content admin API core', () => {
 
     const createResponse = await handleContentCollection(
       provider,
-      'blog',
+      'notes',
       jsonRequest('POST', {
         slug: 'hello-world',
         fields: {
-          title: 'Hello world',
-          date: '2026-07-03',
           draft: false,
         },
-        body: 'Body copy',
+        body: '# Hello world\n\nBody copy',
       }),
     );
 
     expect(createResponse.status).toBe(201);
     expect(
-      provider.files.get('src/content/blog/hello-world.mdx')?.content,
+      provider.files.get('src/content/notes/hello-world.mdx')?.content,
     ).toContain('Body copy');
 
     const duplicateResponse = await handleContentCollection(
       provider,
-      'blog',
+      'notes',
       jsonRequest('POST', {
         slug: 'hello-world',
-        fields: { title: 'Hello', date: '2026-07-03' },
+        fields: { draft: false },
+        body: '# Hello again',
       }),
     );
     expect(duplicateResponse.status).toBe(409);
 
     const listResponse = await handleContentCollection(
       provider,
-      'blog',
-      new Request('https://oddava.me/api/admin/content/blog'),
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes'),
     );
     await expect(listResponse.json()).resolves.toMatchObject({
       entries: [{ id: 'hello-world', title: 'Hello world' }],
@@ -179,48 +261,44 @@ describe('content admin API core', () => {
 
     const updateResponse = await handleContentEntry(
       provider,
-      'blog',
+      'notes',
       'hello-world',
       jsonRequest('PUT', {
         fields: {
-          title: 'Updated',
-          date: '2026-07-04',
           draft: true,
         },
-        body: 'Updated body',
+        body: '# Updated\n\nUpdated body',
       }),
     );
     expect(updateResponse.status).toBe(200);
     expect(
-      provider.files.get('src/content/blog/hello-world.mdx')?.content,
+      provider.files.get('src/content/notes/hello-world.mdx')?.content,
     ).toContain('Updated body');
 
     const deleteResponse = await handleContentEntry(
       provider,
-      'blog',
+      'notes',
       'hello-world',
-      new Request('https://oddava.me/api/admin/content/blog/hello-world', {
+      new Request('https://oddava.me/api/admin/content/notes/hello-world', {
         method: 'DELETE',
       }),
     );
     expect(deleteResponse.status).toBe(200);
-    expect(provider.files.has('src/content/blog/hello-world.mdx')).toBe(false);
+    expect(provider.files.has('src/content/notes/hello-world.mdx')).toBe(false);
   });
 
-  it('returns field validation errors', async () => {
+  it('rejects unsafe slugs', async () => {
     const response = await handleContentCollection(
       new MemoryContentProvider(),
-      'blog',
+      'notes',
       jsonRequest('POST', {
-        slug: 'invalid',
-        fields: { title: 'Invalid', date: 'July 3' },
+        slug: '../escape',
+        fields: { draft: false },
+        body: '# Escape',
       }),
     );
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'validation_failed',
-    });
   });
 
   it('saves drafts, previews them, and publishes back to MDX files', async () => {
@@ -231,19 +309,18 @@ describe('content admin API core', () => {
       const draftResponse = await handleContentDraft(
         tempDir,
         provider,
-        'blog',
+        'notes',
         'hello-studio',
         new Request(
-          'https://oddava.me/api/admin/content/drafts/blog/hello-studio',
+          'https://oddava.me/api/admin/content/drafts/notes/hello-studio',
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fields: {
-                title: 'Hello Studio',
-                date: '2026-07-04',
                 draft: true,
               },
+              folder: 'inbox/thoughts',
               blocks: [
                 {
                   id: 'intro',
@@ -259,21 +336,27 @@ describe('content admin API core', () => {
 
       expect(draftResponse.status).toBe(200);
       await expect(draftResponse.json()).resolves.toMatchObject({
-        draft: { id: 'hello-studio', title: 'Hello Studio', isNew: true },
+        draft: {
+          id: 'hello-studio',
+          folder: 'inbox/thoughts',
+          isNew: true,
+        },
       });
 
       const previewResponse = await handleContentPreview(
         tempDir,
         provider,
         new Request(
-          'https://oddava.me/api/admin/content/preview?collection=blog&id=hello-studio',
+          'https://oddava.me/api/admin/content/preview?collection=notes&id=hello-studio',
         ),
       );
 
       expect(previewResponse.headers.get('Content-Type')).toContain(
         'text/html',
       );
-      await expect(previewResponse.text()).resolves.toContain('Hello Studio');
+      await expect(previewResponse.text()).resolves.toContain(
+        'Drafted visually.',
+      );
 
       const publishResponse = await handleContentPublish(
         tempDir,
@@ -281,22 +364,23 @@ describe('content admin API core', () => {
         new Request('https://oddava.me/api/admin/content/publish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ collection: 'blog', id: 'hello-studio' }),
+          body: JSON.stringify({ collection: 'notes', id: 'hello-studio' }),
         }),
       );
 
       expect(publishResponse.status).toBe(200);
       expect(
-        provider.files.get('src/content/blog/hello-studio.mdx')?.content,
+        provider.files.get('src/content/notes/inbox/thoughts/hello-studio.mdx')
+          ?.content,
       ).toContain('Drafted visually.');
 
       const deletedDraftResponse = await handleContentDraft(
         tempDir,
         provider,
-        'blog',
+        'notes',
         'hello-studio',
         new Request(
-          'https://oddava.me/api/admin/content/drafts/blog/hello-studio',
+          'https://oddava.me/api/admin/content/drafts/notes/hello-studio',
         ),
       );
       await expect(deletedDraftResponse.json()).resolves.toMatchObject({
@@ -310,8 +394,8 @@ describe('content admin API core', () => {
   it('accepts supported media uploads and rejects unsupported files', async () => {
     const provider = new MemoryContentProvider();
     const formData = new FormData();
-    formData.set('collection', 'books');
-    formData.set('entryId', 'my-book');
+    formData.set('collection', 'notes');
+    formData.set('entryId', 'my-note');
     formData.set(
       'file',
       new File([new Uint8Array([1, 2, 3])], 'cover.webp', {
@@ -329,11 +413,11 @@ describe('content admin API core', () => {
 
     expect(response.status).toBe(201);
     const payload = await response.json();
-    expect(payload.media.url).toMatch(/^\/images\/books\/my-book\/cover-/);
+    expect(payload.media.url).toMatch(/^\/images\/notes\/my-note\/cover-/);
     expect(provider.binaries.size).toBe(1);
 
     const invalid = new FormData();
-    invalid.set('collection', 'books');
+    invalid.set('collection', 'notes');
     invalid.set(
       'file',
       new File(['not an image'], 'notes.txt', { type: 'text/plain' }),
@@ -349,92 +433,234 @@ describe('content admin API core', () => {
     expect(invalidResponse.status).toBe(400);
   });
 
-  it('reorders books sequentially by id list', async () => {
+  it('creates nested folders, moves notes, and renames empty folder trees', async () => {
     const provider = new MemoryContentProvider();
-    const bookIds = ['alpha', 'beta', 'gamma'];
-    for (const [index, id] of bookIds.entries()) {
-      await provider.writeTextFile(
-        `src/content/books/${id}.yaml`,
-        `title: ${id}\ncoverImage: /${id}.webp\norder: ${index}\n`,
-        `content: create books/${id}`,
-      );
-    }
-
-    const reorderResponse = await handleContentReorder(
+    const createFolder = await handleContentFolders(
       provider,
-      'books',
-      new Request('https://oddava.me/api/admin/content/books/reorder', {
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: ['gamma', 'alpha', 'beta'] }),
+        body: JSON.stringify({ path: 'reading/books' }),
       }),
     );
+    expect(createFolder.status).toBe(201);
 
-    expect(reorderResponse.status).toBe(200);
-    const payload = await reorderResponse.json();
-    expect(payload.reordered).toEqual([
-      { id: 'gamma', ok: true },
-      { id: 'alpha', ok: true },
-      { id: 'beta', ok: true },
-    ]);
-
-    const alpha = await provider.readFile('src/content/books/alpha.yaml');
-    expect(alpha?.content).toContain('order: 1');
-    const gamma = await provider.readFile('src/content/books/gamma.yaml');
-    expect(gamma?.content).toContain('order: 0');
-
-    const blogReorder = await handleContentReorder(
+    const createNote = await handleContentCollection(
       provider,
-      'blog',
-      new Request('https://oddava.me/api/admin/content/blog/reorder', {
+      'notes',
+      jsonRequest('POST', {
+        slug: 'a-small-book',
+        folder: 'reading/books',
+        fields: {
+          title: 'A small book',
+          kind: 'book',
+          status: 'growing',
+          draft: false,
+        },
+        body: 'A few lines.',
+      }),
+    );
+    expect(createNote.status).toBe(201);
+    expect(
+      provider.files.has('src/content/notes/reading/books/a-small-book.mdx'),
+    ).toBe(true);
+
+    const list = await handleContentCollection(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes'),
+    );
+    await expect(list.json()).resolves.toMatchObject({
+      entries: [
+        { id: 'a-small-book', folder: 'reading/books' },
+        { id: 'books', folder: 'reading' },
+      ],
+      folders: [
+        { id: 'reading', totalNoteCount: 2 },
+        { id: 'reading/books', noteCount: 1, documentId: 'books' },
+      ],
+    });
+
+    const rejectNonEmptyDelete = await handleContentFolders(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/folders', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'reading' }),
+      }),
+    );
+    expect(rejectNonEmptyDelete.status).toBe(409);
+
+    const move = await handleContentMove(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: ['x'] }),
+        body: JSON.stringify({ id: 'a-small-book', folder: '' }),
       }),
     );
-    expect(blogReorder.status).toBe(400);
+    expect(move.status).toBe(200);
+    expect(provider.files.has('src/content/notes/a-small-book.mdx')).toBe(true);
+
+    const rename = await handleContentFolders(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/folders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'reading', nextPath: 'library' }),
+      }),
+    );
+    expect(rename.status).toBe(200);
+    expect(provider.folders.has('src/content/notes/library/books')).toBe(true);
+    expect(provider.files.has('src/content/notes/library.mdx')).toBe(true);
+    expect(provider.files.has('src/content/notes/library/books.mdx')).toBe(
+      true,
+    );
+
+    const removeBooks = await handleContentFolders(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/folders', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'library/books' }),
+      }),
+    );
+    expect(removeBooks.status).toBe(200);
+    expect(provider.files.has('src/content/notes/library/books.mdx')).toBe(
+      false,
+    );
+
+    const remove = await handleContentFolders(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/folders', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: 'library' }),
+      }),
+    );
+    expect(remove.status).toBe(200);
+    expect(provider.files.has('src/content/notes/library.mdx')).toBe(false);
   });
 
-  it('rejects reorder lists with duplicate or missing ids', async () => {
+  it('renames, duplicates, and manually orders files and folder trees', async () => {
     const provider = new MemoryContentProvider();
-    const bookIds = ['alpha', 'beta', 'gamma'];
-    for (const [index, id] of bookIds.entries()) {
-      await provider.writeTextFile(
-        `src/content/books/${id}.yaml`,
-        `title: ${id}\ncoverImage: /${id}.webp\norder: ${index}\n`,
-        `content: create books/${id}`,
+    for (const slug of ['alpha', 'beta']) {
+      const response = await handleContentCollection(
+        provider,
+        'notes',
+        jsonRequest('POST', {
+          slug,
+          fields: { draft: false },
+          body: `# ${slug}`,
+        }),
       );
+      expect(response.status).toBe(201);
     }
 
-    const duplicateResponse = await handleContentReorder(
+    const reorder = await handleContentReorder(
       provider,
-      'books',
-      new Request('https://oddava.me/api/admin/content/books/reorder', {
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: ['gamma', 'gamma', 'alpha'] }),
+        body: JSON.stringify({ folder: '', ids: ['beta', 'alpha'] }),
+      }),
+    );
+    expect(reorder.status).toBe(200);
+    expect(
+      parseContentDocument(
+        provider.files.get('src/content/notes/beta.mdx')!.content,
+        'mdx',
+      ).fields.order,
+    ).toBe(0);
+    expect(
+      parseContentDocument(
+        provider.files.get('src/content/notes/alpha.mdx')!.content,
+        'mdx',
+      ).fields.order,
+    ).toBe(1);
+
+    const rename = await handleContentMove(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: 'alpha', nextId: 'gamma', folder: '' }),
+      }),
+    );
+    expect(rename.status).toBe(200);
+    expect(provider.files.has('src/content/notes/alpha.mdx')).toBe(false);
+    expect(provider.files.has('src/content/notes/gamma.mdx')).toBe(true);
+
+    const duplicate = await handleContentMove(
+      provider,
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 'beta',
+          nextId: 'beta-copy',
+          folder: '',
+          operation: 'duplicate',
+        }),
+      }),
+    );
+    expect(duplicate.status).toBe(200);
+    expect(provider.files.has('src/content/notes/beta-copy.mdx')).toBe(true);
+
+    for (const folder of ['reading', 'reading/books']) {
+      const response = await handleContentFolders(
+        provider,
+        'notes',
+        new Request('https://oddava.me/api/admin/content/notes/folders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: folder }),
+        }),
+      );
+      expect(response.status).toBe(201);
+    }
+    await handleContentCollection(
+      provider,
+      'notes',
+      jsonRequest('POST', {
+        slug: 'leaf',
+        folder: 'reading/books',
+        fields: { draft: false },
+        body: '# leaf',
       }),
     );
 
-    expect(duplicateResponse.status).toBe(400);
-    await expect(duplicateResponse.json()).resolves.toMatchObject({
-      code: 'invalid_reorder_ids',
-    });
-
-    const missingResponse = await handleContentReorder(
+    const duplicateFolder = await handleContentFolders(
       provider,
-      'books',
-      new Request('https://oddava.me/api/admin/content/books/reorder', {
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: ['gamma', 'alpha'] }),
+        body: JSON.stringify({
+          path: 'reading-copy',
+          copyFrom: 'reading',
+        }),
       }),
     );
-
-    expect(missingResponse.status).toBe(400);
-    await expect(missingResponse.json()).resolves.toMatchObject({
-      code: 'invalid_reorder_ids',
-    });
+    expect(duplicateFolder.status).toBe(201);
+    expect(provider.files.has('src/content/notes/reading-copy.mdx')).toBe(true);
+    expect(
+      provider.files.has('src/content/notes/reading-copy/books-copy.mdx'),
+    ).toBe(true);
+    expect(
+      provider.files.has(
+        'src/content/notes/reading-copy/books-copy/leaf-copy.mdx',
+      ),
+    ).toBe(true);
   });
 });
 
@@ -451,12 +677,12 @@ describe('local content provider', () => {
     const provider = createLocalContentProvider(tempDir);
 
     await provider.writeTextFile(
-      'src/content/books/example.yaml',
-      'title: Example\ncoverImage: /cover.webp\n',
-      'content: create books/example',
+      'src/content/notes/example.mdx',
+      'title: Example\nkind: note\nstatus: seed\n',
+      'content: create notes/example',
     );
 
-    const entries = await provider.listFiles('src/content/books', 'yaml');
+    const entries = await provider.listFiles('src/content/notes', 'mdx');
     expect(entries).toHaveLength(1);
     await expect(
       provider.writeTextFile('../bad.yaml', '', 'bad'),
@@ -468,19 +694,21 @@ describe('local content provider', () => {
     const provider = createLocalContentProvider(tempDir);
 
     await provider.writeTextFile(
-      'src/content/blog/example.mdx',
-      '---\ntitle: Example\ndate: 2026-07-04\ndraft: false\n---\n\nBody\n',
-      'content: create blog/example',
+      'src/content/notes/example.mdx',
+      '---\ntitle: Example\nkind: note\nstatus: seed\ncreated: 2026-07-04\ndraft: false\n---\n\nBody\n',
+      'content: create notes/example',
     );
 
     const response = await handleContentEntry(
       provider,
-      'blog',
+      'notes',
       'example',
       jsonRequest('PUT', {
         fields: {
           title: 'Updated',
-          date: '2026-07-04',
+          kind: 'note',
+          status: 'seed',
+          created: '2026-07-04',
           draft: false,
         },
         body: 'Updated body',
