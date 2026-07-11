@@ -2,15 +2,7 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import LinkIcon from '../components/LinkIcon.astro';
-import { getGardenIndex } from '@lib/garden';
 import '../styles/components/_home.css';
-
-const index = await getGardenIndex();
-// The garden index is already ordered most-recently-touched first, so "what
-// I've been writing" is just the top of it, minus the notes home itself.
-const recentNotes = index.documents
-  .filter((note) => note.id !== 'index')
-  .slice(0, 6);
 ---
 
 <Base
@@ -45,26 +37,4 @@ const recentNotes = index.documents
       </a>
     </nav>
   </section>
-
-  {
-    recentNotes.length > 0 && (
-      <section class="home-section" aria-labelledby="recent-notes-heading">
-        <h2 id="recent-notes-heading" class="section-heading">
-          lately
-        </h2>
-        <ul class="home-card-list">
-          {recentNotes.map((note) => (
-            <li>
-              <a href={note.href} class="home-card">
-                <span class="home-card__title">{note.title}</span>
-                {note.summary && (
-                  <span class="home-card__desc">{note.summary}</span>
-                )}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )
-  }
 </Base>

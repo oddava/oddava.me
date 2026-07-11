@@ -77,6 +77,10 @@ const DEFAULT_VIEW: ViewSize = {
 };
 const MAX_SCALE = 3.2;
 const TONE_COUNT = 5;
+// How quickly the camera eases toward its target, per second. A pure
+// exponential approach is critically damped — it glides in and settles
+// without the spring overshoot that read as a bouncy jiggle.
+const CAMERA_EASE = 7.5;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
@@ -528,38 +532,27 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
     previousFrameRef.current = performance.now();
 
     const tick = (now: number) => {
-      const elapsed = clamp(
-        (now - previousFrameRef.current) / 16.667,
-        0.45,
-        2.2,
-      );
+      // Seconds since the last frame, clamped so a dropped frame or a
+      // background tab can't produce a jarring jump.
+      const dt = clamp((now - previousFrameRef.current) / 1000, 0, 0.05);
       previousFrameRef.current = now;
       const current = cameraRef.current;
       const target = targetCameraRef.current;
-      const velocity = velocityRef.current;
-      const stiffness = 0.105 * elapsed;
-      const damping = Math.pow(0.74, elapsed);
-      velocity.x = (velocity.x + (target.x - current.x) * stiffness) * damping;
-      velocity.y = (velocity.y + (target.y - current.y) * stiffness) * damping;
-      velocity.scale =
-        (velocity.scale + (target.scale - current.scale) * stiffness) * damping;
+      // Frame-rate independent exponential ease: fraction of the remaining
+      // distance to close this frame. No velocity term, so it cannot overshoot.
+      const t = 1 - Math.exp(-dt * CAMERA_EASE);
       const next = {
-        x: current.x + velocity.x * elapsed,
-        y: current.y + velocity.y * elapsed,
-        scale: current.scale + velocity.scale * elapsed,
+        x: current.x + (target.x - current.x) * t,
+        y: current.y + (target.y - current.y) * t,
+        scale: current.scale + (target.scale - current.scale) * t,
       };
       const distance =
         Math.abs(target.x - next.x) +
         Math.abs(target.y - next.y) +
         Math.abs(target.scale - next.scale) * 180;
-      const speed =
-        Math.abs(velocity.x) +
-        Math.abs(velocity.y) +
-        Math.abs(velocity.scale) * 100;
 
-      if (distance < 0.07 && speed < 0.045) {
+      if (distance < 0.4) {
         commitCamera(target);
-        velocityRef.current = { x: 0, y: 0, scale: 0 };
         frameRef.current = null;
         finishTravel();
         return;
@@ -641,11 +634,13 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       setJourneyKey([selectedId, id].toSorted().join('::'));
     }
     setSelectedId(id);
-    setRevealedId(null);
+    // Reveal the details in the same click that starts the zoom, rather than
+    // waiting for the camera to arrive (which read as needing a second click).
+    setRevealedId(id);
     setHoveredId(null);
     setFocusedId(id);
     setHintVisible(false);
-    travelCamera(cameraTargetForPlace(place), id);
+    travelCamera(cameraTargetForPlace(place), null);
     if (pushHistory) updateHistory(id, true);
   }
 
@@ -1078,36 +1073,26 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                       <>
                         <rect
                           className="knowledge-landscape__place-hit"
-                          x="-32"
-                          y="-78"
-                          width="340"
-                          height="218"
+                          x="-24"
+                          y="-52"
+                          width="220"
+                          height="118"
                           rx="4"
                         />
-                        <text
-                          className="knowledge-landscape__root-kicker"
-                          x="0"
-                          y="-52"
-                        >
-                          the living index
-                        </text>
                         <text
                           className="knowledge-landscape__root-title"
                           x="0"
                           y="0"
                         >
-                          <tspan x="0">unfinished</tspan>
-                          <tspan x="0" dy="62">
-                            things
-                          </tspan>
+                          notes
                         </text>
                         <text
                           className="knowledge-landscape__root-meta"
                           x="0"
-                          y="112"
+                          y="38"
                         >
                           {places.length} notes · {layout.regions.length - 1}{' '}
-                          neighborhoods
+                          folders
                         </text>
                       </>
                     ) : place.isRegionAnchor ? (
@@ -1169,7 +1154,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                         />
                         <path
                           className="knowledge-landscape__place-mark"
-                          d="M-5 0H5M0-5V5M7-2v4"
+                          d="M0-4.6 4.6 0 0 4.6-4.6 0Z"
                         />
                         <text
                           className="knowledge-landscape__place-name"

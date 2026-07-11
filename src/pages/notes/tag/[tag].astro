@@ -3,7 +3,6 @@ export const prerender = true;
 
 import Base from '../../../layouts/Base.astro';
 import NoteCard from '../../../components/garden/NoteCard.astro';
-import NotesNav from '../../../components/garden/NotesNav.astro';
 import { getGardenIndex, getNoteTags } from '@lib/garden';
 import '../../../styles/components/_garden.css';
 
@@ -22,8 +21,6 @@ const notes = index.documents.filter((note) => getNoteTags(note).includes(tag));
 
 <Base title={'#' + tag} description={'Notes connected to #' + tag + '.'} wide>
   <div class="garden-page">
-    <NotesNav documents={index.searchDocuments} />
-
     <div class="garden-index garden-index--topic">
       <header class="garden-topic-header">
         <a href="/notes" class="garden-topic-header__back">← Notes</a>
