@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import {
   mkdir,
   readFile,
@@ -8,7 +7,6 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { getContentCollection } from './registry';
 import { assertSafeRepositoryPath, isValidSlug } from './paths';
 import type {
@@ -19,7 +17,20 @@ import type {
   PublishJob,
 } from './types';
 
-const execFileAsync = promisify(execFile);
+// Lazily loaded so this module can be imported (but not exercised) in workerd,
+// which has no child_process. Only the Node dev proxy calls the git helpers.
+async function execFileAsync(
+  file: string,
+  args: string[],
+  options: { cwd: string; maxBuffer?: number },
+): Promise<{ stdout: string }> {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  return promisify(execFile)(file, args, options) as Promise<{
+    stdout: string;
+  }>;
+}
+
 const STUDIO_DIR = '.oddava-studio';
 const DRAFTS_DIR = `${STUDIO_DIR}/drafts`;
 const JOBS_DIR = `${STUDIO_DIR}/publish-jobs`;

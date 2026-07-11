@@ -1,9 +1,7 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { getCollection, type CollectionEntry } from 'astro:content';
 import { z } from 'astro/zod';
 
 import { noteDataSchema } from '../content/schemas';
+import { parseContentDocument } from '../server/content/serializers';
 import {
   deriveSummary,
   deriveTitle,
@@ -27,8 +25,17 @@ export {
   notePathFromSourceId,
 } from './utils';
 
-export type NoteEntry = CollectionEntry<'notes'>;
 export type NoteData = z.infer<typeof noteDataSchema>;
+
+// A note as it comes out of the Redis store: the same shape the old content
+// collection exposed (`id`/`data`/`body`), plus the stored `updatedAt` that
+// replaces the git-derived timestamp.
+export type NoteSource = {
+  id: string;
+  data: NoteData;
+  body: string;
+  updatedAt: string;
+};
 
 export type GardenLink = {
   target: string;
@@ -77,15 +84,25 @@ export type GardenIndex = {
   unresolvedLinks: { sourceId: string; target: string }[];
 };
 
+export class GardenEmptyError extends Error {
+  readonly code = 'garden_empty';
+
+  constructor() {
+    super(
+      'The notes garden has no root document. Seed the content store (see scripts/migrate-notes-to-redis.mjs).',
+    );
+    this.name = 'GardenEmptyError';
+  }
+}
+
 const ROOT_DOCUMENT_ID = 'index';
 const WIKI_LINK_PATTERN = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g;
-let gardenIndexPromise: Promise<GardenIndex> | undefined;
 
-function entryId(entry: Pick<NoteEntry, 'id'>): string {
+function entryId(entry: Pick<NoteSource, 'id'>): string {
   return notePathFromSourceId(entry.id) || ROOT_DOCUMENT_ID;
 }
 
-function entryTitle(entry: NoteEntry): string {
+function entryTitle(entry: NoteSource): string {
   return (
     entry.data.title?.trim() ||
     deriveTitle(readBody(entry), noteIdFromSourceId(entry.id))
@@ -101,46 +118,18 @@ function normalizeLookup(value: string): string {
     .join('/');
 }
 
-// Recency is inferred from git rather than a hand-entered date field. The last
-// commit that touched a note is its "updated" time; when git history is absent
-// (shallow clone, fresh file) we fall back so sorting degrades gracefully.
-const NOTES_DIR = path.resolve(process.cwd(), 'src/content/notes');
-const gitDateCache = new Map<string, string>();
-
-function gitDate(sourceId: string): string {
-  const cached = gitDateCache.get(sourceId);
-  if (cached !== undefined) return cached;
-  const file = /\.[a-z0-9]+$/i.test(sourceId) ? sourceId : `${sourceId}.mdx`;
-  let value = '';
-  try {
-    value = execFileSync(
-      'git',
-      ['log', '-1', '--format=%aI', '--', path.join(NOTES_DIR, file)],
-      {
-        cwd: process.cwd(),
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      },
-    ).trim();
-  } catch {
-    value = '';
-  }
-  gitDateCache.set(sourceId, value);
-  return value;
+function noteDate(note: NoteSource): string {
+  return note.updatedAt || '1970-01-01';
 }
 
-function noteDate(note: NoteEntry): string {
-  return gitDate(note.id) || '1970-01-01';
-}
-
-function sortNotes(notes: NoteEntry[]): NoteEntry[] {
+function sortNotes(notes: NoteSource[]): NoteSource[] {
   return notes.toSorted((left, right) => {
     const dateDifference = noteDate(right).localeCompare(noteDate(left));
     return dateDifference || entryTitle(left).localeCompare(entryTitle(right));
   });
 }
 
-function readBody(note: NoteEntry): string {
+function readBody(note: NoteSource): string {
   return note.body ?? '';
 }
 
@@ -151,13 +140,13 @@ function extractLinks(body: string): GardenLink[] {
   }));
 }
 
-function allTags(note: NoteEntry): string[] {
+function allTags(note: NoteSource): string[] {
   return getNoteTags({ body: readBody(note) });
 }
 
-function buildLookup(entries: NoteEntry[]): Map<string, NoteEntry> {
-  const lookup = new Map<string, NoteEntry>();
-  const byLeafId = new Map<string, NoteEntry[]>();
+function buildLookup(entries: NoteSource[]): Map<string, NoteSource> {
+  const lookup = new Map<string, NoteSource>();
+  const byLeafId = new Map<string, NoteSource[]>();
 
   for (const entry of entries) {
     const id = entryId(entry);
@@ -181,7 +170,7 @@ function buildLookup(entries: NoteEntry[]): Map<string, NoteEntry> {
 
 function resolveLink(
   link: GardenLink,
-  lookup: Map<string, NoteEntry>,
+  lookup: Map<string, NoteSource>,
 ): GardenLink {
   const resolved = lookup.get(normalizeLookup(link.target));
   if (!resolved) return link;
@@ -192,18 +181,17 @@ function resolveLink(
   };
 }
 
-// Hierarchy is inferred entirely from where files live on disk — a folder is
-// just a directory, a page's parent is the directory it sits in. Nothing is
-// authored or validated; siblings are ordered by file name.
-function buildHierarchy(entries: NoteEntry[]): {
+// Hierarchy is inferred entirely from a note's source id (its former file
+// path) — a folder is just a path segment, a page's parent is the segment it
+// sits under. Nothing is authored or validated; siblings are ordered by the
+// optional `order` field then id.
+function buildHierarchy(entries: NoteSource[]): {
   childrenById: Map<string, string[]>;
   parentById: Map<string, string | null>;
 } {
   const entriesById = new Map(entries.map((entry) => [entryId(entry), entry]));
   if (!entriesById.has(ROOT_DOCUMENT_ID)) {
-    throw new Error(
-      'The notes garden needs src/content/notes/index.mdx as its root document.',
-    );
+    throw new GardenEmptyError();
   }
 
   const childrenById = new Map<string, string[]>();
@@ -234,10 +222,29 @@ function buildHierarchy(entries: NoteEntry[]): {
   return { childrenById, parentById };
 }
 
+async function loadNoteSources(): Promise<NoteSource[]> {
+  // Imported lazily so that pages which only use the pure garden *utilities*
+  // (slug/href/id helpers) can import `@lib/garden` without pulling the Redis
+  // client — and its `cloudflare:workers` env dependency — into the build-time
+  // prerender graph. Only an actual index build (SSR) touches the store.
+  const { readNoteFiles } = await import('../server/content/redis-store');
+  const files = await readNoteFiles();
+  return files.map((file) => {
+    const parsed = parseContentDocument(file.content, 'mdx');
+    const data = noteDataSchema.parse(parsed.fields);
+    return {
+      id: file.sourceId,
+      data,
+      body: parsed.body,
+      updatedAt: file.updatedAt,
+    } satisfies NoteSource;
+  });
+}
+
 async function buildGardenIndex(): Promise<GardenIndex> {
   // Every note in the garden is live — there is no draft/published split. What
   // you write in Studio is immediately part of the garden.
-  const entries = sortNotes(await getCollection('notes'));
+  const entries = sortNotes(await loadNoteSources());
   const seenIds = new Set<string>();
 
   for (const entry of entries) {
@@ -298,7 +305,7 @@ async function buildGardenIndex(): Promise<GardenIndex> {
       href: noteHrefFromSourceId(entry.id),
       title: entryTitle(entry),
       summary: deriveSummary(body),
-      updated: gitDate(entry.id),
+      updated: entry.updatedAt,
       data: entry.data,
       body,
       outbound,
@@ -352,10 +359,42 @@ async function buildGardenIndex(): Promise<GardenIndex> {
   };
 }
 
-export function getGardenIndex(): Promise<GardenIndex> {
-  if (import.meta.env.DEV) return buildGardenIndex();
-  gardenIndexPromise ??= buildGardenIndex();
-  return gardenIndexPromise;
+// Notes are stored in Redis and edited live through Studio. The store bumps a
+// `content:version` counter on every mutation, so a reader can cache the built
+// index and reuse it until the version changes — a steady-state page render is
+// then a single cheap GET rather than a full re-read of every note. Because the
+// counter lives in Redis, a Studio save in one Worker isolate invalidates the
+// cache in every other isolate, keeping the site real-time. `inflight` collapses
+// concurrent rebuilds of the same version into one.
+let cached: { version: string; index: GardenIndex } | null = null;
+let inflight: { version: string; promise: Promise<GardenIndex> } | null = null;
+
+export async function getGardenIndex(): Promise<GardenIndex> {
+  const { contentVersion } = await import('../server/content/redis-store');
+
+  let version: string;
+  try {
+    version = await contentVersion();
+  } catch (error) {
+    // If the store is momentarily unreachable, serve the last good index rather
+    // than failing the whole page.
+    if (cached) return cached.index;
+    throw error;
+  }
+
+  if (cached?.version === version) return cached.index;
+  if (inflight?.version === version) return inflight.promise;
+
+  const promise = buildGardenIndex()
+    .then((index) => {
+      cached = { version, index };
+      return index;
+    })
+    .finally(() => {
+      if (inflight?.version === version) inflight = null;
+    });
+  inflight = { version, promise };
+  return promise;
 }
 
 export async function getGardenDocument(

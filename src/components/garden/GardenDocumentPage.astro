@@ -1,28 +1,19 @@
 ---
-import type { CollectionEntry } from 'astro:content';
-import { render } from 'astro:content';
 import type { GardenDocument, GardenIndex } from '@lib/garden';
-import { mdxComponents } from '../mdx/components';
+import { renderNoteHtml } from '@lib/garden/render';
 import NoteContents from './NoteContents.astro';
 
 interface Props {
-  entry: CollectionEntry<'notes'>;
   document: GardenDocument;
   index: GardenIndex;
 }
 
-const { entry, document, index } = Astro.props;
-const { Content } = await render(entry);
+const { document, index } = Astro.props;
+const html = document.body.trim() ? renderNoteHtml(document.body) : '';
 ---
 
 <article class="garden-document">
-  {
-    document.body.trim() && (
-      <div class="prose garden-document__body">
-        <Content components={mdxComponents} />
-      </div>
-    )
-  }
+  {html && <div class="prose garden-document__body" set:html={html} />}
 
   <NoteContents document={document} index={index} />
   <slot />

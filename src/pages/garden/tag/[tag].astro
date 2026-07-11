@@ -1,13 +1,6 @@
 ---
-export const prerender = true;
-
-import { getGardenIndex } from '@lib/garden';
-
-export async function getStaticPaths() {
-  const index = await getGardenIndex();
-  return index.tags.map((tag) => ({ params: { tag: tag.name } }));
-}
-
+// Old /garden/tag/<tag> links live on as redirects into the notes garden.
+// A pure param redirect — no need to enumerate tags from the store.
 return Astro.redirect(
   '/notes/tag/' + encodeURIComponent(Astro.params.tag ?? ''),
   301,
