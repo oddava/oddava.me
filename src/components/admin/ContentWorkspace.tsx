@@ -27,6 +27,9 @@ import StudioFolderTree, { type StudioTreeItemRef } from './StudioFolderTree';
 import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
+import StudioToolbar from './StudioToolbar';
+import StudioImageDialog from './StudioImageDialog';
+import { makeEditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import './Studio.css';
 
@@ -184,6 +187,7 @@ export function ContentWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
 
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
 
@@ -894,67 +898,57 @@ export function ContentWorkspace({
 
   // --- Editor helpers ------------------------------------------------------
 
-  /** Insert text at the caret while preserving the native undo stack. */
-  function insertAtCursor(snippet: string) {
-    const editor = editorRef.current;
-    if (!editor) {
-      const next = body ? `${body}\n\n${snippet}` : snippet;
-      setBody(next);
-      markDirty({ body: next });
-      return;
-    }
-    editor.focus();
-    // execCommand keeps the browser's undo history intact, unlike setState.
-    const inserted = document.execCommand('insertText', false, snippet);
-    if (!inserted) {
-      const start = editor.selectionStart;
-      const end = editor.selectionEnd;
-      const next =
-        editor.value.slice(0, start) + snippet + editor.value.slice(end);
-      setBody(next);
-      markDirty({ body: next });
-      requestAnimationFrame(() => {
-        const caret = start + snippet.length;
-        editor.setSelectionRange(caret, caret);
-      });
-    }
-  }
+  // Commit is only used on the rare browser where execCommand is unavailable;
+  // the normal path lets the textarea's own input event drive `body`, which
+  // keeps the native undo/redo stack intact.
+  const commitBody = useCallback(
+    (value: string) => {
+      setBody(value);
+      markDirty({ body: value });
+    },
+    // markDirty is defined every render but only reads refs, so [] is safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
-  /** Wrap the current selection (Cmd+B / Cmd+I). */
-  function wrapSelection(marker: string) {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    const selected = editor.value.slice(start, end);
-    editor.focus();
-    document.execCommand('insertText', false, `${marker}${selected}${marker}`);
-    if (start === end) {
-      const caret = start + marker.length;
-      requestAnimationFrame(() => editor.setSelectionRange(caret, caret));
-    }
-  }
+  const editorCommands = useMemo(
+    () => makeEditorCommands(() => editorRef.current, commitBody),
+    [commitBody],
+  );
 
-  async function uploadImage(file: File) {
-    if (!collection) return;
-    setBusyKey('upload-body');
-    setError(null);
-    try {
-      const response = await uploadContentMedia(
-        collection.id,
-        slugify(openId || 'uploads') || 'uploads',
-        file,
-      );
-      const alt = file.name.replace(/\.[a-z0-9]+$/i, '');
-      insertAtCursor(`![${alt}](${response.media.url})`);
-      setNotice('Image added.');
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : 'Could not upload image.',
-      );
-    } finally {
-      setBusyKey(null);
-    }
+  // Upload a file to the note's media folder and return its URL.
+  const uploadImageFile = useCallback(
+    async (file: File): Promise<string | null> => {
+      if (!collection) return null;
+      setBusyKey('upload-body');
+      setError(null);
+      try {
+        const response = await uploadContentMedia(
+          collection.id,
+          slugify(openId || 'uploads') || 'uploads',
+          file,
+        );
+        return response.media.url;
+      } catch (caught) {
+        setError(
+          caught instanceof Error ? caught.message : 'Could not upload image.',
+        );
+        return null;
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [collection, openId],
+  );
+
+  // Paste / drop: upload and drop a plain Markdown image at the caret. The
+  // toolbar's image button opens the richer dialog (size, position, caption).
+  async function quickInsertImage(file: File) {
+    const url = await uploadImageFile(file);
+    if (!url) return;
+    const alt = file.name.replace(/\.[a-z0-9]+$/i, '');
+    editorCommands.insertInline(`![${alt}](${url})`);
+    setNotice('Image added.');
   }
 
   function imageFromTransfer(
@@ -980,17 +974,22 @@ export function ContentWorkspace({
     }
     if (mod && event.key.toLowerCase() === 'b') {
       event.preventDefault();
-      wrapSelection('**');
+      editorCommands.bold();
       return;
     }
     if (mod && event.key.toLowerCase() === 'i') {
       event.preventDefault();
-      wrapSelection('_');
+      editorCommands.italic();
+      return;
+    }
+    if (mod && event.shiftKey && event.key.toLowerCase() === 'x') {
+      event.preventDefault();
+      editorCommands.strike();
       return;
     }
     if (event.key === 'Tab') {
       event.preventDefault();
-      insertAtCursor('  ');
+      editorCommands.insertInline('  ');
     }
   }
 
@@ -1104,6 +1103,11 @@ export function ContentWorkspace({
     ];
     if (openId) {
       commands.push(
+        {
+          id: 'insert-image',
+          title: 'Insert image…',
+          run: () => setImageDialogOpen(true),
+        },
         {
           id: 'save-note',
           title: 'Save now',
@@ -1322,6 +1326,10 @@ export function ContentWorkspace({
               <div className={`studio-panes is-${view}`}>
                 {view !== 'preview' && (
                   <div className="studio-write">
+                    <StudioToolbar
+                      commands={editorCommands}
+                      onInsertImage={() => setImageDialogOpen(true)}
+                    />
                     <textarea
                       ref={editorRef}
                       className="studio-textarea"
@@ -1341,7 +1349,7 @@ export function ContentWorkspace({
                         );
                         if (file) {
                           event.preventDefault();
-                          void uploadImage(file);
+                          void quickInsertImage(file);
                         }
                       }}
                       onDragOver={(event) => {
@@ -1356,7 +1364,7 @@ export function ContentWorkspace({
                             : null;
                         if (file) {
                           event.preventDefault();
-                          void uploadImage(file);
+                          void quickInsertImage(file);
                         }
                       }}
                     />
@@ -1411,6 +1419,12 @@ export function ContentWorkspace({
           setPaletteOpen(false);
           editEntry(entry);
         }}
+      />
+      <StudioImageDialog
+        open={imageDialogOpen}
+        onClose={() => setImageDialogOpen(false)}
+        onUpload={uploadImageFile}
+        onSubmit={(markup) => editorCommands.insertBlock(markup)}
       />
       {dialog}
     </article>
