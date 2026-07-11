@@ -1,11 +1,11 @@
 {
   "profile": {
     "name": "oddava",
-    "bio": "my links",
+    "bio": "a few places you can find me.",
     "avatar": "/images/twt-pfp.jpg"
   },
   "links": [
-    { "title": "Blog", "url": "/blog", "icon": "pen" },
+    { "title": "Notes", "url": "/notes", "icon": "pen" },
     { "title": "GitHub", "url": "https://github.com", "icon": "github" },
     { "title": "X", "url": "https://x.com", "icon": "twitter" },
     { "title": "Email", "url": "mailto:hello@oddava.me", "icon": "mail" }

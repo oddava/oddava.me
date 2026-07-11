@@ -1,7 +1,7 @@
 export const prerender = true;
 
 import type { APIRoute } from 'astro';
-import { getCollection } from 'astro:content';
+import { getGardenIndex } from '../lib/garden';
 import { siteUrl } from '../lib/site';
 import { getStaticSitemapPaths } from '../lib/site-routes';
 
@@ -14,23 +14,21 @@ function makeEntry(path: string, lastModified?: string): string {
 }
 
 export const GET: APIRoute = async () => {
-  const [posts, projects] = await Promise.all([
-    getCollection('blog', ({ data }) => !data.draft),
-    getCollection('projects'),
-  ]);
-
-  const staticEntries = getStaticSitemapPaths().map((path) => makeEntry(path));
-
-  const postEntries = posts.map((post) =>
-    makeEntry(`/blog/${post.id}`, post.data.date),
+  const garden = await getGardenIndex();
+  const entriesByPath = new Map(
+    getStaticSitemapPaths().map((path) => [path, makeEntry(path)]),
   );
-  const projectEntries = projects.map((project) =>
-    makeEntry(`/projects/${project.id}`),
-  );
+
+  for (const document of garden.documents) {
+    entriesByPath.set(
+      document.href,
+      makeEntry(document.href, document.updated || undefined),
+    );
+  }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[...staticEntries, ...postEntries, ...projectEntries].join('')}
+${[...entriesByPath.values()].join('')}
 </urlset>`;
 
   return new Response(xml, {

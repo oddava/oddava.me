@@ -166,6 +166,41 @@ export async function adminContentEntryRoute(
   );
 }
 
+export async function adminContentFoldersRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError =
+    context.request.method === 'GET'
+      ? await requireAdmin(context)
+      : await requireMutation(context);
+  if (authError) return authError;
+
+  const collectionId = context.params.collection ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}/folders`,
+    ),
+  );
+}
+
+export async function adminContentMoveRoute(
+  context: APIContext,
+): Promise<Response> {
+  const authError = await requireMutation(context);
+  if (authError) return authError;
+
+  const collectionId = context.params.collection ?? '';
+  if (!isLocalContentDev()) return contentEditingUnavailable();
+  return safeContentResponse(() =>
+    forwardToLocalProxy(
+      context,
+      `/api/admin/content/${encodeURIComponent(collectionId)}/move`,
+    ),
+  );
+}
+
 export async function adminContentMediaRoute(
   context: APIContext,
 ): Promise<Response> {

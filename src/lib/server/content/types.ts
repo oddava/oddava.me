@@ -9,12 +9,22 @@ export class ContentRevisionConflictError extends Error {
   }
 }
 
-export type ContentCollectionId = 'blog' | 'projects' | 'books';
+export class ContentFolderNotEmptyError extends Error {
+  readonly code = 'folder_not_empty';
+
+  constructor() {
+    super('Move the notes out of this folder before deleting it.');
+    this.name = 'ContentFolderNotEmptyError';
+  }
+}
+
+export type ContentCollectionId = 'notes';
 
 export type ContentFormat = 'mdx' | 'yaml';
 
 export type ContentFieldType =
   | 'text'
+  | 'select'
   | 'textarea'
   | 'date'
   | 'boolean'
@@ -30,6 +40,7 @@ export interface ContentFieldDefinition {
   required?: boolean;
   description?: string;
   hidden?: boolean;
+  options?: { label: string; value: string }[];
 }
 
 export type ContentBlockType =
@@ -78,6 +89,7 @@ export interface ContentDraft extends ContentDocument {
   collection: ContentCollectionId;
   id: string;
   title: string;
+  folder: string;
   sourcePath: string;
   sourceRevision?: string;
   isNew: boolean;
@@ -136,6 +148,7 @@ export interface ContentCollectionDefinition {
   indexRoute: string;
   supportsDrafts: boolean;
   supportsBlocks: boolean;
+  supportsFolders?: boolean;
   templates: ContentTemplate[];
   surfaces: {
     id: string;
@@ -163,6 +176,15 @@ export interface ContentProvider {
   kind: 'local';
   listFiles(directory: string, extension: string): Promise<ContentSourceFile[]>;
   readFile(path: string): Promise<ContentSourceFile | null>;
+  listDirectories(directory: string): Promise<string[]>;
+  createDirectory(path: string, message: string): Promise<ContentWriteResult>;
+  movePath(
+    from: string,
+    to: string,
+    message: string,
+    revision?: string,
+  ): Promise<ContentWriteResult>;
+  deleteDirectory(path: string, message: string): Promise<ContentWriteResult>;
   writeTextFile(
     path: string,
     content: string,
@@ -185,9 +207,20 @@ export interface ContentProvider {
 export interface ContentEntryListItem {
   id: string;
   title: string;
+  folder: string;
   path: string;
   revision?: string;
   meta: Record<string, unknown>;
+}
+
+export interface ContentFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  depth: number;
+  noteCount: number;
+  totalNoteCount: number;
+  documentId?: string;
 }
 
 export interface ContentEntryDetail extends ContentEntryListItem {

@@ -19,6 +19,7 @@ export interface Props {
   image?: string;
   type?: 'website' | 'article';
   hideFooter?: boolean;
+  wide?: boolean;
 }
 
 const {
@@ -29,6 +30,7 @@ const {
   image = '/og-default.svg',
   type = 'website',
   hideFooter = false,
+  wide = false,
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
@@ -114,7 +116,7 @@ const socialImage = new URL(image, Astro.site ?? Astro.url).href;
     <style is:inline set:html={criticalCss}></style>
   </head>
   <body>
-    <div class="page">
+    <div class={`page ${wide ? 'page--wide' : ''}`}>
       <a href="#main" class="skip-link">Skip to content</a>
 
       <main id="main">

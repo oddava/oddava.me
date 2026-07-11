@@ -6,12 +6,11 @@ export type PublicNavigationRoute = {
 
 const PUBLIC_NAVIGATION_ROUTES = [
   { href: '/', label: 'oddava', isHome: true },
-  { href: '/blog', label: 'writing', isHome: false },
-  { href: '/projects', label: 'projects', isHome: false },
+  { href: '/notes', label: 'notes', isHome: false },
   { href: '/about', label: 'about', isHome: false },
 ] as const satisfies readonly PublicNavigationRoute[];
 
-const EXTRA_STATIC_SITEMAP_PATHS = ['/links'] as const;
+const EXTRA_STATIC_SITEMAP_PATHS = ['/links', '/notes/graph'] as const;
 
 export function getPublicNavigationRoutes(): PublicNavigationRoute[] {
   return PUBLIC_NAVIGATION_ROUTES.map((route) => ({ ...route }));

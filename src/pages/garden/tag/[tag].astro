@@ -1,0 +1,15 @@
+---
+export const prerender = true;
+
+import { getGardenIndex } from '@lib/garden';
+
+export async function getStaticPaths() {
+  const index = await getGardenIndex();
+  return index.tags.map((tag) => ({ params: { tag: tag.name } }));
+}
+
+return Astro.redirect(
+  '/notes/tag/' + encodeURIComponent(Astro.params.tag ?? ''),
+  301,
+);
+---

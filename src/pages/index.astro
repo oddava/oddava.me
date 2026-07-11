@@ -2,21 +2,20 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import LinkIcon from '../components/LinkIcon.astro';
+import { getGardenIndex } from '@lib/garden';
 import '../styles/components/_home.css';
-import { getFeaturedPosts, formatPostDate, getPostStats } from '../lib/content';
-import { getAllProjects } from '../lib/projects';
 
-const [featuredPosts, projects] = await Promise.all([
-  getFeaturedPosts(),
-  getAllProjects(),
-]);
-
-const featuredProjects = projects.filter((project) => project.featured);
+const index = await getGardenIndex();
+// The garden index is already ordered most-recently-touched first, so "what
+// I've been writing" is just the top of it, minus the notes home itself.
+const recentNotes = index.documents
+  .filter((note) => note.id !== 'index')
+  .slice(0, 6);
 ---
 
 <Base
   title="oddava"
-  description="Software, AI, and personal projects by oddava."
+  description="the notebook i keep out in the open — things i'm making, reading, and thinking about."
   image="/og-default.svg"
 >
   <section class="home-hero home-hero--intro">
@@ -30,19 +29,13 @@ const featuredProjects = projects.filter((project) => project.featured);
     />
     <h1 class="home-hero__title">oddava</h1>
     <p class="home-hero__tagline">
-      i spend my time building software, playing games (maintaining my losing
-      streak), reading webtoon/novels and occasionally watching anime
+      hi, i'm oddava. i build software, lose at games more than i'd like, and
+      read a lot of webtoons and novels. this is where i keep the notes.
     </p>
 
     <nav class="home-hero__cta" aria-label="primary">
-      <a href="/blog" class="home-cta home-cta--icon" aria-label="writing">
-        <LinkIcon name="pen" />
-      </a>
-      <a href="/projects" class="home-cta home-cta--icon" aria-label="projects">
-        <LinkIcon name="code" />
-      </a>
-      <a href="/library" class="home-cta home-cta--icon" aria-label="library">
-        <LinkIcon name="book" />
+      <a href="/notes" class="home-cta home-cta--icon" aria-label="notes">
+        <LinkIcon name="graph" />
       </a>
       <a href="/about" class="home-cta home-cta--icon" aria-label="about">
         <LinkIcon name="user" />
@@ -54,49 +47,19 @@ const featuredProjects = projects.filter((project) => project.featured);
   </section>
 
   {
-    featuredProjects.length > 0 && (
-      <section class="home-section" aria-labelledby="featured-projects-heading">
-        <h2 id="featured-projects-heading" class="section-heading">
-          featured projects
+    recentNotes.length > 0 && (
+      <section class="home-section" aria-labelledby="recent-notes-heading">
+        <h2 id="recent-notes-heading" class="section-heading">
+          lately
         </h2>
         <ul class="home-card-list">
-          {featuredProjects.map((project) => (
+          {recentNotes.map((note) => (
             <li>
-              <a href={`/projects/${project.id}`} class="home-card">
-                <span class="home-card__title">{project.title}</span>
-                <span class="home-card__desc">{project.description}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )
-  }
-
-  {
-    featuredPosts.length > 0 && (
-      <section class="home-section" aria-labelledby="featured-writing-heading">
-        <h2 id="featured-writing-heading" class="section-heading">
-          featured writing
-        </h2>
-        <ul class="home-card-list">
-          {featuredPosts.map((post) => (
-            <li>
-              <a href={`/blog/${post.id}`} class="home-card">
-                <span class="home-card__title">{post.data.title}</span>
-                <span class="home-card__desc">
-                  <time datetime={post.data.date}>
-                    {formatPostDate(post.data.date, 'short')}
-                  </time>
-                  {post.body && (
-                    <>
-                      <span aria-hidden="true"> · </span>
-                      <span>
-                        {getPostStats(post.body).readingTimeMinutes} min
-                      </span>
-                    </>
-                  )}
-                </span>
+              <a href={note.href} class="home-card">
+                <span class="home-card__title">{note.title}</span>
+                {note.summary && (
+                  <span class="home-card__desc">{note.summary}</span>
+                )}
               </a>
             </li>
           ))}

@@ -38,11 +38,9 @@ async function readAdminGuestbookEntries() {
   }
 }
 
-async function loadCollection<T extends 'blog' | 'projects' | 'books'>(
-  name: T,
-): Promise<CollectionEntry<T>[]> {
+async function loadCollection(): Promise<CollectionEntry<'notes'>[]> {
   try {
-    return await getCollection(name);
+    return await getCollection('notes');
   } catch {
     return [];
   }
@@ -70,14 +68,11 @@ export const GET: APIRoute = async ({ cookies }) => {
   const authError = await requireSecuredAdminApi(cookies);
   if (authError) return authError;
 
-  const [posts, projects, books, guestbookEntries, integrations] =
-    await Promise.all([
-      loadCollection('blog'),
-      loadCollection('projects'),
-      loadCollection('books'),
-      readAdminGuestbookEntries(),
-      loadIntegrations(),
-    ]);
+  const [notes, guestbookEntries, integrations] = await Promise.all([
+    loadCollection(),
+    readAdminGuestbookEntries(),
+    loadIntegrations(),
+  ]);
 
   const pending = guestbookEntries.filter(
     (entry) => entry.status === 'pending',
@@ -85,18 +80,12 @@ export const GET: APIRoute = async ({ cookies }) => {
   const approved = guestbookEntries.filter(
     (entry) => entry.status === 'approved',
   ).length;
-  const drafts = posts.filter((post) => post.data.draft).length;
-  const featuredProjects = projects.filter(
-    (project) => project.data.featured,
-  ).length;
+  const drafts = notes.filter((note) => note.data.draft).length;
 
   return adminJson({
     metrics: {
-      posts: posts.length,
+      notes: notes.length,
       drafts,
-      projects: projects.length,
-      featuredProjects,
-      books: books.length,
       pendingGuestbook: pending,
       approvedGuestbook: approved,
     },

@@ -1,0 +1,85 @@
+---
+export const prerender = true;
+
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
+import NotesNav from '../../components/garden/NotesNav.astro';
+import {
+  getGardenIndex,
+  noteIdFromSourceId,
+  type GardenDocument,
+  type GardenIndex,
+} from '@lib/garden';
+import '../../styles/components/_garden.css';
+import '../../styles/components/_prose.css';
+
+type RouteProps = {
+  entry?: CollectionEntry<'notes'>;
+  document?: GardenDocument;
+  index?: GardenIndex;
+  redirectTo?: string;
+};
+
+export async function getStaticPaths() {
+  const [entries, index] = await Promise.all([
+    getCollection('notes'),
+    getGardenIndex(),
+  ]);
+  const entriesBySourceId = new Map(entries.map((entry) => [entry.id, entry]));
+  const claimedPaths = new Set([
+    'folder',
+    'graph',
+    'tag',
+    ...index.documents.map((document) => document.path).filter(Boolean),
+  ]);
+  const paths: { params: { path: string }; props: RouteProps }[] =
+    index.documents
+      .filter((document) => document.path)
+      .map((document) => ({
+        params: { path: document.path },
+        props: {
+          entry: entriesBySourceId.get(document.sourceId)!,
+          document,
+          index,
+        },
+      }));
+
+  // A nested note stays reachable by its bare file name too, redirecting to its
+  // real path. Hierarchy is inferred from the file tree, so this is the only
+  // legacy alias we keep.
+  for (const document of index.documents) {
+    const legacyPath = noteIdFromSourceId(document.sourceId);
+    if (
+      !legacyPath ||
+      legacyPath === document.path ||
+      claimedPaths.has(legacyPath)
+    ) {
+      continue;
+    }
+    claimedPaths.add(legacyPath);
+    paths.push({
+      params: { path: legacyPath },
+      props: { redirectTo: document.href },
+    });
+  }
+
+  return paths;
+}
+
+const props = Astro.props as RouteProps;
+if (props.redirectTo) {
+  return Astro.redirect(props.redirectTo, 301);
+}
+
+const entry = props.entry!;
+const document = props.document!;
+const index = props.index!;
+---
+
+<Base title={document.title} description={document.summary} wide>
+  <div class="garden-page">
+    <NotesNav documents={index.searchDocuments} current="notes" />
+    <GardenDocumentPage entry={entry} document={document} index={index} />
+  </div>
+</Base>

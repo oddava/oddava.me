@@ -4,6 +4,20 @@ export function isValidSlug(value: string): boolean {
   return SLUG_PATTERN.test(value);
 }
 
+export function normalizeFolderPath(value: string): string {
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\/{2,}/g, '/');
+}
+
+export function isValidFolderPath(value: string, allowRoot = true): boolean {
+  const normalized = normalizeFolderPath(value);
+  if (!normalized) return allowRoot;
+  return normalized.split('/').every(isValidSlug);
+}
+
 export function slugify(value: string): string {
   return value
     .trim()
@@ -17,8 +31,12 @@ export function sourcePath(
   directory: string,
   slug: string,
   extension: string,
+  folder = '',
 ): string {
-  return `${directory}/${slug}.${extension}`;
+  const normalizedFolder = normalizeFolderPath(folder);
+  return [directory, normalizedFolder, `${slug}.${extension}`]
+    .filter(Boolean)
+    .join('/');
 }
 
 export function entryIdFromPath(path: string, extension: string): string {
@@ -27,6 +45,28 @@ export function entryIdFromPath(path: string, extension: string): string {
     .replace(new RegExp(`\\.${extension}$`), '')
     .split('/')
     .pop()!;
+}
+
+export function entryFolderFromPath(
+  filePath: string,
+  directory: string,
+): string {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const normalizedDirectory = directory.replace(/\\/g, '/').replace(/\/$/, '');
+  const relative = normalizedPath.startsWith(`${normalizedDirectory}/`)
+    ? normalizedPath.slice(normalizedDirectory.length + 1)
+    : normalizedPath;
+  const segments = relative.split('/');
+  segments.pop();
+  return segments.join('/');
+}
+
+export function folderIdFromPath(path: string, directory: string): string {
+  const normalizedPath = path.replace(/\\/g, '/').replace(/\/$/, '');
+  const normalizedDirectory = directory.replace(/\\/g, '/').replace(/\/$/, '');
+  return normalizedPath.startsWith(`${normalizedDirectory}/`)
+    ? normalizedPath.slice(normalizedDirectory.length + 1)
+    : '';
 }
 
 export function sanitizeFilename(originalName: string): string {

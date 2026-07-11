@@ -5,8 +5,12 @@ import { readJsonBody, requestBodyErrorResponse } from '../community/body';
 import { bodyToBlocks, blocksToBody } from './blocks';
 import { getContentCollection, getContentCollections } from './registry';
 import {
+  entryFolderFromPath,
   entryIdFromPath,
+  folderIdFromPath,
+  isValidFolderPath,
   isValidSlug,
+  normalizeFolderPath,
   sanitizeFilename,
   slugify,
   sourcePath,
@@ -25,7 +29,10 @@ import {
   writeDraft,
   writePublishJob,
 } from './studio';
-import { ContentRevisionConflictError } from './types';
+import {
+  ContentFolderNotEmptyError,
+  ContentRevisionConflictError,
+} from './types';
 import type {
   ContentBlock,
   ContentCollectionDefinition,
@@ -33,6 +40,7 @@ import type {
   ContentEntryDetail,
   ContentEntryListItem,
   ContentFieldDefinition,
+  ContentFolder,
   ContentProvider,
   ContentSourceFile,
   ContentWriteResult,
@@ -50,6 +58,7 @@ const ALLOWED_MEDIA_TYPES = new Set([
 
 interface SaveEntryBody {
   slug?: string;
+  folder?: string;
   fields?: Record<string, unknown>;
   body?: string;
   revision?: string;
@@ -67,6 +76,7 @@ function publicCollection(collection: ContentCollectionDefinition) {
     indexRoute: collection.indexRoute,
     supportsDrafts: collection.supportsDrafts,
     supportsBlocks: collection.supportsBlocks,
+    supportsFolders: collection.supportsFolders ?? false,
     templates: collection.templates,
     surfaces: collection.surfaces,
     fields: collection.fields,
@@ -119,14 +129,15 @@ export async function handleContentReorder(
   if (!collection.reorderable || !collection.orderField)
     return notReorderable();
 
-  let body: { ids?: unknown };
+  let body: { ids?: unknown; folder?: unknown };
   try {
-    body = await readJsonBody<{ ids?: unknown }>(request);
+    body = await readJsonBody<{ ids?: unknown; folder?: unknown }>(request);
   } catch (error) {
     return requestBodyErrorResponse(error);
   }
 
   const ids = Array.isArray(body.ids) ? body.ids.map((id) => String(id)) : null;
+  const folder = normalizeFolderPath(String(body.folder ?? ''));
   if (!ids || ids.length === 0 || ids.some((id) => !isValidSlug(id))) {
     return adminJson(
       {
@@ -136,25 +147,36 @@ export async function handleContentReorder(
       { status: 400 },
     );
   }
+  if (!isValidFolderPath(folder)) return badFolder();
+  if (!(await folderExists(provider, collection, folder))) {
+    return adminJson(
+      { error: 'That folder no longer exists.', code: 'folder_not_found' },
+      { status: 404 },
+    );
+  }
 
   const entries = await readCollectionEntries(provider, collection);
-  const existingIds = new Set(entries.map((entry) => entry.id));
+  const siblingEntries = entries.filter(
+    (entry) =>
+      entry.folder === folder && !(folder === '' && entry.id === 'index'),
+  );
+  const existingIds = new Set(siblingEntries.map((entry) => entry.id));
   const uniqueIds = new Set(ids);
   if (
     uniqueIds.size !== ids.length ||
-    ids.length !== entries.length ||
+    ids.length !== siblingEntries.length ||
     ids.some((id) => !existingIds.has(id))
   ) {
     return adminJson(
       {
-        error: 'Reorder ids must include every current entry exactly once.',
+        error: 'Reorder ids must include every sibling entry exactly once.',
         code: 'invalid_reorder_ids',
       },
       { status: 400 },
     );
   }
 
-  const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+  const entriesById = new Map(siblingEntries.map((entry) => [entry.id, entry]));
   const orderField = collection.orderField;
   const results: { id: string; ok: boolean }[] = [];
   for (let index = 0; index < ids.length; index += 1) {
@@ -196,6 +218,7 @@ export async function handleContentReorder(
 function fieldDefault(field: ContentFieldDefinition): unknown {
   if (field.type === 'boolean') return false;
   if (field.type === 'string-list') return [];
+  if (field.type === 'integer') return undefined;
   return '';
 }
 
@@ -295,13 +318,16 @@ function toListItem(
   const id = entryIdFromPath(file.path, collection.extension);
   return {
     id,
-    title: String(parsed.fields.title ?? id),
+    title: titleFromFields(
+      id,
+      parsed.fields,
+      collection.body ? parsed.body : undefined,
+    ),
+    folder: entryFolderFromPath(file.path, collection.sourceDir),
     path: file.path,
     revision: file.revision,
     meta: {
-      date: parsed.fields.date,
       draft: parsed.fields.draft,
-      featured: parsed.fields.featured,
       order: parsed.fields.order,
     },
   };
@@ -319,26 +345,19 @@ function toDetail(
   };
 }
 
-function sortEntries(
-  collection: ContentCollectionDefinition,
-  entries: ContentEntryListItem[],
-): ContentEntryListItem[] {
-  if (collection.id === 'blog') {
-    return entries.toSorted((left, right) =>
-      String(right.meta.date ?? '').localeCompare(String(left.meta.date ?? '')),
+function sortEntries(entries: ContentEntryListItem[]): ContentEntryListItem[] {
+  return entries.toSorted((left, right) => {
+    const order =
+      Number(left.meta.order ?? Number.MAX_SAFE_INTEGER) -
+      Number(right.meta.order ?? Number.MAX_SAFE_INTEGER);
+    if (order !== 0) return order;
+
+    const leftDate = String(left.meta.updated ?? left.meta.created ?? '');
+    const rightDate = String(right.meta.updated ?? right.meta.created ?? '');
+    return (
+      rightDate.localeCompare(leftDate) || left.title.localeCompare(right.title)
     );
-  }
-  if (collection.id === 'books') {
-    return entries.toSorted((left, right) => {
-      const order =
-        Number(left.meta.order ?? Number.MAX_SAFE_INTEGER) -
-        Number(right.meta.order ?? Number.MAX_SAFE_INTEGER);
-      return order || left.title.localeCompare(right.title);
-    });
-  }
-  return entries.toSorted((left, right) =>
-    left.title.localeCompare(right.title),
-  );
+  });
 }
 
 async function readCollectionEntries(
@@ -349,10 +368,81 @@ async function readCollectionEntries(
     collection.sourceDir,
     collection.extension,
   );
-  return sortEntries(
-    collection,
-    files.map((file) => toListItem(collection, file)),
+  return sortEntries(files.map((file) => toListItem(collection, file)));
+}
+
+async function findEntryFile(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  id: string,
+): Promise<ContentSourceFile | null> {
+  const files = await provider.listFiles(
+    collection.sourceDir,
+    collection.extension,
   );
+  return (
+    files.find(
+      (file) => entryIdFromPath(file.path, collection.extension) === id,
+    ) ?? null
+  );
+}
+
+function folderName(id: string): string {
+  return id.split('/').pop() ?? id;
+}
+
+async function readCollectionFolders(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  entries?: ContentEntryListItem[],
+): Promise<ContentFolder[]> {
+  if (!collection.supportsFolders) return [];
+
+  const collectionEntries =
+    entries ?? (await readCollectionEntries(provider, collection));
+  const folderIds = new Set(
+    (await provider.listDirectories(collection.sourceDir))
+      .map((directory) => folderIdFromPath(directory, collection.sourceDir))
+      .filter(Boolean),
+  );
+
+  for (const entry of collectionEntries) {
+    let current = entry.folder;
+    while (current) {
+      folderIds.add(current);
+      current = current.includes('/')
+        ? current.slice(0, current.lastIndexOf('/'))
+        : '';
+    }
+  }
+
+  const directCounts = new Map<string, number>();
+  for (const entry of collectionEntries) {
+    directCounts.set(entry.folder, (directCounts.get(entry.folder) ?? 0) + 1);
+  }
+
+  return [...folderIds]
+    .toSorted((left, right) => left.localeCompare(right))
+    .map((id) => {
+      const name = folderName(id);
+      const parentId = id.includes('/')
+        ? id.slice(0, id.lastIndexOf('/'))
+        : null;
+      const document = collectionEntries.find(
+        (entry) => entry.id === name && entry.folder === (parentId ?? ''),
+      );
+      return {
+        id,
+        name,
+        parentId,
+        depth: id.split('/').length - 1,
+        noteCount: directCounts.get(id) ?? 0,
+        totalNoteCount: collectionEntries.filter(
+          (entry) => entry.folder === id || entry.folder.startsWith(`${id}/`),
+        ).length,
+        documentId: document?.id,
+      };
+    });
 }
 
 function missingCollection(): Response {
@@ -374,6 +464,16 @@ function badSlug(): Response {
     {
       error: 'Slug must use lowercase kebab-case.',
       code: 'invalid_slug',
+    },
+    { status: 400 },
+  );
+}
+
+function badFolder(): Response {
+  return adminJson(
+    {
+      error: 'Folder names must use lowercase letters, numbers, and hyphens.',
+      code: 'invalid_folder',
     },
     { status: 400 },
   );
@@ -405,10 +505,31 @@ export async function handleContentCollection(
   if (!collection) return missingCollection();
 
   if (request.method === 'GET') {
+    const entries = await readCollectionEntries(provider, collection);
+    const drafts = await draftsForCollection(projectRoot, collection.id);
+    const draftById = new Map(drafts.map((draft) => [draft.id, draft]));
+    const folderEntries = entries
+      .map((entry) => ({
+        ...entry,
+        folder: draftById.get(entry.id)?.folder ?? entry.folder,
+      }))
+      .concat(
+        drafts
+          .filter((draft) => !entries.some((entry) => entry.id === draft.id))
+          .map((draft) => ({
+            id: draft.id,
+            title: draft.title,
+            folder: draft.folder ?? '',
+            path: draft.sourcePath,
+            revision: draft.sourceRevision,
+            meta: {},
+          })),
+      );
     return adminJson({
       collection: publicCollection(collection),
-      entries: await readCollectionEntries(provider, collection),
-      drafts: await draftsForCollection(projectRoot, collection.id),
+      entries,
+      folders: await readCollectionFolders(provider, collection, folderEntries),
+      drafts,
       provider: provider.kind,
     });
   }
@@ -427,14 +548,22 @@ export async function handleContentCollection(
   const fields = body.fields ?? {};
   const slug = body.slug?.trim() || slugify(String(fields.title ?? ''));
   if (!isValidSlug(slug)) return badSlug();
+  const folder = normalizeFolderPath(body.folder ?? '');
+  if (!isValidFolderPath(folder)) return badFolder();
 
-  const path = sourcePath(collection.sourceDir, slug, collection.extension);
-  if (await provider.readFile(path)) {
+  const existingEntries = await readCollectionEntries(provider, collection);
+  if (existingEntries.some((entry) => entry.id === slug)) {
     return adminJson(
       { error: 'A content entry already uses that slug.', code: 'slug_exists' },
       { status: 409 },
     );
   }
+  const path = sourcePath(
+    collection.sourceDir,
+    slug,
+    collection.extension,
+    folder,
+  );
 
   let validatedFields: Record<string, unknown>;
   try {
@@ -481,9 +610,9 @@ export async function handleContentEntry(
   if (!collection) return missingCollection();
   if (!id || !isValidSlug(id)) return badSlug();
 
-  const path = sourcePath(collection.sourceDir, id, collection.extension);
-  const existing = await provider.readFile(path);
+  const existing = await findEntryFile(provider, collection, id);
   if (!existing) return missingEntry();
+  const path = existing.path;
 
   if (request.method === 'GET') {
     return adminJson({
@@ -548,6 +677,696 @@ export async function handleContentEntry(
 
   return adminJson({
     entry: saved ? toDetail(collection, saved) : null,
+    result,
+  });
+}
+
+function folderRepositoryPath(
+  collection: ContentCollectionDefinition,
+  folder: string,
+): string {
+  return `${collection.sourceDir}/${normalizeFolderPath(folder)}`;
+}
+
+function parentFolder(folder: string): string {
+  const normalized = normalizeFolderPath(folder);
+  return normalized.includes('/')
+    ? normalized.slice(0, normalized.lastIndexOf('/'))
+    : '';
+}
+
+function folderDocumentPath(
+  collection: ContentCollectionDefinition,
+  folder: string,
+): string {
+  return sourcePath(
+    collection.sourceDir,
+    folderName(folder),
+    collection.extension,
+    parentFolder(folder),
+  );
+}
+
+function folderDocumentBody(folder: string): string {
+  return `# ${folderName(folder).replaceAll('-', ' ')}\n`;
+}
+
+async function ensureFolderDocument(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  folder: string,
+): Promise<ContentSourceFile> {
+  const path = folderDocumentPath(collection, folder);
+  const existing = await provider.readFile(path);
+  if (existing) return existing;
+
+  await provider.writeTextFile(
+    path,
+    serializeContentDocument(
+      validateFields(collection, { draft: false }),
+      collection.body ? folderDocumentBody(folder) : '',
+      collection.format,
+    ),
+    `content: create folder page ${collection.id}/${folder}`,
+  );
+  return (await provider.readFile(path))!;
+}
+
+async function folderExists(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  folder: string,
+): Promise<boolean> {
+  if (!folder) return true;
+  const repositoryPath = folderRepositoryPath(collection, folder);
+  return (await provider.listDirectories(collection.sourceDir)).includes(
+    repositoryPath,
+  );
+}
+
+async function updateDraftFoldersAfterMove(
+  projectRoot: string | undefined,
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  previousFolder: string,
+  nextFolder: string,
+): Promise<void> {
+  if (!projectRoot) return;
+  const drafts = (await listDrafts(projectRoot)).filter(
+    (draft) =>
+      draft.collection === collection.id &&
+      (draft.folder === previousFolder ||
+        draft.folder?.startsWith(`${previousFolder}/`)),
+  );
+
+  await Promise.all(
+    drafts.map(async (draft) => {
+      const suffix = (draft.folder ?? '').slice(previousFolder.length);
+      const folder = `${nextFolder}${suffix}`.replace(/^\/+|\/+$/g, '');
+      const source = await findEntryFile(provider, collection, draft.id);
+      await writeDraft(projectRoot, {
+        ...draft,
+        folder,
+        sourcePath: sourcePath(
+          collection.sourceDir,
+          draft.id,
+          collection.extension,
+          folder,
+        ),
+        sourceRevision: source?.revision ?? draft.sourceRevision,
+      });
+    }),
+  );
+}
+
+async function updateFolderDocumentDraftAfterMove(
+  projectRoot: string | undefined,
+  collection: ContentCollectionDefinition,
+  previousFolder: string,
+  nextFolder: string,
+  sourceRevision?: string,
+): Promise<void> {
+  if (!projectRoot) return;
+  const previousId = folderName(previousFolder);
+  const nextId = folderName(nextFolder);
+  const draft = await readDraft(projectRoot, collection.id, previousId);
+  if (!draft || draft.folder !== parentFolder(previousFolder)) return;
+
+  await writeDraft(projectRoot, {
+    ...draft,
+    id: nextId,
+    folder: parentFolder(nextFolder),
+    sourcePath: folderDocumentPath(collection, nextFolder),
+    sourceRevision: sourceRevision ?? draft.sourceRevision,
+  });
+  if (nextId !== previousId) {
+    await deleteDraft(projectRoot, collection.id, previousId);
+  }
+}
+
+function nextSiblingOrder(
+  entries: ContentEntryListItem[],
+  folder: string,
+): number {
+  const orders = entries
+    .filter((entry) => entry.folder === folder)
+    .map((entry) => Number(entry.meta.order))
+    .filter(Number.isFinite);
+  return orders.length > 0 ? Math.max(...orders) + 1 : 0;
+}
+
+function contentWithOrder(
+  collection: ContentCollectionDefinition,
+  content: string,
+  order: number,
+): string {
+  if (!collection.orderField) return content;
+  const parsed = parseContentDocument(content, collection.format);
+  parsed.fields[collection.orderField] = order;
+  return serializeContentDocument(
+    parsed.fields,
+    collection.body ? parsed.body : '',
+    collection.format,
+  );
+}
+
+function uniqueContentId(base: string, reserved: Set<string>): string {
+  let candidate = slugify(base) || 'copy';
+  let suffix = 2;
+  while (reserved.has(candidate)) {
+    candidate = `${slugify(base) || 'copy'}-${suffix}`;
+    suffix += 1;
+  }
+  reserved.add(candidate);
+  return candidate;
+}
+
+async function duplicateFolderTree(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  sourceFolder: string,
+  destinationFolder: string,
+): Promise<void> {
+  const entries = await readCollectionEntries(provider, collection);
+  const reservedIds = new Set(entries.map((entry) => entry.id));
+  const destinationId = folderName(destinationFolder);
+  if (reservedIds.has(destinationId)) {
+    throw Object.assign(new Error('A note already uses that folder name.'), {
+      code: 'slug_exists',
+    });
+  }
+  reservedIds.add(destinationId);
+
+  const directories = (await provider.listDirectories(collection.sourceDir))
+    .map((directory) => folderIdFromPath(directory, collection.sourceDir))
+    .filter(Boolean);
+  const sourceDirectories = [
+    sourceFolder,
+    ...directories.filter((directory) =>
+      directory.startsWith(`${sourceFolder}/`),
+    ),
+  ].toSorted(
+    (left, right) =>
+      left.split('/').length - right.split('/').length ||
+      left.localeCompare(right),
+  );
+  const destinationBySource = new Map<string, string>([
+    [sourceFolder, destinationFolder],
+  ]);
+
+  await provider.createDirectory(
+    folderRepositoryPath(collection, destinationFolder),
+    `content: duplicate folder ${collection.id}/${sourceFolder}`,
+  );
+
+  for (const sourceDirectory of sourceDirectories.slice(1)) {
+    const destinationParent = destinationBySource.get(
+      parentFolder(sourceDirectory),
+    )!;
+    const destinationName = uniqueContentId(
+      `${folderName(sourceDirectory)}-copy`,
+      reservedIds,
+    );
+    const destinationDirectory = [destinationParent, destinationName]
+      .filter(Boolean)
+      .join('/');
+    destinationBySource.set(sourceDirectory, destinationDirectory);
+    await provider.createDirectory(
+      folderRepositoryPath(collection, destinationDirectory),
+      `content: duplicate folder ${collection.id}/${sourceDirectory}`,
+    );
+  }
+
+  const sourcePage = await provider.readFile(
+    folderDocumentPath(collection, sourceFolder),
+  );
+  if (sourcePage) {
+    await provider.writeTextFile(
+      folderDocumentPath(collection, destinationFolder),
+      contentWithOrder(
+        collection,
+        sourcePage.content,
+        nextSiblingOrder(entries, parentFolder(destinationFolder)),
+      ),
+      `content: duplicate folder page ${collection.id}/${sourceFolder}`,
+    );
+  } else {
+    await ensureFolderDocument(provider, collection, destinationFolder);
+  }
+
+  const sourceDirectorySet = new Set(sourceDirectories);
+  for (const entry of entries) {
+    if (
+      entry.folder !== sourceFolder &&
+      !entry.folder.startsWith(`${sourceFolder}/`)
+    ) {
+      continue;
+    }
+
+    const source = await provider.readFile(entry.path);
+    if (!source) continue;
+    const childFolder = [entry.folder, entry.id].filter(Boolean).join('/');
+    const mappedChildFolder = destinationBySource.get(childFolder);
+    const destinationEntryFolder = mappedChildFolder
+      ? parentFolder(mappedChildFolder)
+      : destinationBySource.get(entry.folder)!;
+    const destinationEntryId = mappedChildFolder
+      ? folderName(mappedChildFolder)
+      : uniqueContentId(`${entry.id}-copy`, reservedIds);
+
+    await provider.writeTextFile(
+      sourcePath(
+        collection.sourceDir,
+        destinationEntryId,
+        collection.extension,
+        destinationEntryFolder,
+      ),
+      source.content,
+      `content: duplicate ${collection.id}/${entry.id}`,
+    );
+    if (sourceDirectorySet.has(childFolder) && !mappedChildFolder) {
+      throw new Error(`Could not map duplicated folder ${childFolder}.`);
+    }
+  }
+}
+
+export async function handleContentFolders(
+  provider: ContentProvider,
+  collectionId: string | undefined,
+  request: Request,
+  projectRoot?: string,
+): Promise<Response> {
+  const collection = getContentCollection(collectionId);
+  if (!collection) return missingCollection();
+  if (!collection.supportsFolders) {
+    return adminJson(
+      { error: 'This collection does not use folders.', code: 'no_folders' },
+      { status: 400 },
+    );
+  }
+
+  if (request.method === 'GET') {
+    return adminJson({
+      folders: await readCollectionFolders(provider, collection),
+    });
+  }
+
+  let body: { path?: unknown; nextPath?: unknown; copyFrom?: unknown };
+  try {
+    body = await readJsonBody<{
+      path?: unknown;
+      nextPath?: unknown;
+      copyFrom?: unknown;
+    }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
+  }
+
+  const folder = normalizeFolderPath(String(body.path ?? ''));
+  if (!folder || !isValidFolderPath(folder, false)) return badFolder();
+
+  if (request.method === 'POST') {
+    if (await folderExists(provider, collection, folder)) {
+      return adminJson(
+        { error: 'That folder already exists.', code: 'folder_exists' },
+        { status: 409 },
+      );
+    }
+    const copyFrom = normalizeFolderPath(String(body.copyFrom ?? ''));
+    if (copyFrom) {
+      if (!isValidFolderPath(copyFrom, false)) return badFolder();
+      if (!(await folderExists(provider, collection, parentFolder(folder)))) {
+        return adminJson(
+          {
+            error: 'Choose a folder that still exists.',
+            code: 'folder_not_found',
+          },
+          { status: 404 },
+        );
+      }
+      if (!(await folderExists(provider, collection, copyFrom))) {
+        return adminJson(
+          { error: 'That folder no longer exists.', code: 'folder_not_found' },
+          { status: 404 },
+        );
+      }
+      if (folder.startsWith(`${copyFrom}/`)) {
+        return adminJson(
+          {
+            error: 'A folder cannot be duplicated inside itself.',
+            code: 'invalid_folder_move',
+          },
+          { status: 400 },
+        );
+      }
+      try {
+        await duplicateFolderTree(provider, collection, copyFrom, folder);
+      } catch (error) {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'slug_exists'
+        ) {
+          return adminJson(
+            {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'A note already uses that folder name.',
+              code: 'slug_exists',
+            },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
+      return adminJson(
+        {
+          folders: await readCollectionFolders(provider, collection),
+          duplicated: folder,
+        },
+        { status: 201 },
+      );
+    }
+
+    const result = await provider.createDirectory(
+      folderRepositoryPath(collection, folder),
+      `content: create folder ${collection.id}/${folder}`,
+    );
+    await ensureFolderDocument(provider, collection, folder);
+    return adminJson(
+      {
+        folders: await readCollectionFolders(provider, collection),
+        result,
+      },
+      { status: 201 },
+    );
+  }
+
+  if (request.method === 'PATCH') {
+    const nextFolder = normalizeFolderPath(String(body.nextPath ?? ''));
+    if (!nextFolder || !isValidFolderPath(nextFolder, false)) {
+      return badFolder();
+    }
+    if (nextFolder === folder) {
+      return adminJson({
+        folders: await readCollectionFolders(provider, collection),
+      });
+    }
+    if (nextFolder.startsWith(`${folder}/`)) {
+      return adminJson(
+        {
+          error: 'A folder cannot be moved inside itself.',
+          code: 'invalid_folder_move',
+        },
+        { status: 400 },
+      );
+    }
+    if (!(await folderExists(provider, collection, parentFolder(nextFolder)))) {
+      return adminJson(
+        {
+          error: 'Choose a folder that still exists.',
+          code: 'folder_not_found',
+        },
+        { status: 404 },
+      );
+    }
+    if (!(await folderExists(provider, collection, folder))) {
+      return adminJson(
+        { error: 'That folder no longer exists.', code: 'folder_not_found' },
+        { status: 404 },
+      );
+    }
+    if (await folderExists(provider, collection, nextFolder)) {
+      return adminJson(
+        { error: 'That folder already exists.', code: 'folder_exists' },
+        { status: 409 },
+      );
+    }
+
+    const previousPagePath = folderDocumentPath(collection, folder);
+    const nextPagePath = folderDocumentPath(collection, nextFolder);
+    const entries = await readCollectionEntries(provider, collection);
+    const conflictingEntry = entries.find(
+      (entry) =>
+        entry.id === folderName(nextFolder) && entry.path !== previousPagePath,
+    );
+    if (conflictingEntry || (await provider.readFile(nextPagePath))) {
+      return adminJson(
+        { error: 'A note already uses that folder name.', code: 'slug_exists' },
+        { status: 409 },
+      );
+    }
+
+    const result = await provider.movePath(
+      folderRepositoryPath(collection, folder),
+      folderRepositoryPath(collection, nextFolder),
+      `content: move folder ${collection.id}/${folder} to ${nextFolder}`,
+    );
+    const previousPage = await provider.readFile(previousPagePath);
+    let nextPage: ContentSourceFile;
+    if (previousPage) {
+      await provider.movePath(
+        previousPagePath,
+        nextPagePath,
+        `content: move folder page ${collection.id}/${folder} to ${nextFolder}`,
+        previousPage.revision,
+      );
+      nextPage = (await provider.readFile(nextPagePath))!;
+    } else {
+      nextPage = await ensureFolderDocument(provider, collection, nextFolder);
+    }
+    await updateDraftFoldersAfterMove(
+      projectRoot,
+      provider,
+      collection,
+      folder,
+      nextFolder,
+    );
+    await updateFolderDocumentDraftAfterMove(
+      projectRoot,
+      collection,
+      folder,
+      nextFolder,
+      nextPage.revision,
+    );
+    return adminJson({
+      folders: await readCollectionFolders(provider, collection),
+      result,
+    });
+  }
+
+  if (request.method === 'DELETE') {
+    if (!(await folderExists(provider, collection, folder))) {
+      return adminJson(
+        { error: 'That folder no longer exists.', code: 'folder_not_found' },
+        { status: 404 },
+      );
+    }
+    const hasDrafts = projectRoot
+      ? (await listDrafts(projectRoot)).some(
+          (draft) =>
+            draft.collection === collection.id &&
+            (draft.folder === folder || draft.folder?.startsWith(`${folder}/`)),
+        )
+      : false;
+    if (hasDrafts) {
+      return adminJson(
+        {
+          error: 'Move the draft notes out of this folder before deleting it.',
+          code: 'folder_not_empty',
+        },
+        { status: 409 },
+      );
+    }
+    try {
+      const result = await provider.deleteDirectory(
+        folderRepositoryPath(collection, folder),
+        `content: delete folder ${collection.id}/${folder}`,
+      );
+      const pagePath = folderDocumentPath(collection, folder);
+      const page = await provider.readFile(pagePath);
+      if (page) {
+        await provider.deleteFile(
+          pagePath,
+          `content: delete folder page ${collection.id}/${folder}`,
+          page.revision,
+        );
+      }
+      if (projectRoot) {
+        await deleteDraft(projectRoot, collection.id, folderName(folder));
+      }
+      return adminJson({
+        folders: await readCollectionFolders(provider, collection),
+        result,
+      });
+    } catch (error) {
+      if (
+        error instanceof ContentFolderNotEmptyError ||
+        (error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'folder_not_empty')
+      ) {
+        return adminJson(
+          {
+            error: 'Move the notes out of this folder before deleting it.',
+            code: 'folder_not_empty',
+          },
+          { status: 409 },
+        );
+      }
+      throw error;
+    }
+  }
+
+  return adminJson({ error: 'Method not allowed.' }, { status: 405 });
+}
+
+export async function handleContentMove(
+  provider: ContentProvider,
+  collectionId: string | undefined,
+  request: Request,
+  projectRoot?: string,
+): Promise<Response> {
+  const collection = getContentCollection(collectionId);
+  if (!collection) return missingCollection();
+  if (request.method !== 'POST') {
+    return adminJson({ error: 'Method not allowed.' }, { status: 405 });
+  }
+
+  let body: {
+    id?: unknown;
+    folder?: unknown;
+    nextId?: unknown;
+    operation?: unknown;
+  };
+  try {
+    body = await readJsonBody<{
+      id?: unknown;
+      folder?: unknown;
+      nextId?: unknown;
+      operation?: unknown;
+    }>(request);
+  } catch (error) {
+    return requestBodyErrorResponse(error);
+  }
+
+  const id = String(body.id ?? '');
+  const nextId = String(body.nextId ?? id);
+  const folder = normalizeFolderPath(String(body.folder ?? ''));
+  const operation = body.operation === 'duplicate' ? 'duplicate' : 'move';
+  if (!isValidSlug(id)) return badSlug();
+  if (!isValidSlug(nextId)) return badSlug();
+  if (!isValidFolderPath(folder)) return badFolder();
+  if (id === 'index' && (nextId !== 'index' || folder !== '')) {
+    return adminJson(
+      {
+        error: 'The Notes root cannot be moved or renamed.',
+        code: 'root_entry',
+      },
+      { status: 400 },
+    );
+  }
+  if (!(await folderExists(provider, collection, folder))) {
+    return adminJson(
+      { error: 'Choose a folder that still exists.', code: 'folder_not_found' },
+      { status: 404 },
+    );
+  }
+
+  const existing = await findEntryFile(provider, collection, id);
+  if (!existing) return missingEntry();
+  const entries = await readCollectionEntries(provider, collection);
+  if (nextId !== id && entries.some((entry) => entry.id === nextId)) {
+    return adminJson(
+      { error: 'A note already uses that file name.', code: 'slug_exists' },
+      { status: 409 },
+    );
+  }
+  const currentFolder = entryFolderFromPath(
+    existing.path,
+    collection.sourceDir,
+  );
+  if (operation === 'duplicate' && nextId === id) {
+    return adminJson(
+      { error: 'Choose a new file name for the copy.', code: 'slug_exists' },
+      { status: 409 },
+    );
+  }
+  if (operation === 'move' && currentFolder === folder && nextId === id) {
+    return adminJson({ entry: toDetail(collection, existing) });
+  }
+
+  const nextPath = sourcePath(
+    collection.sourceDir,
+    nextId,
+    collection.extension,
+    folder,
+  );
+  if (await provider.readFile(nextPath)) {
+    return adminJson(
+      { error: 'A note already uses that path.', code: 'path_exists' },
+      { status: 409 },
+    );
+  }
+
+  if (operation === 'duplicate') {
+    const result = await provider.writeTextFile(
+      nextPath,
+      contentWithOrder(
+        collection,
+        existing.content,
+        nextSiblingOrder(entries, folder),
+      ),
+      `content: duplicate ${collection.id}/${id} as ${nextId}`,
+    );
+    const duplicated = await provider.readFile(nextPath);
+    if (projectRoot) {
+      const draft = await readDraft(projectRoot, collection.id, id);
+      if (draft) {
+        await writeDraft(projectRoot, {
+          ...draft,
+          id: nextId,
+          folder,
+          sourcePath: nextPath,
+          sourceRevision: duplicated?.revision,
+          isNew: false,
+        });
+      }
+    }
+    return adminJson({
+      entry: duplicated ? toDetail(collection, duplicated) : null,
+      result,
+    });
+  }
+
+  const result = await provider.movePath(
+    existing.path,
+    nextPath,
+    `content: move ${collection.id}/${id} to ${folder || 'root'}/${nextId}`,
+    existing.revision,
+  );
+  const moved = await provider.readFile(nextPath);
+  if (projectRoot) {
+    const draft = await readDraft(projectRoot, collection.id, id);
+    if (draft) {
+      await writeDraft(projectRoot, {
+        ...draft,
+        id: nextId,
+        folder,
+        sourcePath: nextPath,
+        sourceRevision: moved?.revision ?? draft.sourceRevision,
+      });
+      if (nextId !== id) {
+        await deleteDraft(projectRoot, collection.id, id);
+      }
+    }
+  }
+
+  return adminJson({
+    entry: moved ? toDetail(collection, moved) : null,
     result,
   });
 }
@@ -645,13 +1464,23 @@ function routeMatchesPath(routePath: string, requestedPath: string): boolean {
   return normalizedRoute === normalizedRequested;
 }
 
-function titleFromFields(id: string, fields: Record<string, unknown>): string {
-  return String(fields.title ?? id);
+// The title is whatever heading the note opens with, falling back to legacy
+// title frontmatter and then the file name. There is no title field to author.
+function titleFromFields(
+  id: string,
+  fields: Record<string, unknown>,
+  body?: string,
+): string {
+  const heading = body?.match(/^#{1,6}\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
+  if (heading) return heading;
+  const legacy = typeof fields.title === 'string' ? fields.title.trim() : '';
+  return legacy || id;
 }
 
 function draftFromDocument(args: {
   collection: ContentCollectionDefinition;
   id: string;
+  folder: string;
   fields: Record<string, unknown>;
   body: string;
   revision?: string;
@@ -661,11 +1490,13 @@ function draftFromDocument(args: {
   return {
     collection: args.collection.id,
     id: args.id,
-    title: titleFromFields(args.id, args.fields),
+    title: titleFromFields(args.id, args.fields, args.body),
+    folder: args.folder,
     sourcePath: sourcePath(
       args.collection.sourceDir,
       args.id,
       args.collection.extension,
+      args.folder,
     ),
     sourceRevision: args.revision,
     fields: args.fields,
@@ -685,6 +1516,7 @@ function draftFromFile(
   return draftFromDocument({
     collection,
     id: entryIdFromPath(file.path, collection.extension),
+    folder: entryFolderFromPath(file.path, collection.sourceDir),
     fields: parsed.fields,
     body: collection.body ? parsed.body : '',
     revision: file.revision,
@@ -693,6 +1525,7 @@ function draftFromFile(
 }
 
 interface DraftRequestBody {
+  folder?: string;
   fields?: Record<string, unknown>;
   body?: string;
   blocks?: ContentBlock[];
@@ -707,6 +1540,13 @@ function draftFromRequestBody(
   existing: ContentSourceFile | null,
 ): ContentDraft {
   const fields = validateFields(collection, body.fields ?? {});
+  const folder = normalizeFolderPath(
+    body.folder ??
+      (existing
+        ? entryFolderFromPath(existing.path, collection.sourceDir)
+        : ''),
+  );
+  if (!isValidFolderPath(folder)) throw new Error('Invalid folder path.');
   const blocks = Array.isArray(body.blocks) ? body.blocks : undefined;
   const bodyText = collection.body
     ? blocks
@@ -718,6 +1558,7 @@ function draftFromRequestBody(
     ...draftFromDocument({
       collection,
       id,
+      folder,
       fields,
       body: bodyText,
       revision: body.sourceRevision ?? existing?.revision,
@@ -738,8 +1579,7 @@ export async function handleContentDraft(
   if (!collection) return missingCollection();
   if (!id || !isValidSlug(id)) return badSlug();
 
-  const path = sourcePath(collection.sourceDir, id, collection.extension);
-  const existing = await provider.readFile(path);
+  const existing = await findEntryFile(provider, collection, id);
 
   if (request.method === 'GET') {
     return adminJson({
@@ -832,10 +1672,27 @@ function escapeHtml(value: unknown): string {
     .replace(/"/g, '&quot;');
 }
 
+// Render [[wiki-links]] as links, matching the site's remark plugin, so the
+// preview reflects the published page.
+function inlinePreview(value: unknown): string {
+  return escapeHtml(value).replace(
+    /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g,
+    (_match, target: string, label?: string) => {
+      const slug = target
+        .trim()
+        .toLowerCase()
+        .replace(/['"]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      return `<a class="wiki-link" href="/notes/${slug}">${(label ?? target).trim()}</a>`;
+    },
+  );
+}
+
 function previewBlockHtml(block: ContentBlock): string {
   if (block.type === 'heading') {
     const level = Math.min(Math.max(block.level ?? 2, 1), 3);
-    return `<h${level}>${escapeHtml(block.value)}</h${level}>`;
+    return `<h${level}>${inlinePreview(block.value)}</h${level}>`;
   }
   if (block.type === 'image') {
     return `<figure><img src="${escapeHtml(block.src)}" alt="${escapeHtml(
@@ -853,15 +1710,14 @@ function previewBlockHtml(block: ContentBlock): string {
   if (block.type === 'raw-mdx') {
     return `<pre class="raw-mdx">${escapeHtml(block.value)}</pre>`;
   }
-  return `<p>${escapeHtml(block.value)}</p>`;
+  return `<p>${inlinePreview(block.value)}</p>`;
 }
 
 function previewHtml(
   collection: ContentCollectionDefinition,
   document: ContentDraft,
 ): string {
-  const title = titleFromFields(document.id, document.fields);
-  const description = String(document.fields.description ?? '');
+  const title = titleFromFields(document.id, document.fields, document.body);
   const blocks =
     document.blocks.length > 0
       ? document.blocks
@@ -869,13 +1725,9 @@ function previewHtml(
   const bodyHtml = collection.supportsBlocks
     ? blocks.map(previewBlockHtml).join('\n')
     : '';
-  const bookCover =
-    collection.id === 'books'
-      ? `<div class="book-card"><img src="${escapeHtml(
-          document.fields.coverImage,
-        )}" alt="${escapeHtml(title)}" /><span>${escapeHtml(title)}</span></div>`
-      : '';
 
+  // The preview mirrors the real page: the body is the whole thing, no template
+  // wrapped around it.
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -886,24 +1738,15 @@ function previewHtml(
     :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b0c0f; color: #e8e4ee; }
     body { margin: 0; padding: 40px 20px; }
     main { width: min(760px, 100%); margin: 0 auto; }
-    header { border-bottom: 1px solid rgba(255,255,255,.14); margin-bottom: 24px; padding-bottom: 20px; }
-    h1 { margin: 0 0 8px; font-size: clamp(2rem, 7vw, 4rem); line-height: 1; }
+    h1 { font-size: clamp(2rem, 7vw, 4rem); line-height: 1.05; }
     p, li { line-height: 1.75; color: #c9c2d6; }
+    a { color: #a78bfa; }
     img { max-width: 100%; border-radius: 8px; }
     pre, aside { border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 14px; background: rgba(255,255,255,.05); overflow: auto; }
-    .meta { color: #a78bfa; font-family: ui-monospace, monospace; font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; }
-    .book-card { display: inline-grid; gap: 10px; text-align: center; }
-    .book-card img { width: 150px; aspect-ratio: 95 / 125; object-fit: cover; }
   </style>
 </head>
 <body>
   <main>
-    <p class="meta">${escapeHtml(collection.label)} draft preview</p>
-    <header>
-      <h1>${escapeHtml(title)}</h1>
-      ${description ? `<p>${escapeHtml(description)}</p>` : ''}
-    </header>
-    ${bookCover}
     <article>${bodyHtml}</article>
   </main>
 </body>
@@ -934,9 +1777,7 @@ export async function handleContentPreview(
     const collection = getContentCollection(collectionId);
     if (!collection) return missingCollection();
     if (!id || !isValidSlug(id)) return badSlug();
-    const existing = await provider.readFile(
-      sourcePath(collection.sourceDir, id, collection.extension),
-    );
+    const existing = await findEntryFile(provider, collection, id);
 
     try {
       document = draftFromRequestBody(collection, id, body, existing);
@@ -958,9 +1799,7 @@ export async function handleContentPreview(
   }
 
   if (!document) {
-    const file = await provider.readFile(
-      sourcePath(collection.sourceDir, id, collection.extension),
-    );
+    const file = await findEntryFile(provider, collection, id);
     if (!file) return missingEntry();
     document = draftFromFile(collection, file);
   }
@@ -1082,16 +1921,39 @@ export async function handleContentPublish(
       'Write content files',
       'running',
     );
-    const path = sourcePath(collection.sourceDir, id, collection.extension);
-    const existing = await provider.readFile(path);
+    const folder = normalizeFolderPath(draft.folder ?? '');
+    if (!isValidFolderPath(folder)) throw new Error('Invalid folder path.');
+    const path = sourcePath(
+      collection.sourceDir,
+      id,
+      collection.extension,
+      folder,
+    );
+    let existing = await findEntryFile(provider, collection, id);
     if (draft.isNew && existing) {
       throw new ContentRevisionConflictError();
+    }
+    let writeRevision = existing
+      ? (draft.sourceRevision ?? existing.revision)
+      : undefined;
+    if (existing && existing.path !== path) {
+      if (await provider.readFile(path)) {
+        throw new ContentRevisionConflictError();
+      }
+      await provider.movePath(
+        existing.path,
+        path,
+        `content: move ${collection.id}/${id} to ${folder || 'root'}`,
+        writeRevision,
+      );
+      existing = await provider.readFile(path);
+      writeRevision = existing?.revision;
     }
     const result = await provider.writeTextFile(
       path,
       serializeContentDocument(fields, bodyText, collection.format),
       `content: publish ${collection.id}/${id}`,
-      existing ? (draft.sourceRevision ?? existing.revision) : undefined,
+      writeRevision,
     );
     await deleteDraft(projectRoot, collection.id, id);
     job = await updateJobStep(
@@ -1235,6 +2097,7 @@ export async function handleContentPublishJob(
 
 export async function handleContentHistory(
   projectRoot: string,
+  provider: ContentProvider,
   collectionId: string | undefined,
   id: string | undefined,
 ): Promise<Response> {
@@ -1242,9 +2105,10 @@ export async function handleContentHistory(
   if (!collection) return missingCollection();
   if (!id || !isValidSlug(id)) return badSlug();
 
-  const path = sourcePath(collection.sourceDir, id, collection.extension);
+  const existing = await findEntryFile(provider, collection, id);
+  if (!existing) return adminJson({ revisions: [] });
   return adminJson({
-    revisions: await readContentHistory(projectRoot, path),
+    revisions: await readContentHistory(projectRoot, existing.path),
   });
 }
 
@@ -1266,17 +2130,19 @@ export async function handleContentRestore(
     return requestBodyErrorResponse(error);
   }
 
-  const path = sourcePath(collection.sourceDir, id, collection.extension);
+  const existing = await findEntryFile(provider, collection, id);
+  if (!existing) return missingEntry();
+  const path = existing.path;
   const restored = parseContentDocument(
     await readRevisionContent(projectRoot, path, String(body.hash ?? '')),
     collection.format,
   );
-  const existing = await provider.readFile(path);
   const draft = await writeDraft(
     projectRoot,
     draftFromDocument({
       collection,
       id,
+      folder: entryFolderFromPath(existing.path, collection.sourceDir),
       fields: restored.fields,
       body: collection.body ? restored.body : '',
       revision: existing?.revision,
