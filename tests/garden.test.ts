@@ -12,11 +12,10 @@ import {
   notePathFromSourceId,
 } from '../src/lib/garden/utils';
 import {
-  ATLAS_WORLD_HEIGHT,
-  ATLAS_WORLD_WIDTH,
-  atlasConnectionPath,
-  createAtlasLayout,
-} from '../src/lib/garden/atlas-layout';
+  createLandscapeLayout,
+  landscapePlaceBounds,
+  landscapeRoutePath,
+} from '../src/lib/garden/landscape-layout';
 
 describe('notes helpers', () => {
   it('creates stable slugs for wiki links and aliases', () => {
@@ -74,50 +73,136 @@ describe('notes helpers', () => {
     );
   });
 
-  it('creates a stable hierarchy-first atlas without a runtime simulation', () => {
-    const nodes = [
-      { id: 'index', title: 'Notes', parentId: null, childIds: ['reading'] },
+  it('turns filesystem paths into stable nested landscape regions', () => {
+    const places = [
+      {
+        id: 'index',
+        title: 'Notes',
+        parentId: null,
+        childIds: ['reading', 'journal'],
+      },
       {
         id: 'reading',
         title: 'Reading',
         parentId: 'index',
-        childIds: ['books'],
+        childIds: ['reading/books'],
       },
       {
-        id: 'books',
+        id: 'reading/books',
         title: 'Books',
         parentId: 'reading',
-        childIds: ['sleep'],
+        childIds: ['reading/books/sleep'],
       },
       {
-        id: 'sleep',
+        id: 'reading/books/sleep',
         title: 'Why We Sleep',
-        parentId: 'books',
+        parentId: 'reading/books',
+        childIds: [],
+      },
+      {
+        id: 'journal',
+        title: 'Journal',
+        parentId: 'index',
         childIds: [],
       },
     ];
 
-    const first = createAtlasLayout(nodes);
-    const second = createAtlasLayout(nodes);
+    const first = createLandscapeLayout(places);
+    const second = createLandscapeLayout(places);
 
     expect(second).toEqual(first);
-    expect(first.regions).toHaveLength(1);
-    expect(first.points.map((point) => point.depth)).toEqual([0, 1, 2, 3]);
+    expect(first.regions.map((region) => region.id)).toEqual([
+      '',
+      'reading',
+      'reading/books',
+    ]);
     expect(
-      first.points.every(
-        (point) => point.x >= 0 && point.x <= ATLAS_WORLD_WIDTH,
-      ),
-    ).toBe(true);
+      first.regions.find((region) => region.id === 'reading/books')?.parentId,
+    ).toBe('reading');
     expect(
-      first.points.every(
-        (point) => point.y >= 0 && point.y <= ATLAS_WORLD_HEIGHT,
-      ),
-    ).toBe(true);
+      first.places.find((place) => place.id === 'reading/books/sleep')
+        ?.regionId,
+    ).toBe('reading/books');
 
-    const [root, reading] = first.points;
-    expect(atlasConnectionPath(root!, reading!, 'branch')).toMatch(/^M .* C /);
-    expect(atlasConnectionPath(root!, reading!, 'reference')).not.toBe(
-      atlasConnectionPath(root!, reading!, 'branch'),
+    const sleep = first.places.find(
+      (place) => place.id === 'reading/books/sleep',
+    )!;
+    const journal = first.places.find((place) => place.id === 'journal')!;
+    expect(landscapeRoutePath(first, sleep, journal, 'reference')).toMatch(
+      /^M .* C /,
     );
+
+    const moved = createLandscapeLayout(
+      places.map((place) =>
+        place.id === 'reading/books/sleep'
+          ? { ...place, id: 'reading/essays/sleep' }
+          : place,
+      ),
+    );
+    expect(moved.regions.some((region) => region.id === 'reading/essays')).toBe(
+      true,
+    );
+  });
+
+  it('reserves room for note typography inside dense regions', () => {
+    const layout = createLandscapeLayout([
+      {
+        id: 'index',
+        title: 'Notes',
+        parentId: null,
+        childIds: ['library'],
+      },
+      {
+        id: 'library',
+        title: 'Library',
+        parentId: 'index',
+        childIds: ['library/a', 'library/b', 'library/c', 'library/d'],
+      },
+      {
+        id: 'library/a',
+        title: 'The Beginning After the End: Early Years',
+        parentId: 'library',
+        childIds: [],
+      },
+      {
+        id: 'library/b',
+        title: "Omniscient Reader's Viewpoint",
+        parentId: 'library',
+        childIds: [],
+      },
+      {
+        id: 'library/c',
+        title: 'A Field Guide to Getting Lost',
+        parentId: 'library',
+        childIds: [],
+      },
+      {
+        id: 'library/d',
+        title: 'The Left Hand of Darkness',
+        parentId: 'library',
+        childIds: [],
+      },
+    ]);
+    const leaves = layout.places.filter(
+      (place) => place.regionId === 'library' && !place.isRegionAnchor,
+    );
+
+    for (let leftIndex = 0; leftIndex < leaves.length; leftIndex += 1) {
+      const left = landscapePlaceBounds(leaves[leftIndex]!, 12);
+      for (
+        let rightIndex = leftIndex + 1;
+        rightIndex < leaves.length;
+        rightIndex += 1
+      ) {
+        const right = landscapePlaceBounds(leaves[rightIndex]!, 12);
+        const overlaps = !(
+          left.right <= right.left ||
+          left.left >= right.right ||
+          left.bottom <= right.top ||
+          left.top >= right.bottom
+        );
+        expect(overlaps).toBe(false);
+      }
+    }
   });
 });

@@ -2,121 +2,37 @@
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import DevPerformanceLogger from '../components/DevPerformanceLogger.astro';
+import SiteHead, {
+  type Props as SiteHeadProps,
+} from '../components/SiteHead.astro';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
-import {
-  SITE_AUTHOR_NAME,
-  SITE_DESCRIPTION,
-  SITE_NAME,
-  SITE_TWITTER_HANDLE,
-} from '../lib/site';
-import criticalCss from '../styles/critical.css?raw';
 
-const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
-
-export interface Props {
-  title?: string;
-  description?: string;
-  image?: string;
-  type?: 'website' | 'article';
+export interface Props extends SiteHeadProps {
   hideFooter?: boolean;
   wide?: boolean;
 }
 
 const {
-  title = SITE_NAME,
-  description = SITE_DESCRIPTION,
-  // Default OG/social image. SVG is parsed by some consumers (X, Slack) but
-  // not all (e.g. some messengers) — a PNG should eventually replace this.
-  image = '/og-default.svg',
-  type = 'website',
+  title,
+  description,
+  image,
+  type,
   hideFooter = false,
   wide = false,
 } = Astro.props;
 
-const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
-// Pin canonical to the site origin + pathname so trailing-slash drift
-// (and dev/preview host drift) cannot split the canonical from production.
-const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
-const socialImage = new URL(image, Astro.site ?? Astro.url).href;
+const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
 ---
 
 <!doctype html>
 <html lang="en" data-theme="dark">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
-    <meta name="author" content={SITE_AUTHOR_NAME} />
-    <title>{pageTitle}</title>
-    <link rel="canonical" href={canonicalUrl} />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content={type} />
-    <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:image" content={socialImage} />
-
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content={SITE_TWITTER_HANDLE} />
-    <meta name="twitter:title" content={pageTitle} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={socialImage} />
-
-    <link
-      rel="alternate"
-      type="application/rss+xml"
-      title="oddava writing"
-      href="/rss.xml"
-    />
-    <link rel="sitemap" href="/sitemap-index.xml" />
-
-    <!-- Preload critical fonts -->
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/m-plus-rounded-1c-latin-400-normal.woff2"
-      crossorigin
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/m-plus-rounded-1c-latin-700-normal.woff2"
-      crossorigin
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/jetbrains-mono-latin-400-normal.woff2"
-      crossorigin
-      fetchpriority="high"
-    />
-
-    <slot name="head" />
-
-    {/* Keep the site on its intended dark palette before paint. */}
-    <script is:inline>
-      (function () {
-        document.documentElement.setAttribute('data-theme', 'dark');
-
-        try {
-          localStorage.removeItem('theme');
-        } catch {
-          /* localStorage can be unavailable in strict browser modes. */
-        }
-      })();
-    </script>
-
-    <style is:inline set:html={criticalCss}></style>
+    <SiteHead {title} {description} {image} {type}>
+      <slot name="head" />
+    </SiteHead>
   </head>
   <body>
-    <div class={`page ${wide ? 'page--wide' : ''}`}>
+    <div class:list={['page', wide && 'page--wide']}>
       <a href="#main" class="skip-link">Skip to content</a>
 
       <main id="main">
