@@ -1,5 +1,5 @@
-export const prerender = true;
-
+// Notes live in the runtime store now, so the feed is generated per request
+// (edge-cached for an hour) instead of frozen at build time.
 import type { APIRoute } from 'astro';
 import { getGardenIndex } from '../lib/garden';
 import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';

@@ -12,6 +12,8 @@
     "install:deps": "pnpm install --dir ../oddava-tmp-install",
     "gen:critical": "node scripts/gen-critical.mjs",
     "free:ports": "node scripts/free-dev-ports.mjs",
+    "notes:migrate": "node scripts/migrate-notes-to-redis.mjs",
+    "notes:export": "node scripts/export-notes-from-redis.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "pnpm run gen:critical && node scripts/build-with-retry.mjs",
     "build:dev": "astro build --mode development",

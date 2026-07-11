@@ -1,12 +1,11 @@
 import type { APIRoute } from 'astro';
-import type { CollectionEntry } from 'astro:content';
 import {
   adminJson,
   getAdminIntegrationStatuses,
   requireSecuredAdminApi,
 } from '../../../lib/server/admin';
-import { getCollection } from 'astro:content';
 import { isStorageUnavailableError } from '../../../lib/server/community';
+import { readNoteFiles } from '../../../lib/server/content/redis-store';
 import { readGuestbookEntries } from '../../../lib/server/guestbook';
 
 const STORAGE_READ_TIMEOUT_MS = 4_000;
@@ -38,11 +37,11 @@ async function readAdminGuestbookEntries() {
   }
 }
 
-async function loadCollection(): Promise<CollectionEntry<'notes'>[]> {
+async function loadNoteCount(): Promise<number> {
   try {
-    return await getCollection('notes');
+    return (await readNoteFiles()).length;
   } catch {
-    return [];
+    return 0;
   }
 }
 
@@ -68,8 +67,8 @@ export const GET: APIRoute = async ({ cookies }) => {
   const authError = await requireSecuredAdminApi(cookies);
   if (authError) return authError;
 
-  const [notes, guestbookEntries, integrations] = await Promise.all([
-    loadCollection(),
+  const [noteCount, guestbookEntries, integrations] = await Promise.all([
+    loadNoteCount(),
     readAdminGuestbookEntries(),
     loadIntegrations(),
   ]);
@@ -80,12 +79,12 @@ export const GET: APIRoute = async ({ cookies }) => {
   const approved = guestbookEntries.filter(
     (entry) => entry.status === 'approved',
   ).length;
-  const drafts = notes.filter((note) => note.data.draft).length;
 
   return adminJson({
     metrics: {
-      notes: notes.length,
-      drafts,
+      // Every note is live now; there is no draft/published split.
+      notes: noteCount,
+      drafts: 0,
       pendingGuestbook: pending,
       approvedGuestbook: approved,
     },

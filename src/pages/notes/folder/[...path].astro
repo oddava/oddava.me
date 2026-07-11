@@ -1,17 +1,23 @@
 ---
-export const prerender = true;
+import { getGardenIndex, GardenEmptyError } from '@lib/garden';
 
-import { getGardenIndex } from '@lib/garden';
+const requestedPath = Astro.params.path ?? '';
 
-export async function getStaticPaths() {
-  const index = await getGardenIndex();
-  return index.documents
-    .filter((document) => document.path && document.childIds.length > 0)
-    .map((document) => ({
-      params: { path: document.path },
-      props: { redirectTo: document.href },
-    }));
+let index;
+try {
+  index = await getGardenIndex();
+} catch (error) {
+  if (error instanceof GardenEmptyError) {
+    return new Response('Notes are not available yet.', { status: 503 });
+  }
+  throw error;
 }
 
-return Astro.redirect(Astro.props.redirectTo, 301);
+// A folder path resolves to its own document page. Folders with children
+// redirect to the note that represents them.
+const document = index.documents.find(
+  (entry) => entry.path === requestedPath && entry.childIds.length > 0,
+);
+if (document) return Astro.redirect(document.href, 301);
+return Astro.rewrite('/404');
 ---

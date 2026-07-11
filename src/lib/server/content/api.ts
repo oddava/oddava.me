@@ -1,5 +1,3 @@
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { adminJson, withAdminSecurityHeaders } from '../admin/response';
 import { readJsonBody, requestBodyErrorResponse } from '../community/body';
 import { bodyToBlocks, blocksToBody } from './blocks';
@@ -48,7 +46,6 @@ import type {
 } from './types';
 
 const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
-const execAsync = promisify(exec);
 const ALLOWED_MEDIA_TYPES = new Set([
   'image/webp',
   'image/jpeg',
@@ -1830,6 +1827,12 @@ async function runCommand(
   projectRoot: string,
   command: string,
 ): Promise<string> {
+  // Lazily loaded so this module stays importable in workerd (which has no
+  // child_process). Only the retired publish flow reaches this, and only in
+  // the Node dev proxy — never on the Worker.
+  const { exec } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const execAsync = promisify(exec);
   const { stdout, stderr } = await execAsync(command, {
     cwd: projectRoot,
     timeout: 10 * 60 * 1000,
