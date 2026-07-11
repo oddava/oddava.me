@@ -289,7 +289,8 @@
     var(--color-text-muted)
   );
   stroke-width: 1.05;
-  stroke-linecap: square;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   transition:
     stroke 180ms ease,

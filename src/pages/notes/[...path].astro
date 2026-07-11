@@ -4,7 +4,6 @@ export const prerender = true;
 import { getCollection, type CollectionEntry } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
-import NotesNav from '../../components/garden/NotesNav.astro';
 import {
   getGardenIndex,
   noteIdFromSourceId,
@@ -79,7 +78,6 @@ const index = props.index!;
 
 <Base title={document.title} description={document.summary} wide>
   <div class="garden-page">
-    <NotesNav documents={index.searchDocuments} current="notes" />
     <GardenDocumentPage entry={entry} document={document} index={index} />
   </div>
 </Base>

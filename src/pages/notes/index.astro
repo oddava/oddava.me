@@ -4,7 +4,6 @@ export const prerender = true;
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
-import NotesNav from '../../components/garden/NotesNav.astro';
 import { getGardenIndex } from '@lib/garden';
 import '../../styles/components/_garden.css';
 import '../../styles/components/_prose.css';
@@ -19,7 +18,24 @@ if (!rootEntry) throw new Error('The root notes document could not be loaded.');
 
 <Base title={index.root.title} description={index.root.summary} wide>
   <div class="garden-page">
-    <NotesNav documents={index.searchDocuments} current="notes" />
     <GardenDocumentPage entry={rootEntry} document={index.root} index={index} />
+
+    <nav class="note-contents note-contents--views" aria-label="Notes views">
+      <ul class="note-contents__list">
+        <li class="note-content">
+          <a href="/notes/graph" class="note-content__link">
+            <span class="note-content__icon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none">
+                <circle cx="5" cy="6" r="2" />
+                <circle cx="15" cy="5" r="2" />
+                <circle cx="10.5" cy="14.5" r="2" />
+                <path d="M6.7 7.1 9 13M13.2 6.2 11.7 13M6.9 5.7 13.1 5.1" />
+              </svg>
+            </span>
+            <span class="note-content__title">map</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
   </div>
 </Base>
