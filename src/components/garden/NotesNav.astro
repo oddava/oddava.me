@@ -5,9 +5,10 @@ import GardenSearch from './GardenSearch';
 interface Props {
   documents: SearchDocument[];
   current?: 'notes' | 'map';
+  showSearch?: boolean;
 }
 
-const { documents, current } = Astro.props;
+const { documents, current, showSearch = true } = Astro.props;
 ---
 
 <header class="garden-nav">
@@ -27,6 +28,6 @@ const { documents, current } = Astro.props;
       class:list={['garden-nav__link', current === 'map' && 'is-current']}
       aria-current={current === 'map' ? 'page' : undefined}>map</a
     >
-    <GardenSearch client:load documents={documents} />
+    {showSearch && <GardenSearch client:load documents={documents} />}
   </nav>
 </header>

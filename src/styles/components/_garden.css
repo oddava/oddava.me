@@ -543,73 +543,306 @@
 /* Knowledge map */
 
 .garden-page--map .garden-nav {
-  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  margin-bottom: clamp(3rem, 7vw, 5.75rem);
 }
 
 .garden-map-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(17rem, 31rem);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: clamp(2rem, 8vw, 7rem);
   align-items: end;
-  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+  margin-bottom: clamp(3rem, 7vw, 5.75rem);
 }
 
 .garden-map-header h1 {
-  font-size: clamp(2.9rem, 7vw, 5.25rem);
+  max-width: 12ch;
+  font-size: clamp(3.25rem, 7.4vw, 6.15rem);
+  line-height: 0.91;
+  letter-spacing: -0.075em;
+  text-wrap: balance;
 }
 
-.garden-map-header p {
-  margin: 0 0 0.35rem;
+.garden-map-header__eyebrow {
+  margin: 0 0 1.25rem;
+  color: var(--color-text-muted);
+  font: 0.65rem/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.garden-map-header__intro {
+  display: grid;
+  gap: 1.5rem;
+  padding-bottom: 0.35rem;
+}
+
+.garden-map-header__intro p {
+  max-width: 38ch;
+  margin: 0;
   color: var(--color-text-secondary);
-  font-size: 0.94rem;
-  line-height: 1.65;
+  font-size: 0.98rem;
+  line-height: 1.72;
   text-wrap: pretty;
 }
 
+.garden-map-header__intro a {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--color-text-muted);
+  font: 0.68rem var(--font-mono);
+  text-decoration: none;
+}
+
+.garden-map-header__intro a span {
+  color: var(--color-brand-strong);
+  transition: transform 180ms ease;
+}
+
+.garden-map-header__intro a:hover,
+.garden-map-header__intro a:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.garden-map-header__intro a:hover span,
+.garden-map-header__intro a:focus-visible span {
+  transform: translate(0.16rem, 0.16rem);
+}
+
 .garden-map-section {
-  width: 100%;
+  width: min(94vw, 88rem);
+  margin-left: 50%;
+  transform: translateX(-50%);
 }
 
-.knowledge-map {
-  position: relative;
-  height: clamp(33rem, 68vh, 46rem);
-  min-height: 33rem;
-  overflow: hidden;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: clamp(1rem, 2.5vw, 1.6rem);
-  background:
-    radial-gradient(
-      circle at 48% 44%,
-      color-mix(in srgb, var(--color-brand) 8%, transparent),
-      transparent 42%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--color-surface-raised) 94%, #15101f),
-      var(--color-surface)
-    );
-  box-shadow:
-    0 1.75rem 5rem color-mix(in srgb, #000 24%, transparent),
-    0 1px 0 color-mix(in srgb, #fff 4%, transparent) inset;
-  isolation: isolate;
-}
-
-.knowledge-map::after {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: radial-gradient(
-    circle at center,
-    transparent 48%,
-    color-mix(in srgb, var(--color-surface) 62%, transparent) 100%
+.knowledge-atlas {
+  --atlas-ground: #0e0f12;
+  --atlas-panel: #121317;
+  --atlas-panel-raised: #16171b;
+  --atlas-hairline: color-mix(
+    in srgb,
+    var(--color-text-primary) 10%,
+    transparent
   );
-  pointer-events: none;
+  --atlas-hairline-strong: color-mix(
+    in srgb,
+    var(--color-text-primary) 18%,
+    transparent
+  );
+  position: relative;
+  overflow: visible;
+  border: 1px solid var(--atlas-hairline-strong);
+  border-radius: 0.35rem;
+  color: var(--color-text-primary);
+  background: var(--atlas-ground);
+}
+
+.knowledge-atlas :is(button, input, a):focus-visible,
+.knowledge-atlas__node:focus-visible {
+  outline: 1px solid var(--color-brand-strong);
+  outline-offset: 3px;
+}
+
+.knowledge-atlas__toolbar {
+  position: relative;
+  z-index: 8;
+  display: grid;
+  min-height: 4.25rem;
+  grid-template-columns: minmax(17rem, 1fr) minmax(15rem, 24rem) auto;
+  align-items: center;
+  border-bottom: 1px solid var(--atlas-hairline-strong);
+  background: var(--atlas-panel);
+}
+
+.knowledge-atlas__edition {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  padding: 0 1.15rem;
+  color: var(--color-text-disabled);
+  font: 0.59rem var(--font-mono);
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__edition span {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.knowledge-atlas__edition span + span::before {
+  width: 2px;
+  height: 2px;
+  margin: 0 0.65rem;
+  border-radius: 50%;
+  background: currentColor;
   content: '';
 }
 
-.knowledge-map__surface {
+.knowledge-atlas__search-wrap {
   position: relative;
-  z-index: 1;
+  align-self: stretch;
+}
+
+.knowledge-atlas__search {
+  display: grid;
+  height: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0 1rem;
+  border-right: 1px solid var(--atlas-hairline-strong);
+  border-left: 1px solid var(--atlas-hairline-strong);
+  color: var(--color-text-muted);
+  background: var(--atlas-ground);
+}
+
+.knowledge-atlas__search:focus-within {
+  color: var(--color-text-primary);
+  background: var(--atlas-panel-raised);
+}
+
+.knowledge-atlas__search svg,
+.knowledge-atlas__controls svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.knowledge-atlas__search input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--color-text-primary);
+  background: transparent;
+  font: 0.74rem var(--font-mono);
+}
+
+.knowledge-atlas__search input::placeholder {
+  color: var(--color-text-disabled);
+  opacity: 1;
+}
+
+.knowledge-atlas__search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.knowledge-atlas__search kbd {
+  display: grid;
+  width: 1.4rem;
+  height: 1.4rem;
+  place-items: center;
+  border: 1px solid var(--atlas-hairline-strong);
+  border-radius: 0.2rem;
+  color: var(--color-text-disabled);
+  font: 0.58rem var(--font-mono);
+}
+
+.knowledge-atlas__search-results {
+  position: absolute;
+  top: calc(100% + 1px);
+  right: 0;
+  left: 0;
+  z-index: 12;
+  padding: 0.4rem;
+  border: 1px solid var(--atlas-hairline-strong);
+  background: var(--atlas-panel-raised);
+}
+
+.knowledge-atlas__search-results > p {
+  margin: 0;
+  padding: 0.45rem 0.55rem 0.55rem;
+  color: var(--color-text-disabled);
+  font: 0.58rem var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.knowledge-atlas__search-results button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.68rem 0.55rem;
+  border: 0;
+  border-top: 1px solid var(--atlas-hairline);
+  color: var(--color-text-secondary);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledge-atlas__search-results button:is(:hover, .is-active) {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-brand) 7%, transparent);
+}
+
+.knowledge-atlas__search-results button span {
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-atlas__search-results button small {
+  color: var(--color-text-disabled);
+  font: 0.54rem var(--font-mono);
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__controls {
+  display: grid;
+  align-self: stretch;
+  grid-template-columns: 2.9rem 3.35rem 2.9rem 2.9rem;
+  align-items: stretch;
+}
+
+.knowledge-atlas__controls button,
+.knowledge-atlas__controls output {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid var(--atlas-hairline-strong);
+  color: var(--color-text-muted);
+  background: transparent;
+  font: 0.61rem var(--font-mono);
+}
+
+.knowledge-atlas__controls button {
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.knowledge-atlas__controls button:hover,
+.knowledge-atlas__controls button:focus-visible {
+  fill: var(--color-text-primary);
+  color: var(--color-text-primary);
+  background: var(--atlas-panel-raised);
+}
+
+.knowledge-atlas__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18.5rem;
+  background: var(--atlas-ground);
+}
+
+.knowledge-atlas__viewport {
+  position: relative;
+  min-width: 0;
+  height: clamp(38rem, 72vh, 49rem);
+  overflow: hidden;
+  background: var(--atlas-ground);
+  isolation: isolate;
+}
+
+.knowledge-atlas__surface {
   display: block;
   width: 100%;
   height: 100%;
@@ -618,227 +851,645 @@
   user-select: none;
 }
 
-.knowledge-map__surface.is-panning {
+.knowledge-atlas__surface.is-panning {
   cursor: grabbing;
 }
 
-#map-dot-grid circle {
-  fill: color-mix(in srgb, var(--color-brand) 16%, transparent);
+.knowledge-atlas__plate,
+.knowledge-atlas__world-ground {
+  fill: var(--atlas-ground);
 }
 
-.knowledge-map__background {
-  opacity: 0.5;
-}
-
-.knowledge-map__world {
-  transform-origin: 0 0;
-}
-
-.knowledge-map__edge {
+#atlas-grid-minor path,
+#atlas-grid-major path {
   fill: none;
-  stroke: color-mix(in srgb, var(--color-brand) 30%, transparent);
+}
+
+#atlas-grid-minor path {
+  stroke: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+  stroke-width: 0.7;
+}
+
+#atlas-grid-major path {
+  stroke: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  stroke-width: 0.85;
+}
+
+.knowledge-atlas__grid,
+.knowledge-atlas__world-boundary {
+  pointer-events: none;
+}
+
+.knowledge-atlas__grid {
+  opacity: 0.78;
+}
+
+.knowledge-atlas__world-boundary {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
   stroke-width: 1;
-  opacity: 0.55;
   vector-effect: non-scaling-stroke;
-  transition:
-    opacity 220ms ease,
-    stroke 220ms ease,
-    stroke-width 220ms ease;
 }
 
-.knowledge-map__edge.is-authored {
-  stroke: color-mix(in srgb, var(--color-brand-strong) 48%, transparent);
-  stroke-width: 1.4;
-  opacity: 0.8;
+.tone-0 {
+  --atlas-tone: #b5a4d4;
 }
 
-.knowledge-map__edge.is-active {
-  stroke: var(--color-brand-strong);
-  stroke-width: 2;
-  opacity: 0.95;
+.tone-1 {
+  --atlas-tone: #90b3a4;
 }
 
-.knowledge-map__edge.is-dimmed {
+.tone-2 {
+  --atlas-tone: #c0a278;
+}
+
+.tone-3 {
+  --atlas-tone: #8ea9c0;
+}
+
+.tone-4 {
+  --atlas-tone: #bc98a5;
+}
+
+.knowledge-atlas__region {
+  color: var(--atlas-tone);
+  opacity: 1;
+  transition: opacity 240ms ease;
+}
+
+.knowledge-atlas__region.is-muted {
+  opacity: 0.24;
+}
+
+.knowledge-atlas__region-boundary,
+.knowledge-atlas__region-contour {
+  fill: color-mix(in srgb, var(--atlas-tone) 1.6%, transparent);
+  stroke: color-mix(in srgb, var(--atlas-tone) 26%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.knowledge-atlas__region-contour {
+  fill: none;
+  stroke-dasharray: 2 6;
+  stroke-width: 0.8;
+  opacity: 0.58;
+}
+
+.knowledge-atlas__region-label {
+  fill: color-mix(in srgb, var(--atlas-tone) 68%, var(--color-text-muted));
+  font: 8.5px var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__region-label tspan:first-child,
+.knowledge-atlas__region-label tspan:last-child {
+  fill: color-mix(in srgb, var(--atlas-tone) 42%, transparent);
+}
+
+.knowledge-atlas__connection-set {
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.knowledge-atlas__connection-set.is-dimmed {
   opacity: 0.08;
 }
 
-.knowledge-map__node {
+.knowledge-atlas__connection,
+.knowledge-atlas__connection-trace {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.knowledge-atlas__connection {
+  stroke: color-mix(in srgb, var(--color-text-secondary) 21%, transparent);
+  stroke-width: 0.9;
+}
+
+.knowledge-atlas__connection-set.is-branch .knowledge-atlas__connection {
+  stroke: color-mix(in srgb, var(--color-text-secondary) 24%, transparent);
+  stroke-width: 1.05;
+}
+
+.knowledge-atlas__connection-set.is-reference .knowledge-atlas__connection {
+  stroke: color-mix(in srgb, var(--color-brand-strong) 40%, transparent);
+  stroke-width: 1.15;
+  stroke-dasharray: 1 5;
+}
+
+.knowledge-atlas__connection-set.is-affinity .knowledge-atlas__connection {
+  stroke: color-mix(in srgb, #c0a278 30%, transparent);
+  stroke-width: 0.85;
+  stroke-dasharray: 7 7;
+}
+
+.knowledge-atlas__connection-trace {
+  stroke: var(--color-text-primary);
+  stroke-width: 1.35;
+  stroke-dasharray: 1;
+  animation: atlas-trace-in 620ms cubic-bezier(0.22, 0.75, 0.25, 1) both;
+}
+
+.knowledge-atlas__node {
+  --atlas-tone: var(--color-brand-strong);
   cursor: pointer;
-  opacity: 0;
-  animation: map-node-arrive 500ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  animation-delay: calc(var(--node-index) * 45ms + 100ms);
-  transition: opacity 220ms ease;
-}
-
-.knowledge-map__node.is-dimmed {
-  opacity: 0.18 !important;
-}
-
-.knowledge-map__node.is-dragging {
-  cursor: grabbing;
-}
-
-.knowledge-map__node-glow {
-  fill: color-mix(in srgb, var(--color-brand) 42%, transparent);
-  opacity: 0.18;
-  transition: opacity 220ms ease;
-}
-
-.knowledge-map__node-halo {
-  fill: color-mix(in srgb, var(--color-brand) 10%, transparent);
-  stroke: color-mix(in srgb, var(--color-brand-strong) 22%, transparent);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  transition:
-    fill 220ms ease,
-    stroke 220ms ease,
-    transform 220ms ease;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.knowledge-map__node-core {
-  stroke: color-mix(in srgb, #fff 55%, var(--color-brand));
-  stroke-width: 1.25;
-  filter: drop-shadow(0 2px 5px color-mix(in srgb, #000 48%, transparent));
-  vector-effect: non-scaling-stroke;
-  transition: transform 220ms ease;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.knowledge-map__node.is-active .knowledge-map__node-core,
-.knowledge-map__node:focus-visible .knowledge-map__node-core {
-  transform: scale(1.18);
-}
-
-.knowledge-map__node.is-active .knowledge-map__node-halo,
-.knowledge-map__node:focus-visible .knowledge-map__node-halo {
-  fill: color-mix(in srgb, var(--color-brand) 22%, transparent);
-  stroke: var(--color-brand-strong);
-  transform: scale(1.16);
-}
-
-.knowledge-map__node.is-active .knowledge-map__node-glow,
-.knowledge-map__node:focus-visible .knowledge-map__node-glow {
-  opacity: 0.5;
-}
-
-.knowledge-map__node:focus-visible {
+  opacity: 1;
   outline: none;
+  transition: opacity 220ms ease;
 }
 
-.knowledge-map__label {
-  fill: var(--color-text-secondary);
-  stroke: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  stroke-width: 6px;
+.knowledge-atlas__node > :not(.knowledge-atlas__node-hit) {
+  animation: atlas-ink-in 440ms cubic-bezier(0.22, 0.72, 0.28, 1) both;
+  animation-delay: min(calc(var(--atlas-order) * 28ms + 100ms), 700ms);
+}
+
+.knowledge-atlas__node.is-dimmed {
+  opacity: 0.12;
+}
+
+.knowledge-atlas__node-hit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+}
+
+.knowledge-atlas__landmark {
+  fill: var(--atlas-ground);
+  stroke: var(--atlas-tone);
+  stroke-width: 1.35;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    fill 180ms ease,
+    stroke 180ms ease,
+    transform 280ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  vector-effect: non-scaling-stroke;
+}
+
+.knowledge-atlas__landmark-index {
+  fill: none;
+  stroke: color-mix(in srgb, var(--atlas-tone) 45%, transparent);
+  stroke-width: 0.8;
+}
+
+.knowledge-atlas__landmark--origin {
+  stroke-width: 1.25;
+}
+
+.knowledge-atlas__landmark--gate > path:first-child {
+  stroke: color-mix(in srgb, var(--atlas-tone) 68%, transparent);
+}
+
+.knowledge-atlas__node.is-active .knowledge-atlas__landmark,
+.knowledge-atlas__node.is-selected .knowledge-atlas__landmark,
+.knowledge-atlas__node:focus-visible .knowledge-atlas__landmark {
+  fill: var(--atlas-tone);
+  stroke: var(--color-text-primary);
+  transform: scale(1.12);
+}
+
+.knowledge-atlas__node-label {
+  fill: color-mix(in srgb, var(--color-text-primary) 84%, var(--atlas-tone));
+  stroke: var(--atlas-ground);
+  stroke-width: 7px;
   stroke-linejoin: round;
   paint-order: stroke;
-  font: 600 12.5px var(--font-body);
-  letter-spacing: -0.01em;
+  font: 600 14px var(--font-body);
+  letter-spacing: -0.025em;
   pointer-events: none;
   transition:
-    fill 220ms ease,
-    opacity 220ms ease;
+    fill 180ms ease,
+    opacity 180ms ease;
 }
 
-.knowledge-map__node.is-active .knowledge-map__label,
-.knowledge-map__node:focus-visible .knowledge-map__label {
+.knowledge-atlas__node.is-branch .knowledge-atlas__node-label {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.knowledge-atlas__node.is-origin .knowledge-atlas__node-label {
+  font-size: 21px;
+  letter-spacing: -0.05em;
+}
+
+.knowledge-atlas__node.is-active .knowledge-atlas__node-label,
+.knowledge-atlas__node.is-selected .knowledge-atlas__node-label,
+.knowledge-atlas__node:focus-visible .knowledge-atlas__node-label {
   fill: var(--color-text-primary);
 }
 
-.knowledge-map__controls {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 4;
-  display: flex;
-  overflow: hidden;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--color-surface-glass) 90%, transparent);
-  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, #000 20%, transparent);
-  backdrop-filter: blur(14px);
+.knowledge-atlas__node-code {
+  fill: color-mix(in srgb, var(--atlas-tone) 58%, var(--color-text-disabled));
+  stroke: var(--atlas-ground);
+  stroke-width: 4px;
+  paint-order: stroke;
+  font: 7.5px var(--font-mono);
+  letter-spacing: 0.08em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
 }
 
-.knowledge-map__controls button {
+.knowledge-atlas[data-zoom='detail'] .knowledge-atlas__node-code,
+.knowledge-atlas__node.is-active .knowledge-atlas__node-code,
+.knowledge-atlas__node.is-selected .knowledge-atlas__node-code {
+  opacity: 0.82;
+}
+
+.knowledge-atlas[data-zoom='overview']
+  .knowledge-atlas__node:not(
+    .is-branch,
+    .is-origin,
+    .is-active,
+    .is-selected,
+    .is-match
+  )
+  .knowledge-atlas__node-label {
+  opacity: 0.64;
+}
+
+.knowledge-atlas[data-density='medium'][data-zoom='overview']
+  .knowledge-atlas__node:not(
+    .is-branch,
+    .is-origin,
+    .is-active,
+    .is-selected,
+    .is-match
+  )
+  .knowledge-atlas__node-label {
+  opacity: 0.3;
+}
+
+.knowledge-atlas[data-density='dense'][data-zoom='overview']
+  .knowledge-atlas__node:not(
+    .is-branch,
+    .is-origin,
+    .is-active,
+    .is-selected,
+    .is-match
+  )
+  .knowledge-atlas__node-label,
+.knowledge-atlas[data-density='dense'][data-zoom='neighborhood']
+  .knowledge-atlas__node.is-deep:not(.is-active, .is-selected, .is-match)
+  .knowledge-atlas__node-label {
+  opacity: 0;
+}
+
+.knowledge-atlas__node.is-match .knowledge-atlas__node-label {
+  opacity: 1;
+}
+
+.knowledge-atlas__selection-bracket {
+  fill: none;
+  stroke: var(--atlas-tone);
+  stroke-width: 0.9;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  vector-effect: non-scaling-stroke;
+}
+
+.knowledge-atlas__node.is-selected .knowledge-atlas__selection-bracket,
+.knowledge-atlas__node:focus-visible .knowledge-atlas__selection-bracket {
+  opacity: 0.8;
+}
+
+.knowledge-atlas__reticle {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-text-primary) 22%, transparent);
+  stroke-width: 1;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.knowledge-atlas__coordinates {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.65rem;
+  left: 1rem;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  color: color-mix(in srgb, var(--color-text-muted) 66%, transparent);
+  font: 0.5rem var(--font-mono);
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__inspector {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--atlas-hairline-strong);
+  background: var(--atlas-panel);
+}
+
+.knowledge-atlas__key,
+.knowledge-atlas__place {
+  flex: 1;
+  padding: clamp(1.35rem, 2.4vw, 2rem);
+}
+
+.knowledge-atlas__key-kicker,
+.knowledge-atlas__place-topline,
+.knowledge-atlas__place-neighborhood {
+  margin: 0;
+  color: var(--color-text-disabled);
+  font: 0.57rem/1.4 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__key > h2,
+.knowledge-atlas__place > h2 {
+  margin: 1.35rem 0 0;
+  color: var(--color-text-primary);
+  font-size: clamp(1.35rem, 2vw, 1.72rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.knowledge-atlas__key > p:not(.knowledge-atlas__key-kicker),
+.knowledge-atlas__place-summary {
+  margin: 1rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.68;
+}
+
+.knowledge-atlas__legend {
   display: grid;
-  place-items: center;
-  width: 2.7rem;
-  height: 2.7rem;
-  border: 0;
-  border-right: 1px solid var(--color-rule);
+  margin-top: 1.8rem;
+  border-top: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__legend > div {
+  display: grid;
+  min-height: 3.15rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  border-bottom: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__legend > div > span {
+  position: relative;
+  display: block;
+  width: 2rem;
+  height: 1px;
+  background: color-mix(in srgb, var(--color-text-secondary) 34%, transparent);
+}
+
+.knowledge-atlas__legend > div > span::after {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--color-text-muted);
+  background: var(--atlas-panel);
+  content: '';
+  transform: rotate(45deg);
+}
+
+.knowledge-atlas__legend > div > .is-reference {
+  height: 0;
+  border-top: 1px dotted
+    color-mix(in srgb, var(--color-brand-strong) 55%, transparent);
+  background: none;
+}
+
+.knowledge-atlas__legend > div > .is-affinity {
+  height: 0;
+  border-top: 1px dashed color-mix(in srgb, #c0a278 48%, transparent);
+  background: none;
+}
+
+.knowledge-atlas__legend p {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+}
+
+.knowledge-atlas__legend strong {
   color: var(--color-text-secondary);
+  font-size: 0.69rem;
+  font-weight: 500;
+}
+
+.knowledge-atlas__legend small {
+  color: var(--color-text-disabled);
+  font: 0.5rem var(--font-mono);
+}
+
+.knowledge-atlas__districts {
+  margin-top: 2rem;
+}
+
+.knowledge-atlas__districts h3,
+.knowledge-atlas__nearby h3 {
+  margin: 0 0 0.55rem;
+  color: var(--color-text-disabled);
+  font: 0.55rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__districts ol,
+.knowledge-atlas__nearby ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knowledge-atlas__districts button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1.7rem minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border: 0;
+  color: var(--color-text-muted);
   background: transparent;
-  font: 1.05rem var(--font-mono);
+  text-align: left;
   cursor: pointer;
 }
 
-.knowledge-map__controls button:last-child {
-  border-right: 0;
-}
-
-.knowledge-map__controls button:hover,
-.knowledge-map__controls button:focus-visible {
+.knowledge-atlas__districts button:hover,
+.knowledge-atlas__districts button:focus-visible {
   color: var(--color-text-primary);
-  background: var(--color-overlay-strong);
 }
 
-.knowledge-map__controls svg {
-  width: 1rem;
-  height: 1rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.knowledge-map__caption {
-  position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  z-index: 4;
-  display: grid;
-  gap: 0.18rem;
-  width: min(24rem, calc(100% - 2rem));
-  min-height: 2.7rem;
-  padding: 0.65rem 0.8rem;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-lg);
+.knowledge-atlas__districts button span,
+.knowledge-atlas__districts button small {
   color: var(--color-text-disabled);
-  background: color-mix(in srgb, var(--color-surface-glass) 88%, transparent);
-  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, #000 18%, transparent);
-  backdrop-filter: blur(14px);
-  font: 0.62rem var(--font-mono);
-  pointer-events: none;
+  font: 0.53rem var(--font-mono);
 }
 
-.knowledge-map__caption strong {
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: 0.86rem;
-  font-weight: 600;
-}
-
-.knowledge-map__caption strong + span {
+.knowledge-atlas__districts button strong {
   overflow: hidden;
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: 0.72rem;
-  line-height: 1.4;
+  font-size: 0.7rem;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.knowledge-map__empty {
+.knowledge-atlas__place-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__place-topline button {
+  padding: 0.25rem 0;
+  border: 0;
+  color: var(--color-text-disabled);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__place-topline button:hover,
+.knowledge-atlas__place-topline button:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.knowledge-atlas__place-neighborhood {
+  margin-top: 1.25rem;
+  color: var(--color-brand-strong);
+}
+
+.knowledge-atlas__place > h2 {
+  margin-top: 0.65rem;
+}
+
+.knowledge-atlas__place-facts {
   display: grid;
-  min-height: 28rem;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 1.6rem 0 0;
+  border-top: 1px solid var(--atlas-hairline);
+  border-bottom: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__place-facts div {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.25rem;
+  text-align: center;
+}
+
+.knowledge-atlas__place-facts div + div {
+  border-left: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__place-facts dt {
+  color: var(--color-text-disabled);
+  font: 0.48rem var(--font-mono);
+  text-transform: uppercase;
+}
+
+.knowledge-atlas__place-facts dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: 0.72rem var(--font-mono);
+}
+
+.knowledge-atlas__nearby {
+  margin-top: 1.65rem;
+}
+
+.knowledge-atlas__nearby li {
+  border-top: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__nearby li:last-child {
+  border-bottom: 1px solid var(--atlas-hairline);
+}
+
+.knowledge-atlas__nearby button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1.2rem minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  font-size: 0.68rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledge-atlas__nearby button span {
+  color: var(--color-brand-strong);
+  font: 0.55rem var(--font-mono);
+}
+
+.knowledge-atlas__nearby button:hover,
+.knowledge-atlas__nearby button:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.knowledge-atlas__open {
+  display: flex;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.65rem;
+  padding: 0 0.9rem;
+  border: 1px solid
+    color-mix(in srgb, var(--color-brand-strong) 40%, transparent);
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-brand) 8%, transparent);
+  font: 0.68rem var(--font-mono);
+  text-decoration: none;
+}
+
+.knowledge-atlas__open:hover,
+.knowledge-atlas__open:focus-visible {
+  border-color: color-mix(in srgb, var(--color-brand-strong) 68%, transparent);
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+}
+
+.knowledge-atlas__instructions {
+  display: grid;
+  gap: 0.42rem;
+  padding: 1rem 1.35rem;
+  border-top: 1px solid var(--atlas-hairline-strong);
+  color: var(--color-text-disabled);
+  font: 0.49rem var(--font-mono);
+  letter-spacing: 0.025em;
+}
+
+.knowledge-atlas__instructions span::before {
+  margin-right: 0.5rem;
+  color: color-mix(in srgb, var(--color-brand-strong) 55%, transparent);
+  content: '—';
+}
+
+.knowledge-atlas__empty {
+  display: grid;
+  min-height: 34rem;
   place-items: center;
   margin: 0;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-rule-strong);
   color: var(--color-text-muted);
+  font: 0.7rem var(--font-mono);
 }
 
 @keyframes garden-fade-in {
@@ -854,13 +1505,66 @@
   }
 }
 
-@keyframes map-node-arrive {
+@keyframes atlas-ink-in {
   from {
     opacity: 0;
+    transform: translateY(4px);
   }
 
   to {
     opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes atlas-trace-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 1080px) {
+  .knowledge-atlas__toolbar {
+    grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 21rem) auto;
+  }
+
+  .knowledge-atlas__edition span:nth-child(3) {
+    display: none;
+  }
+
+  .knowledge-atlas__body {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .knowledge-atlas__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-atlas__viewport {
+    height: clamp(35rem, 70vh, 44rem);
+  }
+
+  .knowledge-atlas__inspector {
+    border-top: 1px solid var(--atlas-hairline-strong);
+    border-left: 0;
+  }
+
+  .knowledge-atlas__key,
+  .knowledge-atlas__place {
+    width: min(100%, 38rem);
+    min-height: 26rem;
+  }
+
+  .knowledge-atlas__instructions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 1.4rem;
   }
 }
 
@@ -871,11 +1575,44 @@
 
   .garden-map-header {
     grid-template-columns: 1fr;
-    gap: 1.1rem;
+    gap: 2rem;
   }
 
-  .garden-map-header p {
+  .garden-map-header__intro p {
     max-width: 42ch;
+  }
+
+  .garden-map-header__intro {
+    gap: 1.15rem;
+  }
+
+  .knowledge-atlas__toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .knowledge-atlas__edition {
+    min-height: 3.4rem;
+  }
+
+  .knowledge-atlas__search-wrap {
+    min-height: 3.55rem;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--atlas-hairline-strong);
+  }
+
+  .knowledge-atlas__search {
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .knowledge-atlas__controls {
+    min-height: 3.4rem;
+  }
+
+  .knowledge-atlas__search-results {
+    right: -1px;
+    left: -1px;
   }
 }
 
@@ -930,20 +1667,67 @@
     max-height: calc(100dvh - 12rem);
   }
 
-  .knowledge-map {
-    height: 34rem;
-    min-height: 34rem;
+  .garden-page--map .garden-nav {
+    margin-bottom: 3.25rem;
   }
 
-  .knowledge-map__controls {
-    top: 0.75rem;
-    right: 0.75rem;
+  .garden-map-header {
+    margin-bottom: 3.25rem;
   }
 
-  .knowledge-map__caption {
-    bottom: 0.75rem;
-    left: 0.75rem;
-    width: calc(100% - 1.5rem);
+  .garden-map-header__eyebrow {
+    margin-bottom: 1rem;
+  }
+
+  .garden-map-section {
+    width: calc(100vw - 1rem);
+  }
+
+  .knowledge-atlas__viewport {
+    height: max(31rem, 64dvh);
+    max-height: 40rem;
+  }
+
+  .knowledge-atlas__edition span:nth-child(2) {
+    display: none;
+  }
+
+  .knowledge-atlas__edition span + span::before {
+    display: none;
+  }
+
+  .knowledge-atlas__controls {
+    grid-template-columns: 2.75rem 3.15rem 2.75rem 2.75rem;
+  }
+
+  .knowledge-atlas__controls button,
+  .knowledge-atlas__controls output {
+    min-height: 2.75rem;
+  }
+
+  .knowledge-atlas__coordinates {
+    right: 0.7rem;
+    bottom: 0.55rem;
+    left: 0.7rem;
+  }
+
+  .knowledge-atlas__coordinates span:nth-child(2) {
+    display: none;
+  }
+
+  .knowledge-atlas__key,
+  .knowledge-atlas__place {
+    min-height: 0;
+    padding: 1.5rem 1.25rem 1.75rem;
+  }
+
+  .knowledge-atlas__key > h2,
+  .knowledge-atlas__place > h2 {
+    max-width: 17ch;
+  }
+
+  .knowledge-atlas__instructions span:last-child {
+    display: none;
   }
 }
 
@@ -965,16 +1749,62 @@
 
   .garden-map-header h1,
   .garden-topic-header h1 {
-    font-size: clamp(2.55rem, 15vw, 3.35rem);
+    font-size: clamp(2.8rem, 14.5vw, 3.65rem);
   }
 
   .garden-document .prose h1 {
     font-size: clamp(1.65rem, 8vw, 2.2rem);
   }
 
-  .knowledge-map__caption > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .knowledge-atlas__edition {
+    padding: 0 0.8rem;
+  }
+
+  .knowledge-atlas__controls {
+    grid-template-columns: 2.6rem 3rem 2.6rem 2.6rem;
+  }
+
+  .knowledge-atlas__search {
+    padding: 0 0.8rem;
+  }
+
+  .knowledge-atlas__search kbd {
+    display: none;
+  }
+
+  .knowledge-atlas__viewport {
+    height: max(29rem, 61dvh);
+  }
+
+  .knowledge-atlas__instructions {
+    gap: 0.35rem;
+    padding-right: 1.1rem;
+    padding-left: 1.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-atlas *,
+  .garden-map-header__intro a span {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .knowledge-atlas__region-boundary,
+  .knowledge-atlas__region-contour,
+  .knowledge-atlas__connection,
+  .knowledge-atlas__landmark,
+  .knowledge-atlas__selection-bracket {
+    stroke: CanvasText;
+  }
+
+  .knowledge-atlas__node-label,
+  .knowledge-atlas__region-label {
+    fill: CanvasText;
+    stroke: Canvas;
   }
 }
