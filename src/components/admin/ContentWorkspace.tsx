@@ -138,7 +138,7 @@ function contentRequestError(caught: unknown, fallback: string): string {
     caught instanceof Error &&
     (caught.name === 'AbortError' || caught.name === 'TimeoutError')
   ) {
-    return 'Studio could not reach the content service. Run `pnpm run dev` with CONTENT_WRITE_MODE=local.';
+    return 'Studio could not reach the content store. Check the Redis connection and try again.';
   }
   return caught instanceof Error ? caught.message : fallback;
 }
@@ -1144,9 +1144,8 @@ export function ContentWorkspace({
       <article className="admin-card admin-panel content-workspace">
         <div className="admin-empty-state" role="status">
           <p className="admin-muted">
-            Content editing is only available in local development. Run{' '}
-            <code>pnpm run dev</code> with <code>CONTENT_WRITE_MODE=local</code>
-            .
+            The content store is unavailable. Check the Redis / Upstash
+            connection env vars, then reload.
           </p>
         </div>
       </article>
