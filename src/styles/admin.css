@@ -18,10 +18,12 @@
   --admin-line-strong: var(--color-rule-strong);
   --admin-radius: var(--radius-lg);
   --admin-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --admin-status-success-bg: rgba(127, 207, 156, 0.1);
-  --admin-status-error-bg: rgba(255, 133, 133, 0.1);
-  --admin-status-warning-bg: rgba(232, 189, 106, 0.1);
-  --admin-status-neutral-bg: rgba(183, 177, 196, 0.06);
+  /* Tints derived from the semantic text colours in _variables.css:
+     success #79ab9a · error #cf7f7a · warning #cbab68 · neutral #aab2bf. */
+  --admin-status-success-bg: rgba(121, 171, 154, 0.1);
+  --admin-status-error-bg: rgba(207, 127, 122, 0.1);
+  --admin-status-warning-bg: rgba(203, 171, 104, 0.1);
+  --admin-status-neutral-bg: rgba(170, 178, 191, 0.06);
 }
 
 .admin-page *,

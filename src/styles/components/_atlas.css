@@ -1,9 +1,9 @@
 /* The notes landscape is the page, not a component placed inside one. */
 
 .knowledge-landscape {
-  --landscape-ground: #0d0e11;
-  --landscape-ink: #e8e4ee;
-  --landscape-panel: #111216;
+  --landscape-ground: #0c0e11;
+  --landscape-ink: #e4e8ee;
+  --landscape-panel: #13161b;
   --landscape-line: color-mix(in srgb, var(--landscape-ink) 11%, transparent);
   --landscape-line-strong: color-mix(
     in srgb,
@@ -65,23 +65,23 @@
 }
 
 .knowledge-landscape .tone-0 {
-  --landscape-tone: #b5a4d4;
+  --landscape-tone: #8fb0cf; /* steel */
 }
 
 .knowledge-landscape .tone-1 {
-  --landscape-tone: #8faea0;
+  --landscape-tone: #82ab9a; /* teal */
 }
 
 .knowledge-landscape .tone-2 {
-  --landscape-tone: #bca176;
+  --landscape-tone: #a7aed0; /* indigo */
 }
 
 .knowledge-landscape .tone-3 {
-  --landscape-tone: #8ea6ba;
+  --landscape-tone: #8fb0b0; /* cyan */
 }
 
 .knowledge-landscape .tone-4 {
-  --landscape-tone: #b995a2;
+  --landscape-tone: #9aa7bd; /* stone */
 }
 
 .knowledge-landscape__region {
@@ -155,7 +155,7 @@
 }
 
 .knowledge-landscape__path.is-affinity > path {
-  stroke: color-mix(in srgb, #bca176 38%, transparent);
+  stroke: color-mix(in srgb, #82ab9a 38%, transparent);
   stroke-dasharray: 8 9;
 }
 

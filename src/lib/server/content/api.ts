@@ -1735,12 +1735,12 @@ function previewHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)} preview</title>
   <style>
-    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b0c0f; color: #e8e4ee; }
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0c0e11; color: #e4e8ee; }
     body { margin: 0; padding: 40px 20px; }
     main { width: min(760px, 100%); margin: 0 auto; }
     h1 { font-size: clamp(2rem, 7vw, 4rem); line-height: 1.05; }
-    p, li { line-height: 1.75; color: #c9c2d6; }
-    a { color: #a78bfa; }
+    p, li { line-height: 1.75; color: #c2c8d2; }
+    a { color: #7aa6cb; }
     img { max-width: 100%; border-radius: 8px; }
     pre, aside { border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 14px; background: rgba(255,255,255,.05); overflow: auto; }
   </style>
