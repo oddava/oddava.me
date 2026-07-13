@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { getCollection } from 'astro:content';
 import type { OverviewResponse } from '../../../lib/contracts';
+import { getGardenIndex } from '../../../lib/garden';
 import { adminJson, requireSecuredAdminApi } from '../../../lib/server/admin';
 import { isStorageUnavailableError } from '../../../lib/server/community';
 import { readGuestbookEntries } from '../../../lib/server/guestbook';
@@ -20,7 +20,7 @@ async function readAdminGuestbookEntries() {
 
 async function loadNoteCount(): Promise<number> {
   try {
-    return (await getCollection('notes')).length;
+    return (await getGardenIndex()).documents.length;
   } catch (error) {
     console.error('[admin-overview] Note metrics failed.', error);
     return 0;

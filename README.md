@@ -1,15 +1,16 @@
 # oddava.me
 
 Personal website and interconnected notes garden built with Astro, Preact, and
-Cloudflare Workers. The repository is the publishing system: notes are committed
-MDX files, while the authenticated Studio provides a local editing interface over
-those same files.
+Cloudflare Workers. The authenticated Studio edits a Redis-backed virtual
+content filesystem in production, so notes and uploaded media go live without a
+build. A local repository-writing mode remains available for file-based
+authoring and version-control snapshots.
 
 ## Requirements
 
 - Node.js 22.12 or newer (see `.nvmrc`)
 - pnpm 10
-- Redis 7 for guestbook, rate-limit, and integration-state development
+- Redis 7 for local runtime persistence and integration tests
 
 ## Local development
 
@@ -21,8 +22,9 @@ pnpm run dev
 
 Fill in `ADMIN_PANEL_TOKEN` and `COMMUNITY_SIGNING_SECRET` before using `/admin`.
 With `CONTENT_WRITE_MODE=local`, `/admin/studio` edits `src/content/notes`
-through an authenticated loopback service. Redis-backed features use
-`LOCAL_REDIS_URL`; the site itself remains usable when Redis is unavailable.
+through an authenticated loopback service. Set it to `redis` to exercise the
+production content path against `LOCAL_REDIS_URL`; public note routes read the
+same store and update immediately.
 
 The two local bridges listen only on loopback:
 
@@ -42,6 +44,8 @@ Both ports and URLs are configurable in `.env.example`.
 | `pnpm run preview`       | Preview the production build                         |
 | `pnpm run verify`        | Run formatting, diagnostics, tests, and build        |
 | `pnpm run audit`         | Audit all dependencies for moderate-or-higher issues |
+| `pnpm run notes:migrate` | Import repository notes and media into Redis         |
+| `pnpm run notes:export`  | Export Redis notes and media into the repository     |
 | `pnpm run spotify:token` | Create a Spotify refresh-token fallback in `.env`    |
 | `pnpm run deploy`        | Deploy with Wrangler                                 |
 
@@ -53,13 +57,26 @@ RUN_REDIS_INTEGRATION=1 pnpm exec vitest run tests/storage-integration.test.ts
 
 ## Content workflow
 
-`src/content/notes/**/*.mdx` is the only source of truth. Public note routes read
-the Astro content collection directly at build/runtime. Studio updates are
-compare-and-set filesystem writes, so stale editor sessions cannot silently
-overwrite newer content.
+Production uses Redis as the live source of truth. Studio mutations are
+authenticated, same-origin, compare-and-set writes; a content version invalidates
+the runtime garden cache after each completed operation. Uploaded media is read
+from that same virtual filesystem.
 
-Production intentionally has no content write path. Publish changes by editing
-locally, committing the resulting MDX and media files, and deploying the commit.
+Seed or restore a store from the repository with:
+
+```bash
+pnpm run notes:migrate -- --target=prod
+```
+
+Snapshot live content back to version control with:
+
+```bash
+pnpm run notes:export -- --target=prod
+```
+
+Both commands support `--dry-run`. Import also supports `--prune`; export
+supports `--keep-removed`. They coordinate with Studio through the same Redis
+mutation lock so readers never publish a partial sync.
 
 ## Runtime configuration
 

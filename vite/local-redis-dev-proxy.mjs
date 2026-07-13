@@ -10,7 +10,8 @@ import {
 import { firstConfiguredSecret } from './dev-secrets.mjs';
 
 const DEFAULT_PROXY_PORT = 45555;
-const MAX_REQUEST_BYTES = 64 * 1024;
+// A Studio image can be 5 MB before base64 encoding inside a Redis record.
+const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const PROXY_PATH = '/__local_redis';
 const TOKEN_HEADER = 'x-local-redis-token';
 

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_FETCH_TIMEOUT_MS,
   getLocalRedisUrl,
   getRedisApiConfig,
   getStorageNamespacePrefix,
@@ -49,6 +50,7 @@ export function hasRedisConfig(): boolean {
 
 export async function redisCommand<T = unknown>(
   command: RedisArgument[],
+  timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<T> {
   if (!hasRedisConfig()) {
     throw new Error('Persistent storage is not configured.');
@@ -58,18 +60,26 @@ export async function redisCommand<T = unknown>(
 
   if (shouldUseLocalRedis()) {
     const { executeLocalRedisCommand } = await import('../local-redis');
-    return executeLocalRedisCommand<T>(namespacedCommand, getLocalRedisUrl());
+    return executeLocalRedisCommand<T>(
+      namespacedCommand,
+      getLocalRedisUrl(),
+      timeoutMs,
+    );
   }
 
   const { url, token } = getRedisApiConfig();
-  const response = await fetchWithTimeout(url!, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
+  const response = await fetchWithTimeout(
+    url!,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(namespacedCommand),
     },
-    body: JSON.stringify(namespacedCommand),
-  });
+    timeoutMs,
+  );
   const payload = (await response.json().catch(() => ({}))) as {
     result?: T;
     error?: string;

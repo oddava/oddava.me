@@ -29,7 +29,8 @@ health state.
 - `src/layouts` owns document shells and global page structure.
 - `src/components` contains Astro UI and focused Preact islands.
 - `src/lib/garden` builds the notes hierarchy, backlinks, tags, search data, and
-  graph layout from the Astro `notes` collection.
+  graph layout from the live Redis store, or from the Astro `notes` collection
+  during explicit local-file authoring.
 - `src/lib/content/schemas.ts` is the shared frontmatter contract used by Astro
   and the local content editor.
 - `src/styles` contains global partials and feature-owned styles.
@@ -59,22 +60,28 @@ normalization, moderation state, and atomic Redis persistence.
 
 ### Content
 
-Content editing is a local-development boundary, not a production CMS:
+Content editing has one domain API with environment-appropriate persistence:
 
 ```text
 Studio island
   → authenticated Astro API route
-  → authenticated loopback proxy
-  → local content route handler
-  → filesystem ContentProvider
-  → src/content/notes + public/images/notes
+  → content router and domain handlers
+  → ContentProvider
+      ├─ production / Redis dev → Redis virtual filesystem
+      └─ local-file dev → authenticated loopback proxy → repository files
 ```
 
-The Worker-facing route refuses writes outside development with
-`CONTENT_WRITE_MODE=local`. The loopback proxy re-verifies the admin session,
-rejects cross-origin mutations, bounds request bodies, and never exposes a
-general filesystem API. File updates carry SHA-256 revisions and use atomic
-renames to enforce compare-and-set semantics.
+Production Studio writes use Lua compare-and-set mutations and a short-lived
+cross-isolate lock for compound operations. Public garden readers validate a
+stable content version around each rebuild, so they retain the last complete
+snapshot while a folder operation or import is in progress. Runtime image
+requests fall through to the Redis media route when an asset is not in the
+deployed static bundle.
+
+Local-file mode remains development-only. Its loopback proxy re-verifies the
+admin session, rejects cross-origin mutations, bounds request bodies, and never
+exposes a general filesystem API. File updates carry SHA-256 revisions and use
+atomic renames to enforce compare-and-set semantics.
 
 ### Integrations
 
@@ -103,8 +110,10 @@ client. That bridge is token-authenticated, accepts only bounded JSON command
 arrays, and uses the single Redis URL loaded by the Vite process; callers cannot
 select an arbitrary target.
 
-All application Redis keys are namespaced by environment. Multi-step mutations
-use Lua scripts so concurrent guestbook and rate-limit requests remain atomic.
+All application Redis keys are namespaced by environment. Content, guestbook,
+rate-limit, and integration-state mutations use Lua where an operation spans
+multiple keys. Content sync tooling uses the same key layout, namespace rules,
+and mutation lock as the Worker.
 
 ## Security boundaries
 

@@ -1,6 +1,6 @@
 {
   "name": "oddava.me",
-  "description": "Personal website, notes garden, and local-first publishing studio.",
+  "description": "Personal website, notes garden, and production publishing studio.",
   "type": "module",
   "version": "1.0.0",
   "private": true,
@@ -25,6 +25,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "audit": "pnpm audit --audit-level moderate",
+    "notes:export": "node scripts/export-notes-from-redis.mjs",
+    "notes:migrate": "node scripts/migrate-notes-to-redis.mjs",
     "spotify:token": "node scripts/get-spotify-token.mjs",
     "verify": "pnpm run format:check && pnpm run check && pnpm run test && pnpm run build",
     "astro": "astro"

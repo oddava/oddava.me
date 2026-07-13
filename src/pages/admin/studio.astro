@@ -2,11 +2,8 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ContentWorkspace } from '../../components/admin/ContentWorkspace';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
-import { getServerEnv } from '../../lib/server/env';
 
 const configured = isAdminConfigured();
-const contentEditingEnabled =
-  import.meta.env.DEV && getServerEnv('CONTENT_WRITE_MODE') === 'local';
 
 if (configured && !(await isAdminRequest(Astro.cookies))) {
   return Astro.redirect(
@@ -74,19 +71,7 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
           </form>
         </header>
         <main class="admin-main admin-main--full">
-          {contentEditingEnabled ? (
-            <ContentWorkspace client:load fullWidth />
-          ) : (
-            <section class="admin-card admin-login">
-              <p class="admin-kicker">studio</p>
-              <h1>Studio is local-only</h1>
-              <p class="admin-note">
-                Run the development server with{' '}
-                <code>CONTENT_WRITE_MODE=local</code> to edit repository
-                content. Commit and deploy those files to publish them.
-              </p>
-            </section>
-          )}
+          <ContentWorkspace client:load fullWidth />
         </main>
       </>
     ) : (

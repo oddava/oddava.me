@@ -16,6 +16,7 @@ import type {
 
 const ADMIN_REQUEST_TIMEOUT_MS = 15_000;
 const ADMIN_OVERVIEW_TIMEOUT_MS = 12_000;
+const CONTENT_REQUEST_TIMEOUT_MS = 30_000;
 const INTEGRATION_TEST_TIMEOUT_MS = 20_000;
 const INTEGRATIONS_PATH = '/api/admin/integrations';
 
@@ -77,6 +78,16 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   }
 
   return payload;
+}
+
+function readContentJson<T>(
+  input: RequestInfo,
+  init: RequestInit = {},
+): Promise<T> {
+  return readJson<T>(input, {
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(CONTENT_REQUEST_TIMEOUT_MS),
+  });
 }
 
 export function fetchAdminOverview(): Promise<OverviewResponse> {
@@ -165,7 +176,7 @@ export function revokeIntegrationCredentials(
 }
 
 export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
-  return readJson<ContentCollectionsResponse>(
+  return readContentJson<ContentCollectionsResponse>(
     '/api/admin/content/collections',
     {
       cache: 'no-store',
@@ -176,7 +187,7 @@ export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
 export function fetchContentEntries(
   collection: string,
 ): Promise<ContentEntriesResponse> {
-  return readJson<ContentEntriesResponse>(
+  return readContentJson<ContentEntriesResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}`,
     { cache: 'no-store' },
   );
@@ -186,7 +197,7 @@ export function fetchContentEntry(
   collection: string,
   id: string,
 ): Promise<ContentEntryResponse> {
-  return readJson<ContentEntryResponse>(
+  return readContentJson<ContentEntryResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
       id,
     )}`,
@@ -203,7 +214,7 @@ export function createContentEntry(
     body?: string;
   },
 ): Promise<ContentSaveResponse> {
-  return readJson<ContentSaveResponse>(
+  return readContentJson<ContentSaveResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}`,
     {
       method: 'POST',
@@ -226,11 +237,14 @@ export function createContentFolder(
   collection: string,
   path: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path }),
-  });
+  return readContentJson<ContentFoldersResponse>(
+    contentFoldersPath(collection),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    },
+  );
 }
 
 export function duplicateContentFolder(
@@ -238,11 +252,14 @@ export function duplicateContentFolder(
   path: string,
   copyFrom: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path, copyFrom }),
-  });
+  return readContentJson<ContentFoldersResponse>(
+    contentFoldersPath(collection),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, copyFrom }),
+    },
+  );
 }
 
 export function updateContentFolder(
@@ -250,22 +267,28 @@ export function updateContentFolder(
   path: string,
   nextPath: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path, nextPath }),
-  });
+  return readContentJson<ContentFoldersResponse>(
+    contentFoldersPath(collection),
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, nextPath }),
+    },
+  );
 }
 
 export function deleteContentFolder(
   collection: string,
   path: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path }),
-  });
+  return readContentJson<ContentFoldersResponse>(
+    contentFoldersPath(collection),
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    },
+  );
 }
 
 function contentMovePath(collection: string): string {
@@ -278,7 +301,7 @@ export function moveContentEntry(
   folder: string,
   revision: string,
 ): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
-  return readJson(contentMovePath(collection), {
+  return readContentJson(contentMovePath(collection), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, folder, revision }),
@@ -292,7 +315,7 @@ export function renameContentEntry(
   folder: string,
   revision: string,
 ): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
-  return readJson(contentMovePath(collection), {
+  return readContentJson(contentMovePath(collection), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, nextId, folder, revision }),
@@ -306,7 +329,7 @@ export function duplicateContentEntry(
   folder: string,
   revision: string,
 ): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
-  return readJson(contentMovePath(collection), {
+  return readContentJson(contentMovePath(collection), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -328,7 +351,7 @@ export function updateContentEntry(
     revision: string;
   },
 ): Promise<ContentSaveResponse> {
-  return readJson<ContentSaveResponse>(
+  return readContentJson<ContentSaveResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
       id,
     )}`,
@@ -345,7 +368,7 @@ export function deleteContentEntry(
   id: string,
   revision: string,
 ): Promise<ContentDeleteResponse> {
-  return readJson<ContentDeleteResponse>(
+  return readContentJson<ContentDeleteResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
       id,
     )}`,
@@ -364,7 +387,7 @@ export function reorderContentEntries(
 ): Promise<{
   reordered: { id: string; ok: boolean; revision?: string }[];
 }> {
-  return readJson(
+  return readContentJson(
     `/api/admin/content/${encodeURIComponent(collection)}/reorder`,
     {
       method: 'POST',
@@ -384,7 +407,7 @@ export function uploadContentMedia(
   formData.set('entryId', entryId);
   formData.set('file', file);
 
-  return readJson<ContentMediaResponse>('/api/admin/content/media', {
+  return readContentJson<ContentMediaResponse>('/api/admin/content/media', {
     method: 'POST',
     body: formData,
   });
