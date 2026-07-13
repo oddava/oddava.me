@@ -562,6 +562,12 @@
   animation: landscape-card-in 320ms cubic-bezier(0.2, 0.72, 0.25, 1) both;
 }
 
+/* Duration is mirrored by CARD_EXIT_MS in KnowledgeLandscape.tsx. */
+.knowledge-landscape__card.is-leaving {
+  pointer-events: none;
+  animation: landscape-card-out 140ms cubic-bezier(0.3, 0, 0.35, 1) both;
+}
+
 .knowledge-landscape__card-close {
   position: absolute;
   top: 0.85rem;
@@ -595,9 +601,9 @@
   max-width: calc(100% - 2.25rem);
   margin: 0;
   overflow: hidden;
-  color: var(--color-text-disabled);
-  font: 0.54rem var(--font-mono);
-  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+  font: 0.72rem var(--font-mono);
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
   text-transform: lowercase;
   white-space: nowrap;
@@ -629,7 +635,7 @@
   border-radius: 0.45rem;
   color: var(--color-text-secondary);
   background: color-mix(in srgb, var(--landscape-ink) 6%, transparent);
-  font: 0.62rem var(--font-mono);
+  font: 0.72rem var(--font-mono);
   text-decoration: none;
   transition:
     color 140ms ease,
@@ -658,11 +664,10 @@
 }
 
 .knowledge-landscape__onward > p {
-  margin: 0 0 0.15rem;
-  color: var(--color-text-disabled);
-  font: 0.5rem var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  margin: 0 0 0.3rem;
+  color: var(--color-text-muted);
+  font: 0.72rem var(--font-mono);
+  letter-spacing: 0.03em;
 }
 
 .knowledge-landscape__onward ul {
@@ -681,9 +686,9 @@
   border: 0;
   border-radius: 0.4rem;
   margin-inline: -0.5rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   background: transparent;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   text-align: left;
   cursor: pointer;
   transition:
@@ -704,9 +709,10 @@
 }
 
 .knowledge-landscape__onward button small {
-  color: var(--color-text-disabled);
-  font: 0.46rem var(--font-mono);
-  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font: 0.68rem var(--font-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .knowledge-landscape__search-layer,
@@ -876,7 +882,14 @@
 @keyframes landscape-card-in {
   from {
     opacity: 0;
-    transform: translateY(0.55rem);
+    transform: translateY(0.55rem) scale(0.985);
+  }
+}
+
+@keyframes landscape-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(0.35rem) scale(0.985);
   }
 }
 
