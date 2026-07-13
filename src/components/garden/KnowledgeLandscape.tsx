@@ -81,6 +81,8 @@ const TONE_COUNT = 5;
 // exponential approach is critically damped — it glides in and settles
 // without the spring overshoot that read as a bouncy jiggle.
 const CAMERA_EASE = 7.5;
+// Must stay in step with the landscape-card-out animation in _atlas.css.
+const CARD_EXIT_MS = 140;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
@@ -249,6 +251,10 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   const [query, setQuery] = useState('');
   const [searchIndex, setSearchIndex] = useState(0);
   const [hintVisible, setHintVisible] = useState(false);
+  // The card keeps rendering its last place while it animates out, so closing
+  // doesn't rip the content away mid-transition.
+  const [lingeringPlace, setLingeringPlace] =
+    useState<PositionedPlace<KnowledgePlace> | null>(null);
 
   const rootRef = useRef<HTMLElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -276,6 +282,8 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   const selectedPlace = selectedId ? placeById.get(selectedId) : undefined;
   const revealedPlace = revealedId ? placeById.get(revealedId) : undefined;
   const normalizedQuery = query.trim().toLowerCase();
+  const cardOpen = Boolean(revealedPlace && revealedId === selectedId);
+  const cardPlace = cardOpen ? revealedPlace : lingeringPlace;
 
   const results = useMemo(
     () =>
@@ -335,10 +343,10 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   }, [activeId, layout.regions, placeById, regionById]);
 
   const onwardPlaces = useMemo(() => {
-    if (!revealedPlace) return [];
+    if (!cardPlace) return [];
     const rows: { place: KnowledgePlace; relation: 'within' | 'path' }[] = [];
     const seen = new Set<string>();
-    for (const childId of revealedPlace.childIds) {
+    for (const childId of cardPlace.childIds) {
       const child = sourceById.get(childId);
       if (!child || seen.has(child.id)) continue;
       seen.add(child.id);
@@ -346,9 +354,9 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
     }
     for (const path of paths) {
       const id =
-        path.sourceId === revealedPlace.id
+        path.sourceId === cardPlace.id
           ? path.targetId
-          : path.targetId === revealedPlace.id
+          : path.targetId === cardPlace.id
             ? path.sourceId
             : null;
       if (!id || seen.has(id)) continue;
@@ -358,7 +366,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       rows.push({ place: target, relation: 'path' });
     }
     return rows.slice(0, 6);
-  }, [paths, revealedPlace, sourceById]);
+  }, [cardPlace, paths, sourceById]);
 
   const breadcrumbs = useMemo(() => {
     if (!selectedPlace) return [];
@@ -467,6 +475,19 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   }, [searchOpen]);
 
   useEffect(() => setSearchIndex(0), [normalizedQuery]);
+
+  useEffect(() => {
+    if (cardOpen && revealedPlace) {
+      setLingeringPlace(revealedPlace);
+      return;
+    }
+    if (!lingeringPlace) return;
+    const timer = window.setTimeout(
+      () => setLingeringPlace(null),
+      CARD_EXIT_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [cardOpen, lingeringPlace, revealedPlace]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -1269,8 +1290,14 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
         </p>
       )}
 
-      {revealedPlace && revealedId === selectedId && (
-        <article className="knowledge-landscape__card" aria-live="polite">
+      {cardPlace && (
+        <article
+          key={cardPlace.id}
+          className={`knowledge-landscape__card${cardOpen ? '' : ' is-leaving'}`}
+          aria-live="polite"
+          aria-hidden={!cardOpen}
+          inert={!cardOpen}
+        >
           <button
             type="button"
             className="knowledge-landscape__card-close"
@@ -1280,26 +1307,26 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
             <CloseIcon />
           </button>
           <p className="knowledge-landscape__card-location">
-            {regionById.get(revealedPlace.regionId)?.title ?? 'notes'}
+            {regionById.get(cardPlace.regionId)?.title ?? 'notes'}
           </p>
-          <h1>{revealedPlace.title}</h1>
+          <h1>{cardPlace.title}</h1>
           <p className="knowledge-landscape__card-summary">
-            {revealedPlace.summary ||
+            {cardPlace.summary ||
               'This place is still waiting for a first line.'}
           </p>
-          <a className="knowledge-landscape__read" href={revealedPlace.href}>
+          <a className="knowledge-landscape__read" href={cardPlace.href}>
             read the note <span aria-hidden="true">↗</span>
           </a>
 
           {onwardPlaces.length > 0 && (
             <div className="knowledge-landscape__onward">
-              <p>from here</p>
+              <p>Related</p>
               <ul>
                 {onwardPlaces.map(({ place, relation }) => (
                   <li key={place.id}>
                     <button type="button" onClick={() => selectPlace(place.id)}>
                       <span>{place.title}</span>
-                      <small>{relation}</small>
+                      {relation === 'path' && <small>linked</small>}
                     </button>
                   </li>
                 ))}
