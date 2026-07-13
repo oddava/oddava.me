@@ -22,8 +22,12 @@ bridge to reuse `COMMUNITY_SIGNING_SECRET`.
 
 ## Notes and Studio
 
-Studio operations write repository files immediately; there is no draft or
-publish database. Review `git diff`, then commit the MDX and any assets under
+In production and Redis development mode, Studio operations write the runtime
+content store immediately; there is no draft/publish split. Public note and
+media routes read that store, so a successful save is live without a deploy.
+
+Use `CONTENT_WRITE_MODE=local` during development when Studio should write
+repository files. Review `git diff`, then commit the MDX and any assets under
 `public/images/notes` as one change.
 
 The editor intentionally excludes `src/content/notes` from Vite's watcher. An
@@ -31,10 +35,11 @@ autosave would otherwise trigger a full page reload for every edit. Restart the
 dev server after hand-editing a note outside Studio when you need the public page
 to reflect that change.
 
-Production responds to content mutation APIs with `503
-content_editing_unavailable`. This is an invariant: do not add a production
-filesystem or Redis-backed publishing path without an explicit architecture
-decision.
+Use `pnpm run notes:migrate -- --target=prod` to seed or restore production from
+the repository. Use `pnpm run notes:export -- --target=prod` to snapshot live
+notes and media before committing them. Run either with `--dry-run` first when
+checking a target; import accepts `--prune`, while export accepts
+`--keep-removed`.
 
 ## Adding an integration
 
@@ -81,8 +86,10 @@ checks.
   `LOCAL_REDIS_PROXY_PORT` and keep the Worker-side value identical.
 - Port `45556` busy: stop the previous dev process or set
   `LOCAL_CONTENT_PROXY_PORT`.
-- Studio unavailable: confirm development mode, `CONTENT_WRITE_MODE=local`, and
-  both admin secrets; then restart Astro so the proxy starts.
+- Local-file Studio unavailable: confirm `CONTENT_WRITE_MODE=local`, both admin
+  secrets, and port `45556`; then restart Astro so the proxy starts.
+- Redis Studio unavailable: confirm `REDIS_MODE`, the target Redis credentials,
+  and that the content store has been seeded with `pnpm run notes:migrate`.
 - Redis-backed feature unavailable: confirm Redis is listening at
   `LOCAL_REDIS_URL` and that the local proxy token is visible to both runtimes.
 - Spotify token command fails: add the exact

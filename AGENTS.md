@@ -1,0 +1,142 @@
+# Repository Guidelines
+
+## Project Structure
+
+```
+oddava.me/
+├── src/
+│   ├── components/       # Astro & React island components
+│   ├── content/          # MDX garden notes
+│   ├── layouts/          # Base, Immersive, AdminLayout
+│   ├── lib/server/       # Server-only code (domain-driven)
+│   ├── pages/            # File-based routes & API endpoints
+│   ├── styles/           # CSS partials with underscore prefix
+│   └── middleware.ts      # Security headers
+├── tests/                # Vitest test files (*.test.ts)
+├── scripts/              # Build utilities (.mjs)
+├── vite/                 # Custom Vite plugins
+├── public/               # Static assets (fonts, images)
+└── docs/                 # Internal documentation
+```
+
+Server code is organized by domain under `src/lib/server/`: `admin/`, `community/`, `content/`, `guestbook/`, `integrations/`, and `now-playing/`. Barrel re-exports (`admin.ts`, `community.ts`, `content.ts`, `guestbook.ts`, `integrations.ts`, `now-playing.ts`) provide clean public APIs.
+
+## Build, Test, and Development
+
+| Command                  | Description                                        |
+| ------------------------ | -------------------------------------------------- |
+| `pnpm run dev`           | Start Astro dev server                             |
+| `pnpm run build`         | Production build plus output and CSP verification  |
+| `pnpm run build:dev`     | Development-mode build                             |
+| `pnpm run preview`       | Preview production build locally                   |
+| `pnpm run deploy`        | Deploy to Cloudflare Workers                       |
+| `pnpm test`              | Run Vitest (single pass)                           |
+| `pnpm run test:watch`    | Run Vitest in watch mode                           |
+| `pnpm run check`         | TypeScript + Astro diagnostics                     |
+| `pnpm run format`        | Format with Prettier                               |
+| `pnpm run format:check`  | Check formatting (CI gate)                         |
+| `pnpm run notes:migrate` | Import repository notes/media into Redis           |
+| `pnpm run notes:export`  | Export Redis notes/media into the repository       |
+| `pnpm run verify`        | Full pipeline: format:check → check → test → build |
+
+## Coding Style & Naming Conventions
+
+- **Language:** TypeScript (strict mode via `astro/tsconfigs/strict`)
+- **Formatter:** Prettier — single quotes, trailing commas everywhere
+- **No ESLint** configured
+- **Path aliases:** `@lib/*`, `@components/*`, `@styles/*`, `@layouts/*`, `@/*`
+- **CSS:** Underscore-prefixed partials (`_variables.css`, `_reset.css`), domain-specific component styles under `src/styles/components/`
+- **Components:** `.astro` for static UI, `.tsx` for React islands; hooks colocated with feature components
+
+## Agent Workflow (required)
+
+After creating or editing any files, **always** format them with Prettier before finishing the task:
+
+```bash
+pnpm exec prettier --write <changed-files...>
+```
+
+- Prefer formatting only the files you touched (faster and safer than whole-repo format).
+- Include content files when they changed (e.g. `src/content/**/*.mdx`, YAML, JSON).
+- If many files changed or you are unsure which paths Prettier covers, run `pnpm run format`.
+- Do not hand-edit style to “look” formatted — run Prettier so output matches CI (`pnpm run format:check`).
+- Before handing off a non-trivial change set, confirm formatting with `pnpm run format:check`.
+
+## Testing Guidelines
+
+- **Framework:** Vitest 4.1 (node environment)
+- **Location:** `tests/*.test.ts`
+- **Pattern:** `describe`/`it`/`expect` from Vitest; import from `../src/lib/...`
+- **Stubs:** `tests/stubs/cloudflare-workers.ts` mocks Cloudflare env bindings
+- **Coverage:** Not configured — run `pnpm test` to execute
+
+## Commit & Pull Request Guidelines
+
+**Commits** follow Conventional Commits:
+
+```
+feat: add guestbook moderation flow
+fix(spotify): resolve cache invalidation
+refactor: simplify Redis client initialization
+chore: update dependencies
+```
+
+Lowercase subject, imperative mood, optional scope in parentheses.
+
+**Pull Requests:**
+
+- Ensure `pnpm run verify` passes before requesting review
+- Include a description of what changed and why
+- Link related issues where applicable
+- Add screenshots for UI changes
+
+## Architecture Notes
+
+- **SSR on Cloudflare Workers** via `@astrojs/cloudflare` adapter
+- **React islands** for interactive features (guestbook, Spotify widget, admin)
+- **Custom content admin** lives under `src/lib/server/content/` behind the
+  `ContentProvider` boundary. Keep routing/authentication, document operations,
+  folders, media, serialization, and storage concerns separated behind clean
+  public APIs.
+- **Studio is production-capable by design.** When Redis is configured, Studio
+  autosaves to the Redis-backed virtual content filesystem in development and
+  production. Public note and note-media routes read the same store, so a save
+  is live immediately without a commit, push, or deploy.
+  - Never gate Studio on `import.meta.env.DEV`, `CONTENT_WRITE_MODE=local`, or
+    availability of the local filesystem proxy. Production may return 503 only
+    when its content store is genuinely unconfigured or unavailable.
+  - The local filesystem provider and `vite/local-content-admin-dev-proxy.mjs`
+    may support repository-authoring workflows, but they are not the only
+    content path and must not replace or disable the production Redis provider.
+  - Preserve authenticated admin access, same-origin mutation checks,
+    revision-based compare-and-set semantics, atomic/concurrency-safe Redis
+    mutations, and cross-isolate content-version invalidation.
+  - Preserve import/export or migration tooling between `src/content/**` and
+    Redis. Do not remove the Redis content provider, runtime note rendering,
+    Redis-backed media route, or real-Redis integration coverage as dead code.
+    The supported sync commands are `pnpm run notes:migrate` and
+    `pnpm run notes:export`; use `-- --target=prod` for production.
+- **Integrations** are a registry, not a set of special cases. Each third-party
+  connection (Spotify, Lanyard, Turnstile) is one `IntegrationDefinition` under
+  `src/lib/server/integrations/providers/`, listed in `registry.ts`. The
+  definition declares its credential fields (with validators and env fallbacks)
+  and a `check()`; everything else — the Redis credential store, enable/disable,
+  status, the `/api/admin/integrations` routes and the admin UI — is generic and
+  needs no changes to add a provider.
+  - Credentials resolve _override (Redis) → env → unconfigured_, so a key can be
+    rotated from the admin panel without a redeploy. They are write-only over
+    the API: responses carry provenance, never secret material.
+  - `http.ts` centralizes timeouts, bounded retries with jittered backoff, and
+    `Retry-After` handling; `errors.ts` gives every provider one error
+    vocabulary. Repeated failures open a circuit breaker in `status.ts` that is
+    shared by the admin panel and the request path.
+  - **Now-playing** (`src/lib/server/now-playing/`) composes the Spotify and
+    Lanyard integrations — it is a _consumer_ of the registry, not part of it.
+- **Redis transports:** Cloudflare Workers use the Upstash REST API in
+  production, Node integration tests use the direct Redis client, and the
+  workerd-based development server uses the authenticated local HTTP proxy in
+  `vite/local-redis-dev-proxy.mjs`.
+- **Security headers** are applied centrally by middleware. Base hardening
+  headers cover every response, HTTPS responses receive HSTS, public/admin HTML
+  receives the HTTP CSP directives it can support, admin pages are `no-store`,
+  and API routes own their endpoint-specific cache policy.

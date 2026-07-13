@@ -17,6 +17,23 @@ function mockAdmin(auth: Response | null) {
   }));
 }
 
+function mockRedisContentStore(configured: boolean) {
+  const dispatch = vi.fn(async () => Response.json({ source: 'redis' }));
+  const lock = vi.fn(async (operation: () => Promise<Response>) => operation());
+  const readStableContentVersion = vi.fn(async () => '1');
+  vi.doMock('../src/lib/server/content/redis-store', () => ({
+    ContentMutationBusyError: class extends Error {},
+    createRedisContentProvider: () => ({ kind: 'redis' }),
+    hasContentStore: () => configured,
+    readStableContentVersion,
+    withRedisContentMutationLock: lock,
+  }));
+  vi.doMock('../src/lib/server/content/router', () => ({
+    dispatchContentRequest: dispatch,
+  }));
+  return { dispatch, lock, readStableContentVersion };
+}
+
 describe('content admin route boundary', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -40,8 +57,9 @@ describe('content admin route boundary', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps content editing unavailable unless local mode is explicit', async () => {
+  it('reports unavailable only when the Redis content store is unconfigured', async () => {
     mockAdmin(null);
+    mockRedisContentStore(false);
     vi.stubEnv('CONTENT_WRITE_MODE', 'disabled');
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const { adminContentCollectionsRoute } =
@@ -55,9 +73,54 @@ describe('content admin route boundary', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
-      code: 'content_editing_unavailable',
+      code: 'content_store_unavailable',
     });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('dispatches authenticated non-local requests to Redis in production mode', async () => {
+    mockAdmin(null);
+    const { dispatch, lock } = mockRedisContentStore(true);
+    vi.stubEnv('CONTENT_WRITE_MODE', 'disabled');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { adminContentCollectionRoute } =
+      await import('../src/lib/server/content/route');
+    const request = new Request('https://oddava.me/api/admin/content/notes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://oddava.me',
+      },
+      body: JSON.stringify({ slug: 'live', body: '# Live' }),
+    });
+
+    const response = await adminContentCollectionRoute(mockContext(request));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ source: 'redis' });
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(lock).toHaveBeenCalledOnce();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns non-local Redis reads only after a stable version check', async () => {
+    mockAdmin(null);
+    const { dispatch, lock, readStableContentVersion } =
+      mockRedisContentStore(true);
+    vi.stubEnv('CONTENT_WRITE_MODE', 'redis');
+    const { adminContentCollectionsRoute } =
+      await import('../src/lib/server/content/route');
+
+    const response = await adminContentCollectionsRoute(
+      mockContext(
+        new Request('https://oddava.me/api/admin/content/collections'),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(readStableContentVersion).toHaveBeenCalledTimes(2);
+    expect(lock).not.toHaveBeenCalled();
   });
 
   it('forwards authenticated local requests to the loopback service', async () => {

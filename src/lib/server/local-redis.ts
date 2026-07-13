@@ -37,7 +37,10 @@ function getLocalRedisDevProxyToken(): string {
   return token;
 }
 
-async function executeViaDevProxy<T>(command: string[]): Promise<T> {
+async function executeViaDevProxy<T>(
+  command: string[],
+  timeoutMs: number,
+): Promise<T> {
   const response = await fetchWithTimeout(
     getLocalRedisDevProxyUrl(),
     {
@@ -48,7 +51,7 @@ async function executeViaDevProxy<T>(command: string[]): Promise<T> {
       },
       body: JSON.stringify({ command }),
     },
-    LOCAL_REDIS_PROXY_TIMEOUT_MS,
+    timeoutMs,
   );
   const payload = (await response.json().catch(() => ({}))) as {
     result?: T;
@@ -126,9 +129,10 @@ async function getDirectClient(url: string): Promise<RedisClientType> {
 export async function executeLocalRedisCommand<T>(
   command: string[],
   url: string,
+  timeoutMs = LOCAL_REDIS_PROXY_TIMEOUT_MS,
 ): Promise<T> {
   if (shouldUseDevProxy()) {
-    return executeViaDevProxy<T>(command);
+    return executeViaDevProxy<T>(command, timeoutMs);
   }
 
   const directClient = await getDirectClient(url);

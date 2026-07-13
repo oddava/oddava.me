@@ -109,5 +109,128 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       );
       expect(limited?.status).toBe(429);
     });
+
+    it('persists Studio content with atomic compare-and-set writes', async () => {
+      const {
+        createRedisContentProvider,
+        readStableContentVersion,
+        withRedisContentMutationLock,
+      } = await import('../src/lib/server/content/redis-store');
+      const provider = createRedisContentProvider();
+      const path = 'src/content/notes/integration.mdx';
+      const created = await provider.writeTextFile(
+        path,
+        '# integration',
+        'create integration note',
+      );
+      expect(created.revision).toEqual(expect.any(String));
+
+      const competingWrites = await Promise.allSettled([
+        provider.writeTextFile(
+          path,
+          '# first writer',
+          'first update',
+          created.revision,
+        ),
+        provider.writeTextFile(
+          path,
+          '# second writer',
+          'second update',
+          created.revision,
+        ),
+      ]);
+      expect(
+        competingWrites.filter((write) => write.status === 'fulfilled'),
+      ).toHaveLength(1);
+      expect(
+        competingWrites.filter((write) => write.status === 'rejected'),
+      ).toHaveLength(1);
+
+      let versionDuringMutation: string | null = 'unexpected';
+      await withRedisContentMutationLock(async () => {
+        versionDuringMutation = await readStableContentVersion();
+      });
+      expect(versionDuringMutation).toBeNull();
+      expect(await readStableContentVersion()).toEqual(expect.any(String));
+    });
+
+    it('moves folder trees and round-trips runtime media atomically', async () => {
+      const { createRedisContentProvider, readRedisBinaryFile } =
+        await import('../src/lib/server/content/redis-store');
+      const provider = createRedisContentProvider();
+      const notes = 'src/content/notes';
+      await provider.createDirectory(`${notes}/reading`, 'create reading');
+      const page = await provider.writeTextFile(
+        `${notes}/reading.mdx`,
+        '# reading',
+        'create reading page',
+      );
+      await provider.writeTextFile(
+        `${notes}/reading/book.mdx`,
+        '# book\n\nnaïve 👋 "quoted"',
+        'create book',
+      );
+
+      await provider.moveDirectory(
+        `${notes}/reading`,
+        `${notes}/library`,
+        'move reading to library',
+        {
+          from: `${notes}/reading.mdx`,
+          to: `${notes}/library.mdx`,
+          revision: page.revision!,
+        },
+      );
+      expect(await provider.readFile(`${notes}/reading/book.mdx`)).toBeNull();
+      expect(
+        await provider.readFile(`${notes}/library/book.mdx`),
+      ).toMatchObject({ content: '# book\n\nnaïve 👋 "quoted"' });
+      expect(await provider.readFile(`${notes}/library.mdx`)).toMatchObject({
+        content: '# reading',
+      });
+
+      const libraryPage = await provider.readFile(`${notes}/library.mdx`);
+      await expect(
+        provider.deleteDirectory(
+          `${notes}/library`,
+          'reject non-empty library',
+          {
+            path: `${notes}/library.mdx`,
+            revision: libraryPage!.revision,
+          },
+        ),
+      ).rejects.toMatchObject({ code: 'folder_not_empty' });
+
+      const book = await provider.readFile(`${notes}/library/book.mdx`);
+      await provider.moveFile(
+        `${notes}/library/book.mdx`,
+        `${notes}/book.mdx`,
+        'move book to root',
+        book!.revision,
+      );
+      await provider.deleteDirectory(
+        `${notes}/library`,
+        'delete empty library',
+        {
+          path: `${notes}/library.mdx`,
+          revision: libraryPage!.revision,
+        },
+      );
+      expect(await provider.readFile(`${notes}/library.mdx`)).toBeNull();
+
+      const mediaPath = 'public/images/notes/integration/pixel.png';
+      const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+      const media = await provider.writeBinaryFile(
+        mediaPath,
+        bytes,
+        'upload pixel',
+      );
+      expect(await readRedisBinaryFile(mediaPath)).toEqual(bytes);
+      await expect(
+        provider.writeBinaryFile(mediaPath, bytes, 'duplicate pixel'),
+      ).rejects.toMatchObject({ code: 'path_exists' });
+      await provider.deleteFile(mediaPath, 'delete pixel', media.revision!);
+      expect(await readRedisBinaryFile(mediaPath)).toBeNull();
+    });
   },
 );

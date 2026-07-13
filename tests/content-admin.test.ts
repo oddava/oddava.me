@@ -376,6 +376,55 @@ describe('content HTTP handlers', () => {
     expect(notEmpty.status).toBe(409);
   });
 
+  it('rolls back every path when a folder duplicate fails midway', async () => {
+    const provider = new MemoryContentProvider();
+    await provider.createDirectory('src/content/notes/source', 'mkdir');
+    await provider.writeTextFile(
+      'src/content/notes/source.mdx',
+      '# source',
+      'seed page',
+    );
+    await provider.writeTextFile(
+      'src/content/notes/source/child.mdx',
+      '# child',
+      'seed child',
+    );
+    const writeTextFile = provider.writeTextFile.bind(provider);
+    let failed = false;
+    provider.writeTextFile = async (...arguments_) => {
+      if (!failed && arguments_[0].includes('source-copy/')) {
+        failed = true;
+        throw new Error('simulated transport failure');
+      }
+      return writeTextFile(...arguments_);
+    };
+
+    await expect(
+      handleContentFolders(
+        provider,
+        'notes',
+        jsonRequest(
+          'POST',
+          'https://oddava.me/api/admin/content/notes/folders',
+          { path: 'source-copy', copyFrom: 'source' },
+        ),
+      ),
+    ).rejects.toThrow('simulated transport failure');
+
+    expect(
+      [...provider.files].filter(
+        ([path]) =>
+          path === 'src/content/notes/source-copy.mdx' ||
+          path.startsWith('src/content/notes/source-copy/'),
+      ),
+    ).toEqual([]);
+    expect(
+      [...provider.directories].some((path) =>
+        path.startsWith('src/content/notes/source-copy'),
+      ),
+    ).toBe(false);
+  });
+
   it('does not create a folder whose page would duplicate a note id', async () => {
     const provider = new MemoryContentProvider();
     await provider.writeTextFile(

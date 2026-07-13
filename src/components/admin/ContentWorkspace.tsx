@@ -159,7 +159,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   );
   const [entries, setEntries] = useState<ContentEntryListItem[]>([]);
   const [folders, setFolders] = useState<ContentFolder[]>([]);
-  const [editingUnavailable, setEditingUnavailable] = useState(false);
 
   const [openId, setOpenId] = useState('');
   const [body, setBody] = useState('');
@@ -335,6 +334,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       } catch (caught) {
         saved = false;
         if (docRef.current?.id === snapshot.id) {
+          if (
+            (caught as Error & { code?: string }).code === 'content_busy' &&
+            autosaveRef.current
+          ) {
+            setSaveState('dirty');
+            setError(null);
+            scheduleSave();
+            return;
+          }
           setSaveState('error');
           setError(
             caught instanceof Error
@@ -347,7 +355,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     saveQueueRef.current = queued.catch(() => undefined);
     await queued;
     return saved;
-  }, [clearScheduledSave, collection]);
+  }, [clearScheduledSave, collection, scheduleSave]);
 
   useEffect(() => {
     saveNowRef.current = saveNow;
@@ -417,13 +425,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       })
       .catch((caught) => {
         if (!active) return;
-        const code = (caught as Error & { code?: string }).code;
-        if (code === 'content_editing_unavailable') {
-          setEditingUnavailable(true);
-          setError(null);
-        } else {
-          setError(contentRequestError(caught, 'Could not load Studio.'));
-        }
+        setError(contentRequestError(caught, 'Could not load Studio.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -1260,19 +1262,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   }
 
   // --- Render --------------------------------------------------------------
-
-  if (editingUnavailable && !loading && !error) {
-    return (
-      <article className="admin-card admin-panel content-workspace">
-        <div className="admin-empty-state" role="status">
-          <p className="admin-muted">
-            Studio editing is available only in local development. Edit and
-            commit notes locally, then deploy the repository to publish them.
-          </p>
-        </div>
-      </article>
-    );
-  }
 
   const sidebarVisible = !session.sidebarCollapsed;
   const sidebarStyle =

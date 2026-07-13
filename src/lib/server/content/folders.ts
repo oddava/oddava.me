@@ -24,7 +24,7 @@ import { isValidFolderPath, normalizeFolderPath, sourcePath } from './paths';
 import { getContentCollection } from './registry';
 import type { ContentCollectionDefinition, ContentProvider } from './types';
 
-async function duplicateFolderTree(
+async function performFolderTreeDuplicate(
   store: ContentProvider,
   collection: ContentCollectionDefinition,
   sourceFolder: string,
@@ -136,6 +136,70 @@ async function duplicateFolderTree(
       source.content,
       `content: duplicate ${collection.id}/${entry.id}`,
     );
+  }
+}
+
+async function duplicateFolderTree(
+  store: ContentProvider,
+  collection: ContentCollectionDefinition,
+  sourceFolder: string,
+  destinationFolder: string,
+): Promise<void> {
+  const filesBefore = new Set(
+    (await store.listFiles(collection.sourceDir, collection.extension)).map(
+      (file) => file.path,
+    ),
+  );
+  const directoriesBefore = new Set(
+    await store.listDirectories(collection.sourceDir),
+  );
+
+  try {
+    await performFolderTreeDuplicate(
+      store,
+      collection,
+      sourceFolder,
+      destinationFolder,
+    );
+  } catch (error) {
+    // A duplicate spans several provider writes. Remove only paths introduced
+    // by this attempt before the request-level mutation lock is released, so a
+    // transport failure cannot publish a partial copy.
+    try {
+      const createdFiles = (
+        await store.listFiles(collection.sourceDir, collection.extension)
+      ).filter((file) => !filesBefore.has(file.path));
+      for (const file of createdFiles.toReversed()) {
+        await store
+          .deleteFile(
+            file.path,
+            'content: roll back folder duplicate',
+            file.revision,
+          )
+          .catch(() => undefined);
+      }
+
+      const createdDirectories = (
+        await store.listDirectories(collection.sourceDir)
+      )
+        .filter((directory) => !directoriesBefore.has(directory))
+        .toSorted(
+          (left, right) =>
+            right.split('/').length - left.split('/').length ||
+            right.localeCompare(left),
+        );
+      for (const directory of createdDirectories) {
+        await store
+          .deleteDirectory(directory, 'content: roll back folder duplicate')
+          .catch(() => undefined);
+      }
+    } catch (rollbackError) {
+      console.error(
+        '[content] Folder duplicate rollback failed.',
+        rollbackError,
+      );
+    }
+    throw error;
   }
 }
 

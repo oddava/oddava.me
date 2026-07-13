@@ -1,7 +1,13 @@
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
 import { z } from 'astro/zod';
 
 import { noteDataSchema } from '../content/schemas';
+import {
+  parseContentDocument,
+  readRedisNoteFiles,
+  readStableContentVersion,
+  usesLocalContentFiles,
+} from '../server/content';
 import {
   buildWikiLinkHrefLookup,
   deriveSummary,
@@ -22,7 +28,12 @@ export {
 
 type NoteData = z.infer<typeof noteDataSchema>;
 
-type NoteSource = CollectionEntry<'notes'>;
+type NoteSource = {
+  id: string;
+  data: NoteData;
+  body: string;
+  updatedAt: string;
+};
 
 type GardenLink = {
   target: string;
@@ -76,9 +87,7 @@ export class GardenEmptyError extends Error {
   readonly code = 'garden_empty';
 
   constructor() {
-    super(
-      'The notes garden needs src/content/notes/index.mdx as its root document.',
-    );
+    super('The notes garden needs an index document as its root.');
     this.name = 'GardenEmptyError';
   }
 }
@@ -98,7 +107,7 @@ function entryTitle(entry: NoteSource): string {
 }
 
 function noteDate(note: NoteSource): string {
-  return note.data.updated ?? '1970-01-01T00:00:00.000Z';
+  return note.data.updated ?? note.updatedAt;
 }
 
 function sortNotes(notes: NoteSource[]): NoteSource[] {
@@ -198,7 +207,24 @@ function buildHierarchy(entries: NoteSource[]): {
 }
 
 async function loadNoteSources(): Promise<NoteSource[]> {
-  return getCollection('notes');
+  if (usesLocalContentFiles()) {
+    return (await getCollection('notes')).map((entry) => ({
+      id: entry.id,
+      data: entry.data,
+      body: entry.body ?? '',
+      updatedAt: entry.data.updated ?? '1970-01-01T00:00:00.000Z',
+    }));
+  }
+
+  return (await readRedisNoteFiles()).map((file) => {
+    const document = parseContentDocument(file.content);
+    return {
+      id: file.sourceId,
+      data: noteDataSchema.parse(document.fields),
+      body: document.body,
+      updatedAt: file.updatedAt,
+    };
+  });
 }
 
 async function buildGardenIndex(): Promise<GardenIndex> {
@@ -327,10 +353,57 @@ async function buildGardenIndex(): Promise<GardenIndex> {
   };
 }
 
-let gardenIndexPromise: Promise<GardenIndex> | undefined;
+let cachedGardenIndex: { version: string; index: GardenIndex } | null = null;
 
-export function getGardenIndex(): Promise<GardenIndex> {
-  if (import.meta.env.DEV) return buildGardenIndex();
-  gardenIndexPromise ??= buildGardenIndex();
-  return gardenIndexPromise;
+function waitForStableContent(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 100));
+}
+
+export async function getGardenIndex(): Promise<GardenIndex> {
+  if (usesLocalContentFiles()) return buildGardenIndex();
+
+  // A Redis-backed index must be built from one stable snapshot. The mutation
+  // lock covers compound Studio operations; checking the version again after
+  // the build also catches a write that began between the first check and the
+  // file reads. Only plain data is cached globally—never request-bound I/O.
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    let version: string | null;
+    try {
+      version = await readStableContentVersion();
+    } catch (error) {
+      if (cachedGardenIndex) return cachedGardenIndex.index;
+      throw error;
+    }
+    if (version === null) {
+      if (cachedGardenIndex) return cachedGardenIndex.index;
+      await waitForStableContent();
+      continue;
+    }
+    if (cachedGardenIndex?.version === version) {
+      return cachedGardenIndex.index;
+    }
+
+    let index: GardenIndex;
+    try {
+      index = await buildGardenIndex();
+    } catch (error) {
+      if (cachedGardenIndex) return cachedGardenIndex.index;
+      throw error;
+    }
+    let confirmedVersion: string | null;
+    try {
+      confirmedVersion = await readStableContentVersion();
+    } catch (error) {
+      if (cachedGardenIndex) return cachedGardenIndex.index;
+      throw error;
+    }
+    if (confirmedVersion === version) {
+      cachedGardenIndex = { version, index };
+      return index;
+    }
+    await waitForStableContent();
+  }
+
+  if (cachedGardenIndex) return cachedGardenIndex.index;
+  throw new Error('The notes garden is being updated. Try again shortly.');
 }

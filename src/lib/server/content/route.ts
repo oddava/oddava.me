@@ -4,8 +4,21 @@ import {
   requireSecuredAdminApi,
   withAdminSecurityHeaders,
 } from '../admin';
-import { ensureSameOrigin, fetchWithTimeout } from '../community';
+import {
+  ensureSameOrigin,
+  fetchWithTimeout,
+  isStorageUnavailableError,
+} from '../community';
 import { getServerEnv } from '../env';
+import { usesLocalContentFiles } from './mode';
+import {
+  ContentMutationBusyError,
+  createRedisContentProvider,
+  hasContentStore,
+  readStableContentVersion,
+  withRedisContentMutationLock,
+} from './redis-store';
+import { dispatchContentRequest } from './router';
 
 const DEFAULT_LOCAL_CONTENT_PROXY_PORT = '45556';
 const LOCAL_CONTENT_PROXY_TIMEOUT_MS = 30_000;
@@ -46,19 +59,90 @@ function localContentProxyUrl(): URL {
   return url;
 }
 
-function isLocalContentDevelopment(): boolean {
-  return import.meta.env.DEV && getServerEnv('CONTENT_WRITE_MODE') === 'local';
-}
-
-function contentEditingUnavailable(): Response {
+function contentStoreUnavailable(message?: string): Response {
   return adminJson(
     {
       error:
-        'Studio editing is available only in local development. Edit and commit files under src/content, then deploy the repository.',
-      code: 'content_editing_unavailable',
+        message ??
+        'Studio storage is not configured. Configure the production Redis credentials and try again.',
+      code: 'content_store_unavailable',
     },
     { status: 503 },
   );
+}
+
+function contentPayloadTooLarge(): Response {
+  return adminJson(
+    {
+      error: 'Content requests are limited to 6 MB.',
+      code: 'payload_too_large',
+    },
+    { status: 413 },
+  );
+}
+
+async function readBoundedRequestBody(request: Request): Promise<Uint8Array> {
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (declaredLength > MAX_CONTENT_REQUEST_BYTES) {
+    throw new ContentPayloadTooLargeError();
+  }
+  if (!request.body) return new Uint8Array();
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_CONTENT_REQUEST_BYTES) {
+        await reader.cancel();
+        throw new ContentPayloadTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+async function boundedRequest(request: Request): Promise<Request> {
+  if (request.method === 'GET' || request.method === 'HEAD') return request;
+  const body = await readBoundedRequestBody(request);
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: body as BodyInit,
+    redirect: request.redirect,
+    signal: request.signal,
+  });
+}
+
+function waitForContentStore(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timeout);
+      reject(signal.reason);
+    };
+    const timeout = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, 100);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 async function forwardToLocalContentService(
@@ -78,22 +162,15 @@ async function forwardToLocalContentService(
     signal: request.signal,
   };
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    const declaredLength = Number(request.headers.get('content-length') ?? 0);
-    if (declaredLength > MAX_CONTENT_REQUEST_BYTES) {
-      throw new ContentPayloadTooLargeError();
-    }
-    const body = await request.arrayBuffer();
-    if (body.byteLength > MAX_CONTENT_REQUEST_BYTES) {
-      throw new ContentPayloadTooLargeError();
-    }
-    init.body = body;
+    init.body = (await readBoundedRequestBody(request)) as BodyInit;
   }
 
   const upstream = await fetchWithTimeout(
     upstreamUrl,
     init,
     LOCAL_CONTENT_PROXY_TIMEOUT_MS,
-  ).catch(() => {
+  ).catch((error) => {
+    if (error instanceof ContentPayloadTooLargeError) throw error;
     throw new ContentProxyUnavailableError();
   });
   const responseHeaders = new Headers(upstream.headers);
@@ -111,6 +188,37 @@ async function forwardToLocalContentService(
   );
 }
 
+async function dispatchRedisRequest(
+  request: Request,
+  mutation: boolean,
+): Promise<Response> {
+  if (!hasContentStore()) return contentStoreUnavailable();
+  const provider = createRedisContentProvider();
+  const bounded = await boundedRequest(request);
+  const dispatch = () =>
+    Promise.resolve(dispatchContentRequest(provider, bounded));
+  let response: Response;
+  if (mutation) {
+    response = await withRedisContentMutationLock(dispatch, {
+      signal: request.signal,
+    });
+  } else {
+    for (let attempt = 0; ; attempt += 1) {
+      const version = await readStableContentVersion();
+      if (version !== null) {
+        const candidate = await dispatch();
+        if ((await readStableContentVersion()) === version) {
+          response = candidate;
+          break;
+        }
+      }
+      if (attempt >= 29) throw new ContentMutationBusyError();
+      await waitForContentStore(request.signal);
+    }
+  }
+  return withAdminSecurityHeaders(response);
+}
+
 async function dispatch(
   context: APIContext,
   mutation: boolean,
@@ -121,15 +229,20 @@ async function dispatch(
     const originError = ensureSameOrigin(context.request);
     if (originError) return withAdminSecurityHeaders(originError);
   }
-  if (!isLocalContentDevelopment()) return contentEditingUnavailable();
 
   try {
-    return await forwardToLocalContentService(context.request);
+    if (usesLocalContentFiles()) {
+      return await forwardToLocalContentService(context.request);
+    }
+    return await dispatchRedisRequest(context.request, mutation);
   } catch (error) {
     if (error instanceof ContentPayloadTooLargeError) {
+      return contentPayloadTooLarge();
+    }
+    if (error instanceof ContentMutationBusyError) {
       return adminJson(
-        { error: error.message, code: 'payload_too_large' },
-        { status: 413 },
+        { error: error.message, code: error.code },
+        { status: 503, headers: { 'Retry-After': '1' } },
       );
     }
     if (error instanceof ContentProxyUnavailableError) {
@@ -138,15 +251,20 @@ async function dispatch(
         { status: 503 },
       );
     }
+    if (isStorageUnavailableError(error)) {
+      return contentStoreUnavailable(
+        'Studio could not reach its content store. Try again shortly.',
+      );
+    }
     const requestId = crypto.randomUUID();
-    console.error(`[content-proxy] request failed (${requestId})`, error);
+    console.error(`[content] request failed (${requestId})`, error);
     return adminJson(
       {
-        error: 'The local content service is unavailable.',
+        error: 'Studio could not complete the content request.',
         code: 'content_unavailable',
         requestId,
       },
-      { status: 503 },
+      { status: 500 },
     );
   }
 }
