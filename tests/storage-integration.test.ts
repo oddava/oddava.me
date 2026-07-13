@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 
-// These tests hit a real Redis instance. They are opt-in so CI (which has no
-// Redis) does not fail. Run locally with:
+// These tests hit a real Redis instance. CI enables them against its Redis
+// service; local runs stay opt-in:
 //   RUN_REDIS_INTEGRATION=1 pnpm exec vitest run tests/storage-integration.test.ts
 const TEST_REDIS_URL = 'redis://127.0.0.1:6379/15';
 let cleanupClient: RedisClientType;
@@ -22,6 +22,9 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         'test-signing-secret-with-enough-entropy';
 
       cleanupClient = createClient({ url: TEST_REDIS_URL });
+      cleanupClient.on('error', (error) => {
+        console.warn(`[storage-integration] ${error.message}`);
+      });
       await cleanupClient.connect();
       await cleanupClient.flushDb();
     });

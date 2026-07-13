@@ -1,19 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   clearGuestbookEntries,
   fetchAdminOverview,
   fetchGuestbookEntries,
   updateGuestbookEntryStatus,
-  updateIntegrationSetting,
 } from './api';
 import { GuestbookModeration } from './GuestbookModeration';
-import { IntegrationStatusList } from './IntegrationStatusList';
+import { IntegrationsPanel } from './IntegrationsPanel';
 import { MetricGrid } from './MetricGrid';
 import type {
   GuestbookEntry,
   GuestbookStatus,
   OverviewResponse,
-} from './types';
+} from '../../lib/contracts';
 import './AdminPanel.css';
 
 export default function AdminPanel() {
@@ -24,7 +23,6 @@ export default function AdminPanel() {
     [],
   );
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [overviewLoading, setOverviewLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const overviewRequestRef = useRef(0);
@@ -52,11 +50,6 @@ export default function AdminPanel() {
         setGlobalError(
           error instanceof Error ? error.message : 'Could not load admin data.',
         );
-      })
-      .finally(() => {
-        if (requestId === overviewRequestRef.current) {
-          setOverviewLoading(false);
-        }
       });
 
     return () => {
@@ -131,43 +124,6 @@ export default function AdminPanel() {
       `Guestbook entry ${status}.`,
     );
 
-  const handleToggleIntegration = async (
-    key: string,
-    name: string,
-    enabled: boolean,
-  ) => {
-    setBusyKey(key);
-    setNotice(null);
-    setGlobalError(null);
-    try {
-      await updateIntegrationSetting(key, enabled);
-      setNotice(`${name} integration ${enabled ? 'enabled' : 'disabled'}.`);
-      await loadOverview();
-    } catch (error) {
-      setGlobalError(
-        error instanceof Error ? error.message : 'Request failed.',
-      );
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const handleCredentialsSaved = async () => {
-    setBusyKey('spotify-credentials');
-    setNotice(null);
-    setGlobalError(null);
-    try {
-      await loadOverview();
-      setNotice('Spotify credentials saved. Connection status refreshed.');
-    } catch (error) {
-      setGlobalError(
-        error instanceof Error ? error.message : 'Request failed.',
-      );
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
   return (
     <div className="admin-dashboard">
       {globalError && (
@@ -192,13 +148,9 @@ export default function AdminPanel() {
           onModerate={handleModerateGuestbookEntry}
           onStatusChange={setGuestbookStatus}
         />
-        <IntegrationStatusList
-          statuses={overview?.integrations ?? []}
-          loading={overviewLoading}
-          onToggle={handleToggleIntegration}
-          onCredentialsSaved={handleCredentialsSaved}
-          busyKey={busyKey}
-        />
+        {/* Owns its own data: integration health probes upstream APIs and must
+            not be able to slow down or fail the rest of the dashboard. */}
+        <IntegrationsPanel />
       </section>
     </div>
   );

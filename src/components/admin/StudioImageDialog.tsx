@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal } from 'preact/compat';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   buildImageMarkup,
   type ImageAlign,
@@ -125,13 +125,7 @@ export default function StudioImageDialog({
     onClose();
   }
 
-  const previewWidth = widthPercent < 100 ? `${widthPercent}%` : '100%';
-  const previewJustify =
-    align === 'center'
-      ? 'center'
-      : align === 'right'
-        ? 'flex-end'
-        : 'flex-start';
+  const previewAlign = align === 'center' || align === 'right' ? align : 'left';
 
   return createPortal(
     <div
@@ -267,11 +261,14 @@ export default function StudioImageDialog({
 
           {/* Live preview */}
           <div
-            className="studio-imgdlg__preview"
-            style={{ justifyContent: previewJustify }}
+            className={`studio-imgdlg__preview studio-imgdlg__preview--${previewAlign}`}
           >
             {src ? (
-              <img src={src} alt={alt} style={{ width: previewWidth }} />
+              <img
+                className={`studio-imgdlg__preview-image studio-imgdlg__preview-image--${widthPercent}`}
+                src={src}
+                alt={alt}
+              />
             ) : (
               <span className="studio-imgdlg__preview-empty">
                 Preview appears here

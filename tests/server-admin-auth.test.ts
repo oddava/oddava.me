@@ -7,7 +7,7 @@ import {
   parseSessionValue,
   verifySession,
 } from '../src/lib/server/admin/auth-shared';
-import { safeRedirectPath } from '../src/lib/server/community';
+import { safeRedirectPath } from '../src/lib/server/community/request';
 
 const SIGNING_SECRET = 'test-signing-secret-with-enough-entropy';
 const ADMIN_TOKEN = 'super-secret-admin-token';
@@ -248,5 +248,56 @@ describe('verifyTurnstileToken (happy path with mocked fetch)', () => {
     const result = await verifyTurnstileToken(request, 'dummy-token');
     expect(result).toBeNull();
     expect(fetchSpy).toHaveBeenCalledOnce();
+    const init = fetchSpy.mock.calls[0]?.[1];
+    expect(String(init?.body)).toContain('remoteip=203.0.113.10');
+  });
+
+  it('omits the optional remote IP when Cloudflare did not supply one', async () => {
+    vi.stubEnv('APP_ENV', 'production');
+    vi.stubEnv('TURNSTILE_BYPASS_IN_DEV', 'false');
+    vi.stubEnv('PUBLIC_TURNSTILE_SITE_KEY', '0x4ff');
+    vi.stubEnv('TURNSTILE_SECRET_KEY', '0xsecret');
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ success: true }));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { verifyTurnstileToken } =
+      await import('../src/lib/server/community/turnstile');
+    const result = await verifyTurnstileToken(
+      new Request('https://oddava.me/api/guestbook'),
+      'dummy-token',
+    );
+
+    expect(result).toBeNull();
+    const init = fetchSpy.mock.calls[0]?.[1];
+    expect(String(init?.body)).not.toContain('remoteip=');
+  });
+
+  it('contains a malformed Turnstile response as a verification outage', async () => {
+    vi.stubEnv('APP_ENV', 'production');
+    vi.stubEnv('TURNSTILE_BYPASS_IN_DEV', 'false');
+    vi.stubEnv('PUBLIC_TURNSTILE_SITE_KEY', '0x4ff');
+    vi.stubEnv('TURNSTILE_SECRET_KEY', '0xsecret');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('not json', { status: 200 }),
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { verifyTurnstileToken } =
+      await import('../src/lib/server/community/turnstile');
+    const response = await verifyTurnstileToken(
+      new Request('https://oddava.me/api/guestbook', {
+        headers: { 'cf-connecting-ip': '203.0.113.10' },
+      }),
+      'dummy-token',
+    );
+
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(502);
+    await expect(response!.json()).resolves.toMatchObject({
+      code: 'captcha_unavailable',
+    });
   });
 });

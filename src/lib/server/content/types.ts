@@ -1,11 +1,26 @@
 import type { z } from 'astro/zod';
+import type { ContentWriteResult } from '../../contracts';
 
-export class ContentRevisionConflictError extends Error {
-  readonly code = 'revision_conflict';
+export type {
+  ContentEntryDetail,
+  ContentEntryListItem,
+  ContentFolder,
+  ContentWriteResult,
+  MediaAsset,
+} from '../../contracts';
 
-  constructor() {
-    super('This content changed since you opened it. Refresh and try again.');
-    this.name = 'ContentRevisionConflictError';
+export class ContentConflictError extends Error {
+  readonly code: 'path_exists' | 'revision_conflict';
+
+  constructor(
+    code: 'path_exists' | 'revision_conflict',
+    message = code === 'revision_conflict'
+      ? 'This content changed since you opened it. Refresh and try again.'
+      : 'Content already exists at that path.',
+  ) {
+    super(message);
+    this.name = 'ContentConflictError';
+    this.code = code;
   }
 }
 
@@ -18,173 +33,75 @@ export class ContentFolderNotEmptyError extends Error {
   }
 }
 
-export type ContentCollectionId = 'notes';
-
-export type ContentFormat = 'mdx' | 'yaml';
-
-export type ContentFieldType =
-  | 'text'
-  | 'select'
-  | 'textarea'
-  | 'date'
-  | 'boolean'
-  | 'url'
-  | 'integer'
-  | 'string-list'
-  | 'image';
-
-export interface ContentFieldDefinition {
-  name: string;
-  label: string;
-  type: ContentFieldType;
-  required?: boolean;
-  description?: string;
-  hidden?: boolean;
-  options?: { label: string; value: string }[];
-}
-
-export type ContentBlockType =
-  'paragraph' | 'heading' | 'image' | 'code' | 'callout' | 'raw-mdx';
-
-export interface ContentBlock {
-  id: string;
-  type: ContentBlockType;
-  value?: string;
-  level?: 1 | 2 | 3;
-  src?: string;
-  alt?: string;
-  language?: string;
-  title?: string;
-}
-
-export interface ContentTemplate {
-  id: string;
-  label: string;
-  description: string;
-  fields: Record<string, unknown>;
-  blocks: ContentBlock[];
-}
-
-export interface ContentSurface {
-  id: string;
-  collection: ContentCollectionId;
-  entryId: string;
-  routePath: string;
-  label: string;
-  regions: {
-    id: string;
-    label: string;
-    kind: 'field' | 'blocks';
-    fieldName?: string;
-  }[];
-}
-
-export interface ContentDocument {
-  fields: Record<string, unknown>;
-  body: string;
-  blocks: ContentBlock[];
-}
-
-export interface ContentDraft extends ContentDocument {
-  collection: ContentCollectionId;
-  id: string;
-  title: string;
-  folder: string;
-  sourcePath: string;
-  sourceRevision?: string;
-  isNew: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface MediaAsset {
-  path: string;
-  url: string;
-  name: string;
-  collection?: ContentCollectionId;
-  entryId?: string;
-  size: number;
-  modifiedAt: string;
-  referenced: boolean;
-}
-
-export interface ContentRevision {
-  hash: string;
-  shortHash: string;
-  author: string;
-  authoredAt: string;
-  subject: string;
-}
-
-export interface PublishJob {
-  id: string;
-  collection: ContentCollectionId;
-  entryId: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed';
-  createdAt: string;
-  updatedAt: string;
-  steps: {
-    label: string;
-    status: 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
-    detail?: string;
-  }[];
-  error?: string;
-}
+type ContentCollectionId = 'notes';
 
 export interface ContentCollectionDefinition {
   id: ContentCollectionId;
   label: string;
   singularLabel: string;
   sourceDir: string;
-  extension: 'mdx' | 'yaml';
-  format: ContentFormat;
-  body: boolean;
+  extension: 'mdx';
   mediaDir: string;
   mediaPublicPath: string;
-  groupMediaByEntry: boolean;
-  reorderable?: boolean;
-  orderField?: string;
-  routePattern: string;
-  indexRoute: string;
-  supportsDrafts: boolean;
-  supportsBlocks: boolean;
-  supportsFolders?: boolean;
-  templates: ContentTemplate[];
-  surfaces: {
-    id: string;
-    label: string;
-    kind: 'field' | 'blocks';
-    fieldName?: string;
-  }[];
-  fields: ContentFieldDefinition[];
+  routePrefix: string;
+  orderField: 'order';
   schema: z.ZodType<Record<string, unknown>>;
 }
+
+export type ContentEncoding = 'utf8' | 'base64';
 
 export interface ContentSourceFile {
   path: string;
   content: string;
-  revision?: string;
+  encoding: ContentEncoding;
+  byteLength: number;
+  updatedAt: string;
+  revision: string;
 }
 
-export interface ContentWriteResult {
-  provider: 'local';
-  revision?: string;
-  message: string;
+export interface LinkedFileMove {
+  from: string;
+  to: string;
+  revision: string;
 }
 
+export interface LinkedFileDelete {
+  path: string;
+  revision: string;
+}
+
+/**
+ * Path-addressed persistence used by the notes domain.
+ *
+ * The interface is deliberately smaller than a filesystem. Writes without an
+ * expected revision are creates; updates are compare-and-set operations. That
+ * distinction prevents concurrent requests from silently overwriting content.
+ */
 export interface ContentProvider {
-  kind: 'local';
-  listFiles(directory: string, extension: string): Promise<ContentSourceFile[]>;
+  listFiles(
+    directory: string,
+    extension?: string,
+  ): Promise<ContentSourceFile[]>;
   readFile(path: string): Promise<ContentSourceFile | null>;
   listDirectories(directory: string): Promise<string[]>;
   createDirectory(path: string, message: string): Promise<ContentWriteResult>;
-  movePath(
+  moveFile(
     from: string,
     to: string,
     message: string,
-    revision?: string,
+    revision: string,
   ): Promise<ContentWriteResult>;
-  deleteDirectory(path: string, message: string): Promise<ContentWriteResult>;
+  moveDirectory(
+    from: string,
+    to: string,
+    message: string,
+    linkedFile?: LinkedFileMove,
+  ): Promise<ContentWriteResult>;
+  deleteDirectory(
+    path: string,
+    message: string,
+    linkedFile?: LinkedFileDelete,
+  ): Promise<ContentWriteResult>;
   writeTextFile(
     path: string,
     content: string,
@@ -195,35 +112,10 @@ export interface ContentProvider {
     path: string,
     content: Uint8Array,
     message: string,
-    revision?: string,
   ): Promise<ContentWriteResult>;
   deleteFile(
     path: string,
     message: string,
-    revision?: string,
+    revision: string,
   ): Promise<ContentWriteResult>;
-}
-
-export interface ContentEntryListItem {
-  id: string;
-  title: string;
-  folder: string;
-  path: string;
-  revision?: string;
-  meta: Record<string, unknown>;
-}
-
-export interface ContentFolder {
-  id: string;
-  name: string;
-  parentId: string | null;
-  depth: number;
-  noteCount: number;
-  totalNoteCount: number;
-  documentId?: string;
-}
-
-export interface ContentEntryDetail extends ContentEntryListItem {
-  fields: Record<string, unknown>;
-  body: string;
 }

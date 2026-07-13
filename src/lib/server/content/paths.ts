@@ -61,30 +61,27 @@ export function entryFolderFromPath(
   return segments.join('/');
 }
 
-export function folderIdFromPath(path: string, directory: string): string {
-  const normalizedPath = path.replace(/\\/g, '/').replace(/\/$/, '');
-  const normalizedDirectory = directory.replace(/\\/g, '/').replace(/\/$/, '');
-  return normalizedPath.startsWith(`${normalizedDirectory}/`)
-    ? normalizedPath.slice(normalizedDirectory.length + 1)
-    : '';
-}
-
-export function sanitizeFilename(originalName: string): string {
+export function sanitizeFilename(
+  originalName: string,
+  forcedExtension?: string,
+): string {
   const sanitized =
     originalName.trim().replace(/\\/g, '/').split('/').pop()?.toLowerCase() ??
     'upload';
 
   const extensionMatch = sanitized.match(/(\.[a-z0-9]+)$/);
-  const extension = extensionMatch?.[1] ?? '';
+  const originalExtension = extensionMatch?.[1] ?? '';
+  const extension = forcedExtension ?? originalExtension;
   const basename =
-    (extension ? sanitized.slice(0, -extension.length) : sanitized)
+    (originalExtension
+      ? sanitized.slice(0, -originalExtension.length)
+      : sanitized
+    )
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 56) || 'upload';
 
-  const suffix = `${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
+  const suffix = crypto.randomUUID();
   return `${basename}-${suffix}${extension}`;
 }
 

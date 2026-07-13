@@ -1,0 +1,90 @@
+# Development and operations
+
+## Environment setup
+
+Start from `.env.example`. Placeholder values such as `your_...` are treated as
+unset by integration credential resolution.
+
+The minimum useful local configuration is:
+
+```dotenv
+APP_ENV=development
+REDIS_MODE=local
+LOCAL_REDIS_URL=redis://127.0.0.1:6379
+ADMIN_PANEL_TOKEN=<random admin password>
+COMMUNITY_SIGNING_SECRET=<long random secret>
+CONTENT_WRITE_MODE=local
+TURNSTILE_BYPASS_IN_DEV=true
+```
+
+Use a dedicated `LOCAL_REDIS_PROXY_TOKEN` when you do not want the local Redis
+bridge to reuse `COMMUNITY_SIGNING_SECRET`.
+
+## Notes and Studio
+
+Studio operations write repository files immediately; there is no draft or
+publish database. Review `git diff`, then commit the MDX and any assets under
+`public/images/notes` as one change.
+
+The editor intentionally excludes `src/content/notes` from Vite's watcher. An
+autosave would otherwise trigger a full page reload for every edit. Restart the
+dev server after hand-editing a note outside Studio when you need the public page
+to reflect that change.
+
+Production responds to content mutation APIs with `503
+content_editing_unavailable`. This is an invariant: do not add a production
+filesystem or Redis-backed publishing path without an explicit architecture
+decision.
+
+## Adding an integration
+
+1. Implement one `IntegrationDefinition` in
+   `src/lib/server/integrations/providers`.
+2. Declare credential fields, environment fallbacks, validators, and a bounded
+   `check()` implementation.
+3. Add the definition to `integrations/registry.ts` and extend `IntegrationId`.
+4. Add provider and service tests.
+
+Do not add provider-specific admin routes, credential forms, Redis keys, or
+status components. The registry contract exists so those surfaces remain
+generic.
+
+Credential values returned from `resolveCredentials` are server-only. API
+responses may include source and timestamp metadata, never secret material.
+
+## Verification
+
+Run the focused test while iterating, then finish with:
+
+```bash
+pnpm run verify
+pnpm run audit
+```
+
+CI runs formatting, Astro diagnostics, the full Vitest suite (including the
+real-Redis integration test), a production build, and the production dependency
+audit. A push to `main` deploys only after those checks pass.
+
+## Deployment
+
+`pnpm run deploy` invokes Wrangler using `wrangler.jsonc`. Runtime secrets belong
+in Cloudflare or the integration credential store, never in committed files.
+Environment values remain fallbacks when an operator override exists in Redis.
+
+After changing a compatibility date, adapter, Worker binding, or security
+header, run a production build and preview rather than relying only on type
+checks.
+
+## Troubleshooting
+
+- Port `45555` busy: stop the previous dev process or set
+  `LOCAL_REDIS_PROXY_PORT` and keep the Worker-side value identical.
+- Port `45556` busy: stop the previous dev process or set
+  `LOCAL_CONTENT_PROXY_PORT`.
+- Studio unavailable: confirm development mode, `CONTENT_WRITE_MODE=local`, and
+  both admin secrets; then restart Astro so the proxy starts.
+- Redis-backed feature unavailable: confirm Redis is listening at
+  `LOCAL_REDIS_URL` and that the local proxy token is visible to both runtimes.
+- Spotify token command fails: add the exact
+  `http://127.0.0.1:8888/callback` redirect URI in the Spotify developer
+  dashboard and ensure port 8888 is free.

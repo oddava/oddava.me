@@ -1,37 +1,30 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ComponentChild } from 'preact';
 import './Skeleton.css';
 
 interface SkeletonGridProps {
-  cols?: number;
+  cols?: 2 | 4;
   rows?: number;
   ariaLabel?: string;
 }
 
-export function SkeletonRow(): ReactNode {
+export function SkeletonRow(): ComponentChild {
   return <div className="skeleton skeleton-row" aria-hidden="true" />;
-}
-
-export function SkeletonCard(): ReactNode {
-  return <div className="skeleton skeleton-card" aria-hidden="true" />;
 }
 
 export function SkeletonGrid({
   cols = 4,
   rows = 1,
   ariaLabel = 'Loading metrics',
-}: SkeletonGridProps): ReactNode {
-  const style = {
-    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-  } satisfies CSSProperties as CSSProperties;
+}: SkeletonGridProps): ComponentChild {
+  const supportedColumns = cols === 2 ? 2 : 4;
   return (
     <section
-      className="admin-grid"
-      style={style}
+      className={`admin-grid cols-${supportedColumns}`}
       role="status"
       aria-label={ariaLabel}
       aria-live="polite"
     >
-      {Array.from({ length: cols * rows }).map((_, index) => (
+      {Array.from({ length: supportedColumns * rows }).map((_, index) => (
         <div
           className="skeleton skeleton-card"
           key={index}

@@ -7,7 +7,6 @@ export {
 export { fetchWithTimeout, json } from './community/http';
 export {
   ensureSameOrigin,
-  getClientIpAddress,
   isSecureRequest,
   prefersJsonResponse,
   safeRedirectPath,

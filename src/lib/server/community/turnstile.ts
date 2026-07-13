@@ -49,14 +49,17 @@ export async function verifyTurnstileToken(
 
   let verificationResponse: Response;
   try {
+    const verificationBody = new URLSearchParams({
+      secret: getTurnstileSecretKey()!,
+      response: token,
+    });
+    const clientIp = getClientIp(request);
+    if (clientIp !== 'unknown') verificationBody.set('remoteip', clientIp);
+
     verificationResponse = await fetchWithTimeout(TURNSTILE_VERIFY_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        secret: getTurnstileSecretKey()!,
-        response: token,
-        remoteip: getClientIp(request),
-      }),
+      body: verificationBody,
     });
   } catch (error) {
     console.error('[turnstile] verification request failed', error);
@@ -79,8 +82,36 @@ export async function verifyTurnstileToken(
     );
   }
 
-  const payload = (await verificationResponse.json()) as { success?: boolean };
-  if (!payload.success) {
+  let payload: unknown;
+  try {
+    payload = await verificationResponse.json();
+  } catch (error) {
+    console.error('[turnstile] verification returned invalid JSON', error);
+    return json(
+      {
+        error: 'Bot verification is temporarily unavailable.',
+        code: 'captcha_unavailable',
+      },
+      { status: 502 },
+    );
+  }
+
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    Array.isArray(payload) ||
+    typeof (payload as { success?: unknown }).success !== 'boolean'
+  ) {
+    return json(
+      {
+        error: 'Bot verification is temporarily unavailable.',
+        code: 'captcha_unavailable',
+      },
+      { status: 502 },
+    );
+  }
+
+  if (!(payload as { success: boolean }).success) {
     return json(
       {
         error: 'Bot verification failed.',

@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
-import { marked } from 'marked';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'preact/hooks';
+import type {
+  CSSProperties,
+  TargetedKeyboardEvent,
+  TargetedPointerEvent,
+} from 'preact';
+import { renderNoteHtml } from '../../lib/garden/render';
+import { buildWikiLinkHrefLookup, gardenSlug } from '../../lib/garden/utils';
 import {
   createContentEntry,
   createContentFolder,
@@ -22,7 +33,7 @@ import type {
   ContentCollectionMeta,
   ContentEntryListItem,
   ContentFolder,
-} from './types';
+} from '../../lib/contracts';
 import StudioFolderTree, { type StudioTreeItemRef } from './StudioFolderTree';
 import StudioCommandPalette, {
   type PaletteCommand,
@@ -32,13 +43,13 @@ import StudioImageDialog from './StudioImageDialog';
 import { makeEditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import './Studio.css';
+// The preview renders through the site's own note stylesheet, not a copy of it.
+import '../../styles/components/_note-prose.css';
 
 interface ContentWorkspaceProps {
-  onContentChanged?: () => Promise<void>;
   fullWidth?: boolean;
 }
 
-type ProviderState = 'local' | 'unavailable';
 type ViewMode = 'write' | 'split' | 'preview';
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
@@ -69,8 +80,6 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: 'split', label: 'Split' },
   { id: 'preview', label: 'Preview' },
 ];
-
-marked.setOptions({ gfm: true, breaks: false });
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -103,32 +112,9 @@ function readSession(): StudioSession {
   }
 }
 
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/['"]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-// Mirror the site's remark plugin so the preview renders [[wiki-links]] the same
-// way the published page does, instead of showing the raw brackets.
-const WIKI_LINK_PATTERN = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g;
-function wikiLinksToMarkdown(body: string): string {
-  return body.replace(WIKI_LINK_PATTERN, (_match, target, label) => {
-    const text = (label ?? target).trim();
-    return `[${text}](/notes/${slugify(String(target).trim())})`;
-  });
-}
-
 function titleFromBody(body: string, fallback: string): string {
   const heading = body.match(/^#{1,6}\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
   return heading || fallback.replaceAll('-', ' ') || 'Untitled';
-}
-
-function routeFor(collection: ContentCollectionMeta, id: string): string {
-  return collection.routePattern.replace(':id', id);
 }
 
 function countWords(value: string): number {
@@ -136,12 +122,23 @@ function countWords(value: string): number {
   return matches ? matches.length : 0;
 }
 
+function noteHref(entries: ContentEntryListItem[], id: string): string {
+  return entries.find((entry) => entry.id === id)?.href ?? `/notes/${id}`;
+}
+
+function remapFolderPath(value: string, from: string, to: string): string {
+  if (value === from) return to;
+  return value.startsWith(`${from}/`)
+    ? `${to}${value.slice(from.length)}`
+    : value;
+}
+
 function contentRequestError(caught: unknown, fallback: string): string {
   if (
     caught instanceof Error &&
     (caught.name === 'AbortError' || caught.name === 'TimeoutError')
   ) {
-    return 'Studio could not reach the content store. Check the Redis connection and try again.';
+    return 'Studio could not reach the local content service. Restart the development server and try again.';
   }
   return caught instanceof Error ? caught.message : fallback;
 }
@@ -153,25 +150,19 @@ interface OpenDoc {
   folder: string;
   fields: Record<string, unknown>;
   body: string;
-  revision?: string;
+  revision: string;
 }
 
-export function ContentWorkspace({
-  onContentChanged,
-  fullWidth = false,
-}: ContentWorkspaceProps) {
+export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [collection, setCollection] = useState<ContentCollectionMeta | null>(
     null,
   );
-  const [provider, setProvider] = useState<ProviderState>('local');
   const [entries, setEntries] = useState<ContentEntryListItem[]>([]);
   const [folders, setFolders] = useState<ContentFolder[]>([]);
+  const [editingUnavailable, setEditingUnavailable] = useState(false);
 
   const [openId, setOpenId] = useState('');
-  const [openFolder, setOpenFolder] = useState('');
-  const [fields, setFields] = useState<Record<string, unknown>>({});
   const [body, setBody] = useState('');
-  const [revision, setRevision] = useState<string | undefined>();
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -206,9 +197,22 @@ export function ContentWorkspace({
   const hasBody = collection?.body ?? true;
   const view: ViewMode = session.view;
 
+  const wikiLinkHrefs = useMemo(
+    () =>
+      buildWikiLinkHrefLookup(
+        entries.map((entry) => ({
+          id: [entry.folder, entry.id].filter(Boolean).join('/'),
+          title: entry.title,
+          href: entry.href,
+        })),
+      ),
+    [entries],
+  );
+  // Same renderer and link index the published page uses, so preview links do
+  // not drift from the committed page.
   const bodyHtml = useMemo(
-    () => marked.parse(wikiLinksToMarkdown(body), { async: false }) as string,
-    [body],
+    () => renderNoteHtml(body, { wikiLinkHrefs }),
+    [body, wikiLinkHrefs],
   );
   const wordCount = useMemo(() => countWords(body), [body]);
   const currentTitle = titleFromBody(body, openId);
@@ -240,117 +244,152 @@ export function ContentWorkspace({
     return () => window.clearTimeout(timer);
   }, [session, openId, expandedFolders]);
 
-  function patchSession(patch: Partial<StudioSession>) {
+  const patchSession = useCallback((patch: Partial<StudioSession>) => {
     setSession((current) => ({ ...current, ...patch }));
-  }
+  }, []);
 
   // --- Autosave ------------------------------------------------------------
 
-  const savingRef = useRef(false);
-  const pendingRef = useRef(false);
-  const saveNowRef = useRef<() => Promise<void>>(async () => {});
+  const documentVersionRef = useRef(0);
+  const persistedVersionRef = useRef(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const saveNowRef = useRef<() => Promise<boolean>>(async () => true);
+
+  const clearScheduledSave = useCallback(() => {
+    if (saveTimer.current === null) return;
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+  }, []);
+
+  useEffect(
+    () => () => {
+      clearScheduledSave();
+    },
+    [clearScheduledSave],
+  );
 
   const scheduleSave = useCallback(() => {
-    if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+    clearScheduledSave();
     saveTimer.current = window.setTimeout(() => {
       saveTimer.current = null;
       void saveNowRef.current();
     }, AUTOSAVE_DELAY_MS);
-  }, []);
+  }, [clearScheduledSave]);
 
-  // Persist the open note straight to its file. There is no draft buffer: what
-  // you type is the note, saved a beat after you stop typing. Writes never
-  // overlap (a second request would trip the file's revision guard), and every
-  // reconciliation is keyed to the note that was actually saved — so switching
-  // notes mid-save can't graft one note's revision onto another.
-  const saveNow = useCallback(async () => {
-    if (saveTimer.current !== null) {
-      window.clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
-    if (savingRef.current) {
-      pendingRef.current = true;
-      return;
-    }
-    if (!collection) return;
-    const doc = docRef.current;
-    if (!doc || !doc.id) return;
-    const startedBody = doc.body;
-    const startedFields = doc.fields;
+  // Serialize writes through one queue. A save snapshots the document only
+  // when it reaches the front, so edits made during an earlier request use the
+  // new revision returned by that request. Document switches await this same
+  // queue and cannot strand the old note's final keystrokes.
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    clearScheduledSave();
+    const requestedDoc = docRef.current;
+    if (!collection || !requestedDoc?.id) return true;
+    const requestedId = requestedDoc.id;
+    const requestedVersion = documentVersionRef.current;
 
-    savingRef.current = true;
-    setSaveState('saving');
-    try {
-      const response = await updateContentEntry(collection.id, doc.id, {
-        fields: doc.fields,
-        body: doc.body,
-        revision: doc.revision,
-      });
-      const nextRevision = response.entry?.revision ?? response.result.revision;
-      // Reflect a changed heading in the tree label without a full refetch.
-      const title = titleFromBody(doc.body, doc.id);
-      setEntries((current) =>
-        current.map((entry) =>
-          entry.id === doc.id ? { ...entry, title } : entry,
-        ),
-      );
-      // Only touch editor state if this is still the open note.
-      if (docRef.current?.id === doc.id) {
-        docRef.current = { ...docRef.current, revision: nextRevision };
-        setRevision(nextRevision);
-        const editedDuringSave =
-          docRef.current.body !== startedBody ||
-          docRef.current.fields !== startedFields;
-        if (editedDuringSave) {
-          pendingRef.current = true;
-        } else {
-          setSaveState('saved');
-          setSavedAt(Date.now());
+    let saved = true;
+    const queued = saveQueueRef.current.then(async () => {
+      const current = docRef.current;
+      if (
+        !current ||
+        current.id !== requestedId ||
+        persistedVersionRef.current >= requestedVersion
+      ) {
+        return;
+      }
+
+      const snapshot = { ...current, fields: { ...current.fields } };
+      const snapshotVersion = documentVersionRef.current;
+      setSaveState('saving');
+      try {
+        const response = await updateContentEntry(collection.id, snapshot.id, {
+          fields: snapshot.fields,
+          body: snapshot.body,
+          revision: snapshot.revision,
+        });
+        const nextRevision =
+          response.entry?.revision ?? response.result.revision;
+        if (!nextRevision) throw new Error('The save returned no revision.');
+
+        setEntries((items) =>
+          items.map((entry) =>
+            entry.id === snapshot.id
+              ? {
+                  ...entry,
+                  title: titleFromBody(snapshot.body, snapshot.id),
+                  revision: nextRevision,
+                }
+              : entry,
+          ),
+        );
+        if (docRef.current?.id === snapshot.id) {
+          docRef.current = { ...docRef.current, revision: nextRevision };
+          persistedVersionRef.current = snapshotVersion;
+          if (documentVersionRef.current === snapshotVersion) {
+            setSaveState('saved');
+            setSavedAt(Date.now());
+          } else {
+            setSaveState('dirty');
+          }
+        }
+      } catch (caught) {
+        saved = false;
+        if (docRef.current?.id === snapshot.id) {
+          setSaveState('error');
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'Could not save the note.',
+          );
         }
       }
-    } catch (caught) {
-      if (docRef.current?.id === doc.id) {
-        setSaveState('error');
-        setError(
-          caught instanceof Error ? caught.message : 'Could not save the note.',
-        );
-      }
-    } finally {
-      savingRef.current = false;
-      // A save that landed while another was in flight (or edits made mid-save)
-      // schedules one more pass so the file ends up matching the editor — but
-      // only when autosave is on; in manual mode the next write waits for ⌘S.
-      if (pendingRef.current) {
-        pendingRef.current = false;
-        if (autosaveRef.current) scheduleSave();
-      }
-    }
-  }, [collection, scheduleSave]);
+    });
+    saveQueueRef.current = queued.catch(() => undefined);
+    await queued;
+    return saved;
+  }, [clearScheduledSave, collection]);
 
   useEffect(() => {
     saveNowRef.current = saveNow;
   }, [saveNow]);
 
-  // Warn (and, in autosave mode, flush) if the tab is closed mid-edit.
+  // Browsers do not await async work in beforeunload. Flush when the page first
+  // becomes hidden, then retain a native leave-page warning while work remains.
   useEffect(() => {
-    function onBeforeUnload(event: BeforeUnloadEvent) {
-      if (saveState === 'dirty' || saveState === 'saving') {
-        if (autosaveRef.current) void saveNow();
-        event.preventDefault();
-        event.returnValue = '';
+    function onVisibilityChange() {
+      if (
+        document.visibilityState === 'hidden' &&
+        autosaveRef.current &&
+        (saveState === 'dirty' || saveState === 'saving')
+      ) {
+        void saveNow();
       }
     }
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      if (saveState === 'dirty' || saveState === 'saving') {
+        event.preventDefault();
+        Reflect.set(event, 'returnValue', '');
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
   }, [saveState, saveNow]);
 
-  function markDirty(next: Partial<OpenDoc>) {
-    const doc = docRef.current;
-    if (!doc) return;
-    docRef.current = { ...doc, ...next };
-    setSaveState('dirty');
-    if (autosaveRef.current) scheduleSave();
-  }
+  const markDirty = useCallback(
+    (next: Partial<OpenDoc>) => {
+      const doc = docRef.current;
+      if (!doc) return;
+      docRef.current = { ...doc, ...next };
+      documentVersionRef.current += 1;
+      setSaveState('dirty');
+      if (autosaveRef.current) scheduleSave();
+    },
+    [scheduleSave],
+  );
 
   // --- Loading -------------------------------------------------------------
 
@@ -368,7 +407,6 @@ export function ContentWorkspace({
         if (!active) return;
         const first = response.collections[0] ?? null;
         setCollection(first);
-        setProvider(response.provider);
         setError(null);
         if (first) {
           const entryResponse = await fetchContentEntries(first.id);
@@ -381,7 +419,7 @@ export function ContentWorkspace({
         if (!active) return;
         const code = (caught as Error & { code?: string }).code;
         if (code === 'content_editing_unavailable') {
-          setProvider('unavailable');
+          setEditingUnavailable(true);
           setError(null);
         } else {
           setError(contentRequestError(caught, 'Could not load Studio.'));
@@ -395,18 +433,6 @@ export function ContentWorkspace({
     };
   }, []);
 
-  // Reopen the last note once the tree is loaded.
-  const restoredRef = useRef(false);
-  useEffect(() => {
-    if (restoredRef.current || !collection || entries.length === 0) return;
-    restoredRef.current = true;
-    const target = readSession().lastOpenId;
-    if (target && entries.some((entry) => entry.id === target)) {
-      void openNote(target);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collection, entries]);
-
   // --- Opening notes -------------------------------------------------------
 
   const openNote = useCallback(
@@ -414,7 +440,12 @@ export function ContentWorkspace({
       if (!collection || !id) return;
       if (id === openId) return;
       // Flush the note we're leaving before swapping documents.
-      if (saveState === 'dirty') await saveNow();
+      if (
+        (saveState === 'dirty' || saveState === 'saving') &&
+        !(await saveNow())
+      ) {
+        return;
+      }
 
       setBusyKey(`open-${id}`);
       setError(null);
@@ -429,11 +460,10 @@ export function ContentWorkspace({
           body: entry.body ?? '',
           revision: entry.revision,
         };
+        documentVersionRef.current = 0;
+        persistedVersionRef.current = 0;
         setOpenId(id);
-        setOpenFolder(folder);
-        setFields(entry.fields);
         setBody(entry.body ?? '');
-        setRevision(entry.revision);
         setSaveState('idle');
         // Note: activeFolder is set by the caller (editEntry / the tree), not
         // here — a folder's document lives in its *parent*, so using `folder`
@@ -460,6 +490,17 @@ export function ContentWorkspace({
     [collection, openId, saveState, saveNow],
   );
 
+  // Reopen the last note once the tree is loaded.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !collection || entries.length === 0) return;
+    restoredRef.current = true;
+    const target = readSession().lastOpenId;
+    if (target && entries.some((entry) => entry.id === target)) {
+      void openNote(target);
+    }
+  }, [collection, entries, openNote]);
+
   function editEntry(entry: ContentEntryListItem) {
     // If this entry is a folder's index page, make the folder itself active so
     // "New file/folder" targets inside it — the document lives in the parent,
@@ -475,13 +516,21 @@ export function ContentWorkspace({
 
   function closeIfOpen(id: string) {
     if (docRef.current?.id !== id) return;
+    clearScheduledSave();
     docRef.current = null;
+    documentVersionRef.current = 0;
+    persistedVersionRef.current = 0;
     setOpenId('');
-    setOpenFolder('');
     setBody('');
-    setFields({});
-    setRevision(undefined);
     setSaveState('idle');
+  }
+
+  async function revisionAfterSaving(
+    entry: ContentEntryListItem,
+  ): Promise<string | null> {
+    if (docRef.current?.id !== entry.id) return entry.revision;
+    if (!(await saveNow())) return null;
+    return docRef.current?.id === entry.id ? docRef.current.revision : null;
   }
 
   // --- Tree mutations (direct file operations, no drafts) ------------------
@@ -500,7 +549,7 @@ export function ContentWorkspace({
       ...entries.map((entry) => entry.id),
       ...folders.map((folder) => folder.name),
     ]);
-    const normalizedBase = slugify(base) || 'note';
+    const normalizedBase = gardenSlug(base) || 'note';
     let candidate = normalizedBase;
     let suffix = 2;
     while (reserved.has(candidate)) {
@@ -515,7 +564,7 @@ export function ContentWorkspace({
     name: string,
   ): Promise<boolean> {
     if (!collection) return false;
-    const id = slugify(name);
+    const id = gardenSlug(name);
     if (!id) {
       setError('Give the note a short name first.');
       return false;
@@ -537,7 +586,6 @@ export function ContentWorkspace({
       setExpandedFolders((current) => new Set(current).add(folder));
       await refreshTree();
       await openNote(id, folder);
-      void onContentChanged?.();
       return true;
     } catch (caught) {
       setError(
@@ -554,7 +602,7 @@ export function ContentWorkspace({
     name: string,
   ): Promise<boolean> {
     if (!collection) return false;
-    const folderName = slugify(name);
+    const folderName = gardenSlug(name);
     if (!folderName) {
       setError('Give the folder a short name first.');
       return false;
@@ -574,7 +622,6 @@ export function ContentWorkspace({
       await refreshTree();
       // The server creates a folder page; open it so the folder has a home.
       await openNote(folderName, parent);
-      void onContentChanged?.();
       return true;
     } catch (caught) {
       setError(
@@ -622,16 +669,30 @@ export function ContentWorkspace({
     name: string,
   ): Promise<boolean> {
     if (!collection) return false;
-    const nextId = slugify(name);
+    const nextId = gardenSlug(name);
     if (!nextId) return false;
     if (nextId === entry.id) return true;
     setBusyKey(`rename-${entry.id}`);
     setError(null);
     try {
-      await renameContentEntry(collection.id, entry.id, nextId, entry.folder);
+      const revision = await revisionAfterSaving(entry);
+      if (!revision) return false;
+      const response = await renameContentEntry(
+        collection.id,
+        entry.id,
+        nextId,
+        entry.folder,
+        revision,
+      );
       if (openId === entry.id) {
         setOpenId(nextId);
-        if (docRef.current) docRef.current = { ...docRef.current, id: nextId };
+        if (docRef.current) {
+          docRef.current = {
+            ...docRef.current,
+            id: nextId,
+            revision: response.entry?.revision ?? revision,
+          };
+        }
       }
       await refreshTree();
       return true;
@@ -653,11 +714,14 @@ export function ContentWorkspace({
     setBusyKey(`duplicate-${entry.id}`);
     setError(null);
     try {
+      const revision = await revisionAfterSaving(entry);
+      if (!revision) return false;
       await duplicateContentEntry(
         collection.id,
         entry.id,
         nextId,
         entry.folder,
+        revision,
       );
       await refreshTree();
       return true;
@@ -685,11 +749,12 @@ export function ContentWorkspace({
     setBusyKey(`delete-${entry.id}`);
     setError(null);
     try {
-      await deleteContentEntry(collection.id, entry.id);
+      const revision = await revisionAfterSaving(entry);
+      if (!revision) return false;
+      await deleteContentEntry(collection.id, entry.id, revision);
       closeIfOpen(entry.id);
       await refreshTree();
       setNotice('Note deleted.');
-      void onContentChanged?.();
       return true;
     } catch (caught) {
       setError(
@@ -707,14 +772,25 @@ export function ContentWorkspace({
   ): Promise<boolean> {
     if (!collection) return false;
     const source = entries.find((entry) => entry.id === id);
+    if (!source) return false;
     if (source?.folder === folder) return true;
     setBusyKey(`move-${id}`);
     setError(null);
     try {
-      await moveContentEntry(collection.id, id, folder);
-      if (openId === id) {
-        setOpenFolder(folder);
-        if (docRef.current) docRef.current = { ...docRef.current, folder };
+      const revision = await revisionAfterSaving(source);
+      if (!revision) return false;
+      const response = await moveContentEntry(
+        collection.id,
+        id,
+        folder,
+        revision,
+      );
+      if (openId === id && docRef.current) {
+        docRef.current = {
+          ...docRef.current,
+          folder,
+          revision: response.entry?.revision ?? revision,
+        };
       }
       setActiveFolder(folder);
       if (folder) setExpandedFolders((current) => new Set(current).add(folder));
@@ -736,20 +812,55 @@ export function ContentWorkspace({
     name: string,
   ): Promise<boolean> {
     if (!collection) return false;
-    const nextName = slugify(name);
+    const nextName = gardenSlug(name);
     if (!nextName) return false;
     const nextPath = [parent, nextName].filter(Boolean).join('/');
     if (nextPath === folder.id) return true;
     setBusyKey(`move-folder-${folder.id}`);
     setError(null);
     try {
-      await updateContentFolder(collection.id, folder.id, nextPath);
-      if (openId === folder.documentId && nextName !== folder.name) {
-        setOpenId(nextName);
-        if (docRef.current)
-          docRef.current = { ...docRef.current, id: nextName };
+      const openDocument = docRef.current;
+      const folderPageIsOpen = Boolean(
+        openDocument &&
+        openDocument.id === folder.documentId &&
+        openDocument.folder === (folder.parentId ?? ''),
+      );
+      const descendantIsOpen = Boolean(
+        openDocument &&
+        (openDocument.folder === folder.id ||
+          openDocument.folder.startsWith(`${folder.id}/`)),
+      );
+      if ((folderPageIsOpen || descendantIsOpen) && !(await saveNow())) {
+        return false;
       }
-      setExpandedFolders((current) => new Set(current).add(parent));
+
+      await updateContentFolder(collection.id, folder.id, nextPath);
+      if (docRef.current && folderPageIsOpen) {
+        docRef.current = {
+          ...docRef.current,
+          id: nextName,
+          folder: parent,
+        };
+        setOpenId(nextName);
+      } else if (docRef.current && descendantIsOpen) {
+        docRef.current = {
+          ...docRef.current,
+          folder: remapFolderPath(docRef.current.folder, folder.id, nextPath),
+        };
+      }
+      setActiveFolder((current) =>
+        remapFolderPath(current, folder.id, nextPath),
+      );
+      setExpandedFolders((current) => {
+        const next = new Set(
+          [...current].map((path) =>
+            remapFolderPath(path, folder.id, nextPath),
+          ),
+        );
+        next.add(parent);
+        next.add(nextPath);
+        return next;
+      });
       await refreshTree();
       return true;
     } catch (caught) {
@@ -779,6 +890,16 @@ export function ContentWorkspace({
     setBusyKey(`duplicate-folder-${folder.id}`);
     setError(null);
     try {
+      if (
+        docRef.current &&
+        (docRef.current.folder === folder.id ||
+          docRef.current.folder.startsWith(`${folder.id}/`) ||
+          (docRef.current.id === folder.documentId &&
+            docRef.current.folder === (folder.parentId ?? ''))) &&
+        !(await saveNow())
+      ) {
+        return false;
+      }
       await duplicateContentFolder(collection.id, path, folder.id);
       setExpandedFolders((current) => new Set(current).add(parent));
       await refreshTree();
@@ -811,6 +932,7 @@ export function ContentWorkspace({
     setBusyKey('folder-delete');
     setError(null);
     try {
+      if (openId === folder.documentId && !(await saveNow())) return false;
       await deleteContentFolder(collection.id, folder.id);
       if (openId === folder.documentId) closeIfOpen(folder.documentId ?? '');
       if (
@@ -855,6 +977,10 @@ export function ContentWorkspace({
     setBusyKey(`drop-${item.kind}-${item.id}`);
     setError(null);
     try {
+      // Reordering rewrites sibling frontmatter, including the open note. Flush
+      // it first so the reorder starts from its latest revision.
+      if (docRef.current && !(await saveNow())) return false;
+
       if (item.kind === 'folder') {
         const folder = folders.find((candidate) => candidate.id === item.id);
         if (folder && (folder.parentId ?? '') !== destinationFolder) {
@@ -878,11 +1004,17 @@ export function ContentWorkspace({
         .filter((id): id is string => Boolean(id))
         .filter((id) => entries.some((entry) => entry.id === id));
       if (orderedIds.length > 0) {
-        await reorderContentEntries(
+        const response = await reorderContentEntries(
           collection.id,
           destinationFolder,
           orderedIds,
         );
+        const openRevision = response.reordered.find(
+          (entry) => entry.id === docRef.current?.id,
+        )?.revision;
+        if (docRef.current && openRevision) {
+          docRef.current = { ...docRef.current, revision: openRevision };
+        }
       }
       await refreshTree();
       return true;
@@ -906,9 +1038,7 @@ export function ContentWorkspace({
       setBody(value);
       markDirty({ body: value });
     },
-    // markDirty is defined every render but only reads refs, so [] is safe.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [markDirty],
   );
 
   const editorCommands = useMemo(
@@ -925,7 +1055,7 @@ export function ContentWorkspace({
       try {
         const response = await uploadContentMedia(
           collection.id,
-          slugify(openId || 'uploads') || 'uploads',
+          gardenSlug(openId || 'uploads') || 'uploads',
           file,
         );
         return response.media.url;
@@ -946,7 +1076,10 @@ export function ContentWorkspace({
   async function quickInsertImage(file: File) {
     const url = await uploadImageFile(file);
     if (!url) return;
-    const alt = file.name.replace(/\.[a-z0-9]+$/i, '');
+    const alt = file.name
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replaceAll('[', '\\[')
+      .replaceAll(']', '\\]');
     editorCommands.insertInline(`![${alt}](${url})`);
     setNotice('Image added.');
   }
@@ -965,7 +1098,7 @@ export function ContentWorkspace({
     return null;
   }
 
-  function onEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  function onEditorKeyDown(event: TargetedKeyboardEvent<HTMLTextAreaElement>) {
     const mod = event.metaKey || event.ctrlKey;
     if (mod && event.key.toLowerCase() === 's') {
       event.preventDefault();
@@ -995,6 +1128,12 @@ export function ContentWorkspace({
 
   // --- Global keyboard shortcuts ------------------------------------------
 
+  const cycleView = useCallback(() => {
+    const order: ViewMode[] = ['write', 'split', 'preview'];
+    const index = order.indexOf(view);
+    patchSession({ view: order[(index + 1) % order.length] });
+  }, [patchSession, view]);
+
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
       const mod = event.metaKey || event.ctrlKey;
@@ -1015,18 +1154,11 @@ export function ContentWorkspace({
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.sidebarCollapsed, openId, view]);
-
-  function cycleView() {
-    const order: ViewMode[] = ['write', 'split', 'preview'];
-    const index = order.indexOf(view);
-    patchSession({ view: order[(index + 1) % order.length] });
-  }
+  }, [session.sidebarCollapsed, openId, cycleView, patchSession]);
 
   // --- Sidebar resize ------------------------------------------------------
 
-  function startResize(event: PointerEvent<HTMLDivElement>) {
+  function startResize(event: TargetedPointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const handle = event.currentTarget;
     const pointerId = event.pointerId;
@@ -1063,93 +1195,79 @@ export function ContentWorkspace({
 
   // --- Command palette actions --------------------------------------------
 
-  const previewUrl =
-    collection && openId
-      ? `/api/admin/content/preview?collection=${encodeURIComponent(
-          collection.id,
-        )}&id=${encodeURIComponent(openId)}`
-      : '';
+  // Open the published note page — the live site is the preview surface.
+  const publishedUrl = openId ? noteHref(entries, openId) : '';
 
-  const paletteCommands = useMemo<PaletteCommand[]>(() => {
-    const commands: PaletteCommand[] = [
+  const paletteCommands: PaletteCommand[] = [
+    {
+      id: 'new-note',
+      title: 'New note',
+      hint: 'in Notes',
+      run: () =>
+        void createEntryInFolder(activeFolder, uniqueItemId('untitled')),
+    },
+    {
+      id: 'new-folder',
+      title: 'New folder',
+      run: () =>
+        void createFolderInParent(activeFolder, uniqueItemId('folder')),
+    },
+    {
+      id: 'toggle-view',
+      title: `Switch to ${
+        view === 'write' ? 'Split' : view === 'split' ? 'Preview' : 'Write'
+      } view`,
+      hint: '⌘E',
+      run: cycleView,
+    },
+    {
+      id: 'toggle-sidebar',
+      title: session.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar',
+      hint: '⌘\\',
+      run: () => patchSession({ sidebarCollapsed: !session.sidebarCollapsed }),
+    },
+  ];
+  if (openId) {
+    paletteCommands.push(
       {
-        id: 'new-note',
-        title: 'New note',
-        hint: 'in Notes',
-        run: () =>
-          void createEntryInFolder(activeFolder, uniqueItemId('untitled')),
+        id: 'insert-image',
+        title: 'Insert image…',
+        run: () => setImageDialogOpen(true),
       },
       {
-        id: 'new-folder',
-        title: 'New folder',
-        run: () =>
-          void createFolderInParent(activeFolder, uniqueItemId('folder')),
+        id: 'save-note',
+        title: 'Save now',
+        hint: '⌘S',
+        run: () => void saveNow(),
       },
       {
-        id: 'toggle-view',
-        title: `Switch to ${
-          view === 'write' ? 'Split' : view === 'split' ? 'Preview' : 'Write'
-        } view`,
-        hint: '⌘E',
-        run: cycleView,
+        id: 'open-browser',
+        title: 'Open published page',
+        run: () => {
+          if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
+        },
       },
       {
-        id: 'toggle-sidebar',
-        title: session.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar',
-        hint: '⌘\\',
-        run: () =>
-          patchSession({ sidebarCollapsed: !session.sidebarCollapsed }),
+        id: 'delete-note',
+        title: 'Delete current note',
+        danger: true,
+        run: () => {
+          const entry = entries.find((candidate) => candidate.id === openId);
+          if (entry) void removeEntry(entry);
+        },
       },
-    ];
-    if (openId) {
-      commands.push(
-        {
-          id: 'insert-image',
-          title: 'Insert image…',
-          run: () => setImageDialogOpen(true),
-        },
-        {
-          id: 'save-note',
-          title: 'Save now',
-          hint: '⌘S',
-          run: () => void saveNow(),
-        },
-        {
-          id: 'open-browser',
-          title: 'Preview in browser',
-          run: () => window.open(previewUrl, '_blank', 'noreferrer'),
-        },
-        {
-          id: 'delete-note',
-          title: 'Delete current note',
-          danger: true,
-          run: () => {
-            const entry = entries.find((candidate) => candidate.id === openId);
-            if (entry) void removeEntry(entry);
-          },
-        },
-      );
-    }
-    return commands;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    activeFolder,
-    view,
-    session.sidebarCollapsed,
-    openId,
-    previewUrl,
-    entries,
-  ]);
+    );
+  }
 
   // --- Render --------------------------------------------------------------
 
-  if (provider === 'unavailable' && !loading && !error) {
+  if (editingUnavailable && !loading && !error) {
     return (
       <article className="admin-card admin-panel content-workspace">
         <div className="admin-empty-state" role="status">
           <p className="admin-muted">
-            The content store is unavailable. Check the Redis / Upstash
-            connection env vars, then reload.
+            Studio editing is available only in local development. Edit and
+            commit notes locally, then deploy the repository to publish them.
           </p>
         </div>
       </article>
@@ -1157,6 +1275,12 @@ export function ContentWorkspace({
   }
 
   const sidebarVisible = !session.sidebarCollapsed;
+  const sidebarStyle =
+    session.sidebar === DEFAULT_SESSION.sidebar
+      ? undefined
+      : ({
+          '--studio-sidebar-w': `${session.sidebar}px`,
+        } satisfies CSSProperties);
 
   return (
     <article
@@ -1164,9 +1288,7 @@ export function ContentWorkspace({
     >
       <div
         className={`studio-grid ${sidebarVisible ? '' : 'studio-grid--collapsed'}`}
-        style={
-          { '--studio-sidebar-w': `${session.sidebar}px` } as CSSProperties
-        }
+        style={sidebarStyle}
       >
         {sidebarVisible && (
           <section className="studio-sidebar" aria-label="Notes">
@@ -1178,7 +1300,6 @@ export function ContentWorkspace({
               <StudioFolderTree
                 folders={folders}
                 entries={entries}
-                drafts={[]}
                 query={query}
                 currentId={openId}
                 activeFolder={activeFolder}
@@ -1261,7 +1382,7 @@ export function ContentWorkspace({
                 </button>
                 <div className="studio-bar__title">
                   <strong>{currentTitle}</strong>
-                  <code>{routeFor(collection, openId)}</code>
+                  <code>{publishedUrl || openId}</code>
                 </div>
                 <SaveIndicator
                   state={saveState}
@@ -1279,7 +1400,18 @@ export function ContentWorkspace({
                       ? 'Autosave on — click to save manually with ⌘S'
                       : 'Autosave off — save with ⌘S'
                   }
-                  onClick={() => patchSession({ autosave: !session.autosave })}
+                  onClick={() => {
+                    const autosave = !session.autosave;
+                    autosaveRef.current = autosave;
+                    patchSession({ autosave });
+                    if (!autosave) {
+                      clearScheduledSave();
+                    } else if (
+                      documentVersionRef.current > persistedVersionRef.current
+                    ) {
+                      void saveNow();
+                    }
+                  }}
                 >
                   <span
                     className="studio-bar__autosave-dot"
@@ -1306,14 +1438,14 @@ export function ContentWorkspace({
                     ))}
                   </div>
                 )}
-                {previewUrl && (
+                {publishedUrl && (
                   <a
                     className="studio-bar__open"
-                    href={previewUrl}
+                    href={publishedUrl}
                     target="_blank"
                     rel="noreferrer"
-                    title="Preview in browser"
-                    aria-label="Preview in browser"
+                    title="Open published page"
+                    aria-label="Open published page"
                   >
                     <svg viewBox="0 0 20 20" aria-hidden="true">
                       <path d="M8 4.75H5.5A1.75 1.75 0 0 0 3.75 6.5v8A1.75 1.75 0 0 0 5.5 16.25h8a1.75 1.75 0 0 0 1.75-1.75V12" />
@@ -1381,7 +1513,7 @@ export function ContentWorkspace({
                     <article className="studio-preview__page">
                       {body.trim() ? (
                         <div
-                          className="studio-prose"
+                          className="prose"
                           // Markdown authored by the signed-in admin, rendered
                           // for that same admin. No third-party input reaches it.
                           dangerouslySetInnerHTML={{ __html: bodyHtml }}

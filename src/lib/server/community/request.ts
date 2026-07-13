@@ -15,44 +15,17 @@ function getRequestOrigin(request: Request): string | null {
   }
 }
 
-function getForwardedProtocol(request: Request): string {
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-  if (forwardedProto) {
-    return forwardedProto.split(',')[0]?.trim() || 'https';
-  }
-
-  return new URL(request.url).protocol.replace(/:$/, '');
-}
-
-function getForwardedHost(request: Request): string | null {
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  if (forwardedHost) {
-    return forwardedHost.split(',')[0]?.trim() || null;
-  }
-
-  return request.headers.get('host');
-}
-
-function getRequestTargetOrigin(request: Request): string {
-  const forwardedHost = getForwardedHost(request);
-  if (forwardedHost) {
-    return `${getForwardedProtocol(request)}://${forwardedHost}`;
-  }
-
-  return new URL(request.url).origin;
-}
-
 export function isSecureRequest(request: Request): boolean {
-  return getForwardedProtocol(request) === 'https';
+  return new URL(request.url).protocol === 'https:';
 }
 
 export function ensureSameOrigin(request: Request): Response | null {
-  const requestOrigin = getRequestTargetOrigin(request);
+  const requestOrigin = new URL(request.url).origin;
   const submittedOrigin = getRequestOrigin(request);
 
   if (!submittedOrigin || submittedOrigin !== requestOrigin) {
     return json(
-      { error: 'Cross-origin requests are not allowed.' },
+      { error: 'Cross-origin requests are not allowed.', code: 'cross_origin' },
       { status: 403 },
     );
   }
@@ -112,8 +85,4 @@ export function getClientIp(request: Request): string {
     request.headers.get('fly-client-ip') ??
     'unknown'
   );
-}
-
-export function getClientIpAddress(request: Request): string {
-  return getClientIp(request);
 }

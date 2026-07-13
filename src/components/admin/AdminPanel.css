@@ -27,6 +27,10 @@
   gap: 12px;
 }
 
+.admin-grid.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .admin-grid.cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -114,6 +118,13 @@
 .pill.bad {
   color: var(--admin-danger);
   background: var(--admin-status-error-bg);
+}
+
+/* Reachable but not doing what the operator wants: rate limited, bypassed,
+   or configured but incomplete. Distinct from an outright failure. */
+.pill.warn {
+  color: var(--admin-warning);
+  background: var(--admin-status-warning-bg);
 }
 
 /* --- Integration table --- */
@@ -206,48 +217,25 @@
   overflow-wrap: break-word;
 }
 
-.admin-integration-row__toggle {
+.admin-integration-row__muted {
+  color: var(--admin-text-muted);
+  font-style: italic;
+}
+
+.admin-integration-row__checked {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--admin-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.admin-integration-row__actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
   padding-left: 16px;
   border-left: 1px solid var(--admin-line);
-}
-
-.admin-integration-row__state {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--admin-text-muted);
-  min-width: 24px;
-  text-align: center;
-}
-
-.admin-integration-row__credentials-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm-2);
-  border: 1px solid var(--admin-line);
-  background: transparent;
-  color: var(--admin-text-muted);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-
-.admin-integration-row__credentials-btn:hover {
-  color: var(--admin-text-primary);
-  border-color: var(--admin-line-strong);
-  background: var(--admin-surface-elevated);
 }
 
 @media (max-width: 560px) {
@@ -257,11 +245,11 @@
     gap: 10px;
   }
 
-  .admin-integration-row__toggle {
+  .admin-integration-row__actions {
     padding-left: 0;
     border-left: 0;
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-end;
   }
 }
 
@@ -293,17 +281,67 @@
 }
 
 .admin-credentials__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.7rem;
   font-weight: 500;
   color: var(--admin-text-secondary);
 }
 
+.admin-credentials__optional {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admin-text-muted);
+}
+
 .admin-credentials__status {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   font-family: var(--font-mono);
   font-size: 0.6rem;
   color: var(--admin-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.admin-credentials__help {
+  font-family: inherit;
+  font-size: 0.68rem;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.4;
+  color: var(--admin-text-muted);
+}
+
+.admin-credentials__clear {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-accent);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-credentials__clear:hover {
+  text-decoration: underline;
+}
+
+.admin-credentials__clear:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.admin-credentials__issue {
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--admin-danger);
 }
 
 .admin-input {
@@ -350,6 +388,12 @@
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* Revoke sits opposite Save so the destructive action is never adjacent to the
+   one the operator is reaching for. */
+.admin-credentials__actions .admin-button--danger {
+  margin-right: auto;
 }
 
 .admin-button {
@@ -576,7 +620,7 @@
     gap: 6px;
   }
 
-  .admin-integration-row__credentials-btn {
+  .admin-integration-row__actions .admin-button {
     min-height: 40px;
     padding: 6px 12px;
   }

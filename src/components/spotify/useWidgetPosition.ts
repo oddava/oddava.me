@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import type { TargetedPointerEvent } from 'preact';
 import {
   calculateDraggedWidgetPosition,
   clampWidgetPosition,
@@ -82,7 +82,7 @@ export function useWidgetPosition({
   }, []);
 
   const handlePointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
+    (event: TargetedPointerEvent<HTMLElement>) => {
       if ((event.target as HTMLElement).closest('.action-btn')) return;
 
       const currentTarget = event.currentTarget as HTMLElement;

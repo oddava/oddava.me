@@ -190,7 +190,7 @@
 
 .knowledge-landscape__place > :not(.knowledge-landscape__place-hit) {
   animation: landscape-ink-in 420ms cubic-bezier(0.22, 0.72, 0.28, 1) both;
-  animation-delay: min(calc(var(--place-order) * 24ms + 80ms), 580ms);
+  animation-delay: 80ms;
 }
 
 .knowledge-landscape__place.is-muted {

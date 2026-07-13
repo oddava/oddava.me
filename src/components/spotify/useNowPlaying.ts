@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { SpotifyNowPlaying } from '../../lib/contracts';
 import { getNowPlayingPollInterval, hasTrackChanged } from './polling';
 import { fetchNowPlaying } from './spotifyApi';
@@ -68,15 +68,21 @@ export function useNowPlaying() {
 
   useEffect(() => {
     let active = true;
+    let polling = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
     const poll = async () => {
-      if (!active) return;
-      if (!document.hidden) await refresh();
-      if (!active) return;
-
-      const interval = getNowPlayingPollInterval(dataRef.current);
-      timeout = setTimeout(poll, interval);
+      if (!active || polling) return;
+      polling = true;
+      try {
+        if (!document.hidden) await refresh();
+      } finally {
+        polling = false;
+        if (active) {
+          const interval = getNowPlayingPollInterval(dataRef.current);
+          timeout = setTimeout(poll, interval);
+        }
+      }
     };
 
     const handleVisibilityChange = () => {

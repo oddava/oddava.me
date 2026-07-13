@@ -1,4 +1,5 @@
 import { getServerEnv } from '../env';
+import { firstConfiguredSecret } from '../secrets';
 
 type AppEnv = 'development' | 'production';
 type RedisMode = 'local' | 'upstash';
@@ -8,15 +9,19 @@ export const DEFAULT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
 export const TURNSTILE_VERIFY_ENDPOINT =
   'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
-const REDIS_API_URL =
-  getServerEnv('UPSTASH_REDIS_REST_URL') ??
-  getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_URL');
-const REDIS_API_TOKEN =
-  getServerEnv('UPSTASH_REDIS_REST_TOKEN') ??
-  getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_TOKEN');
+const REDIS_API_URL = firstConfiguredSecret(
+  getServerEnv('UPSTASH_REDIS_REST_URL'),
+  getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_URL'),
+);
+const REDIS_API_TOKEN = firstConfiguredSecret(
+  getServerEnv('UPSTASH_REDIS_REST_TOKEN'),
+  getServerEnv('UPSTASH_REDIS_REST_KV_REST_API_TOKEN'),
+);
 const LOCAL_REDIS_URL =
   getServerEnv('LOCAL_REDIS_URL') ?? 'redis://127.0.0.1:6379';
-const TURNSTILE_SECRET_KEY = getServerEnv('TURNSTILE_SECRET_KEY');
+const TURNSTILE_SECRET_KEY = firstConfiguredSecret(
+  getServerEnv('TURNSTILE_SECRET_KEY'),
+);
 const TURNSTILE_BYPASS_IN_DEV =
   getServerEnv('TURNSTILE_BYPASS_IN_DEV') === 'true';
 
@@ -52,11 +57,13 @@ export function getTurnstileSecretKey(): string | undefined {
 }
 
 export function getTurnstileSiteKey(): string | undefined {
-  return getServerEnv('PUBLIC_TURNSTILE_SITE_KEY');
+  return firstConfiguredSecret(getServerEnv('PUBLIC_TURNSTILE_SITE_KEY'));
 }
 
 export function getSigningSecret(): string {
-  const secret = getServerEnv('COMMUNITY_SIGNING_SECRET')?.trim();
+  const secret = firstConfiguredSecret(
+    getServerEnv('COMMUNITY_SIGNING_SECRET'),
+  );
   if (!secret) {
     throw new Error(
       'COMMUNITY_SIGNING_SECRET is required for signed sessions and tokens.',
@@ -66,7 +73,9 @@ export function getSigningSecret(): string {
 }
 
 export function hasCommunitySigningSecret(): boolean {
-  return Boolean(getServerEnv('COMMUNITY_SIGNING_SECRET')?.trim());
+  return Boolean(
+    firstConfiguredSecret(getServerEnv('COMMUNITY_SIGNING_SECRET')),
+  );
 }
 
 export function isDevelopmentEnv(): boolean {

@@ -18,14 +18,12 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
   <section class="admin-card admin-login">
     <p class="admin-kicker">oddava</p>
     <h1>Sign in</h1>
-    <p
-      style="color: var(--admin-text-secondary); margin-top: 4px; font-size: 0.875rem;"
-    >
+    <p class="admin-login__intro">
       Use the shared admin token to access the panel.
     </p>
     {
       !configured && (
-        <p class="admin-note" style="margin-top: 16px;">
+        <p class="admin-note admin-login__message">
           Set <code>ADMIN_PANEL_TOKEN</code> or{' '}
           <code>GUESTBOOK_ADMIN_TOKEN</code> to enable admin access.
         </p>
@@ -33,16 +31,14 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
     }
     {
       invalid && (
-        <p class="admin-error" style="margin-top: 12px;">
+        <p class="admin-error admin-login__message">
           The admin token was rejected.
         </p>
       )
     }
     {
       loggedOut && (
-        <p class="admin-success" style="margin-top: 12px;">
-          Admin session cleared.
-        </p>
+        <p class="admin-success admin-login__message">Admin session cleared.</p>
       )
     }
     <form id="admin-login-form" method="post" action="/api/admin/session">
@@ -68,39 +64,47 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
       class="admin-error"
       role="alert"
       aria-live="assertive"
-      style="display:none; margin-top: 12px;"
+      hidden
     >
     </p>
   </section>
-  <script is:inline>
-    const form = document.getElementById('admin-login-form');
-    const errorEl = document.getElementById('admin-login-error');
+  <script>
+    const form = document.querySelector<HTMLFormElement>('#admin-login-form');
+    const errorElement =
+      document.querySelector<HTMLElement>('#admin-login-error');
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      errorEl.style.display = 'none';
+      if (!errorElement) return;
+      errorElement.hidden = true;
 
-      const formData = new FormData(form);
-      const response = await fetch('/api/admin/session', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: formData.get('token'),
-          next: formData.get('next'),
-        }),
-      });
+      try {
+        const formData = new FormData(form);
+        const response = await fetch('/api/admin/session', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token: formData.get('token'),
+            next: formData.get('next'),
+          }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          next?: string;
+        };
 
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        errorEl.textContent = payload.error || 'Could not sign in.';
-        errorEl.style.display = 'block';
-        return;
+        if (!response.ok) {
+          throw new Error(payload.error || 'Could not sign in.');
+        }
+        window.location.assign(payload.next || '/admin');
+      } catch (error) {
+        errorElement.textContent =
+          error instanceof Error ? error.message : 'Could not sign in.';
+        errorElement.hidden = false;
       }
-
-      window.location.href = payload.next || '/admin';
     });
   </script>
 </AdminLayout>

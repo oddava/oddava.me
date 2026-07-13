@@ -1,8 +1,6 @@
 /* ===================================================
    ODDAVA.ME — @font-face declarations
-   Single source-of-truth for fonts. Concatenated into
-   critical.css by scripts/gen-critical.mjs and mirrored
-   into AdminLayout.astro inline <style>. Keep in sync.
+   Single source of truth for public and admin layouts.
    =================================================== */
 
 @font-face {

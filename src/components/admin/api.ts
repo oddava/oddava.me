@@ -1,31 +1,43 @@
 import type {
-  GuestbookEntry,
-  GuestbookResponse,
-  GuestbookStatus,
-  ContentBlock,
   ContentCollectionsResponse,
   ContentDeleteResponse,
-  ContentDraft,
   ContentEntriesResponse,
   ContentEntryResponse,
   ContentFolder,
-  ContentMediaListResponse,
   ContentMediaResponse,
-  ContentRevision,
   ContentSaveResponse,
-  ContentSurface,
+  GuestbookEntry,
+  GuestbookResponse,
+  GuestbookStatus,
+  IntegrationResponse,
+  IntegrationsResponse,
   OverviewResponse,
-  PublishJob,
-  SpotifyCredentialsResponse,
-} from './types';
+} from '../../lib/contracts';
 
 const ADMIN_REQUEST_TIMEOUT_MS = 15_000;
+const ADMIN_OVERVIEW_TIMEOUT_MS = 12_000;
+const INTEGRATION_TEST_TIMEOUT_MS = 20_000;
+const INTEGRATIONS_PATH = '/api/admin/integrations';
+
+interface AdminApiIssue {
+  path: unknown[];
+  message: string;
+}
+
+class AdminApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+    readonly issues: AdminApiIssue[] = [],
+  ) {
+    super(message);
+    this.name = 'AdminApiError';
+  }
+}
 
 function withJsonAccept(init: RequestInit = {}): RequestInit {
   const headers = new Headers(init.headers);
-  if (!headers.has('Accept')) {
-    headers.set('Accept', 'application/json');
-  }
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   return { ...init, headers };
 }
 
@@ -40,35 +52,32 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   };
 
   try {
-    payload = (await response.json()) as T & { error?: string };
+    payload = await response.json();
   } catch {
-    throw new Error('Admin API returned an invalid JSON response.');
+    throw new AdminApiError('Admin API returned an invalid JSON response.');
   }
 
   if (!response.ok) {
-    const issueText = Array.isArray(payload.issues)
+    const issues = Array.isArray(payload.issues)
       ? payload.issues
-          .map((issue) => {
-            const path = Array.isArray(issue.path)
-              ? issue.path.join('.')
-              : undefined;
-            return path && issue.message
-              ? `${path}: ${issue.message}`
-              : issue.message;
-          })
-          .filter(Boolean)
-          .join(' ')
-      : '';
-    const error = new Error(
-      [payload.error || 'Request failed.', issueText].filter(Boolean).join(' '),
+          .filter(
+            (issue): issue is { path?: unknown[]; message: string } =>
+              typeof issue.message === 'string',
+          )
+          .map((issue) => ({
+            path: Array.isArray(issue.path) ? issue.path : [],
+            message: issue.message,
+          }))
+      : [];
+    throw new AdminApiError(
+      payload.error || 'Request failed.',
+      payload.code,
+      issues,
     );
-    if (payload.code) (error as Error & { code?: string }).code = payload.code;
-    throw error;
   }
+
   return payload;
 }
-
-const ADMIN_OVERVIEW_TIMEOUT_MS = 12_000;
 
 export function fetchAdminOverview(): Promise<OverviewResponse> {
   return readJson<OverviewResponse>('/api/admin/overview', {
@@ -106,44 +115,53 @@ export function clearGuestbookEntries(): Promise<GuestbookResponse> {
   });
 }
 
-export interface IntegrationSettingsResponse {
-  integrations: Record<string, boolean>;
+function integrationPath(id: string, suffix = ''): string {
+  return `${INTEGRATIONS_PATH}/${encodeURIComponent(id)}${suffix}`;
 }
 
-export function updateIntegrationSetting(
-  name: string,
-  enabled: boolean,
-): Promise<IntegrationSettingsResponse> {
-  return readJson<IntegrationSettingsResponse>('/api/admin/settings', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, enabled }),
+export function fetchIntegrations(): Promise<IntegrationsResponse> {
+  return readJson<IntegrationsResponse>(INTEGRATIONS_PATH, {
+    cache: 'no-store',
   });
 }
 
-export function fetchSpotifyCredentials(): Promise<SpotifyCredentialsResponse> {
-  return readJson<SpotifyCredentialsResponse>(
-    '/api/admin/spotify-credentials',
-    { cache: 'no-store' },
-  );
+export function toggleIntegration(
+  id: string,
+  enabled: boolean,
+): Promise<IntegrationResponse> {
+  return readJson<IntegrationResponse>(integrationPath(id), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
 }
 
-export function updateSpotifyCredentials(body: {
-  spotify?: {
-    clientId?: string;
-    clientSecret?: string;
-    refreshToken?: string;
-  };
-  lanyard?: { discordUserId?: string };
-}): Promise<SpotifyCredentialsResponse> {
-  return readJson<SpotifyCredentialsResponse>(
-    '/api/admin/spotify-credentials',
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
-  );
+export function testIntegration(id: string): Promise<IntegrationResponse> {
+  return readJson<IntegrationResponse>(integrationPath(id, '/test'), {
+    method: 'POST',
+    signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS),
+  });
+}
+
+export function saveIntegrationCredentials(
+  id: string,
+  credentials: Record<string, string>,
+): Promise<IntegrationResponse> {
+  return readJson<IntegrationResponse>(integrationPath(id, '/credentials'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+    signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS),
+  });
+}
+
+export function revokeIntegrationCredentials(
+  id: string,
+): Promise<IntegrationResponse> {
+  return readJson<IntegrationResponse>(integrationPath(id, '/credentials'), {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS),
+  });
 }
 
 export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
@@ -155,69 +173,12 @@ export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
   );
 }
 
-export function fetchContentSurfaces(path: string): Promise<{
-  surfaces: ContentSurface[];
-}> {
-  return readJson<{ surfaces: ContentSurface[] }>(
-    `/api/admin/content/surfaces?path=${encodeURIComponent(path)}`,
-    { cache: 'no-store' },
-  );
-}
-
 export function fetchContentEntries(
   collection: string,
 ): Promise<ContentEntriesResponse> {
   return readJson<ContentEntriesResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}`,
     { cache: 'no-store' },
-  );
-}
-
-export function fetchContentDraft(
-  collection: string,
-  id: string,
-): Promise<{
-  draft: ContentDraft | null;
-  source: ContentEntryResponse['entry'] | null;
-}> {
-  return readJson<{
-    draft: ContentDraft | null;
-    source: ContentEntryResponse['entry'] | null;
-  }>(
-    `/api/admin/content/drafts/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
-    { cache: 'no-store' },
-  );
-}
-
-export function saveContentDraft(
-  collection: string,
-  id: string,
-  body: {
-    folder?: string;
-    fields: Record<string, unknown>;
-    body?: string;
-    blocks?: ContentBlock[];
-    sourceRevision?: string;
-    isNew?: boolean;
-  },
-): Promise<{ draft: ContentDraft }> {
-  return readJson<{ draft: ContentDraft }>(
-    `/api/admin/content/drafts/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
-    {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
-  );
-}
-
-export function deleteContentDraft(
-  collection: string,
-  id: string,
-): Promise<{ deleted: boolean }> {
-  return readJson<{ deleted: boolean }>(
-    `/api/admin/content/drafts/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`,
-    { method: 'DELETE' },
   );
 }
 
@@ -257,18 +218,19 @@ export interface ContentFoldersResponse {
   result?: ContentSaveResponse['result'];
 }
 
+function contentFoldersPath(collection: string): string {
+  return `/api/admin/content/${encodeURIComponent(collection)}/folders`;
+}
+
 export function createContentFolder(
   collection: string,
   path: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(
-    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path }),
-    },
-  );
+  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
 }
 
 export function duplicateContentFolder(
@@ -276,14 +238,11 @@ export function duplicateContentFolder(
   path: string,
   copyFrom: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(
-    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, copyFrom }),
-    },
-  );
+  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, copyFrom }),
+  });
 }
 
 export function updateContentFolder(
@@ -291,43 +250,39 @@ export function updateContentFolder(
   path: string,
   nextPath: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(
-    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, nextPath }),
-    },
-  );
+  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, nextPath }),
+  });
 }
 
 export function deleteContentFolder(
   collection: string,
   path: string,
 ): Promise<ContentFoldersResponse> {
-  return readJson<ContentFoldersResponse>(
-    `/api/admin/content/${encodeURIComponent(collection)}/folders`,
-    {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path }),
-    },
-  );
+  return readJson<ContentFoldersResponse>(contentFoldersPath(collection), {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+}
+
+function contentMovePath(collection: string): string {
+  return `/api/admin/content/${encodeURIComponent(collection)}/move`;
 }
 
 export function moveContentEntry(
   collection: string,
   id: string,
   folder: string,
+  revision: string,
 ): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
-  return readJson<{ entry: ContentEntryResponse['entry'] | null }>(
-    `/api/admin/content/${encodeURIComponent(collection)}/move`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, folder }),
-    },
-  );
+  return readJson(contentMovePath(collection), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, folder, revision }),
+  });
 }
 
 export function renameContentEntry(
@@ -335,15 +290,13 @@ export function renameContentEntry(
   id: string,
   nextId: string,
   folder: string,
+  revision: string,
 ): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
-  return readJson<{ entry: ContentEntryResponse['entry'] | null }>(
-    `/api/admin/content/${encodeURIComponent(collection)}/move`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, nextId, folder }),
-    },
-  );
+  return readJson(contentMovePath(collection), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, nextId, folder, revision }),
+  });
 }
 
 export function duplicateContentEntry(
@@ -351,15 +304,19 @@ export function duplicateContentEntry(
   id: string,
   nextId: string,
   folder: string,
+  revision: string,
 ): Promise<{ entry: ContentEntryResponse['entry'] | null }> {
-  return readJson<{ entry: ContentEntryResponse['entry'] | null }>(
-    `/api/admin/content/${encodeURIComponent(collection)}/move`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, nextId, folder, operation: 'duplicate' }),
-    },
-  );
+  return readJson(contentMovePath(collection), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id,
+      nextId,
+      folder,
+      revision,
+      operation: 'duplicate',
+    }),
+  });
 }
 
 export function updateContentEntry(
@@ -368,7 +325,7 @@ export function updateContentEntry(
   body: {
     fields: Record<string, unknown>;
     body?: string;
-    revision?: string;
+    revision: string;
   },
 ): Promise<ContentSaveResponse> {
   return readJson<ContentSaveResponse>(
@@ -386,25 +343,28 @@ export function updateContentEntry(
 export function deleteContentEntry(
   collection: string,
   id: string,
+  revision: string,
 ): Promise<ContentDeleteResponse> {
   return readJson<ContentDeleteResponse>(
     `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
       id,
     )}`,
-    { method: 'DELETE' },
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revision }),
+    },
   );
-}
-
-export interface ContentReorderResponse {
-  reordered: { id: string; ok: boolean }[];
 }
 
 export function reorderContentEntries(
   collection: string,
   folder: string,
   ids: string[],
-): Promise<ContentReorderResponse> {
-  return readJson<ContentReorderResponse>(
+): Promise<{
+  reordered: { id: string; ok: boolean; revision?: string }[];
+}> {
+  return readJson(
     `/api/admin/content/${encodeURIComponent(collection)}/reorder`,
     {
       method: 'POST',
@@ -428,72 +388,4 @@ export function uploadContentMedia(
     method: 'POST',
     body: formData,
   });
-}
-
-export function fetchContentMedia(): Promise<ContentMediaListResponse> {
-  return readJson<ContentMediaListResponse>('/api/admin/content/media', {
-    cache: 'no-store',
-  });
-}
-
-export function deleteContentMedia(url: string): Promise<{ deleted: string }> {
-  return readJson<{ deleted: string }>('/api/admin/content/media', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  });
-}
-
-export function fetchContentHistory(
-  collection: string,
-  id: string,
-): Promise<{ revisions: ContentRevision[] }> {
-  return readJson<{ revisions: ContentRevision[] }>(
-    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
-      id,
-    )}/history`,
-    { cache: 'no-store' },
-  );
-}
-
-export function restoreContentRevision(
-  collection: string,
-  id: string,
-  hash: string,
-): Promise<{ draft: ContentDraft }> {
-  return readJson<{ draft: ContentDraft }>(
-    `/api/admin/content/${encodeURIComponent(collection)}/${encodeURIComponent(
-      id,
-    )}/restore`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hash }),
-    },
-  );
-}
-
-export function publishContentDraft(body: {
-  collection: string;
-  id: string;
-  runChecks?: boolean;
-  commit?: boolean;
-  push?: boolean;
-  deploy?: boolean;
-}): Promise<{ job: PublishJob; entry: ContentEntryResponse['entry'] | null }> {
-  return readJson<{
-    job: PublishJob;
-    entry: ContentEntryResponse['entry'] | null;
-  }>('/api/admin/content/publish', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-export function fetchPublishJob(id: string): Promise<{ job: PublishJob }> {
-  return readJson<{ job: PublishJob }>(
-    `/api/admin/content/publish/${encodeURIComponent(id)}`,
-    { cache: 'no-store' },
-  );
 }

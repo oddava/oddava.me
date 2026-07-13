@@ -1,10 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
-import type {
-  ContentDraft,
-  ContentEntryListItem,
-  ContentFolder,
-} from './types';
+import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 
 export type StudioTreeItemRef =
   { kind: 'entry'; id: string } | { kind: 'folder'; id: string };
@@ -12,7 +8,6 @@ export type StudioTreeItemRef =
 interface Props {
   folders: ContentFolder[];
   entries: ContentEntryListItem[];
-  drafts: ContentDraft[];
   query: string;
   currentId: string;
   activeFolder: string;
@@ -101,7 +96,7 @@ function nodeLabel(node: TreeNode): string {
 
 function nodeOrder(node: TreeNode): number {
   const value = Number(
-    node.kind === 'folder' ? node.document?.meta.order : node.entry.meta.order,
+    node.kind === 'folder' ? node.document?.order : node.entry.order,
   );
   return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
 }
@@ -167,7 +162,6 @@ function readDraggedItem(
 export default function StudioFolderTree({
   folders,
   entries,
-  drafts,
   query,
   currentId,
   activeFolder,
@@ -221,40 +215,13 @@ export default function StudioFolderTree({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [menuKey]);
 
-  const allEntries = useMemo(() => {
-    const draftsById = new Map(drafts.map((draft) => [draft.id, draft]));
-    const sourceEntries = entries.map((entry) => {
-      const draft = draftsById.get(entry.id);
-      return draft?.folder !== undefined
-        ? {
-            ...entry,
-            folder: draft.folder,
-            meta: {
-              ...entry.meta,
-              order: draft.fields.order ?? entry.meta.order,
-            },
-          }
-        : entry;
-    });
-    const draftOnlyEntries: ContentEntryListItem[] = drafts
-      .filter((draft) => !entries.some((entry) => entry.id === draft.id))
-      .map((draft) => ({
-        id: draft.id,
-        title: draft.title,
-        folder: draft.folder ?? '',
-        path: draft.sourcePath,
-        meta: { order: draft.fields.order },
-      }));
-    return [...sourceEntries, ...draftOnlyEntries];
-  }, [drafts, entries]);
-
   const { childrenByFolder, rootDocument } = useMemo(() => {
     const documents = new Map<string, ContentEntryListItem>();
     const consumedPaths = new Set<string>();
 
     for (const folder of folders) {
       const parent = folder.parentId ?? '';
-      const document = allEntries.find(
+      const document = entries.find(
         (entry) => entry.id === folder.name && entry.folder === parent,
       );
       if (!document) continue;
@@ -277,7 +244,7 @@ export default function StudioFolderTree({
       children.set(parent, siblings);
     }
 
-    for (const entry of allEntries) {
+    for (const entry of entries) {
       if (entry.folder === '' && entry.id === 'index') continue;
       if (consumedPaths.has(`${entry.folder}/${entry.id}`)) continue;
       const siblings = children.get(entry.folder) ?? [];
@@ -295,11 +262,11 @@ export default function StudioFolderTree({
 
     return {
       childrenByFolder: children,
-      rootDocument: allEntries.find(
+      rootDocument: entries.find(
         (entry) => entry.folder === '' && entry.id === 'index',
       ),
     };
-  }, [allEntries, folders]);
+  }, [entries, folders]);
 
   const normalizedQuery = query.trim().toLowerCase();
 

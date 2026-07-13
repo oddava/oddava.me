@@ -1,12 +1,29 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   adminJson,
   adminRedirect,
+  isAdminConfigured,
   withAdminSecurityHeaders,
 } from '../src/lib/server/admin';
 import { json } from '../src/lib/server/community';
 
 describe('server admin helpers', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('rejects example credentials and accepts a configured fallback', () => {
+    vi.stubEnv('ADMIN_PANEL_TOKEN', 'your_admin_panel_token');
+    vi.stubEnv('GUESTBOOK_ADMIN_TOKEN', 'replace-me');
+    vi.stubEnv('COMMUNITY_SIGNING_SECRET', 'your_long_random_signing_secret');
+    expect(isAdminConfigured()).toBe(false);
+
+    vi.stubEnv('ADMIN_PANEL_TOKEN', '  ');
+    vi.stubEnv('GUESTBOOK_ADMIN_TOKEN', '  configured-admin-token  ');
+    vi.stubEnv('COMMUNITY_SIGNING_SECRET', 'configured-signing-secret');
+    expect(isAdminConfigured()).toBe(true);
+  });
+
   it('hardens admin responses without changing payload or status', async () => {
     const response = withAdminSecurityHeaders(
       json(

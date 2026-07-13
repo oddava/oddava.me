@@ -4,221 +4,185 @@ import {
   requireSecuredAdminApi,
   withAdminSecurityHeaders,
 } from '../admin';
-import { ensureSameOrigin } from '../community';
-import {
-  handleContentCollection,
-  handleContentCollections,
-  handleContentEntry,
-  handleContentFolders,
-  handleContentMedia,
-  handleContentMove,
-  handleContentReorder,
-} from './api';
-import { createRedisContentProvider, hasContentStore } from './redis-store';
+import { ensureSameOrigin, fetchWithTimeout } from '../community';
+import { getServerEnv } from '../env';
 
-// Studio writes go straight to the Redis-backed content store, in dev and in
-// production alike. Because Cloudflare Workers can't write the repo
-// filesystem, this replaces the old "forward to a local Node proxy in dev,
-// unavailable in prod" model: every environment now runs the same code path,
-// so what you save in Studio is live immediately with no commit, push, or
-// deploy. The provider holds only closures, so building it at module load
-// issues no Redis calls.
-const provider = createRedisContentProvider();
+const DEFAULT_LOCAL_CONTENT_PROXY_PORT = '45556';
+const LOCAL_CONTENT_PROXY_TIMEOUT_MS = 30_000;
+const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
 
-function storageUnavailable(): Response {
+class ContentProxyUnavailableError extends Error {
+  constructor() {
+    super(
+      'The local content service is not running. Restart the development server after setting CONTENT_WRITE_MODE=local.',
+    );
+    this.name = 'ContentProxyUnavailableError';
+  }
+}
+
+class ContentPayloadTooLargeError extends Error {
+  constructor() {
+    super('Content requests are limited to 6 MB.');
+    this.name = 'ContentPayloadTooLargeError';
+  }
+}
+
+function localContentProxyUrl(): URL {
+  const configured =
+    getServerEnv('LOCAL_CONTENT_PROXY_URL') ??
+    `http://127.0.0.1:${
+      getServerEnv('LOCAL_CONTENT_PROXY_PORT') ??
+      DEFAULT_LOCAL_CONTENT_PROXY_PORT
+    }`;
+  const url = new URL(configured);
+  if (
+    url.protocol !== 'http:' ||
+    !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname)
+  ) {
+    throw new Error(
+      'LOCAL_CONTENT_PROXY_URL must use HTTP on a loopback hostname.',
+    );
+  }
+  return url;
+}
+
+function isLocalContentDevelopment(): boolean {
+  return import.meta.env.DEV && getServerEnv('CONTENT_WRITE_MODE') === 'local';
+}
+
+function contentEditingUnavailable(): Response {
   return adminJson(
     {
       error:
-        'Content storage is not configured. Set the Redis connection env vars.',
-      code: 'storage_unavailable',
+        'Studio editing is available only in local development. Edit and commit files under src/content, then deploy the repository.',
+      code: 'content_editing_unavailable',
     },
     { status: 503 },
   );
 }
 
-// Draft/publish/preview/surfaces/history/restore belonged to the retired
-// two-step CMS flow. Studio autosaves straight to the store now, so these are
-// intentionally gone rather than silently forwarded somewhere.
-function retiredEndpoint(): Response {
-  return adminJson(
-    {
-      error: 'This content endpoint has been retired. Studio saves live.',
-      code: 'content_editing_unavailable',
-    },
-    { status: 410 },
+async function forwardToLocalContentService(
+  request: Request,
+): Promise<Response> {
+  const originalUrl = new URL(request.url);
+  const upstreamUrl = new URL(
+    `${originalUrl.pathname}${originalUrl.search}`,
+    localContentProxyUrl(),
+  );
+  const headers = new Headers(request.headers);
+  headers.set('x-original-url', request.url);
+  const init: RequestInit = {
+    method: request.method,
+    headers,
+    redirect: 'manual',
+    signal: request.signal,
+  };
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    const declaredLength = Number(request.headers.get('content-length') ?? 0);
+    if (declaredLength > MAX_CONTENT_REQUEST_BYTES) {
+      throw new ContentPayloadTooLargeError();
+    }
+    const body = await request.arrayBuffer();
+    if (body.byteLength > MAX_CONTENT_REQUEST_BYTES) {
+      throw new ContentPayloadTooLargeError();
+    }
+    init.body = body;
+  }
+
+  const upstream = await fetchWithTimeout(
+    upstreamUrl,
+    init,
+    LOCAL_CONTENT_PROXY_TIMEOUT_MS,
+  ).catch(() => {
+    throw new ContentProxyUnavailableError();
+  });
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.delete('content-encoding');
+  responseHeaders.delete('content-length');
+  return withAdminSecurityHeaders(
+    new Response(
+      upstream.status === 204 ? null : await upstream.arrayBuffer(),
+      {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: responseHeaders,
+      },
+    ),
   );
 }
 
-async function safeContentResponse(
-  action: () => Promise<Response>,
+async function dispatch(
+  context: APIContext,
+  mutation: boolean,
 ): Promise<Response> {
+  const authError = await requireSecuredAdminApi(context.cookies);
+  if (authError) return authError;
+  if (mutation) {
+    const originError = ensureSameOrigin(context.request);
+    if (originError) return withAdminSecurityHeaders(originError);
+  }
+  if (!isLocalContentDevelopment()) return contentEditingUnavailable();
+
   try {
-    return await action();
+    return await forwardToLocalContentService(context.request);
   } catch (error) {
+    if (error instanceof ContentPayloadTooLargeError) {
+      return adminJson(
+        { error: error.message, code: 'payload_too_large' },
+        { status: 413 },
+      );
+    }
+    if (error instanceof ContentProxyUnavailableError) {
+      return adminJson(
+        { error: error.message, code: 'content_proxy_unavailable' },
+        { status: 503 },
+      );
+    }
+    const requestId = crypto.randomUUID();
+    console.error(`[content-proxy] request failed (${requestId})`, error);
     return adminJson(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Content admin request failed.',
+        error: 'The local content service is unavailable.',
         code: 'content_unavailable',
+        requestId,
       },
-      { status: 500 },
+      { status: 503 },
     );
   }
 }
 
-async function requireAdmin(context: APIContext): Promise<Response | null> {
-  return requireSecuredAdminApi(context.cookies);
-}
-
-async function requireMutation(context: APIContext): Promise<Response | null> {
-  const sameOriginError = ensureSameOrigin(context.request);
-  if (sameOriginError) return withAdminSecurityHeaders(sameOriginError);
-  return requireAdmin(context);
-}
-
-async function guard(
-  context: APIContext,
-  mutation: boolean,
-): Promise<Response | null> {
-  const authError = mutation
-    ? await requireMutation(context)
-    : await requireAdmin(context);
-  if (authError) return authError;
-  if (!hasContentStore()) return storageUnavailable();
-  return null;
-}
-
-export async function adminContentCollectionsRoute(
+export function adminContentCollectionsRoute(
   context: APIContext,
 ): Promise<Response> {
-  const blocked = await guard(context, false);
-  if (blocked) return blocked;
-  return safeContentResponse(() => handleContentCollections(provider));
+  return dispatch(context, false);
 }
 
-export async function adminContentCollectionRoute(
+export function adminContentCollectionRoute(
   context: APIContext,
 ): Promise<Response> {
-  const blocked = await guard(context, context.request.method !== 'GET');
-  if (blocked) return blocked;
-  return safeContentResponse(() =>
-    handleContentCollection(
-      provider,
-      context.params.collection,
-      context.request,
-    ),
-  );
+  return dispatch(context, context.request.method !== 'GET');
 }
 
-export async function adminContentEntryRoute(
-  context: APIContext,
-): Promise<Response> {
-  const blocked = await guard(context, context.request.method !== 'GET');
-  if (blocked) return blocked;
-  return safeContentResponse(() =>
-    handleContentEntry(
-      provider,
-      context.params.collection,
-      context.params.id,
-      context.request,
-    ),
-  );
+export function adminContentEntryRoute(context: APIContext): Promise<Response> {
+  return dispatch(context, context.request.method !== 'GET');
 }
 
-export async function adminContentFoldersRoute(
+export function adminContentFoldersRoute(
   context: APIContext,
 ): Promise<Response> {
-  const blocked = await guard(context, context.request.method !== 'GET');
-  if (blocked) return blocked;
-  return safeContentResponse(() =>
-    handleContentFolders(provider, context.params.collection, context.request),
-  );
+  return dispatch(context, context.request.method !== 'GET');
 }
 
-export async function adminContentMoveRoute(
-  context: APIContext,
-): Promise<Response> {
-  const blocked = await guard(context, true);
-  if (blocked) return blocked;
-  return safeContentResponse(() =>
-    handleContentMove(provider, context.params.collection, context.request),
-  );
+export function adminContentMoveRoute(context: APIContext): Promise<Response> {
+  return dispatch(context, true);
 }
 
-export async function adminContentReorderRoute(
+export function adminContentReorderRoute(
   context: APIContext,
 ): Promise<Response> {
-  const blocked = await guard(context, true);
-  if (blocked) return blocked;
-  return safeContentResponse(() =>
-    handleContentReorder(provider, context.params.collection, context.request),
-  );
+  return dispatch(context, true);
 }
 
-export async function adminContentMediaRoute(
-  context: APIContext,
-): Promise<Response> {
-  const blocked = await guard(context, context.request.method !== 'GET');
-  if (blocked) return blocked;
-  return safeContentResponse(() =>
-    handleContentMedia(provider, context.request),
-  );
-}
-
-export async function adminContentSurfacesRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireAdmin(context);
-  if (authError) return authError;
-  return retiredEndpoint();
-}
-
-export async function adminContentDraftRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireAdmin(context);
-  if (authError) return authError;
-  return retiredEndpoint();
-}
-
-export async function adminContentPreviewRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireAdmin(context);
-  if (authError) return authError;
-  return retiredEndpoint();
-}
-
-export async function adminContentPublishRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireMutation(context);
-  if (authError) return authError;
-  return retiredEndpoint();
-}
-
-export async function adminContentPublishJobRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireAdmin(context);
-  if (authError) return authError;
-  return retiredEndpoint();
-}
-
-export async function adminContentHistoryRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireAdmin(context);
-  if (authError) return authError;
-  return retiredEndpoint();
-}
-
-export async function adminContentRestoreRoute(
-  context: APIContext,
-): Promise<Response> {
-  const authError = await requireMutation(context);
-  if (authError) return authError;
-  return retiredEndpoint();
+export function adminContentMediaRoute(context: APIContext): Promise<Response> {
+  return dispatch(context, context.request.method !== 'GET');
 }

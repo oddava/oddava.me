@@ -1,20 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react';
-
-const visuallyHiddenStyle: CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  overflow: 'hidden',
-  clip: 'rect(0, 0, 0, 0)',
-  whiteSpace: 'nowrap',
-  clipPath: 'inset(50%)',
-  border: '0',
-  padding: '0',
-  margin: '-1px',
-};
+import type { ComponentChildren } from 'preact';
+import './VisuallyHidden.css';
 
 interface VisuallyHiddenProps {
-  children: ReactNode;
+  children: ComponentChildren;
   as?: 'span' | 'label';
   className?: string;
 }
@@ -26,10 +14,8 @@ export function VisuallyHidden({
 }: VisuallyHiddenProps) {
   const Tag = as;
   return (
-    <Tag className={className} style={visuallyHiddenStyle}>
+    <Tag className={['visually-hidden', className].filter(Boolean).join(' ')}>
       {children}
     </Tag>
   );
 }
-
-export { visuallyHiddenStyle };

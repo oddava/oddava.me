@@ -1,1 +1,1 @@
-export const env = {};
+export const env = import.meta.env;

@@ -9,7 +9,7 @@ interface StudioToolbarProps {
 
 const isMac =
   typeof navigator !== 'undefined' &&
-  /Mac|iP(hone|ad)/.test(navigator.platform);
+  /Macintosh|iPhone|iPad/.test(navigator.userAgent);
 const mod = isMac ? '⌘' : 'Ctrl';
 
 function ToolButton({
@@ -69,9 +69,7 @@ export default function StudioToolbar({
           disabled={disabled}
           onClick={commands.bold}
         >
-          <span className="studio-tool-glyph" style={{ fontWeight: 800 }}>
-            B
-          </span>
+          <span className="studio-tool-glyph studio-tool-glyph--bold">B</span>
         </ToolButton>
         <ToolButton
           label="Italic"
@@ -79,24 +77,14 @@ export default function StudioToolbar({
           disabled={disabled}
           onClick={commands.italic}
         >
-          <span
-            className="studio-tool-glyph"
-            style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}
-          >
-            I
-          </span>
+          <span className="studio-tool-glyph studio-tool-glyph--italic">I</span>
         </ToolButton>
         <ToolButton
           label="Strikethrough"
           disabled={disabled}
           onClick={commands.strike}
         >
-          <span
-            className="studio-tool-glyph"
-            style={{ textDecoration: 'line-through' }}
-          >
-            S
-          </span>
+          <span className="studio-tool-glyph studio-tool-glyph--strike">S</span>
         </ToolButton>
         <ToolButton
           label="Inline code"

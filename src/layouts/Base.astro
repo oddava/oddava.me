@@ -1,7 +1,6 @@
 ---
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
-import DevPerformanceLogger from '../components/DevPerformanceLogger.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
@@ -42,7 +41,5 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
       {!hideFooter && <Footer />}
     </div>
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
-
-    <DevPerformanceLogger />
   </body>
 </html>

@@ -1,5 +1,5 @@
 import '../styles/components/_guestbook.css';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'preact/hooks';
 import { useGuestbookEntries } from './guestbook/useGuestbookEntries';
 import { useGuestbookSubmit } from './guestbook/useGuestbookSubmit';
 import { useTurnstile } from './guestbook/useTurnstile';

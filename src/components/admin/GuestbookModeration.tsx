@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback } from 'preact/hooks';
 import { formatDate } from './format';
-import type { GuestbookEntry, GuestbookStatus } from './types';
+import type { GuestbookEntry, GuestbookStatus } from '../../lib/contracts';
 import { useDialogConfirm } from './useDialogConfirm';
 
 interface GuestbookModerationProps {

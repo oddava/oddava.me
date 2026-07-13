@@ -1,9 +1,6 @@
-import { useEffect, useRef } from 'react';
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-} from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal } from 'preact/compat';
+import { useEffect, useRef } from 'preact/hooks';
+import type { TargetedKeyboardEvent, TargetedMouseEvent } from 'preact';
 import './ConfirmDialog.css';
 
 interface ConfirmDialogProps {
@@ -100,15 +97,19 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const handleOverlayMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+  const handleOverlayMouseDown = (
+    event: TargetedMouseEvent<HTMLDivElement>,
+  ) => {
     if (event.target === event.currentTarget) onCancel();
   };
 
-  const stopPropagation = (event: ReactMouseEvent<HTMLDivElement>) => {
+  const stopPropagation = (event: TargetedMouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
   };
 
-  const handleKeyDownDialog = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDownDialog = (
+    event: TargetedKeyboardEvent<HTMLDivElement>,
+  ) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();

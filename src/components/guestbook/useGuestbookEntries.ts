@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { PublicGuestbookEntry } from '../../lib/contracts';
 import { fetchGuestbookState } from './api';
 
@@ -41,6 +41,7 @@ export function useGuestbookEntries() {
 
   useEffect(() => {
     let mounted = true;
+    let polling = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
 
     const schedule = () => {
@@ -49,13 +50,18 @@ export function useGuestbookEntries() {
     };
 
     const fetchEntries = async () => {
-      if (!mounted) return;
+      if (!mounted || polling) return;
       if (document.hidden) {
         schedule();
         return;
       }
-      await refreshEntries();
-      schedule();
+      polling = true;
+      try {
+        await refreshEntries();
+      } finally {
+        polling = false;
+        schedule();
+      }
     };
 
     const handleVisibilityChange = () => {

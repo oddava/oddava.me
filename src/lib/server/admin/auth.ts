@@ -1,47 +1,37 @@
 import type { AstroCookies } from 'astro';
 import { getServerEnv } from '../env';
 import { hasCommunitySigningSecret, isSecureRequest, json } from '../community';
+import { firstConfiguredSecret } from '../secrets';
 import {
   ADMIN_COOKIE,
   ADMIN_SESSION_TTL_SECONDS,
   constantTimeCompare,
   computeTokenHash,
   createSignedSessionValue,
-  parseSessionValue,
+  verifySession,
   type AdminSession,
 } from './auth-shared';
 import { withAdminSecurityHeaders } from './response';
 
-// Re-export the shared primitives so existing callers of `auth.ts` keep
-// working without changing their import sites.
-export {
-  ADMIN_COOKIE,
-  ADMIN_SESSION_TTL_SECONDS,
-  ADMIN_SESSION_TTL_MS,
-  computeTokenHash,
-  constantTimeCompare,
-  parseSessionValue,
-  verifySession,
-  signSessionValue,
-  verifySessionSignature,
-  createSignedSessionValue,
-  bytesToBase64Url,
-  base64UrlToBytes,
-  encodeTextToBase64Url,
-  decodeBase64UrlToText,
-  type AdminSession,
-} from './auth-shared';
-
 function getAdminToken(): string | null {
   return (
-    getServerEnv('ADMIN_PANEL_TOKEN') ??
-    getServerEnv('GUESTBOOK_ADMIN_TOKEN') ??
-    null
+    firstConfiguredSecret(
+      getServerEnv('ADMIN_PANEL_TOKEN'),
+      getServerEnv('GUESTBOOK_ADMIN_TOKEN'),
+    ) ?? null
   );
 }
 
 function getSigningSecret(): string | null {
-  return getServerEnv('COMMUNITY_SIGNING_SECRET')?.trim() || null;
+  return (
+    firstConfiguredSecret(getServerEnv('COMMUNITY_SIGNING_SECRET')) ?? null
+  );
+}
+
+function requireSigningSecret(): string {
+  const secret = getSigningSecret();
+  if (!secret) throw new Error('COMMUNITY_SIGNING_SECRET is not configured.');
+  return secret;
 }
 
 function getCookieOptions(
@@ -54,10 +44,6 @@ function getCookieOptions(
     path: '/',
     maxAge: ADMIN_SESSION_TTL_SECONDS,
   };
-}
-
-export function getAdminCookieName(): string {
-  return ADMIN_COOKIE;
 }
 
 export function isAdminConfigured(): boolean {
@@ -80,7 +66,7 @@ export async function createAdminSessionValue(token: string): Promise<string> {
       tokenHash: await computeTokenHash(token),
       issuedAt: Date.now(),
     } satisfies AdminSession,
-    getSigningSecret() ?? '',
+    requireSigningSecret(),
   );
 }
 
@@ -90,20 +76,8 @@ export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
   const secret = getSigningSecret();
   if (!secret) return false;
 
-  const session = await parseSessionValue(
-    cookies.get(ADMIN_COOKIE)?.value,
-    secret,
-  );
+  const session = await verifySession(cookies.get(ADMIN_COOKIE)?.value, secret);
   if (!session) return false;
-
-  const ageMs = Date.now() - session.issuedAt;
-  if (
-    !Number.isFinite(ageMs) ||
-    ageMs < 0 ||
-    ageMs > ADMIN_SESSION_TTL_SECONDS * 1000
-  ) {
-    return false;
-  }
 
   return constantTimeCompare(
     session.tokenHash,
@@ -111,7 +85,7 @@ export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
   );
 }
 
-export async function requireAdminApi(
+async function requireAdminApi(
   cookies: AstroCookies,
 ): Promise<Response | null> {
   if (await isAdminRequest(cookies)) return null;

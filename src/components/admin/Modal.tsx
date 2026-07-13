@@ -1,16 +1,16 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'preact/compat';
+import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-  ReactNode,
-} from 'react';
-import { createPortal } from 'react-dom';
+  ComponentChildren,
+  TargetedKeyboardEvent,
+  TargetedMouseEvent,
+} from 'preact';
 import './Modal.css';
 
 interface ModalProps {
   open: boolean;
   title: string;
-  children: ReactNode;
+  children: ComponentChildren;
   onClose: () => void;
 }
 
@@ -107,15 +107,19 @@ export function Modal({ open, title, children, onClose }: ModalProps) {
 
   if (!mounted) return null;
 
-  const handleOverlayMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+  const handleOverlayMouseDown = (
+    event: TargetedMouseEvent<HTMLDivElement>,
+  ) => {
     if (event.target === event.currentTarget) onClose();
   };
 
-  const stopPropagation = (event: ReactMouseEvent<HTMLDivElement>) => {
+  const stopPropagation = (event: TargetedMouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
   };
 
-  const handleKeyDownDialog = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDownDialog = (
+    event: TargetedKeyboardEvent<HTMLDivElement>,
+  ) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onClose();

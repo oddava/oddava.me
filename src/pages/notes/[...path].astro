@@ -7,7 +7,6 @@ import {
   GardenEmptyError,
 } from '@lib/garden';
 import '../../styles/components/_garden.css';
-import '../../styles/components/_prose.css';
 
 const requestedPath = Astro.params.path ?? '';
 
@@ -26,11 +25,11 @@ const document = index.documents.find((entry) => entry.path === requestedPath);
 // A nested note stays reachable by its bare file name too, redirecting to its
 // real path — the one legacy alias we keep now that hierarchy is inferred.
 if (!document) {
-  const alias = index.documents.find(
+  const aliases = index.documents.filter(
     (entry) =>
       entry.path && noteIdFromSourceId(entry.sourceId) === requestedPath,
   );
-  if (alias) return Astro.redirect(alias.href, 301);
+  if (aliases.length === 1) return Astro.redirect(aliases[0]!.href, 301);
   return Astro.rewrite('/404');
 }
 ---

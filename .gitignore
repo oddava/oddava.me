@@ -2,7 +2,6 @@
 dist/
 # generated types
 .astro/
-.astro-build.lock
 
 # vercel build output
 .vercel/
@@ -16,6 +15,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 .codex-dev-server.*.log
 terminals/
 agent-tools/

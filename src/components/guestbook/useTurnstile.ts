@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { ensureTurnstileScript } from './turnstile';
 
 interface UseTurnstileOptions {
@@ -17,31 +17,49 @@ export function useTurnstile({
   const widgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || !siteKey || !widgetContainerRef.current) return;
-    if (widgetIdRef.current) return;
+    const container = widgetContainerRef.current;
+    if (!enabled || !siteKey || !container) {
+      setCaptchaToken('');
+      return;
+    }
+
+    let cancelled = false;
+    let renderedWidgetId: string | null = null;
 
     ensureTurnstileScript()
       .then(() => {
-        if (
-          !widgetContainerRef.current ||
-          !window.turnstile ||
-          widgetIdRef.current
-        ) {
-          return;
-        }
+        if (cancelled || !container.isConnected || !window.turnstile) return;
 
-        widgetIdRef.current = window.turnstile.render(
-          widgetContainerRef.current,
-          {
-            sitekey: siteKey,
-            callback: (token) => setCaptchaToken(token),
-            'expired-callback': () => setCaptchaToken(''),
-            'error-callback': () => setCaptchaToken(''),
-            theme: 'auto',
+        renderedWidgetId = window.turnstile.render(container, {
+          sitekey: siteKey,
+          callback: (token) => {
+            if (!cancelled) setCaptchaToken(token);
           },
-        );
+          'expired-callback': () => {
+            if (!cancelled) setCaptchaToken('');
+          },
+          'error-callback': () => {
+            if (cancelled) return;
+            setCaptchaToken('');
+            onError();
+          },
+          theme: 'auto',
+        });
+        widgetIdRef.current = renderedWidgetId;
       })
-      .catch(onError);
+      .catch(() => {
+        if (!cancelled) onError();
+      });
+
+    return () => {
+      cancelled = true;
+      if (renderedWidgetId && window.turnstile) {
+        window.turnstile.remove(renderedWidgetId);
+      }
+      if (widgetIdRef.current === renderedWidgetId) {
+        widgetIdRef.current = null;
+      }
+    };
   }, [enabled, onError, siteKey]);
 
   const resetCaptcha = useCallback(() => {

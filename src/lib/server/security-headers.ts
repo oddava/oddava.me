@@ -1,36 +1,30 @@
 import { getServerEnv } from './env';
 
 const BASE_SECURITY_HEADERS = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
   'Permissions-Policy':
-    'camera=(), geolocation=(), microphone=(), payment=(), usb=()',
+    'browsing-topics=(), camera=(), geolocation=(), microphone=(), payment=(), usb=()',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'SAMEORIGIN',
+  'X-Frame-Options': 'DENY',
 };
 
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "connect-src 'self' https://challenges.cloudflare.com",
-  "font-src 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-  'frame-src https://challenges.cloudflare.com',
-  "img-src 'self' data: https:",
-  "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline'",
-];
+// `frame-ancestors` is ignored in a CSP <meta> element, so this directive
+// remains an HTTP header. Astro owns the remaining policy and generates the
+// per-page hashes required by island bootstrap scripts and component styles.
+const CONTENT_SECURITY_POLICY = ["frame-ancestors 'none'"];
 
-// Only the admin UI is exempt from CSP. API responses are JSON and carry no
-// inline scripts, so the full policy is safe to apply there. Keeping CSP on
-// /api/* hardens against reflected-content injection in error handlers.
-const CSP_EXCLUDED_PATH_PREFIXES = ['/admin'];
+const CSP_EXCLUDED_PATH_PREFIXES = ['/api'];
 const STRICT_TRANSPORT_SECURITY = 'max-age=31536000; includeSubDomains';
 
+function isAdminPath(pathname: string): boolean {
+  return pathname === '/admin' || pathname.startsWith('/admin/');
+}
+
 export function shouldApplyContentSecurityPolicy(pathname: string): boolean {
-  return !CSP_EXCLUDED_PATH_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix),
+  return !CSP_EXCLUDED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
@@ -40,7 +34,7 @@ function buildContentSecurityPolicy(): string {
   // configured. The Reporting-Endpoints header itself is set by the
   // deployment operator; here we only wire the CSP directive.
   const reportEndpoint = getServerEnv('CSP_REPORT_ENDPOINT');
-  if (reportEndpoint) {
+  if (reportEndpoint && /^[a-z0-9_-]{1,64}$/i.test(reportEndpoint)) {
     directives.push(`report-to ${reportEndpoint}`);
   }
   return directives.join('; ');
@@ -51,7 +45,7 @@ export function applySecurityHeaders(
   requestUrl: string | URL,
 ): Response {
   const url = new URL(requestUrl);
-  const headers = response.headers;
+  const headers = new Headers(response.headers);
 
   for (const [name, value] of Object.entries(BASE_SECURITY_HEADERS)) {
     if (!headers.has(name)) headers.set(name, value);
@@ -65,5 +59,16 @@ export function applySecurityHeaders(
     headers.set('Content-Security-Policy', buildContentSecurityPolicy());
   }
 
-  return response;
+  // Authenticated HTML must not be retained by browser or intermediary
+  // caches. API responses already set this at their domain boundary; applying
+  // it here covers the server-rendered dashboard, Studio, and login pages.
+  if (isAdminPath(url.pathname)) {
+    headers.set('Cache-Control', 'no-store');
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }

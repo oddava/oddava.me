@@ -2,12 +2,11 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ContentWorkspace } from '../../components/admin/ContentWorkspace';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
-import { hasContentStore } from '../../lib/server/content/redis-store';
+import { getServerEnv } from '../../lib/server/env';
 
 const configured = isAdminConfigured();
-// Studio persists to the Redis-backed content store, which works in dev and
-// production alike — it's available wherever that store is configured.
-const contentEditingEnabled = hasContentStore();
+const contentEditingEnabled =
+  import.meta.env.DEV && getServerEnv('CONTENT_WRITE_MODE') === 'local';
 
 if (configured && !(await isAdminRequest(Astro.cookies))) {
   return Astro.redirect(
@@ -80,11 +79,11 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
           ) : (
             <section class="admin-card admin-login">
               <p class="admin-kicker">studio</p>
-              <h1>Content store unavailable</h1>
+              <h1>Studio is local-only</h1>
               <p class="admin-note">
-                Studio saves to the Redis content store, which isn’t reachable
-                right now. Check the Redis / Upstash connection env vars, then
-                reload this page.
+                Run the development server with{' '}
+                <code>CONTENT_WRITE_MODE=local</code> to edit repository
+                content. Commit and deploy those files to publish them.
               </p>
             </section>
           )}

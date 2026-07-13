@@ -35,11 +35,6 @@ export function registerDevProxyCleanup(viteServer, cleanup) {
     httpServer.once('close', run);
   }
 
-  // Vite 5+/6+ exposes this on some versions when the server is stopping.
-  if (typeof viteServer.ws?.on === 'function') {
-    // no-op; kept for future hooks
-  }
-
   /** @type {NodeJS.Signals[]} */
   const signals = ['SIGINT', 'SIGTERM'];
   if (process.platform === 'win32') {

@@ -9,7 +9,9 @@ function isSpotifyNowPlaying(value: unknown): value is SpotifyNowPlaying {
 }
 
 export async function fetchNowPlaying(): Promise<SpotifyNowPlaying> {
-  const response = await fetch('/api/spotify', { cache: 'no-store' });
+  const response = await fetch('/api/spotify', {
+    headers: { Accept: 'application/json' },
+  });
   if (!response.ok) {
     throw new Error(`Spotify API returned ${response.status}`);
   }

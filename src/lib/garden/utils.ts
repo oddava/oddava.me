@@ -14,6 +14,54 @@ export function gardenSlug(value: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+export function normalizeWikiLinkTarget(value: string): string {
+  return value
+    .replace(/\\/g, '/')
+    .split('/')
+    .map(gardenSlug)
+    .filter(Boolean)
+    .join('/');
+}
+
+export interface WikiLinkReference {
+  id: string;
+  title: string;
+  href: string;
+}
+
+/**
+ * Resolves exact note paths first, then unique title/leaf aliases. Ambiguous
+ * shorthand is omitted instead of linking to whichever note happened to load
+ * last.
+ */
+export function buildWikiLinkHrefLookup(
+  references: readonly WikiLinkReference[],
+): Map<string, string> {
+  const lookup = new Map<string, string>();
+  const aliases = new Map<string, Set<string>>();
+
+  for (const reference of references) {
+    const id = normalizeWikiLinkTarget(reference.id);
+    if (id) lookup.set(id, reference.href);
+
+    const leaf = reference.id.split('/').filter(Boolean).at(-1) ?? '';
+    for (const value of [reference.title, leaf]) {
+      const alias = normalizeWikiLinkTarget(value);
+      if (!alias) continue;
+      const hrefs = aliases.get(alias) ?? new Set<string>();
+      hrefs.add(reference.href);
+      aliases.set(alias, hrefs);
+    }
+  }
+
+  for (const [alias, hrefs] of aliases) {
+    if (lookup.has(alias) || hrefs.size !== 1) continue;
+    lookup.set(alias, hrefs.values().next().value!);
+  }
+
+  return lookup;
+}
+
 export function noteIdFromSourceId(value: string): string {
   return value.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? value;
 }
@@ -49,6 +97,27 @@ export function noteFolderFromSourceId(value: string): string {
   return segments.join('/');
 }
 
+/**
+ * Builds compatibility redirects only for globally unique leaf names. A
+ * legacy bare slug cannot safely choose between two notes in different
+ * folders, so ambiguous aliases are deliberately omitted.
+ */
+export function uniqueNoteLeafRedirects(
+  sources: readonly { id: string }[],
+): Array<{ slug: string; redirectTo: string }> {
+  const bySlug = new Map<string, string | null>();
+
+  for (const source of sources) {
+    const slug = noteIdFromSourceId(source.id);
+    if (slug === 'index') continue;
+    bySlug.set(slug, bySlug.has(slug) ? null : noteHrefFromSourceId(source.id));
+  }
+
+  return [...bySlug].flatMap(([slug, redirectTo]) =>
+    redirectTo ? [{ slug, redirectTo }] : [],
+  );
+}
+
 export function folderTitle(value: string): string {
   const name = value.split('/').filter(Boolean).pop() ?? value;
   return name
@@ -58,7 +127,7 @@ export function folderTitle(value: string): string {
     .join(' ');
 }
 
-export function extractInlineTags(body: string): string[] {
+function extractInlineTags(body: string): string[] {
   return [...body.matchAll(TAG_PATTERN)].map((match) =>
     match[2]!.toLowerCase(),
   );

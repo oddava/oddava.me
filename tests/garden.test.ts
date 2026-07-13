@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildWikiLinkHrefLookup,
   deriveSummary,
   deriveTitle,
   folderTitle,
@@ -10,6 +11,7 @@ import {
   noteIdFromSourceId,
   noteParentIdFromSourceId,
   notePathFromSourceId,
+  uniqueNoteLeafRedirects,
 } from '../src/lib/garden/utils';
 import {
   createLandscapeLayout,
@@ -25,6 +27,19 @@ describe('notes helpers', () => {
     expect(gardenSlug('  this website  ')).toBe('this-website');
   });
 
+  it('resolves exact wiki paths and only unambiguous shorthand', () => {
+    const lookup = buildWikiLinkHrefLookup([
+      { id: 'reading/books', title: 'Books', href: '/notes/reading/books' },
+      { id: 'projects/books', title: 'Books', href: '/notes/projects/books' },
+      { id: 'books', title: 'Root books', href: '/notes/books' },
+    ]);
+
+    expect(lookup.get('reading/books')).toBe('/notes/reading/books');
+    expect(lookup.get('projects/books')).toBe('/notes/projects/books');
+    expect(lookup.get('books')).toBe('/notes/books');
+    expect(lookup.has('root-books')).toBe(true);
+  });
+
   it('keeps note identities stable inside nested folders', () => {
     expect(noteIdFromSourceId('reading/books/atomic-habits')).toBe(
       'atomic-habits',
@@ -33,6 +48,17 @@ describe('notes helpers', () => {
       'reading/books',
     );
     expect(folderTitle('reading/books-to-keep')).toBe('Books To Keep');
+  });
+
+  it('omits ambiguous bare-slug compatibility redirects', () => {
+    expect(
+      uniqueNoteLeafRedirects([
+        { id: 'index' },
+        { id: 'reading/books' },
+        { id: 'projects/books' },
+        { id: 'journal/entry' },
+      ]),
+    ).toEqual([{ slug: 'entry', redirectTo: '/notes/journal/entry' }]);
   });
 
   it('maps document paths onto the notes hierarchy', () => {
