@@ -920,6 +920,11 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
 
   const density =
     places.length > 80 ? 'dense' : places.length > 32 ? 'medium' : 'sparse';
+  // Hovering is a preview, so the rest of the map only recedes; selecting is a
+  // commitment, so it isolates. A search keeps the strong dim either way, since
+  // there the point is to see only the matches.
+  const focus =
+    hoveredId && !normalizedQuery ? 'hover' : activeId ? 'select' : 'none';
 
   return (
     <section
@@ -927,6 +932,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       className={`knowledge-landscape${revealedPlace ? ' has-place' : ''}`}
       data-zoom={zoomLevel}
       data-density={density}
+      data-focus={focus}
       aria-label="A living landscape of notes"
     >
       <div ref={viewportRef} className="knowledge-landscape__viewport">

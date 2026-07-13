@@ -10,12 +10,27 @@
     var(--landscape-ink) 20%,
     transparent
   );
+  /* Selecting a place isolates it: everything unrelated all but disappears. */
+  --landscape-mute-place: 0.13;
+  --landscape-mute-region: 0.09;
+  --landscape-mute-path: 0.05;
+  --landscape-mute-delay: 0ms;
   position: fixed;
   inset: 0;
   overflow: hidden;
   color: var(--landscape-ink);
   background: var(--landscape-ground);
   isolation: isolate;
+}
+
+/* Hovering only previews: the rest of the map recedes but stays legible, so you
+   keep your bearings. The delay means a cursor crossing the canvas on its way
+   somewhere else never sets the whole scene flickering. */
+.knowledge-landscape[data-focus='hover'] {
+  --landscape-mute-place: 0.38;
+  --landscape-mute-region: 0.32;
+  --landscape-mute-path: 0.16;
+  --landscape-mute-delay: 90ms;
 }
 
 .knowledge-landscape :is(a, button, input):focus-visible,
@@ -133,7 +148,8 @@
 }
 
 .knowledge-landscape__region.is-muted {
-  opacity: 0.09;
+  opacity: var(--landscape-mute-region);
+  transition-delay: var(--landscape-mute-delay);
 }
 
 .knowledge-landscape__path {
@@ -170,7 +186,8 @@
 }
 
 .knowledge-landscape__path.is-muted {
-  opacity: 0.05;
+  opacity: var(--landscape-mute-path);
+  transition-delay: var(--landscape-mute-delay);
 }
 
 .knowledge-landscape__path .knowledge-landscape__path-trace {
@@ -194,7 +211,8 @@
 }
 
 .knowledge-landscape__place.is-muted {
-  opacity: 0.13;
+  opacity: var(--landscape-mute-place);
+  transition-delay: var(--landscape-mute-delay);
 }
 
 .knowledge-landscape__place-hit {
