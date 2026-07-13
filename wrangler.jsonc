@@ -1,6 +1,7 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "oddava-me",
-  "compatibility_date": "2026-05-31",
+  "compatibility_date": "2026-07-02",
   "compatibility_flags": ["nodejs_compat"],
   "keep_vars": true,
   "assets": {

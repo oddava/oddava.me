@@ -18,11 +18,9 @@ describe('admin API client', () => {
       Response.json({
         metrics: {
           approvedGuestbook: 0,
-          drafts: 2,
           notes: 7,
           pendingGuestbook: 0,
         },
-        integrations: [],
       }),
     );
 

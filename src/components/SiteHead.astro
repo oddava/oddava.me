@@ -5,7 +5,6 @@ import {
   SITE_NAME,
   SITE_TWITTER_HANDLE,
 } from '../lib/site';
-import criticalCss from '../styles/critical.css?raw';
 
 export interface Props {
   title?: string;
@@ -86,18 +85,3 @@ const socialImage = new URL(image, Astro.site ?? Astro.url).href;
 />
 
 <slot />
-
-{/* Keep the site on its intended dark palette before paint. */}
-<script is:inline>
-  (function () {
-    document.documentElement.setAttribute('data-theme', 'dark');
-
-    try {
-      localStorage.removeItem('theme');
-    } catch {
-      /* localStorage can be unavailable in strict browser modes. */
-    }
-  })();
-</script>
-
-<style is:inline set:html={criticalCss}></style>

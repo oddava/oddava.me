@@ -6,8 +6,7 @@
 @media (prefers-reduced-motion: reduce) {
   .spotify-widget-wrapper,
   .spotify-widget-full-view,
-  .spotify-widget-min-view,
-  .spotify-widget-progress-fill {
+  .spotify-widget-min-view {
     transition-duration: 0.01ms;
   }
 }

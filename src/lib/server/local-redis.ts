@@ -1,8 +1,11 @@
 import type { RedisClientType } from 'redis';
 import { fetchWithTimeout } from './community';
 import { getServerEnv } from './env';
+import { firstConfiguredSecret } from './secrets';
 
 let client: RedisClientType | null = null;
+let clientUrl: string | null = null;
+let connection: Promise<RedisClientType> | null = null;
 
 const DEFAULT_LOCAL_REDIS_PROXY_PORT = 45555;
 const LOCAL_REDIS_PROXY_TIMEOUT_MS = 3_000;
@@ -21,16 +24,29 @@ function shouldUseDevProxy(): boolean {
   return import.meta.env.DEV && !import.meta.env.VITEST;
 }
 
-async function executeViaDevProxy<T>(
-  command: string[],
-  url: string,
-): Promise<T> {
+function getLocalRedisDevProxyToken(): string {
+  const token = firstConfiguredSecret(
+    getServerEnv('LOCAL_REDIS_PROXY_TOKEN'),
+    getServerEnv('COMMUNITY_SIGNING_SECRET'),
+  );
+  if (!token) {
+    throw new Error(
+      'LOCAL_REDIS_PROXY_TOKEN or COMMUNITY_SIGNING_SECRET is required in local development.',
+    );
+  }
+  return token;
+}
+
+async function executeViaDevProxy<T>(command: string[]): Promise<T> {
   const response = await fetchWithTimeout(
     getLocalRedisDevProxyUrl(),
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command, url }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Local-Redis-Token': getLocalRedisDevProxyToken(),
+      },
+      body: JSON.stringify({ command }),
     },
     LOCAL_REDIS_PROXY_TIMEOUT_MS,
   );
@@ -48,37 +64,84 @@ async function executeViaDevProxy<T>(
   return payload.result as T;
 }
 
-export async function executeLocalRedisCommand<T>(
-  command: string[],
-  url: string,
-): Promise<T> {
-  if (shouldUseDevProxy()) {
-    return executeViaDevProxy<T>(command, url);
+async function closeDirectClient(): Promise<void> {
+  const activeClient = client;
+  client = null;
+  clientUrl = null;
+  if (!activeClient) return;
+
+  try {
+    if (activeClient.isOpen) {
+      await activeClient.quit();
+    } else {
+      activeClient.destroy();
+    }
+  } catch {
+    activeClient.destroy();
+  }
+}
+
+async function getDirectClient(url: string): Promise<RedisClientType> {
+  if (client?.isReady && clientUrl === url) return client;
+  if (connection) {
+    await connection;
+    return getDirectClient(url);
   }
 
-  if (!client) {
+  connection = (async () => {
+    await closeDirectClient();
     const packageName = 'redis';
     const { createClient } = (await import(
       /* @vite-ignore */ packageName
     )) as typeof import('redis');
-    client = createClient({
+    const nextClient = createClient({
       socket: {
         connectTimeout: 500,
         reconnectStrategy: false,
       },
       url,
     });
+    nextClient.on('error', (error) => {
+      console.warn(`[local-redis] ${error.message}`);
+    });
+
+    try {
+      await nextClient.connect();
+      client = nextClient;
+      clientUrl = url;
+      return nextClient;
+    } catch (error) {
+      nextClient.destroy();
+      throw error;
+    }
+  })();
+
+  try {
+    return await connection;
+  } finally {
+    connection = null;
+  }
+}
+
+export async function executeLocalRedisCommand<T>(
+  command: string[],
+  url: string,
+): Promise<T> {
+  if (shouldUseDevProxy()) {
+    return executeViaDevProxy<T>(command);
   }
 
-  if (!client.isOpen) {
-    await client.connect();
-  }
-
-  return (await client.sendCommand(command)) as T;
+  const directClient = await getDirectClient(url);
+  return (await directClient.sendCommand(command)) as T;
 }
 
 export async function closeLocalRedisConnection(): Promise<void> {
-  if (!client?.isOpen) return;
-  await client.quit();
-  client = null;
+  if (connection) {
+    try {
+      await connection;
+    } catch {
+      // A failed connection already destroyed its client.
+    }
+  }
+  await closeDirectClient();
 }

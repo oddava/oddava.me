@@ -3,5 +3,5 @@
 declare const __SPOTIFY_WIDGET_ENABLED__: boolean;
 
 declare module 'cloudflare:workers' {
-  export const env: Record<string, string | undefined>;
+  export const env: import('./lib/server/env').RuntimeEnv;
 }

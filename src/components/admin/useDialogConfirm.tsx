@@ -1,4 +1,5 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import type { ComponentChildren } from 'preact';
+import { useCallback, useState } from 'preact/hooks';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface ConfirmOptions {
@@ -15,7 +16,7 @@ interface PendingState extends ConfirmOptions {
 
 export function useDialogConfirm(): {
   confirm: (options: ConfirmOptions) => Promise<boolean>;
-  dialog: ReactNode;
+  dialog: ComponentChildren;
 } {
   const [pending, setPending] = useState<PendingState | null>(null);
 
@@ -39,7 +40,7 @@ export function useDialogConfirm(): {
     });
   }, []);
 
-  const dialog: ReactNode = pending ? (
+  const dialog: ComponentChildren = pending ? (
     <ConfirmDialog
       open
       title={pending.title}

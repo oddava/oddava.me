@@ -1,5 +1,5 @@
-export type HorizontalEdge = 'left' | 'right';
-export type VerticalEdge = 'top' | 'bottom';
+type HorizontalEdge = 'left' | 'right';
+type VerticalEdge = 'top' | 'bottom';
 
 export interface WidgetPosition {
   edgeX: HorizontalEdge;
@@ -33,8 +33,8 @@ export const DEFAULT_WIDGET_POSITION: WidgetPosition = {
   offsetY: 32,
 };
 
-export const VIEWPORT_PADDING = 16;
-export const OFFSCREEN_BUFFER = 60;
+const VIEWPORT_PADDING = 16;
+const OFFSCREEN_BUFFER = 60;
 
 export function isWidgetPosition(value: unknown): value is WidgetPosition {
   if (!value || typeof value !== 'object') return false;

@@ -1,4 +1,6 @@
-export type GuestbookStatus = 'pending' | 'approved' | 'rejected';
+import type { GuestbookStatus } from '../../contracts';
+
+export type { GuestbookStatus } from '../../contracts';
 
 export function parseGuestbookStatus(
   value: string | null | undefined,

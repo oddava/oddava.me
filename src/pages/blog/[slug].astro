@@ -2,21 +2,13 @@
 export const prerender = true;
 
 import { getCollection } from 'astro:content';
-import { noteHrefFromSourceId, noteIdFromSourceId } from '@lib/garden';
+import { uniqueNoteLeafRedirects } from '@lib/garden';
 
 // Old /blog/<slug> links redirect into the notes garden, keyed off each note's
 // file name.
 export async function getStaticPaths() {
-  const notes = await getCollection('notes', ({ data }) => !data.draft);
-  const bySlug = new Map<string, string>();
-
-  for (const note of notes) {
-    const slug = noteIdFromSourceId(note.id);
-    if (slug === 'index' || bySlug.has(slug)) continue;
-    bySlug.set(slug, noteHrefFromSourceId(note.id));
-  }
-
-  return [...bySlug].map(([slug, redirectTo]) => ({
+  const notes = await getCollection('notes');
+  return uniqueNoteLeafRedirects(notes).map(({ slug, redirectTo }) => ({
     params: { slug },
     props: { redirectTo },
   }));

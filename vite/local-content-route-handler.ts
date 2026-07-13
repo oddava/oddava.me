@@ -1,90 +1,84 @@
 import {
   handleContentCollection,
   handleContentCollections,
-  handleContentDraft,
   handleContentEntry,
-  handleContentFolders,
-  handleContentHistory,
-  handleContentMedia,
   handleContentMove,
-  handleContentPreview,
-  handleContentPublish,
-  handleContentPublishJob,
   handleContentReorder,
-  handleContentRestore,
-  handleContentSurfaces,
-} from '../src/lib/server/content/api';
+} from '../src/lib/server/content/entries';
+import { handleContentFolders } from '../src/lib/server/content/folders';
+import { methodNotAllowed } from '../src/lib/server/content/http';
 import { createLocalContentProvider } from '../src/lib/server/content/local-provider';
+import { handleContentMedia } from '../src/lib/server/content/media';
+
+const CONTENT_API_PREFIX = '/api/admin/content/';
+
+function notFound(): Response {
+  return Response.json(
+    { error: 'Content endpoint was not found.', code: 'not_found' },
+    { status: 404 },
+  );
+}
+
+function decodeSegments(pathname: string): string[] | null {
+  try {
+    return pathname
+      .slice(CONTENT_API_PREFIX.length)
+      .split('/')
+      .filter(Boolean)
+      .map(decodeURIComponent);
+  } catch {
+    return null;
+  }
+}
 
 export function createLocalContentRouteHandler(projectRoot: string) {
   const provider = createLocalContentProvider(projectRoot);
+  let mutationQueue: Promise<void> = Promise.resolve();
+
+  function runMutation(operation: () => Promise<Response>): Promise<Response> {
+    const pending = mutationQueue.then(operation);
+    mutationQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
+  }
 
   return async (request: Request): Promise<Response> => {
-    const url = new URL(request.url);
-    const parts = url.pathname
-      .replace(/^\/api\/admin\/content\/?/, '')
-      .split('/')
-      .filter(Boolean)
-      .map((part) => decodeURIComponent(part));
+    const dispatch = async (): Promise<Response> => {
+      const { pathname } = new URL(request.url);
+      if (!pathname.startsWith(CONTENT_API_PREFIX)) return notFound();
+      const segments = decodeSegments(pathname);
+      if (!segments) return notFound();
 
-    if (parts.length === 1 && parts[0] === 'collections') {
-      return handleContentCollections(provider, projectRoot);
-    }
-    if (parts.length === 1 && parts[0] === 'surfaces') {
-      return handleContentSurfaces(projectRoot, provider, request);
-    }
-    if (parts.length === 1 && parts[0] === 'preview') {
-      return handleContentPreview(projectRoot, provider, request);
-    }
-    if (parts.length === 1 && parts[0] === 'publish') {
-      return handleContentPublish(projectRoot, provider, request);
-    }
-    if (parts.length === 2 && parts[0] === 'publish') {
-      return handleContentPublishJob(projectRoot, parts[1]);
-    }
-    if (parts.length === 3 && parts[0] === 'drafts') {
-      return handleContentDraft(
-        projectRoot,
-        provider,
-        parts[1],
-        parts[2],
-        request,
-      );
-    }
-    if (parts.length === 1 && parts[0] === 'media') {
-      return handleContentMedia(provider, request, projectRoot);
-    }
-    if (parts.length === 2 && parts[1] === 'reorder') {
-      return handleContentReorder(provider, parts[0], request);
-    }
-    if (parts.length === 2 && parts[1] === 'folders') {
-      return handleContentFolders(provider, parts[0], request, projectRoot);
-    }
-    if (parts.length === 2 && parts[1] === 'move') {
-      return handleContentMove(provider, parts[0], request, projectRoot);
-    }
-    if (parts.length === 3 && parts[2] === 'history') {
-      return handleContentHistory(projectRoot, provider, parts[0], parts[1]);
-    }
-    if (parts.length === 3 && parts[2] === 'restore') {
-      return handleContentRestore(
-        projectRoot,
-        provider,
-        parts[0],
-        parts[1],
-        request,
-      );
-    }
-    if (parts.length === 1) {
-      return handleContentCollection(provider, parts[0], request, projectRoot);
-    }
-    if (parts.length === 2) {
-      return handleContentEntry(provider, parts[0], parts[1], request);
-    }
+      if (segments.length === 1 && segments[0] === 'collections') {
+        if (request.method !== 'GET') return methodNotAllowed(['GET']);
+        return handleContentCollections(provider);
+      }
+      if (segments.length === 1 && segments[0] === 'media') {
+        return handleContentMedia(provider, request);
+      }
 
-    return Response.json(
-      { error: 'Content admin route was not found.', code: 'not_found' },
-      { status: 404 },
-    );
+      const [collection, action, extra] = segments;
+      if (!collection || extra) return notFound();
+      if (!action) {
+        return handleContentCollection(provider, collection, request);
+      }
+      if (action === 'folders') {
+        return handleContentFolders(provider, collection, request);
+      }
+      if (action === 'move') {
+        return handleContentMove(provider, collection, request);
+      }
+      if (action === 'reorder') {
+        return handleContentReorder(provider, collection, request);
+      }
+      return handleContentEntry(provider, collection, action, request);
+    };
+
+    // A mutation often spans several provider calls (read, validate, write,
+    // re-read). Serialize the complete request so two writes cannot validate
+    // against the same snapshot and reads never observe a half-finished move.
+    return runMutation(dispatch);
   };
 }

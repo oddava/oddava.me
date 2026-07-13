@@ -337,6 +337,16 @@
   margin-top: 20px;
 }
 
+.admin-login__intro {
+  margin: 4px 0 0;
+  color: var(--admin-text-secondary);
+  font-size: 0.875rem;
+}
+
+.admin-login__message {
+  margin-top: 12px;
+}
+
 .admin-note,
 .admin-error,
 .admin-success {

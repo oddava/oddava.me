@@ -26,6 +26,13 @@ function namespaceRedisCommand(command: RedisArgument[]): string[] {
     return normalized;
   }
 
+  if (operation === 'MGET' || operation === 'DEL' || operation === 'UNLINK') {
+    for (let index = 1; index < normalized.length; index += 1) {
+      normalized[index] = withNamespace(normalized[index]);
+    }
+    return normalized;
+  }
+
   if (normalized[1]) {
     normalized[1] = withNamespace(normalized[1]);
   }
@@ -47,12 +54,11 @@ export async function redisCommand<T = unknown>(
     throw new Error('Persistent storage is not configured.');
   }
 
+  const namespacedCommand = namespaceRedisCommand(command);
+
   if (shouldUseLocalRedis()) {
     const { executeLocalRedisCommand } = await import('../local-redis');
-    return executeLocalRedisCommand<T>(
-      namespaceRedisCommand(command),
-      getLocalRedisUrl(),
-    );
+    return executeLocalRedisCommand<T>(namespacedCommand, getLocalRedisUrl());
   }
 
   const { url, token } = getRedisApiConfig();
@@ -62,7 +68,7 @@ export async function redisCommand<T = unknown>(
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(command),
+    body: JSON.stringify(namespacedCommand),
   });
   const payload = (await response.json().catch(() => ({}))) as {
     result?: T;

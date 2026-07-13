@@ -1,4 +1,4 @@
-import type { OverviewResponse } from './types';
+import type { OverviewResponse } from '../../lib/contracts';
 import { SkeletonGrid } from './Skeleton';
 
 interface MetricGridProps {
@@ -12,7 +12,7 @@ export function MetricGrid({ overview }: MetricGridProps) {
 
   const cards = [
     { label: 'Notes', value: overview.metrics.notes },
-    { label: 'Drafts', value: overview.metrics.drafts },
+    { label: 'Pending guestbook', value: overview.metrics.pendingGuestbook },
   ];
 
   return (

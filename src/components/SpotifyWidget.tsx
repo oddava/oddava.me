@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback } from 'preact/hooks';
 import type {
   CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent,
-} from 'react';
+  TargetedKeyboardEvent,
+  TargetedMouseEvent,
+} from 'preact';
 import './SpotifyWidget.css';
 import { formatDuration } from './spotify/format';
 import { useNowPlaying } from './spotify/useNowPlaying';
@@ -33,7 +33,7 @@ export default function SpotifyWidget() {
   });
 
   const handleDragKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    (event: TargetedKeyboardEvent<HTMLDivElement>) => {
       const STEP = 16;
       switch (event.key) {
         case 'ArrowUp':
@@ -80,7 +80,7 @@ export default function SpotifyWidget() {
     touchAction: 'none',
   } satisfies CSSProperties;
 
-  const toggleMinimize = (event: MouseEvent<HTMLButtonElement>) => {
+  const toggleMinimize = (event: TargetedMouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setPersistedMinimized(!isMinimized);
@@ -145,19 +145,12 @@ export default function SpotifyWidget() {
 
               {displayData.durationMs && (
                 <div className="spotify-widget-progress-container">
-                  <div
+                  <progress
                     className="spotify-widget-progress-bar"
-                    role="progressbar"
                     aria-label={`${displayData.title} playback progress`}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(progressPercent)}
-                  >
-                    <div
-                      className="spotify-widget-progress-fill"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
+                    max={100}
+                    value={progressPercent}
+                  />
                   <div className="spotify-widget-time" aria-hidden="true">
                     <span>{formatDuration(currentProgress)}</span>
                     <span>{formatDuration(displayData.durationMs)}</span>

@@ -61,12 +61,15 @@ function replaceRange(
 ): void {
   el.focus();
   el.setSelectionRange(rangeStart, rangeEnd);
-  const ok = document.execCommand('insertText', false, replacement);
+  // execCommand is the only broadly supported insertion path that participates
+  // in a textarea's native undo stack. Access it reflectively so this legacy
+  // compatibility branch is isolated; setRangeText remains the fallback.
+  const execCommand = Reflect.get(document, 'execCommand') as
+    ((command: string, showUi: boolean, value: string) => boolean) | undefined;
+  const ok = execCommand?.call(document, 'insertText', false, replacement);
   if (!ok) {
-    const next =
-      el.value.slice(0, rangeStart) + replacement + el.value.slice(rangeEnd);
-    el.value = next;
-    commit(next);
+    el.setRangeText(replacement, rangeStart, rangeEnd, 'end');
+    commit(el.value);
   }
   // Defer so it lands after the browser processes the insertion.
   requestAnimationFrame(() => {

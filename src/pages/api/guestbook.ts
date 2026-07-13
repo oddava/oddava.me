@@ -23,7 +23,7 @@ import {
   readGuestbookEntries,
   toPublicGuestbookEntries,
 } from '../../lib/server/guestbook';
-import { sanitizePlainText } from '../../lib/server/community/sanitize';
+import { sanitizePlainText } from '../../lib/server/community';
 
 const GUESTBOOK_RATE_LIMIT = { limit: 3, windowMs: 10 * 60 * 1000 };
 

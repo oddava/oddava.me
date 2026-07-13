@@ -1,11 +1,12 @@
 /* ===================================================
    ODDAVA.ME — Global Stylesheet
-   Non-critical styles loaded asynchronously.
-   Critical styles and font-face declarations are
-   inlined in Base.astro <head>.
+   Shared public design system and page layout.
    =================================================== */
 
-/* Non-critical layout and responsive styles */
+@import './_fonts.css';
+@import './_variables.css';
+@import './_reset.css';
+@import './_typography.css';
 @import './_layout.css';
 @import './_responsive.css';
 

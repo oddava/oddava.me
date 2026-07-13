@@ -1021,7 +1021,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
             </g>
 
             <g className="knowledge-landscape__places">
-              {layout.places.map((place, index) => {
+              {layout.places.map((place) => {
                 const isRoot = place.id === layout.rootPlaceId;
                 const region = regionById.get(place.regionId);
                 const isActive = place.id === activeId;
@@ -1049,7 +1049,6 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                     id={`landscape-place-${place.id}`}
                     className={`knowledge-landscape__place tone-${tone}${isRoot ? ' is-root' : ''}${place.isRegionAnchor ? ' is-region-anchor' : ' is-note'}${place.depth > 1 ? ' is-deep' : ''}${isActive ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}${dimmed ? ' is-muted' : ''}${searchMatch && normalizedQuery ? ' is-match' : ''}`}
                     transform={`translate(${place.x} ${place.y})`}
-                    style={`--place-order: ${index}`}
                     data-place-id={place.id}
                     role="button"
                     tabIndex={focusedId === place.id ? 0 : -1}

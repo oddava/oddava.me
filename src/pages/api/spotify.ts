@@ -1,40 +1,32 @@
 import type { APIRoute } from 'astro';
-import { getIntegrationSettings } from '../../lib/server/admin/settings';
 import {
-  clearCachedSpotifyState,
-  getCachedSpotifyState,
-  setCachedSpotifyState,
+  getCachedNowPlaying,
+  getNowPlaying,
+  NOW_PLAYING_UNAVAILABLE_MESSAGE,
+  nowPlayingResponse,
+  setCachedNowPlaying,
   stabilizeNowPlayingState,
-} from '../../lib/server/spotify/cache';
-import { getSpotifyNowPlayingWithFallback } from '../../lib/server/spotify/service';
-import { spotifyJsonResponse } from '../../lib/server/spotify/response';
+} from '../../lib/server/now-playing';
 
+/**
+ * Public now-playing feed for the widget. Polled continuously by every open
+ * tab, so it is served from an in-process cache and must never throw: a failure
+ * here degrades to "nothing playing", never to a 500 on a decorative widget.
+ */
 export const GET: APIRoute = async () => {
-  const settings = await getIntegrationSettings();
+  const cached = getCachedNowPlaying();
+  if (cached) return nowPlayingResponse(cached);
 
-  if (!settings.integrations.spotify) {
-    clearCachedSpotifyState();
-    return new Response(
-      JSON.stringify({
-        isPlaying: false,
-        integrations: { spotify: false, lanyard: false },
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store',
-        },
-      },
-    );
+  try {
+    const state = stabilizeNowPlayingState(await getNowPlaying());
+    setCachedNowPlaying(state);
+    return nowPlayingResponse(state);
+  } catch (error) {
+    console.error('[now-playing] request failed', error);
+    return nowPlayingResponse({
+      isPlaying: false,
+      integrations: { spotify: false, lanyard: false },
+      error: NOW_PLAYING_UNAVAILABLE_MESSAGE,
+    });
   }
-
-  const cached = getCachedSpotifyState();
-  if (cached) return spotifyJsonResponse(cached);
-
-  const state = stabilizeNowPlayingState(
-    await getSpotifyNowPlayingWithFallback(),
-  );
-  setCachedSpotifyState(state);
-  return spotifyJsonResponse(state);
 };

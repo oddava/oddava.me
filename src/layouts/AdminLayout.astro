@@ -1,4 +1,5 @@
 ---
+import '../styles/_fonts.css';
 import '../styles/_variables.css';
 import '../styles/admin.css';
 
@@ -50,49 +51,6 @@ const shellClass = fullWidth ? 'admin-shell admin-shell--full' : 'admin-shell';
       crossorigin
       fetchpriority="high"
     />
-
-    <style is:inline>
-      /* SYNC WITH src/styles/_fonts.css via scripts/gen-critical.mjs —
-         run `pnpm run gen:critical` then mirror @font-face block here. */
-      @font-face {
-        font-family: 'JetBrains Mono';
-        font-style: normal;
-        font-display: swap;
-        font-weight: 400;
-        src: url(/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
-      }
-      @font-face {
-        font-family: 'JetBrains Mono';
-        font-style: normal;
-        font-display: swap;
-        font-weight: 500;
-        src: url(/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
-      }
-      @font-face {
-        font-family: 'M PLUS Rounded 1c';
-        font-style: normal;
-        font-display: swap;
-        font-weight: 400;
-        src: url(/fonts/m-plus-rounded-1c-latin-400-normal.woff2)
-          format('woff2');
-      }
-      @font-face {
-        font-family: 'M PLUS Rounded 1c';
-        font-style: normal;
-        font-display: swap;
-        font-weight: 500;
-        src: url(/fonts/m-plus-rounded-1c-latin-500-normal.woff2)
-          format('woff2');
-      }
-      @font-face {
-        font-family: 'M PLUS Rounded 1c';
-        font-style: normal;
-        font-display: swap;
-        font-weight: 700;
-        src: url(/fonts/m-plus-rounded-1c-latin-700-normal.woff2)
-          format('woff2');
-      }
-    </style>
   </head>
   <body class="admin-page__body">
     <div class={shellClass}>

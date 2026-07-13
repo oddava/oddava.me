@@ -1,95 +1,127 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mockContext = (method = 'GET') =>
+const mockContext = (request: Request) =>
   ({
-    request: new Request('https://oddava.me/api/admin/content/collections', {
-      method,
-    }),
+    request,
     cookies: {},
     params: {},
-    url: 'https://oddava.me/api/admin/content/collections',
+    url: new URL(request.url),
   }) as never;
 
-const mockAdmin = (auth: Response | null) =>
+function mockAdmin(auth: Response | null) {
   vi.doMock('../src/lib/server/admin', () => ({
-    adminJson: (body: unknown, init?: { status?: number }) =>
-      new Response(JSON.stringify(body), {
-        status: init?.status ?? 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+    adminJson: (body: unknown, init?: ResponseInit) =>
+      Response.json(body, init),
     requireSecuredAdminApi: async () => auth,
     withAdminSecurityHeaders: (response: Response) => response,
   }));
+}
 
-describe('content admin route dispatcher', () => {
+describe('content admin route boundary', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.resetModules();
     vi.unstubAllEnvs();
   });
 
-  it('returns 503 storage_unavailable when the content store is not configured', async () => {
-    mockAdmin(null);
-    vi.doMock('../src/lib/server/content/redis-store', () => ({
-      hasContentStore: () => false,
-      createRedisContentProvider: () => ({ kind: 'local' }),
-    }));
-
+  it('rejects unauthenticated requests before checking local services', async () => {
+    mockAdmin(Response.json({ error: 'Unauthorized.' }, { status: 401 }));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const { adminContentCollectionsRoute } =
       await import('../src/lib/server/content/route');
 
-    const response = await adminContentCollectionsRoute(mockContext());
-
-    expect(response.status).toBe(503);
-    const payload = (await response.json()) as { code?: string };
-    expect(payload.code).toBe('storage_unavailable');
-  });
-
-  it('rejects unauthenticated requests before touching the store', async () => {
-    mockAdmin(
-      new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    const response = await adminContentCollectionsRoute(
+      mockContext(
+        new Request('https://oddava.me/api/admin/content/collections'),
+      ),
     );
-    // If the store were consulted this would throw; auth must short-circuit.
-    vi.doMock('../src/lib/server/content/redis-store', () => ({
-      hasContentStore: () => {
-        throw new Error('store should not be consulted');
-      },
-      createRedisContentProvider: () => ({ kind: 'local' }),
-    }));
-
-    const { adminContentCollectionsRoute } =
-      await import('../src/lib/server/content/route');
-
-    const response = await adminContentCollectionsRoute(mockContext());
 
     expect(response.status).toBe(401);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('dispatches to the store-backed handler when configured', async () => {
+  it('keeps content editing unavailable unless local mode is explicit', async () => {
     mockAdmin(null);
-    vi.doMock('../src/lib/server/content/redis-store', () => ({
-      hasContentStore: () => true,
-      createRedisContentProvider: () => ({
-        kind: 'local',
-        listFiles: async () => [],
-        listDirectories: async () => [],
-        readFile: async () => null,
-      }),
-    }));
-
+    vi.stubEnv('CONTENT_WRITE_MODE', 'disabled');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const { adminContentCollectionsRoute } =
       await import('../src/lib/server/content/route');
 
-    const response = await adminContentCollectionsRoute(mockContext());
+    const response = await adminContentCollectionsRoute(
+      mockContext(
+        new Request('https://oddava.me/api/admin/content/collections'),
+      ),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'content_editing_unavailable',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('forwards authenticated local requests to the loopback service', async () => {
+    mockAdmin(null);
+    vi.stubEnv('CONTENT_WRITE_MODE', 'local');
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        Response.json({ collections: [{ id: 'notes', count: 1 }] }),
+      );
+    const { adminContentCollectionsRoute } =
+      await import('../src/lib/server/content/route');
+    const request = new Request(
+      'https://oddava.me/api/admin/content/collections?fresh=1',
+    );
+
+    const response = await adminContentCollectionsRoute(mockContext(request));
 
     expect(response.status).toBe(200);
-    const payload = (await response.json()) as {
-      collections?: { id: string; count: number }[];
-      provider?: string;
-    };
-    expect(payload.provider).toBe('local');
-    expect(payload.collections?.some((entry) => entry.id === 'notes')).toBe(
-      true,
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(String(url)).toBe(
+      'http://127.0.0.1:45556/api/admin/content/collections?fresh=1',
     );
+    expect(new Headers(init?.headers).get('x-original-url')).toBe(request.url);
+  });
+
+  it('rejects cross-origin mutations before forwarding them', async () => {
+    mockAdmin(null);
+    vi.stubEnv('CONTENT_WRITE_MODE', 'local');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { adminContentCollectionRoute } =
+      await import('../src/lib/server/content/route');
+    const request = new Request('https://oddava.me/api/admin/content/notes', {
+      method: 'POST',
+      headers: { Origin: 'https://attacker.example' },
+    });
+
+    const response = await adminContentCollectionRoute(mockContext(request));
+
+    expect(response.status).toBe(403);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized mutations before buffering or forwarding them', async () => {
+    mockAdmin(null);
+    vi.stubEnv('CONTENT_WRITE_MODE', 'local');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { adminContentCollectionRoute } =
+      await import('../src/lib/server/content/route');
+    const request = new Request('https://oddava.me/api/admin/content/notes', {
+      method: 'POST',
+      headers: {
+        'Content-Length': String(6 * 1024 * 1024 + 1),
+        Origin: 'https://oddava.me',
+      },
+    });
+
+    const response = await adminContentCollectionRoute(mockContext(request));
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'payload_too_large',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

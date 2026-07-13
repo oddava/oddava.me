@@ -1,16 +1,10 @@
-import type { PublicGuestbookEntry } from '../../contracts';
+import type {
+  GuestbookEntry as GuestbookEntryContract,
+  PublicGuestbookEntry,
+} from '../../contracts';
 import { getClientFingerprint } from '../community';
-import type { GuestbookStatus } from './status';
 
-export interface GuestbookEntry extends PublicGuestbookEntry {
-  id: string;
-  name: string;
-  message: string;
-  createdAt: string;
-  status: GuestbookStatus;
-  ipFingerprint?: string;
-  userAgent?: string;
-}
+export type GuestbookEntry = GuestbookEntryContract;
 
 export async function createGuestbookEntry(
   request: Request,
@@ -18,7 +12,7 @@ export async function createGuestbookEntry(
   message: string,
 ): Promise<GuestbookEntry> {
   return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    id: crypto.randomUUID(),
     name,
     message,
     createdAt: new Date().toISOString(),

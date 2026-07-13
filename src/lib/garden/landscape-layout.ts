@@ -8,7 +8,7 @@ export type LandscapeSourcePlace = {
   childIds: string[];
 };
 
-export type LandscapeLabelSide = 'start' | 'end';
+type LandscapeLabelSide = 'start' | 'end';
 
 export type LandscapeBounds = {
   left: number;
@@ -100,7 +100,7 @@ function folderTitle(id: string): string {
   return name.split('-').filter(Boolean).join(' ');
 }
 
-export function splitLandscapeLabel(title: string, target = 25): string[] {
+function splitLandscapeLabel(title: string, target = 25): string[] {
   const words = title.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return ['untitled'];
   if (title.length <= target) return [title];

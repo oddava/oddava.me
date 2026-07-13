@@ -1,43 +1,30 @@
+import { getCollection, type CollectionEntry } from 'astro:content';
 import { z } from 'astro/zod';
 
 import { noteDataSchema } from '../content/schemas';
-import { parseContentDocument } from '../server/content/serializers';
 import {
+  buildWikiLinkHrefLookup,
   deriveSummary,
   deriveTitle,
-  gardenSlug,
   getNoteTags,
   noteHrefFromSourceId,
   noteIdFromSourceId,
   noteParentIdFromSourceId,
   notePathFromSourceId,
+  normalizeWikiLinkTarget,
 } from './utils';
 export {
-  deriveSummary,
-  deriveTitle,
-  folderTitle,
-  gardenSlug,
   getNoteTags,
-  noteFolderFromSourceId,
   noteHrefFromSourceId,
   noteIdFromSourceId,
-  noteParentIdFromSourceId,
-  notePathFromSourceId,
+  uniqueNoteLeafRedirects,
 } from './utils';
 
-export type NoteData = z.infer<typeof noteDataSchema>;
+type NoteData = z.infer<typeof noteDataSchema>;
 
-// A note as it comes out of the Redis store: the same shape the old content
-// collection exposed (`id`/`data`/`body`), plus the stored `updatedAt` that
-// replaces the git-derived timestamp.
-export type NoteSource = {
-  id: string;
-  data: NoteData;
-  body: string;
-  updatedAt: string;
-};
+type NoteSource = CollectionEntry<'notes'>;
 
-export type GardenLink = {
+type GardenLink = {
   target: string;
   label?: string;
   href?: string;
@@ -60,12 +47,12 @@ export type GardenDocument = {
   backlinks: string[];
 };
 
-export type GardenConnection = {
+type GardenConnection = {
   sourceId: string;
   targetId: string;
 };
 
-export type SearchDocument = {
+type SearchDocument = {
   id: string;
   href: string;
   title: string;
@@ -81,6 +68,7 @@ export type GardenIndex = {
   connections: GardenConnection[];
   tags: { name: string; count: number }[];
   searchDocuments: SearchDocument[];
+  wikiLinkHrefs: Map<string, string>;
   unresolvedLinks: { sourceId: string; target: string }[];
 };
 
@@ -89,7 +77,7 @@ export class GardenEmptyError extends Error {
 
   constructor() {
     super(
-      'The notes garden has no root document. Seed the content store (see scripts/migrate-notes-to-redis.mjs).',
+      'The notes garden needs src/content/notes/index.mdx as its root document.',
     );
     this.name = 'GardenEmptyError';
   }
@@ -109,17 +97,8 @@ function entryTitle(entry: NoteSource): string {
   );
 }
 
-function normalizeLookup(value: string): string {
-  return value
-    .replace(/\\/g, '/')
-    .split('/')
-    .map(gardenSlug)
-    .filter(Boolean)
-    .join('/');
-}
-
 function noteDate(note: NoteSource): string {
-  return note.updatedAt || '1970-01-01';
+  return note.data.updated ?? '1970-01-01T00:00:00.000Z';
 }
 
 function sortNotes(notes: NoteSource[]): NoteSource[] {
@@ -145,34 +124,30 @@ function allTags(note: NoteSource): string[] {
 }
 
 function buildLookup(entries: NoteSource[]): Map<string, NoteSource> {
-  const lookup = new Map<string, NoteSource>();
-  const byLeafId = new Map<string, NoteSource[]>();
+  const byHref = new Map(
+    entries.map((entry) => [noteHrefFromSourceId(entry.id), entry]),
+  );
+  const hrefs = buildWikiLinkHrefLookup(
+    entries.map((entry) => ({
+      id: entryId(entry),
+      title: entryTitle(entry),
+      href: noteHrefFromSourceId(entry.id),
+    })),
+  );
 
-  for (const entry of entries) {
-    const id = entryId(entry);
-    for (const key of [id, entryTitle(entry)]) {
-      lookup.set(normalizeLookup(key), entry);
-    }
-
-    const leafId = noteIdFromSourceId(entry.id);
-    const candidates = byLeafId.get(leafId) ?? [];
-    candidates.push(entry);
-    byLeafId.set(leafId, candidates);
-  }
-
-  for (const [leafId, candidates] of byLeafId) {
-    if (candidates.length === 1)
-      lookup.set(normalizeLookup(leafId), candidates[0]!);
-  }
-
-  return lookup;
+  return new Map(
+    [...hrefs].flatMap(([alias, href]) => {
+      const entry = byHref.get(href);
+      return entry ? [[alias, entry] as const] : [];
+    }),
+  );
 }
 
 function resolveLink(
   link: GardenLink,
   lookup: Map<string, NoteSource>,
 ): GardenLink {
-  const resolved = lookup.get(normalizeLookup(link.target));
+  const resolved = lookup.get(normalizeWikiLinkTarget(link.target));
   if (!resolved) return link;
   return {
     ...link,
@@ -223,27 +198,10 @@ function buildHierarchy(entries: NoteSource[]): {
 }
 
 async function loadNoteSources(): Promise<NoteSource[]> {
-  // Imported lazily so that pages which only use the pure garden *utilities*
-  // (slug/href/id helpers) can import `@lib/garden` without pulling the Redis
-  // client — and its `cloudflare:workers` env dependency — into the build-time
-  // prerender graph. Only an actual index build (SSR) touches the store.
-  const { readNoteFiles } = await import('../server/content/redis-store');
-  const files = await readNoteFiles();
-  return files.map((file) => {
-    const parsed = parseContentDocument(file.content, 'mdx');
-    const data = noteDataSchema.parse(parsed.fields);
-    return {
-      id: file.sourceId,
-      data,
-      body: parsed.body,
-      updatedAt: file.updatedAt,
-    } satisfies NoteSource;
-  });
+  return getCollection('notes');
 }
 
 async function buildGardenIndex(): Promise<GardenIndex> {
-  // Every note in the garden is live — there is no draft/published split. What
-  // you write in Studio is immediately part of the garden.
   const entries = sortNotes(await loadNoteSources());
   const seenIds = new Set<string>();
 
@@ -255,7 +213,7 @@ async function buildGardenIndex(): Promise<GardenIndex> {
 
   const lookup = buildLookup(entries);
   const { childrenById, parentById } = buildHierarchy(entries);
-  const drafts = entries.map((entry) => ({
+  const linkedSources = entries.map((entry) => ({
     entry,
     id: entryId(entry),
     outbound: extractLinks(readBody(entry)).map((link) =>
@@ -275,7 +233,7 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     connections.push({ sourceId, targetId });
   }
 
-  for (const { id, outbound } of drafts) {
+  for (const { id, outbound } of linkedSources) {
     for (const link of outbound) {
       if (!link.resolvedId) {
         unresolvedLinks.push({ sourceId: id, target: link.target });
@@ -293,25 +251,27 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     for (const childId of childIds) addConnection(parentId, childId);
   }
 
-  const documents: GardenDocument[] = drafts.map(({ entry, id, outbound }) => {
-    const backlinks = backlinkMap.get(id) ?? [];
-    const body = readBody(entry);
-    return {
-      id,
-      sourceId: entry.id,
-      path: notePathFromSourceId(entry.id),
-      parentId: parentById.get(id) ?? null,
-      childIds: childrenById.get(id) ?? [],
-      href: noteHrefFromSourceId(entry.id),
-      title: entryTitle(entry),
-      summary: deriveSummary(body),
-      updated: entry.updatedAt,
-      data: entry.data,
-      body,
-      outbound,
-      backlinks,
-    };
-  });
+  const documents: GardenDocument[] = linkedSources.map(
+    ({ entry, id, outbound }) => {
+      const backlinks = backlinkMap.get(id) ?? [];
+      const body = readBody(entry);
+      return {
+        id,
+        sourceId: entry.id,
+        path: notePathFromSourceId(entry.id),
+        parentId: parentById.get(id) ?? null,
+        childIds: childrenById.get(id) ?? [],
+        href: noteHrefFromSourceId(entry.id),
+        title: entryTitle(entry),
+        summary: deriveSummary(body),
+        updated: noteDate(entry),
+        data: entry.data,
+        body,
+        outbound,
+        backlinks,
+      };
+    },
+  );
 
   const tagCounts = new Map<string, number>();
   for (const note of entries) {
@@ -347,6 +307,13 @@ async function buildGardenIndex(): Promise<GardenIndex> {
       backlinks: document.backlinks.length,
     };
   });
+  const wikiLinkHrefs = buildWikiLinkHrefLookup(
+    documents.map((document) => ({
+      id: document.id,
+      title: document.title,
+      href: document.href,
+    })),
+  );
 
   return {
     root,
@@ -355,63 +322,15 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     connections,
     tags,
     searchDocuments,
+    wikiLinkHrefs,
     unresolvedLinks,
   };
 }
 
-// Notes are stored in Redis and edited live through Studio. The store bumps a
-// `content:version` counter on every mutation, so a reader can cache the built
-// index and reuse it until the version changes — a steady-state page render is
-// then a single cheap GET rather than a full re-read of every note. Because the
-// counter lives in Redis, a Studio save in one Worker isolate invalidates the
-// cache in every other isolate, keeping the site real-time. `inflight` collapses
-// concurrent rebuilds of the same version into one.
-let cached: { version: string; index: GardenIndex } | null = null;
-let inflight: { version: string; promise: Promise<GardenIndex> } | null = null;
+let gardenIndexPromise: Promise<GardenIndex> | undefined;
 
-export async function getGardenIndex(): Promise<GardenIndex> {
-  const { contentVersion } = await import('../server/content/redis-store');
-
-  let version: string;
-  try {
-    version = await contentVersion();
-  } catch (error) {
-    // If the store is momentarily unreachable, serve the last good index rather
-    // than failing the whole page.
-    if (cached) return cached.index;
-    throw error;
-  }
-
-  if (cached?.version === version) return cached.index;
-  if (inflight?.version === version) return inflight.promise;
-
-  const promise = buildGardenIndex()
-    .then((index) => {
-      cached = { version, index };
-      return index;
-    })
-    .finally(() => {
-      if (inflight?.version === version) inflight = null;
-    });
-  inflight = { version, promise };
-  return promise;
-}
-
-export async function getGardenDocument(
-  id: string,
-): Promise<GardenDocument | null> {
-  return (await getGardenIndex()).byId.get(id) ?? null;
-}
-
-export function getDocumentTrail(
-  index: GardenIndex,
-  documentId: string,
-): GardenDocument[] {
-  const trail: GardenDocument[] = [];
-  let current = index.byId.get(documentId);
-  while (current) {
-    trail.unshift(current);
-    current = current.parentId ? index.byId.get(current.parentId) : undefined;
-  }
-  return trail;
+export function getGardenIndex(): Promise<GardenIndex> {
+  if (import.meta.env.DEV) return buildGardenIndex();
+  gardenIndexPromise ??= buildGardenIndex();
+  return gardenIndexPromise;
 }

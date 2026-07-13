@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import type { ContentEntryListItem } from './types';
+import { createPortal } from 'preact/compat';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { ContentEntryListItem } from '../../lib/contracts';
 
 export interface PaletteCommand {
   id: string;

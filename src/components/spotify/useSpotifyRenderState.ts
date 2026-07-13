@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'preact/hooks';
 import type { SpotifyNowPlaying } from '../../lib/contracts';
 
 export type SpotifyRenderState = 'hidden' | 'entering' | 'active' | 'exiting';

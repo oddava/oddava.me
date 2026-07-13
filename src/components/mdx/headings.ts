@@ -23,5 +23,3 @@ export function slugifyHeading(
 
   return text || providedId || 'section';
 }
-
-export type HeadingLevel = 2 | 3 | 4;
