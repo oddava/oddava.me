@@ -199,6 +199,8 @@
 
 .knowledge-landscape__place {
   --landscape-tone: var(--color-brand-strong);
+  /* Overridden per place by an inline style; this is only the floor. */
+  --landscape-hub: 0;
   cursor: pointer;
   opacity: 1;
   outline: none;
@@ -298,15 +300,20 @@
   letter-spacing: 0.05em;
 }
 
-.knowledge-landscape__place-mark,
-.knowledge-landscape__linked-mark {
-  fill: none;
+/* --landscape-hub runs 0 (an unlinked note) to 1 (the most linked note on the
+   map). The mark's geometry is sized in the SVG; weight and ink follow here. */
+.knowledge-landscape__place-mark {
+  fill: color-mix(
+    in srgb,
+    var(--landscape-tone) calc(var(--landscape-hub) * 26%),
+    transparent
+  );
   stroke: color-mix(
     in srgb,
     var(--landscape-tone) 74%,
     var(--color-text-muted)
   );
-  stroke-width: 1.05;
+  stroke-width: calc(1.05px + var(--landscape-hub) * 0.55px);
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -315,15 +322,11 @@
     transform 220ms ease;
 }
 
-.knowledge-landscape__linked-mark {
-  stroke: color-mix(in srgb, var(--landscape-tone) 32%, transparent);
-  stroke-dasharray: 1 3;
-}
-
 .knowledge-landscape__place-name {
   fill: color-mix(in srgb, var(--landscape-ink) 82%, var(--landscape-tone));
   stroke-width: 7px;
   font: 600 14px var(--font-body);
+  font-size: calc(13.4px + var(--landscape-hub) * 3.2px);
   letter-spacing: -0.026em;
   transition:
     fill 180ms ease,
@@ -351,8 +354,21 @@
   opacity: 0;
 }
 
+/* The most-linked notes keep their names at overview zoom — they are the map's
+   landmarks, and the first thing worth reading when you arrive. */
 .knowledge-landscape[data-zoom='world']
-  .knowledge-landscape__place.is-note:not(.is-active, .is-selected, .is-match)
+  .knowledge-landscape__place.is-hub:not(.is-active, .is-selected, .is-match)
+  .knowledge-landscape__place-name {
+  opacity: 0.78;
+}
+
+.knowledge-landscape[data-zoom='world']
+  .knowledge-landscape__place.is-note:not(
+    .is-hub,
+    .is-active,
+    .is-selected,
+    .is-match
+  )
   .knowledge-landscape__place-mark {
   opacity: 0.5;
 }
@@ -373,14 +389,29 @@
 }
 
 .knowledge-landscape[data-density='medium'][data-zoom='world']
-  .knowledge-landscape__place.is-note:not(.is-active, .is-selected, .is-match),
+  .knowledge-landscape__place.is-note:not(
+    .is-hub,
+    .is-active,
+    .is-selected,
+    .is-match
+  ),
 .knowledge-landscape[data-density='dense'][data-zoom='world']
-  .knowledge-landscape__place.is-note:not(.is-active, .is-selected, .is-match) {
+  .knowledge-landscape__place.is-note:not(
+    .is-hub,
+    .is-active,
+    .is-selected,
+    .is-match
+  ) {
   opacity: 0.22;
 }
 
 .knowledge-landscape[data-density='dense'][data-zoom='region']
-  .knowledge-landscape__place.is-deep:not(.is-active, .is-selected, .is-match)
+  .knowledge-landscape__place.is-deep:not(
+    .is-hub,
+    .is-active,
+    .is-selected,
+    .is-match
+  )
   .knowledge-landscape__place-name {
   opacity: 0;
 }
