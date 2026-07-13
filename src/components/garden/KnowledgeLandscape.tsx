@@ -307,6 +307,14 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
     [results],
   );
 
+  // Notes are weighted by how many links they carry, so the map shows where its
+  // centres of gravity are. Logarithmic, because one note with 30 links should
+  // not flatten everything else to a dot.
+  const maxLinkCount = useMemo(
+    () => Math.max(...places.map((place) => place.linkCount), 0),
+    [places],
+  );
+
   const relatedIds = useMemo(() => {
     const related = new Set<string>();
     if (!activeId) return related;
@@ -1070,11 +1078,18 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                 const hitX =
                   place.labelSide === 'start' ? -20 : -labelWidth - 36;
                 const textX = place.labelSide === 'start' ? 18 : -18;
+                const weight =
+                  maxLinkCount > 0
+                    ? Math.log1p(place.linkCount) / Math.log1p(maxLinkCount)
+                    : 0;
+                const markRadius = 3.5 + weight * 3.8;
+                const isHub = !place.isRegionAnchor && weight >= 0.62;
                 return (
                   <g
                     key={place.id}
+                    style={{ '--landscape-hub': weight.toFixed(3) }}
                     id={`landscape-place-${place.id}`}
-                    className={`knowledge-landscape__place tone-${tone}${isRoot ? ' is-root' : ''}${place.isRegionAnchor ? ' is-region-anchor' : ' is-note'}${place.depth > 1 ? ' is-deep' : ''}${isActive ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}${dimmed ? ' is-muted' : ''}${searchMatch && normalizedQuery ? ' is-match' : ''}`}
+                    className={`knowledge-landscape__place tone-${tone}${isRoot ? ' is-root' : ''}${place.isRegionAnchor ? ' is-region-anchor' : ' is-note'}${isHub ? ' is-hub' : ''}${place.depth > 1 ? ' is-deep' : ''}${isActive ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}${dimmed ? ' is-muted' : ''}${searchMatch && normalizedQuery ? ' is-match' : ''}`}
                     transform={`translate(${place.x} ${place.y})`}
                     data-place-id={place.id}
                     role="button"
@@ -1180,7 +1195,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                         />
                         <path
                           className="knowledge-landscape__place-mark"
-                          d="M0-4.6 4.6 0 0 4.6-4.6 0Z"
+                          d={`M0 ${-markRadius} ${markRadius} 0 0 ${markRadius} ${-markRadius} 0Z`}
                         />
                         <text
                           className="knowledge-landscape__place-name"
@@ -1198,16 +1213,6 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                             </tspan>
                           ))}
                         </text>
-                        {place.linkCount > 0 && (
-                          <path
-                            className="knowledge-landscape__linked-mark"
-                            d={
-                              place.labelSide === 'start'
-                                ? 'M18 15h16'
-                                : 'M-18 15h-16'
-                            }
-                          />
-                        )}
                       </>
                     )}
                   </g>
