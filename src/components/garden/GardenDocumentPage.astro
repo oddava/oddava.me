@@ -2,6 +2,8 @@
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { renderNoteHtml } from '@lib/garden/render';
 import NoteContents from './NoteContents.astro';
+import NoteBacklinks from './NoteBacklinks.astro';
+import RelatedNotes from './RelatedNotes.astro';
 import '../../styles/components/_note-prose.css';
 
 interface Props {
@@ -19,5 +21,7 @@ const html = document.body.trim()
   {html && <div class="prose garden-document__body" set:html={html} />}
 
   <NoteContents document={document} index={index} />
+  <NoteBacklinks document={document} index={index} />
+  <RelatedNotes document={document} index={index} />
   <slot />
 </article>

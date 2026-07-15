@@ -40,6 +40,8 @@ import StudioCommandPalette, {
 } from './StudioCommandPalette';
 import StudioToolbar from './StudioToolbar';
 import StudioImageDialog from './StudioImageDialog';
+import WikiLinkAutocomplete from './WikiLinkAutocomplete';
+import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
 import { makeEditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import './Studio.css';
@@ -1048,6 +1050,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     [commitBody],
   );
 
+  // `[[` autocomplete: suggests existing notes at the caret and inserts a
+  // resolving wikilink. Shares the editor's undo-safe range replacement.
+  const wikiMenu = useWikiLinkAutocomplete(
+    () => editorRef.current,
+    entries,
+    editorCommands.replaceRange,
+  );
+
   // Upload a file to the note's media folder and return its URL.
   const uploadImageFile = useCallback(
     async (file: File): Promise<string | null> => {
@@ -1101,6 +1111,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   }
 
   function onEditorKeyDown(event: TargetedKeyboardEvent<HTMLTextAreaElement>) {
+    // The wikilink menu claims navigation keys while it's open.
+    if (wikiMenu.onKeyDown(event)) return;
     const mod = event.metaKey || event.ctrlKey;
     if (mod && event.key.toLowerCase() === 's') {
       event.preventDefault();
@@ -1463,7 +1475,20 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                         const value = event.currentTarget.value;
                         setBody(value);
                         markDirty({ body: value });
+                        wikiMenu.refresh();
                       }}
+                      onKeyUp={(event) => {
+                        // Caret moves that don't change text still change context.
+                        if (
+                          event.key.startsWith('Arrow') ||
+                          event.key === 'Home' ||
+                          event.key === 'End'
+                        ) {
+                          wikiMenu.refresh();
+                        }
+                      }}
+                      onClick={() => wikiMenu.refresh()}
+                      onBlur={() => wikiMenu.close()}
                       onPaste={(event) => {
                         const file = imageFromTransfer(
                           event.clipboardData?.items,
@@ -1495,6 +1520,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                         {busyKey === 'upload-body' ? 'Uploading…' : ''}
                       </span>
                     </div>
+                    <WikiLinkAutocomplete
+                      open={wikiMenu.open}
+                      items={wikiMenu.items}
+                      activeIndex={wikiMenu.activeIndex}
+                      position={wikiMenu.position}
+                      onHover={wikiMenu.setActiveIndex}
+                      onChoose={wikiMenu.accept}
+                    />
                   </div>
                 )}
                 {view !== 'write' && (

@@ -1052,6 +1052,58 @@
   flex-shrink: 0;
 }
 
+/* --- Wikilink autocomplete ( [[ ) --- */
+
+.studio-wikimenu {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: min(80vw, 320px);
+  max-height: 15rem;
+  padding: 5px;
+  overflow-y: auto;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--admin-surface-elevated);
+  box-shadow: 0 16px 40px color-mix(in srgb, #000 42%, transparent);
+}
+
+.studio-wikimenu__row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-wikimenu__row.is-active {
+  background: var(--color-overlay-strong);
+}
+
+.studio-wikimenu__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-wikimenu__folder {
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @keyframes studio-fade {
   from {
     opacity: 0;

@@ -25,7 +25,7 @@ type Row =
 // Lightweight subsequence fuzzy match: every query character must appear in
 // order. Consecutive and word-boundary hits score higher, so "sh" ranks
 // "start-here" above "wash".
-function fuzzyScore(query: string, target: string): number | null {
+export function fuzzyScore(query: string, target: string): number | null {
   if (!query) return 0;
   const haystack = target.toLowerCase();
   let score = 0;
