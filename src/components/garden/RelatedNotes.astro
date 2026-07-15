@@ -1,0 +1,38 @@
+---
+import {
+  getRelatedNotes,
+  type GardenDocument,
+  type GardenIndex,
+} from '@lib/garden';
+
+interface Props {
+  document: GardenDocument;
+  index: GardenIndex;
+}
+
+const { document, index } = Astro.props;
+const related = getRelatedNotes(document, index);
+---
+
+{
+  related.length > 0 && (
+    <section
+      class="note-links"
+      aria-label={`Notes related to ${document.title}`}
+    >
+      <h2 class="note-links__label">Related</h2>
+      <ul class="note-links__list">
+        {related.map((note) => (
+          <li class="note-link">
+            <a href={note.href} class="note-link__anchor">
+              <span class="note-link__title">{note.title}</span>
+              {note.summary && (
+                <span class="note-link__summary">{note.summary}</span>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

@@ -29,6 +29,12 @@ export interface EditorCommands {
   insertBlock(markup: string): void;
   /** Raw insert at the caret, preserving undo. Used by paste/drop image upload. */
   insertInline(snippet: string): void;
+  /**
+   * Replace [from, to) with `text` (undo-safe), leaving the caret at `caret`
+   * (defaults to just after the inserted text). Used by wikilink autocomplete
+   * to swap the typed `[[query` token for a full link.
+   */
+  replaceRange(from: number, to: number, text: string, caret?: number): void;
 }
 
 type Commit = (value: string) => void;
@@ -348,6 +354,11 @@ export function makeEditorCommands(
     align: (direction) => run((el) => align(el, commit, direction)),
     insertBlock: (markup) => run((el) => insertBlock(el, commit, markup)),
     insertInline: (snippet) => run((el) => insertInline(el, commit, snippet)),
+    replaceRange: (from, to, text, caret) =>
+      run((el) => {
+        const pos = caret ?? from + text.length;
+        replaceRange(el, commit, from, to, text, pos, pos);
+      }),
   };
 }
 
