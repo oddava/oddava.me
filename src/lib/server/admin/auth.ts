@@ -1,6 +1,6 @@
 import type { AstroCookies } from 'astro';
 import { getServerEnv } from '../env';
-import { hasCommunitySigningSecret, isSecureRequest, json } from '../community';
+import { hasSigningSecret, isSecureRequest, json } from '../core';
 import { firstConfiguredSecret } from '../secrets';
 import { signHmac } from '../crypto';
 import {
@@ -48,7 +48,7 @@ function getCookieOptions(
 }
 
 export function isAdminConfigured(): boolean {
-  return Boolean(getAdminToken()) && hasCommunitySigningSecret();
+  return Boolean(getAdminToken()) && hasSigningSecret();
 }
 
 export async function verifyAdminToken(token: string): Promise<boolean> {

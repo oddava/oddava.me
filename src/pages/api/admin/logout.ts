@@ -4,7 +4,7 @@ import {
   clearAdminSession,
   withAdminSecurityHeaders,
 } from '../../../lib/server/admin';
-import { ensureSameOrigin } from '../../../lib/server/community';
+import { ensureSameOrigin } from '../../../lib/server/core';
 
 async function handleLogout(
   request: Request,

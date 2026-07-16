@@ -27,6 +27,8 @@ export async function enforceRedisRateLimit(
 
   const ipHash = await getClientFingerprint(request);
   const bucket = Math.floor(Date.now() / windowMs);
+  // `community:` is kept for the same reason as the guestbook entries key: it
+  // is a live key prefix, and the rename is code-level only.
   const key = `community:rate-limit:${feature}:${ipHash}:${bucket}`;
   const script = `
     local count = redis.call('INCR', KEYS[1])

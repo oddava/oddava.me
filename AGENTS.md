@@ -19,7 +19,7 @@ oddava.me/
 └── docs/                 # Internal documentation
 ```
 
-Server code is organized by domain under `src/lib/server/`: `admin/`, `community/`, `content/`, `guestbook/`, `integrations/`, and `now-playing/`. Barrel re-exports (`admin.ts`, `community.ts`, `content.ts`, `guestbook.ts`, `integrations.ts`, `now-playing.ts`) provide clean public APIs.
+Server code is organized by domain under `src/lib/server/`: `admin/`, `content/`, `guestbook/`, `integrations/`, and `now-playing/`, over a shared `core/` kernel that every domain depends on and that depends on none of them. Barrel re-exports (`admin.ts`, `content.ts`, `core.ts`, `guestbook.ts`, `integrations.ts`, `now-playing.ts`) provide clean public APIs.
 
 ## Build, Test, and Development
 

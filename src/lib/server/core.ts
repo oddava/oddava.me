@@ -3,30 +3,30 @@ export {
   readJsonBody,
   readUrlEncodedBody,
   requestBodyErrorResponse,
-} from './community/body';
-export { fetchWithTimeout, json } from './community/http';
+} from './core/body';
+export { fetchWithTimeout, json } from './core/http';
 export {
   ensureSameOrigin,
   isSecureRequest,
   prefersJsonResponse,
   safeRedirectPath,
-} from './community/request';
-export { enforceRedisRateLimit } from './community/rate-limit';
+} from './core/request';
+export { enforceRedisRateLimit } from './core/rate-limit';
 export {
   hasRedisConfig,
   isStorageUnavailableError,
   redisCommand,
   rejectIfStorageUnavailable,
-} from './community/storage';
+} from './core/storage';
 export {
   getClientFingerprint,
-  hasCommunitySigningSecret,
+  hasSigningSecret,
   rejectIfSigningUnavailable,
-} from './community/signing';
-export { sanitizePlainText } from './community/sanitize';
+} from './core/signing';
+export { sanitizePlainText } from './core/sanitize';
 export {
   getTurnstileSiteKey,
   hasTurnstileConfig,
   isTurnstileChallengeRequired,
   verifyTurnstileToken,
-} from './community/turnstile';
+} from './core/turnstile';

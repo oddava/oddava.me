@@ -7,7 +7,7 @@ import {
   IntegrationNotManageableError,
   UnknownIntegrationError,
 } from '../../../../lib/server/integrations';
-import { isStorageUnavailableError } from '../../../../lib/server/community';
+import { isStorageUnavailableError } from '../../../../lib/server/core';
 
 /**
  * Maps the integration domain's error types onto HTTP. Keeping this in one

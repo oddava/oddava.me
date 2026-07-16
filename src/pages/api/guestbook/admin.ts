@@ -6,7 +6,7 @@ import {
   readJsonBody,
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
-} from '../../../lib/server/community';
+} from '../../../lib/server/core';
 import {
   adminJson,
   requireSecuredAdminApi,

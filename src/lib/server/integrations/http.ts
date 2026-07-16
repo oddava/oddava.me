@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '../community';
+import { fetchWithTimeout } from '../core';
 import {
   codeForHttpStatus,
   IntegrationError,

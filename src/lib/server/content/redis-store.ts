@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { hasRedisConfig, redisCommand } from '../community';
+import { hasRedisConfig, redisCommand } from '../core';
 import { assertSafeRepositoryPath } from './paths';
 import { ContentConflictError, ContentFolderNotEmptyError } from './types';
 import type {

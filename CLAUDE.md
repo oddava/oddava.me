@@ -38,14 +38,23 @@ Dependency direction is strict:
 Astro routes / API endpoints
   → server domain barrels (src/lib/server/*.ts)
     → domain services and repositories
-      → env, HTTP, signing, Redis primitives
+        admin · content · guestbook · integrations · now-playing
+      → core: env, HTTP, request, signing, rate-limit, Redis primitives
 ```
 
-Route files import the barrel (`admin.ts`, `community.ts`, `content.ts`,
+Route files import the barrel (`admin.ts`, `content.ts`, `core.ts`,
 `guestbook.ts`, `integrations.ts`, `now-playing.ts`), never a domain's internals.
-Tests may import internals when exercising a module in isolation. The one
-intended cross-domain edge is `now-playing → integrations`: it composes Spotify
-and Lanyard without owning their credentials or health state.
+Tests may import internals when exercising a module in isolation.
+
+`core` is the bottom layer rather than a peer domain — every domain imports it,
+it imports none of them — so a domain reaching for `core` is a downward edge,
+not a cross-domain one. The one intended cross-domain edge is
+`now-playing → integrations`: it composes Spotify and Lanyard without owning
+their credentials or health state.
+
+`COMMUNITY_SIGNING_SECRET` and the `community:` Redis key prefix keep their
+names: they are deployed state, and renaming them means rotating a live secret
+or migrating live keys.
 
 ### Content is Redis-backed at runtime, not a build artifact
 

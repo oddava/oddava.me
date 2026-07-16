@@ -3,7 +3,7 @@ import type { APIRoute } from 'astro';
 import {
   ensureSameOrigin,
   enforceRedisRateLimit,
-  hasCommunitySigningSecret,
+  hasSigningSecret,
   hasRedisConfig,
   hasTurnstileConfig,
   getTurnstileSiteKey,
@@ -15,7 +15,7 @@ import {
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
   verifyTurnstileToken,
-} from '../../lib/server/community';
+} from '../../lib/server/core';
 import {
   appendGuestbookEntry,
   createGuestbookEntry,
@@ -23,7 +23,7 @@ import {
   readGuestbookEntries,
   toPublicGuestbookEntries,
 } from '../../lib/server/guestbook';
-import { sanitizePlainText } from '../../lib/server/community';
+import { sanitizePlainText } from '../../lib/server/core';
 
 const GUESTBOOK_RATE_LIMIT = { limit: 3, windowMs: 10 * 60 * 1000 };
 
@@ -39,9 +39,7 @@ export const GET: APIRoute = async () => {
       {
         entries,
         writable:
-          hasRedisConfig() &&
-          hasTurnstileConfig() &&
-          hasCommunitySigningSecret(),
+          hasRedisConfig() && hasTurnstileConfig() && hasSigningSecret(),
         reviewRequired: true,
         captchaRequired: isTurnstileChallengeRequired(),
         turnstileSiteKey: getTurnstileSiteKey(),

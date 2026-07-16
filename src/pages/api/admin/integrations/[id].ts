@@ -4,7 +4,7 @@ import {
   ensureSameOrigin,
   readJsonBody,
   requestBodyErrorResponse,
-} from '../../../../lib/server/community';
+} from '../../../../lib/server/core';
 import { toggleIntegration } from '../../../../lib/server/integrations';
 import {
   adminJson,

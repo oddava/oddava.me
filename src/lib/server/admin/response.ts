@@ -1,4 +1,4 @@
-import { json } from '../community/http';
+import { json } from '../core/http';
 
 export function withAdminSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);

@@ -5,7 +5,7 @@ import {
   isAdminConfigured,
   withAdminSecurityHeaders,
 } from '../src/lib/server/admin';
-import { json } from '../src/lib/server/community';
+import { json } from '../src/lib/server/core';
 
 describe('server admin helpers', () => {
   afterEach(() => {
