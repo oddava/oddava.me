@@ -10,13 +10,26 @@ import { fetchWithTimeout, json } from './http';
 
 type RedisArgument = string | number;
 
-function withNamespace(rawKey: string): string {
-  return `${getStorageNamespacePrefix()}${rawKey}`;
-}
-
-function namespaceRedisCommand(command: RedisArgument[]): string[] {
+/**
+ * Prefixes the key positions of a Redis command, leaving values alone.
+ *
+ * Which argument is a key depends on the operation, so this is a small piece of
+ * the Redis protocol rather than a string helper. `scripts/lib/redis-content.mjs`
+ * reimplements it — the sync scripts run under bare `node` and cannot import
+ * this module — and the two must agree exactly: a command namespaced one way and
+ * read back the other silently addresses different data.
+ * `tests/storage-namespace.test.ts` runs both over the same battery.
+ *
+ * Exported with the prefix as a parameter so that test can call it without
+ * reaching through module-level environment state.
+ */
+export function namespaceCommandWith(
+  command: RedisArgument[],
+  prefix: string,
+): string[] {
   const normalized = command.map(String);
   const operation = normalized[0]?.toUpperCase();
+  const withNamespace = (rawKey: string) => `${prefix}${rawKey}`;
 
   if (operation === 'EVAL' || operation === 'EVALSHA') {
     const keyCount = Number(normalized[2] ?? 0);
@@ -38,6 +51,10 @@ function namespaceRedisCommand(command: RedisArgument[]): string[] {
     normalized[1] = withNamespace(normalized[1]);
   }
   return normalized;
+}
+
+function namespaceRedisCommand(command: RedisArgument[]): string[] {
+  return namespaceCommandWith(command, getStorageNamespacePrefix());
 }
 
 export function hasRedisConfig(): boolean {

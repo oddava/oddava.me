@@ -22,9 +22,15 @@ export const NOTES_EXTENSION = 'md';
 // ContentCollectionDefinition.readExtensions.
 export const NOTE_READ_EXTENSIONS = ['md', 'mdx'] as const;
 
-const FILES_SET = 'content:files';
-const DIRECTORIES_SET = 'content:dirs';
-const VERSION_KEY = 'content:version';
+/**
+ * The content store's key layout. `scripts/lib/redis-content.mjs` mirrors these
+ * under CONTENT_KEYS because the sync scripts run under bare `node` and cannot
+ * import this module; tests/storage-namespace.test.ts fails if they drift.
+ * These name live production data — changing one is a migration, not a rename.
+ */
+export const FILES_SET = 'content:files';
+export const DIRECTORIES_SET = 'content:dirs';
+export const VERSION_KEY = 'content:version';
 /**
  * The one content mutation lock. Studio and the `notes:migrate` / `notes:export`
  * scripts contend for this exact key, so the key and its TTL are a contract
@@ -86,7 +92,7 @@ export class ContentMutationBusyError extends Error {
   }
 }
 
-function fileKey(path: string): string {
+export function fileKey(path: string): string {
   return `content:file:${path}`;
 }
 
