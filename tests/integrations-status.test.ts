@@ -44,11 +44,15 @@ function makeDefinition(
  * Mocks the registry and the store so the status service is tested in
  * isolation: real providers and real Redis are somebody else's tests.
  */
+let enabledMapCalls = 0;
+const getEnabledMapCalls = () => enabledMapCalls;
+
 async function loadStatus(
   definition: IntegrationDefinition,
   options: { enabled?: boolean; configured?: boolean } = {},
 ) {
   const { enabled = true, configured = true } = options;
+  enabledMapCalls = 0;
 
   vi.doMock('../src/lib/server/integrations/registry', () => ({
     INTEGRATIONS: [definition],
@@ -66,7 +70,10 @@ async function loadStatus(
         source: configured ? 'env' : 'none',
       })),
     isConfigured: () => configured,
-    getEnabledMap: async () => ({ [definition.id]: enabled }),
+    getEnabledMap: async () => {
+      enabledMapCalls += 1;
+      return { [definition.id]: enabled };
+    },
   }));
 
   return import('../src/lib/server/integrations/status');
@@ -252,30 +259,36 @@ describe('integration status', () => {
     expect(status.state).toBe('ok');
   });
 
-  describe('isIntegrationUsable', () => {
+  describe('getIntegrationAvailability', () => {
     it('reports an enabled, configured integration as usable', async () => {
       const { definition } = makeDefinition();
-      const { isIntegrationUsable } = await loadStatus(definition);
+      const { getIntegrationAvailability } = await loadStatus(definition);
 
-      expect(await isIntegrationUsable(definition)).toBe(true);
+      expect(await getIntegrationAvailability([definition])).toEqual({
+        spotify: true,
+      });
     });
 
     it('reports a disabled integration as unusable — the kill switch', async () => {
       const { definition } = makeDefinition();
-      const { isIntegrationUsable } = await loadStatus(definition, {
+      const { getIntegrationAvailability } = await loadStatus(definition, {
         enabled: false,
       });
 
-      expect(await isIntegrationUsable(definition)).toBe(false);
+      expect(await getIntegrationAvailability([definition])).toEqual({
+        spotify: false,
+      });
     });
 
     it('reports an unconfigured integration as unusable', async () => {
       const { definition } = makeDefinition();
-      const { isIntegrationUsable } = await loadStatus(definition, {
+      const { getIntegrationAvailability } = await loadStatus(definition, {
         configured: false,
       });
 
-      expect(await isIntegrationUsable(definition)).toBe(false);
+      expect(await getIntegrationAvailability([definition])).toEqual({
+        spotify: false,
+      });
     });
 
     it('does not consult check history — a failed check never gates the request path', async () => {
@@ -287,14 +300,30 @@ describe('integration status', () => {
         }),
       );
 
-      const { getIntegrationStatus, isIntegrationUsable } =
+      const { getIntegrationStatus, getIntegrationAvailability } =
         await loadStatus(definition);
 
       await getIntegrationStatus(definition, { force: true });
 
       // The upstream is down, but that is the upstream's business to report on
       // the next read — not a reason for this isolate to refuse to try.
-      expect(await isIntegrationUsable(definition)).toBe(true);
+      expect(await getIntegrationAvailability([definition])).toEqual({
+        spotify: true,
+      });
+    });
+
+    it('does not read enablement when nothing is configured', async () => {
+      const { definition } = makeDefinition();
+      const { getIntegrationAvailability } = await loadStatus(definition, {
+        configured: false,
+      });
+
+      // An unconfigured provider cannot run whatever the switch says, so the
+      // switch is not worth a round trip to read.
+      expect(await getIntegrationAvailability([definition])).toEqual({
+        spotify: false,
+      });
+      expect(getEnabledMapCalls()).toBe(0);
     });
   });
 });
