@@ -98,24 +98,29 @@ Lowercase subject, imperative mood, optional scope in parentheses.
   `ContentProvider` boundary. Keep routing/authentication, document operations,
   folders, media, serialization, and storage concerns separated behind clean
   public APIs.
-- **Studio is production-capable by design.** When Redis is configured, Studio
-  autosaves to the Redis-backed virtual content filesystem in development and
-  production. Public note and note-media routes read the same store, so a save
-  is live immediately without a commit, push, or deploy.
-  - Never gate Studio on `import.meta.env.DEV`, `CONTENT_WRITE_MODE=local`, or
-    availability of the local filesystem proxy. Production may return 503 only
+- **Studio is production-capable by design.** Studio autosaves to the
+  Redis-backed virtual content filesystem in development and production alike.
+  Public note and note-media routes read the same store, so a save is live
+  immediately without a commit, push, or deploy.
+  - Never gate Studio on `import.meta.env.DEV`. Production may return 503 only
     when its content store is genuinely unconfigured or unavailable.
-  - The local filesystem provider and `vite/local-content-admin-dev-proxy.mjs`
-    may support repository-authoring workflows, but they are not the only
-    content path and must not replace or disable the production Redis provider.
+  - Redis is the authoritative content store, and there is exactly one read path
+    and one write path in every environment. Development requires a reachable
+    store; there is no file-based fallback. A local-file mode existed and was
+    deleted — it gave dev a different source and a weaker consistency model, so
+    the code serving every visitor was the code least exercised before deploy.
+    Do not reintroduce a local content provider, a `CONTENT_WRITE_MODE`-style
+    switch, or a loopback content proxy.
   - Preserve authenticated admin access, same-origin mutation checks,
     revision-based compare-and-set semantics, atomic/concurrency-safe Redis
     mutations, and cross-isolate content-version invalidation.
-  - Preserve import/export or migration tooling between `src/content/**` and
-    Redis. Do not remove the Redis content provider, runtime note rendering,
-    Redis-backed media route, or real-Redis integration coverage as dead code.
-    The supported sync commands are `pnpm run notes:migrate` and
-    `pnpm run notes:export`; use `-- --target=prod` for production.
+  - `src/content/**` is an export artifact, not a source — nothing reads it at
+    runtime or at build time. Preserve the tooling that keeps it honest:
+    `pnpm run notes:export` snapshots the live store, `pnpm run notes:migrate`
+    seeds or restores from the snapshot (`-- --target=prod` for production).
+    That round trip is the only durability story. Do not remove the Redis
+    content provider, runtime note rendering, Redis-backed media route, or
+    real-Redis integration coverage as dead code.
 - **Integrations** are a registry, not a set of special cases. Each third-party
   connection (Spotify, Lanyard, Turnstile) is one `IntegrationDefinition` under
   `src/lib/server/integrations/providers/`, listed in `registry.ts`. The

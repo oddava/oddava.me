@@ -40,16 +40,17 @@ health state.
 - `src/layouts` owns document shells and global page structure.
 - `src/components` contains Astro UI and focused Preact islands.
 - `src/lib/garden` builds the notes hierarchy, backlinks, tags, search data, and
-  graph layout from the live Redis store, or from the Astro `notes` collection
-  during explicit local-file authoring.
-- `src/lib/content/schemas.ts` is the shared frontmatter contract used by Astro
-  and the local content editor.
+  graph layout from the live Redis store — the one read path, in every
+  environment.
+- `src/lib/content/schemas.ts` is the shared frontmatter contract used by the
+  garden read path, Studio, and the sync scripts.
 - `src/styles` contains global partials and feature-owned styles.
 
-Note identity comes from its path below `src/content/notes`. An `index.md` at
-the collection root is required. Folders may have a page whose file name matches
-the folder, allowing the filesystem hierarchy and the visible garden hierarchy
-to stay aligned without a second metadata store.
+Note identity comes from a note's path within the notes collection — the shape
+of its Redis key, which `notes:export` mirrors into `src/content/notes`. An
+`index.md` at the collection root is required. Folders may have a page whose
+file name matches the folder, allowing the stored hierarchy and the visible
+garden hierarchy to stay aligned without a second metadata store.
 
 The Studio and public note page share the same Markdown renderer and prose
 stylesheet. Preview output is therefore representative of the published page,
@@ -77,28 +78,22 @@ or migrating live keys.
 
 ### Content
 
-Content editing has one domain API with environment-appropriate persistence:
+Content editing has one domain API and one persistence path in every
+environment:
 
 ```text
 Studio island
   → authenticated Astro API route
   → content router and domain handlers
-  → ContentProvider
-      ├─ production / Redis dev → Redis virtual filesystem
-      └─ local-file dev → authenticated loopback proxy → repository files
+  → ContentProvider → Redis virtual filesystem
 ```
 
-Production Studio writes use Lua compare-and-set mutations and a short-lived
+Studio writes use Lua compare-and-set mutations and a short-lived
 cross-isolate lock for compound operations. Public garden readers validate a
 stable content version around each rebuild, so they retain the last complete
 snapshot while a folder operation or import is in progress. Runtime image
 requests fall through to the Redis media route when an asset is not in the
 deployed static bundle.
-
-Local-file mode remains development-only. Its loopback proxy re-verifies the
-admin session, rejects cross-origin mutations, bounds request bodies, and never
-exposes a general filesystem API. File updates carry SHA-256 revisions and use
-atomic renames to enforce compare-and-set semantics.
 
 ### Integrations
 

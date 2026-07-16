@@ -13,33 +13,34 @@ REDIS_MODE=local
 LOCAL_REDIS_URL=redis://127.0.0.1:6379
 ADMIN_PANEL_TOKEN=<random admin password>
 COMMUNITY_SIGNING_SECRET=<long random secret>
-CONTENT_WRITE_MODE=local
 TURNSTILE_BYPASS_IN_DEV=true
 ```
+
+Redis is required, not optional. Notes live in the runtime content store in
+every environment, and there is no file-based fallback — with no store
+reachable, Studio and the public `/notes` routes are unavailable rather than
+degraded. Seed a fresh store with `pnpm run notes:migrate`.
 
 Use a dedicated `LOCAL_REDIS_PROXY_TOKEN` when you do not want the local Redis
 bridge to reuse `COMMUNITY_SIGNING_SECRET`.
 
 ## Notes and Studio
 
-In production and Redis development mode, Studio operations write the runtime
-content store immediately; there is no draft/publish split. Public note and
-media routes read that store, so a successful save is live without a deploy.
+Redis is the authoritative content store, and Studio is how notes are edited.
+Studio operations write that store immediately in every environment; there is no
+draft/publish split. Public note and media routes read the same store, so a
+successful save is live without a commit or a deploy.
 
-Use `CONTENT_WRITE_MODE=local` during development when Studio should write
-repository files. Review `git diff`, then commit the Markdown and any assets under
-`public/images/notes` as one change.
+`src/content/notes` is an export artifact, not a source. Nothing reads it at
+runtime or at build time. `pnpm run notes:export` writes it so notes are
+git-diffable and recoverable; editing it by hand changes nothing until
+`pnpm run notes:migrate` imports it back. That round trip is the durability
+story — snapshot with export, restore or seed with migrate. Vite's watcher
+ignores the tree for the same reason: nothing renders from it.
 
-The editor intentionally excludes `src/content/notes` from Vite's watcher. An
-autosave would otherwise trigger a full page reload for every edit. Restart the
-dev server after hand-editing a note outside Studio when you need the public page
-to reflect that change.
-
-Use `pnpm run notes:migrate -- --target=prod` to seed or restore production from
-the repository. Use `pnpm run notes:export -- --target=prod` to snapshot live
-notes and media before committing them. Run either with `--dry-run` first when
-checking a target; import accepts `--prune`, while export accepts
-`--keep-removed`.
+Run either script with `--dry-run` first when checking a target, and add
+`-- --target=prod` to point at production. Import accepts `--prune`, export
+accepts `--keep-removed`.
 
 ## Adding an integration
 
@@ -89,11 +90,7 @@ checks.
 
 - Port `45555` busy: stop the previous dev process or set
   `LOCAL_REDIS_PROXY_PORT` and keep the Worker-side value identical.
-- Port `45556` busy: stop the previous dev process or set
-  `LOCAL_CONTENT_PROXY_PORT`.
-- Local-file Studio unavailable: confirm `CONTENT_WRITE_MODE=local`, both admin
-  secrets, and port `45556`; then restart Astro so the proxy starts.
-- Redis Studio unavailable: confirm `REDIS_MODE`, the target Redis credentials,
+- Studio unavailable: confirm `REDIS_MODE`, the target Redis credentials,
   and that the content store has been seeded with `pnpm run notes:migrate`.
 - Redis-backed feature unavailable: confirm Redis is listening at
   `LOCAL_REDIS_URL` and that the local proxy token is visible to both runtimes.
