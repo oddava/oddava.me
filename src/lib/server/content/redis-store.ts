@@ -21,8 +21,22 @@ export const NOTE_READ_EXTENSIONS = ['md', 'mdx'] as const;
 const FILES_SET = 'content:files';
 const DIRECTORIES_SET = 'content:dirs';
 const VERSION_KEY = 'content:version';
-const MUTATION_LOCK_KEY = 'content:mutation-lock';
-const MUTATION_LOCK_TTL_MS = 60_000;
+/**
+ * The one content mutation lock. Studio and the `notes:migrate` / `notes:export`
+ * scripts contend for this exact key, so the key and its TTL are a contract
+ * between them, not a local tuning knob — `scripts/lib/redis-content.mjs`
+ * mirrors both, and `tests/content-lock.test.ts` fails if the two drift.
+ *
+ * The TTL is the ceiling on how long a *crashed* holder can wedge the store, so
+ * it must exceed the longest legitimate operation. That is a whole migration
+ * run, not a single Studio save: nothing bounds a compound mutation's total
+ * duration, and a TTL that expires mid-operation lets a second writer in and
+ * breaks the snapshot barrier `readStableContentVersion` exists to provide.
+ * Readers do not pay for the length — a warm isolate serves cache and a cold
+ * one answers 503.
+ */
+export const MUTATION_LOCK_KEY = 'content:mutation-lock';
+export const MUTATION_LOCK_TTL_MS = 5 * 60 * 1000;
 const MUTATION_LOCK_WAIT_MS = 3_000;
 const CONTENT_REDIS_TIMEOUT_MS = 15_000;
 const MGET_BATCH_SIZE = 200;

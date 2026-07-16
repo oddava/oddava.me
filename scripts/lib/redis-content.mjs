@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const MUTATION_LOCK_KEY = 'content:mutation-lock';
-const LOCK_TTL_MS = 5 * 60 * 1000;
+// Mirrors MUTATION_LOCK_KEY / MUTATION_LOCK_TTL_MS in
+// src/lib/server/content/redis-store.ts, which owns the lock's semantics. These
+// scripts run under bare `node`, so they cannot import the .ts; the copy is
+// enforced instead — tests/content-lock.test.ts reads both files and fails if
+// they disagree. Change the .ts first.
+export const MUTATION_LOCK_KEY = 'content:mutation-lock';
+export const LOCK_TTL_MS = 5 * 60 * 1000;
 const PLACEHOLDERS = new Set([
   'change-me',
   'changeme',
