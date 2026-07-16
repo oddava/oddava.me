@@ -25,28 +25,26 @@ Notes live in Redis in every environment, so development needs a store reachable
 at `LOCAL_REDIS_URL` — there is no file-based fallback. `/admin/studio` writes
 that store and public note routes read it, so a save is live immediately.
 
-The two local bridges listen only on loopback:
+The local bridge listens only on loopback:
 
 - `45555` — authenticated Redis command bridge for the Cloudflare dev runtime
-- `45556` — authenticated filesystem content API
 
-Both ports and URLs are configurable in `.env.example`.
+Its port and URL are configurable in `.env.example`.
 
 ## Commands
 
-| Command                  | Purpose                                              |
-| ------------------------ | ---------------------------------------------------- |
-| `pnpm run dev`           | Start Astro in development mode                      |
-| `pnpm run check`         | Run Astro and TypeScript diagnostics                 |
-| `pnpm test`              | Run the Vitest suite                                 |
-| `pnpm run build`         | Build the production Worker and static assets        |
-| `pnpm run preview`       | Preview the production build                         |
-| `pnpm run verify`        | Run formatting, diagnostics, tests, and build        |
-| `pnpm run audit`         | Audit all dependencies for moderate-or-higher issues |
-| `pnpm run notes:migrate` | Import repository notes and media into Redis         |
-| `pnpm run notes:export`  | Export Redis notes and media into the repository     |
-| `pnpm run spotify:token` | Create a Spotify refresh-token fallback in `.env`    |
-| `pnpm run deploy`        | Deploy with Wrangler                                 |
+| Command                  | Purpose                                           |
+| ------------------------ | ------------------------------------------------- |
+| `pnpm run dev`           | Start Astro in development mode                   |
+| `pnpm run check`         | Run Astro and TypeScript diagnostics              |
+| `pnpm test`              | Run the Vitest suite                              |
+| `pnpm run build`         | Build the production Worker and static assets     |
+| `pnpm run preview`       | Preview the production build                      |
+| `pnpm run verify`        | Run formatting, diagnostics, tests, and build     |
+| `pnpm run notes:migrate` | Import repository notes and media into Redis      |
+| `pnpm run notes:export`  | Export Redis notes and media into the repository  |
+| `pnpm run spotify:token` | Create a Spotify refresh-token fallback in `.env` |
+| `pnpm run deploy`        | Deploy with Wrangler                              |
 
 Run the real-Redis tests locally with:
 

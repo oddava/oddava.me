@@ -24,7 +24,6 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "audit": "pnpm audit --audit-level moderate",
     "notes:export": "node scripts/export-notes-from-redis.mjs",
     "notes:migrate": "node scripts/migrate-notes-to-redis.mjs",
     "spotify:token": "node scripts/get-spotify-token.mjs",
