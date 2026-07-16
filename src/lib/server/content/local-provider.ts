@@ -12,7 +12,11 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { assertSafeRepositoryPath, matchesExtension } from './paths';
-import { ContentConflictError, ContentFolderNotEmptyError } from './types';
+import {
+  ContentConflictError,
+  ContentFolderNotEmptyError,
+  ContentNotFoundError,
+} from './types';
 import type {
   ContentEncoding,
   ContentProvider,
@@ -147,7 +151,10 @@ async function assertRevision(
   expected: string,
 ): Promise<ContentSourceFile> {
   const current = await readSourceFile(projectRoot, repositoryPath);
-  if (!current || current.revision !== expected) {
+  // Gone and changed are different answers, and the Redis provider now
+  // distinguishes them. Both providers owe callers the same vocabulary.
+  if (!current) throw new ContentNotFoundError();
+  if (current.revision !== expected) {
     throw new ContentConflictError('revision_conflict');
   }
   return current;
@@ -348,6 +355,70 @@ export function createLocalContentProvider(
         }
         const saved = await readSourceFile(normalizedRoot, repositoryPath);
         return result(message, saved?.revision);
+      });
+    },
+
+    writeTextFiles(files, message) {
+      return runMutation(async () => {
+        if (files.length === 0) return { message, revisions: {} };
+
+        // A filesystem has no transaction, so this is staged rather than
+        // atomic: validate every revision, stage every new body beside its
+        // target, and only then rename. A failure before the first rename has
+        // touched nothing; a failure during them restores what was already
+        // renamed from the bytes captured here. Good enough for the dev-only
+        // authoring path — the Redis provider is the one that must be exact.
+        const staged: {
+          target: string;
+          temporary: string;
+          original: ContentSourceFile;
+        }[] = [];
+
+        try {
+          for (const file of files) {
+            const original = await assertRevision(
+              normalizedRoot,
+              file.path,
+              file.revision,
+            );
+            const target = await resolveSafeRepositoryPath(
+              normalizedRoot,
+              file.path,
+            );
+            const temporary = `${target}.${crypto.randomUUID()}.tmp`;
+            await writeFile(temporary, file.content, {
+              encoding: 'utf8',
+              flag: 'wx',
+            });
+            staged.push({ target, temporary, original });
+          }
+
+          const renamed: typeof staged = [];
+          try {
+            for (const entry of staged) {
+              await rename(entry.temporary, entry.target);
+              renamed.push(entry);
+            }
+          } catch (error) {
+            for (const entry of renamed) {
+              await writeFile(entry.target, entry.original.content, {
+                encoding: 'utf8',
+              }).catch(() => undefined);
+            }
+            throw error;
+          }
+        } finally {
+          for (const entry of staged) {
+            await rm(entry.temporary, { force: true }).catch(() => undefined);
+          }
+        }
+
+        const revisions: Record<string, string> = {};
+        for (const file of files) {
+          const saved = await readSourceFile(normalizedRoot, file.path);
+          if (saved) revisions[file.path] = saved.revision;
+        }
+        return { message, revisions };
       });
     },
 

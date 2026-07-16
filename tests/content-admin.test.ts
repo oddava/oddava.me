@@ -25,8 +25,10 @@ import {
 import {
   ContentConflictError,
   ContentFolderNotEmptyError,
+  ContentNotFoundError,
 } from '../src/lib/server/content/types';
 import type {
+  BatchTextWrite,
   ContentProvider,
   ContentSourceFile,
   ContentWriteResult,
@@ -90,7 +92,8 @@ class MemoryContentProvider implements ContentProvider {
 
   async moveFile(from: string, to: string, message: string, revision: string) {
     const current = this.files.get(from);
-    if (!current || current.revision !== revision) {
+    if (!current) throw new ContentNotFoundError();
+    if (current.revision !== revision) {
       throw new ContentConflictError('revision_conflict');
     }
     if (this.files.has(to)) throw new ContentConflictError('path_exists');
@@ -165,6 +168,26 @@ class MemoryContentProvider implements ContentProvider {
     return { message, revision: file.revision };
   }
 
+  // Mirrors the real providers' all-or-nothing contract: every revision is
+  // checked before any file is written, so a conflict partway through leaves
+  // the collection exactly as it was.
+  async writeTextFiles(files: readonly BatchTextWrite[], message: string) {
+    for (const file of files) {
+      const current = this.files.get(file.path);
+      if (!current) throw new ContentNotFoundError();
+      if (current.revision !== file.revision) {
+        throw new ContentConflictError('revision_conflict');
+      }
+    }
+    const revisions: Record<string, string> = {};
+    for (const file of files) {
+      const written = this.nextFile(file.path, file.content);
+      this.files.set(file.path, written);
+      revisions[file.path] = written.revision;
+    }
+    return { message, revisions };
+  }
+
   async writeBinaryFile(path: string, content: Uint8Array, message: string) {
     if (this.files.has(path)) throw new ContentConflictError('path_exists');
     const file = this.nextFile(
@@ -179,7 +202,8 @@ class MemoryContentProvider implements ContentProvider {
 
   async deleteFile(path: string, message: string, revision: string) {
     const current = this.files.get(path);
-    if (!current || current.revision !== revision) {
+    if (!current) throw new ContentNotFoundError();
+    if (current.revision !== revision) {
       throw new ContentConflictError('revision_conflict');
     }
     this.files.delete(path);
@@ -483,6 +507,145 @@ describe('content HTTP handlers', () => {
     });
   });
 
+  it('moves a folder page together with its folder', async () => {
+    // `reading.md` beside `reading/` is one thing to the author. Moving the
+    // page alone leaves the folder with no page and the page with no folder,
+    // and no later single operation puts the pair back together.
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'reading']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+    await provider.writeTextFile(
+      'src/content/notes/reading/books.md',
+      '# books',
+      'seed',
+    );
+    await provider.createDirectory('src/content/notes/archive', 'mkdir');
+
+    const page = provider.files.get('src/content/notes/reading.md')!;
+    const response = await handleContentMove(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/move', {
+        id: 'reading',
+        nextId: 'reading',
+        folder: 'archive',
+        revision: page.revision,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    // The page moved...
+    expect(provider.files.has('src/content/notes/archive/reading.md')).toBe(
+      true,
+    );
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(false);
+    // ...and so did the folder it belongs to, with its children.
+    expect(
+      provider.files.has('src/content/notes/archive/reading/books.md'),
+    ).toBe(true);
+    expect(provider.files.has('src/content/notes/reading/books.md')).toBe(
+      false,
+    );
+    expect(provider.directories.has('src/content/notes/archive/reading')).toBe(
+      true,
+    );
+  });
+
+  it('refuses to move a folder page into its own folder', async () => {
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'reading']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+    await provider.createDirectory('src/content/notes/reading', 'mkdir');
+
+    const page = provider.files.get('src/content/notes/reading.md')!;
+    const response = await handleContentMove(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/move', {
+        id: 'reading',
+        nextId: 'reading',
+        folder: 'reading',
+        revision: page.revision,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'invalid_folder_move',
+    });
+  });
+
+  it('returns a revision for every entry it reordered', async () => {
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'alpha', 'beta']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+
+    const response = await handleContentReorder(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/reorder', {
+        folder: '',
+        ids: ['beta', 'alpha'],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    // The client needs these to keep editing without a refresh, so a reorder
+    // that reports no revision is a reorder that costs the author their next
+    // save.
+    await expect(response.json()).resolves.toMatchObject({
+      reordered: [
+        { id: 'beta', ok: true, revision: expect.any(String) },
+        { id: 'alpha', ok: true, revision: expect.any(String) },
+      ],
+    });
+  });
+
+  it('reports a vanished move source as gone, not as changed', async () => {
+    // "This content changed since you opened it. Refresh and try again." is
+    // advice that cannot work when the answer is that the content is gone.
+    const provider = new MemoryContentProvider();
+    await provider.writeTextFile(
+      'src/content/notes/index.md',
+      '# index',
+      'seed',
+    );
+    await provider.writeTextFile(
+      'src/content/notes/alpha.md',
+      '# alpha',
+      'seed',
+    );
+    await provider.createDirectory('src/content/notes/archive', 'mkdir');
+    const alpha = provider.files.get('src/content/notes/alpha.md')!;
+
+    // Deleted between the read and the write — the race the CAS exists for.
+    provider.files.delete('src/content/notes/alpha.md');
+
+    await expect(
+      provider.moveFile(
+        'src/content/notes/alpha.md',
+        'src/content/notes/archive/alpha.md',
+        'move',
+        alpha.revision,
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+  });
+
   it('verifies image bytes on upload', async () => {
     const provider = new MemoryContentProvider();
     const png = new File(
@@ -621,6 +784,122 @@ describe('a content store still holding legacy .mdx notes', () => {
 });
 
 describe('local content provider', () => {
+  it('writes a batch as one unit or not at all', async () => {
+    // What reorder depends on. The old code issued one write per sibling, so a
+    // conflict on a later one left the earlier ones committed and answered 409
+    // -- an order that was neither the old one nor the requested one, and no
+    // way for the client to learn which part had landed.
+    const root = await mkdtemp(path.join(tmpdir(), 'oddava-content-'));
+    temporaryDirectories.push(root);
+    const provider = createLocalContentProvider(root);
+
+    const alpha = await provider.writeTextFile(
+      'src/content/notes/alpha.md',
+      '# alpha',
+      'create',
+    );
+    const beta = await provider.writeTextFile(
+      'src/content/notes/beta.md',
+      '# beta',
+      'create',
+    );
+    // beta moves on underneath us, so the batch below carries one good
+    // revision and one stale one.
+    await provider.writeTextFile(
+      'src/content/notes/beta.md',
+      '# beta moved on',
+      'concurrent',
+      beta.revision!,
+    );
+
+    await expect(
+      provider.writeTextFiles(
+        [
+          {
+            path: 'src/content/notes/alpha.md',
+            content: '# alpha reordered',
+            revision: alpha.revision!,
+          },
+          {
+            path: 'src/content/notes/beta.md',
+            content: '# beta reordered',
+            revision: beta.revision!,
+          },
+        ],
+        'reorder',
+      ),
+    ).rejects.toMatchObject({ code: 'revision_conflict' });
+
+    // alpha's revision was valid and it is listed first, so a per-file loop
+    // would have committed it before reaching beta. Nothing was written.
+    await expect(
+      provider.readFile('src/content/notes/alpha.md'),
+    ).resolves.toMatchObject({ content: '# alpha' });
+    await expect(
+      provider.readFile('src/content/notes/beta.md'),
+    ).resolves.toMatchObject({ content: '# beta moved on' });
+  });
+
+  it('commits a whole batch when every revision is current', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'oddava-content-'));
+    temporaryDirectories.push(root);
+    const provider = createLocalContentProvider(root);
+
+    const alpha = await provider.writeTextFile(
+      'src/content/notes/alpha.md',
+      '# alpha',
+      'create',
+    );
+    const beta = await provider.writeTextFile(
+      'src/content/notes/beta.md',
+      '# beta',
+      'create',
+    );
+
+    const written = await provider.writeTextFiles(
+      [
+        {
+          path: 'src/content/notes/alpha.md',
+          content: '# alpha next',
+          revision: alpha.revision!,
+        },
+        {
+          path: 'src/content/notes/beta.md',
+          content: '# beta next',
+          revision: beta.revision!,
+        },
+      ],
+      'reorder',
+    );
+
+    expect(Object.keys(written.revisions)).toHaveLength(2);
+    await expect(
+      provider.readFile('src/content/notes/alpha.md'),
+    ).resolves.toMatchObject({ content: '# alpha next' });
+    await expect(
+      provider.readFile('src/content/notes/beta.md'),
+    ).resolves.toMatchObject({ content: '# beta next' });
+  });
+
+  it('reports a missing batch target as gone, not as changed', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'oddava-content-'));
+    temporaryDirectories.push(root);
+    const provider = createLocalContentProvider(root);
+
+    await expect(
+      provider.writeTextFiles(
+        [
+          {
+            path: 'src/content/notes/absent.md',
+            content: '# absent',
+            revision: 'r-whatever',
+          },
+        ],
+        'reorder',
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+  });
+
   it('confines writes to the repository and rejects stale revisions', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'oddava-content-'));
     temporaryDirectories.push(root);

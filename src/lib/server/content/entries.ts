@@ -4,6 +4,7 @@ import {
   contentWithOrder,
   findEntry,
   folderExists,
+  folderRepositoryPath,
   nextSiblingOrder,
   publicCollection,
   readEntries,
@@ -32,7 +33,11 @@ import {
 import { getContentCollection, NOTES_COLLECTION } from './registry';
 import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError } from './types';
-import type { ContentProvider, ContentWriteResult } from './types';
+import type {
+  BatchTextWrite,
+  ContentProvider,
+  ContentWriteResult,
+} from './types';
 
 interface SaveEntryBody {
   slug?: string;
@@ -314,7 +319,55 @@ export async function handleContentMove(
     collection.extension,
     folder,
   );
+
+  // A note can also be a folder's page: `reading.md` sitting beside `reading/`.
+  // The two are one thing to the author, and folders.ts already moves them
+  // together through `linkedFile`. Moving only the file would leave the folder
+  // with no page and the page with no folder — both orphaned, and no single
+  // later operation puts them back.
+  const pairedFolder = currentFolder ? `${currentFolder}/${id}` : id;
+  const isFolderPage =
+    operation === 'move' &&
+    (await folderExists(store, collection, pairedFolder));
+
   try {
+    if (isFolderPage) {
+      const nextPairedFolder = folder ? `${folder}/${nextId}` : nextId;
+      if (
+        nextPairedFolder === pairedFolder ||
+        folder === pairedFolder ||
+        folder.startsWith(`${pairedFolder}/`)
+      ) {
+        return adminJson(
+          {
+            error: 'A folder cannot be moved inside itself.',
+            code: 'invalid_folder_move',
+          },
+          { status: 400 },
+        );
+      }
+      if (await folderExists(store, collection, nextPairedFolder)) {
+        return adminJson(
+          { error: 'That folder already exists.', code: 'folder_exists' },
+          { status: 409 },
+        );
+      }
+
+      // The directory move and the page move are one script, so the pair cannot
+      // come apart between them.
+      const result = await store.moveDirectory(
+        folderRepositoryPath(collection, pairedFolder),
+        folderRepositoryPath(collection, nextPairedFolder),
+        `content: move folder ${collection.id}/${pairedFolder} to ${nextPairedFolder}`,
+        { from: existing.path, to: nextPath, revision },
+      );
+      const moved = await store.readFile(nextPath);
+      return adminJson({
+        entry: moved ? toDetail(collection, moved) : null,
+        result,
+      });
+    }
+
     if (operation === 'duplicate') {
       const result = await store.writeTextFile(
         nextPath,
@@ -404,33 +457,55 @@ export async function handleContentReorder(
   }
 
   const byId = new Map(siblings.map((entry) => [entry.id, entry]));
-  const reordered: { id: string; ok: boolean; revision?: string }[] = [];
+  const writes: BatchTextWrite[] = [];
+  const pathsById = new Map<string, string>();
+
   for (const [order, id] of ids.entries()) {
     const entry = byId.get(id)!;
     const file = await store.readFile(entry.path);
-    if (!file) {
-      reordered.push({ id, ok: false });
-      continue;
-    }
+    // Every id was just checked against the sibling list, and the whole request
+    // holds the content mutation lock, so a file missing here is a genuine
+    // disagreement about what the collection contains — not something to paper
+    // over with `ok: false` while reordering everything around it.
+    if (!file) return missingEntry();
+
     const parsed = parseContentDocument(file.content);
     parsed.fields[collection.orderField] = order;
+    let validated: Record<string, unknown>;
     try {
-      const result = await store.writeTextFile(
-        file.path,
-        serializeContentDocument(
-          validateFields(collection, parsed.fields),
-          parsed.body,
-        ),
-        `content: reorder ${collection.id}/${id} -> ${order}`,
-        file.revision,
-      );
-      const revision =
-        result.revision ?? (await store.readFile(file.path))?.revision;
-      reordered.push({ id, ok: true, revision });
+      validated = validateFields(collection, parsed.fields);
     } catch (error) {
-      return contentConflictResponse(error);
+      return validationError(error);
     }
+    writes.push({
+      path: file.path,
+      content: serializeContentDocument(validated, parsed.body),
+      revision: file.revision,
+    });
+    pathsById.set(id, file.path);
   }
 
-  return adminJson({ reordered });
+  // One unit. Reordering is a statement about the sequence as a whole, so a
+  // partial application is not a smaller version of it — it is a different
+  // order than either the one that was there or the one that was asked for.
+  // Issuing a write per sibling could commit a prefix and then answer 409,
+  // leaving the collection in that third state with no way for the client to
+  // learn which part had landed.
+  let written;
+  try {
+    written = await store.writeTextFiles(
+      writes,
+      `content: reorder ${collection.id}/${folder || 'root'}`,
+    );
+  } catch (error) {
+    return contentConflictResponse(error);
+  }
+
+  return adminJson({
+    reordered: ids.map((id) => ({
+      id,
+      ok: true,
+      revision: written.revisions[pathsById.get(id)!],
+    })),
+  });
 }

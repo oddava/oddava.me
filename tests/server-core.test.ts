@@ -92,4 +92,49 @@ describe('server core utilities', () => {
       true,
     );
   });
+
+  it('separates our own deadline from the caller hanging up', async () => {
+    const { isStorageUnavailableError } =
+      await import('../src/lib/server/core');
+
+    // fetchWithTimeout aborts with this name when our deadline expires: the
+    // store genuinely failed to answer.
+    const timedOut = Object.assign(new Error('The request timed out.'), {
+      name: 'TimeoutError',
+    });
+    expect(isStorageUnavailableError(timedOut)).toBe(true);
+
+    // A plain AbortError is the request being cancelled from the other end --
+    // the visitor navigated away. Nothing is known to be wrong with the store,
+    // and there is nobody left to serve, so reporting a storage outage
+    // misattributes a client disconnect to our infrastructure.
+    const clientHungUp = Object.assign(new Error('The operation was aborted'), {
+      name: 'AbortError',
+    });
+    expect(isStorageUnavailableError(clientHungUp)).toBe(false);
+  });
+
+  it('does not treat an unrelated error as a storage outage', async () => {
+    const { isStorageUnavailableError } =
+      await import('../src/lib/server/core');
+
+    // Matching `aborted` and `fetch failed` as substrings meant any message
+    // that merely contained one counted as the store being down.
+    expect(
+      isStorageUnavailableError(
+        new Error('The upload was aborted by the user'),
+      ),
+    ).toBe(false);
+    expect(isStorageUnavailableError(new Error('Note validation failed'))).toBe(
+      false,
+    );
+
+    // The genuine transport failures still classify.
+    expect(isStorageUnavailableError(new Error('fetch failed'))).toBe(true);
+    expect(
+      isStorageUnavailableError(
+        new Error('connect ECONNREFUSED 127.0.0.1:6379'),
+      ),
+    ).toBe(true);
+  });
 });
