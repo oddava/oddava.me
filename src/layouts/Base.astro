@@ -1,16 +1,13 @@
 ---
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
-import '../styles/components/_header.css';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
 export interface Props extends SiteHeadProps {
   hideFooter?: boolean;
-  hideHeader?: boolean;
   wide?: boolean;
 }
 
@@ -20,7 +17,6 @@ const {
   image,
   type,
   hideFooter = false,
-  hideHeader = false,
   wide = false,
 } = Astro.props;
 
@@ -38,9 +34,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
     <div class:list={['page', wide && 'page--wide']}>
       <a href="#main" class="skip-link">Skip to content</a>
 
-      {!hideHeader && <Header />}
-
-      <main id="main" class:list={[!hideHeader && 'main--has-header']}>
+      <main id="main">
         <slot />
       </main>
 
