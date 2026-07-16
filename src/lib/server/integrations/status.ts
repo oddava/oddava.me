@@ -18,16 +18,13 @@ import type {
  * How long a check result is reused. The admin overview is polled on every
  * panel load; without this, opening the dashboard twice would force two live
  * token refreshes against every provider.
+ *
+ * This cache is the only thing bounding how often a provider is probed. It is
+ * per-isolate and best-effort: a cold isolate probes once. That is the intended
+ * ceiling — the request path has its own, tighter cache in `now-playing`, and
+ * neither is a coordination mechanism.
  */
 const CHECK_CACHE_TTL_MS = 30_000;
-
-/**
- * Circuit breaker. After this many consecutive failures we stop probing and
- * serve the last error until the cooldown elapses. This is what keeps a broken
- * or rate-limited provider from being hammered once per dashboard load.
- */
-const FAILURE_THRESHOLD = 3;
-const COOLDOWN_MS = 5 * 60_000;
 
 /** No single provider may stall the whole status list. */
 const CHECK_TIMEOUT_MS = 8_000;
@@ -35,9 +32,6 @@ const CHECK_TIMEOUT_MS = 8_000;
 interface CheckRecord {
   result: IntegrationCheckResult;
   checkedAt: number;
-  consecutiveFailures: number;
-  /** Set while the breaker is open; live checks are skipped until then. */
-  openUntil: number;
 }
 
 const records = new Map<IntegrationId, CheckRecord>();
@@ -94,10 +88,7 @@ async function withCheckTimeout(
 async function runCheck(
   definition: IntegrationDefinition,
 ): Promise<CheckRecord> {
-  const previous = records.get(definition.id);
-
   let result: IntegrationCheckResult;
-  let failed = false;
 
   try {
     result = await withCheckTimeout(definition);
@@ -106,47 +97,28 @@ async function runCheck(
       ? error
       : toIntegrationError(error, `${definition.name} check failed.`);
     result = resultForError(normalized);
-    // Credential problems will not fix themselves, but they also cost one cheap
-    // failed request rather than a hanging one, and the operator is likely
-    // fixing them right now — so they do not trip the breaker.
-    failed = !normalized.requiresOperatorAction;
   }
 
-  const consecutiveFailures = failed
-    ? (previous?.consecutiveFailures ?? 0) + 1
-    : 0;
-  const checkedAt = Date.now();
-
-  const record: CheckRecord = {
-    result,
-    checkedAt,
-    consecutiveFailures,
-    openUntil:
-      consecutiveFailures >= FAILURE_THRESHOLD ? checkedAt + COOLDOWN_MS : 0,
-  };
-
+  const record: CheckRecord = { result, checkedAt: Date.now() };
   records.set(definition.id, record);
   return record;
 }
 
 /**
- * Returns a check result for a provider, reusing a recent one unless `force`
- * is set and respecting the circuit breaker. Checks are not retained in module
- * scope because they contain request-bound I/O.
+ * Returns a check result for a provider, reusing a recent one unless `force` is
+ * set. Checks are not retained in module scope because they contain
+ * request-bound I/O.
  */
 async function checkIntegration(
   definition: IntegrationDefinition,
   force: boolean,
 ): Promise<CheckRecord> {
-  const now = Date.now();
   const cached = records.get(definition.id);
 
-  if (!force && cached) {
-    if (now < cached.openUntil) return cached;
-    if (now - cached.checkedAt < CHECK_CACHE_TTL_MS) return cached;
+  if (!force && cached && Date.now() - cached.checkedAt < CHECK_CACHE_TTL_MS) {
+    return cached;
   }
 
-  // An explicit "Test connection" must reach the upstream even mid-cooldown.
   // Concurrent requests check independently so request-bound promises never
   // cross Worker contexts.
   return runCheck(definition);
@@ -212,10 +184,6 @@ async function statusFor(
     detail: record.result.detail,
     code: record.result.code,
     checkedAt: new Date(record.checkedAt).toISOString(),
-    retryAt:
-      record.openUntil > Date.now()
-        ? new Date(record.openUntil).toISOString()
-        : undefined,
   };
 }
 
@@ -255,65 +223,19 @@ export function invalidateIntegrationStatus(id: IntegrationId): void {
 }
 
 /**
- * Whether an integration should be consulted right now: enabled, configured,
- * and not sitting behind an open circuit breaker. Callers on the request path
- * (the now-playing service) use this to skip providers that are known-bad
- * instead of paying their timeout on every page view.
+ * Whether an integration should be consulted right now: enabled by the operator
+ * and holding every credential it requires.
+ *
+ * This deliberately does not consider recent failures. A failing provider is
+ * bounded by the caller's own response cache, and a per-isolate failure record
+ * cannot describe a fleet of isolates it has no view of — it only made the
+ * request path pay a storage read to answer a question it would learn from the
+ * upstream anyway.
  */
 export async function isIntegrationUsable(
   definition: IntegrationDefinition,
 ): Promise<boolean> {
   const enabledMap = await getEnabledMap(INTEGRATIONS);
   if (!enabledMap[definition.id]) return false;
-  if (!(await isConfigured(definition))) return false;
-
-  const record = records.get(definition.id);
-  if (!record) return true;
-
-  if (
-    record.result.code === 'not_configured' ||
-    record.result.code === 'invalid_credentials' ||
-    record.result.code === 'forbidden'
-  ) {
-    return false;
-  }
-
-  return Date.now() >= record.openUntil;
-}
-
-/**
- * Feeds a request-path outcome back into the breaker, so the widget polling
- * every few seconds and the admin panel share one view of provider health.
- */
-export function recordIntegrationOutcome(
-  id: IntegrationId,
-  outcome: { ok: true } | { ok: false; error: unknown },
-): void {
-  const previous = records.get(id);
-  const now = Date.now();
-
-  if (outcome.ok) {
-    records.set(id, {
-      result: { state: 'ok', detail: 'Connected.' },
-      checkedAt: now,
-      consecutiveFailures: 0,
-      openUntil: 0,
-    });
-    return;
-  }
-
-  const error = isIntegrationError(outcome.error)
-    ? outcome.error
-    : toIntegrationError(outcome.error, 'Request failed.');
-
-  const consecutiveFailures = error.requiresOperatorAction
-    ? 0
-    : (previous?.consecutiveFailures ?? 0) + 1;
-
-  records.set(id, {
-    result: resultForError(error),
-    checkedAt: now,
-    consecutiveFailures,
-    openUntil: consecutiveFailures >= FAILURE_THRESHOLD ? now + COOLDOWN_MS : 0,
-  });
+  return isConfigured(definition);
 }

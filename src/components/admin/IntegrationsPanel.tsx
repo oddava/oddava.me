@@ -215,13 +215,6 @@ export function IntegrationsPanel() {
                 <p className="admin-integration-row__detail">
                   {integration.detail}
                 </p>
-                {integration.retryAt && (
-                  <p className="admin-integration-row__detail admin-integration-row__muted">
-                    Repeated failures — automatic checks are paused until{' '}
-                    {new Date(integration.retryAt).toLocaleTimeString()}. Test
-                    connection to probe it anyway.
-                  </p>
-                )}
               </div>
 
               <div className="admin-integration-row__actions">
