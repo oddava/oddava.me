@@ -1,18 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
-import { getGardenIndex, GardenEmptyError } from '@lib/garden';
+import { getGardenIndexOrUnavailable } from '@lib/garden';
 import '../../styles/components/_garden.css';
 
-let index;
-try {
-  index = await getGardenIndex();
-} catch (error) {
-  if (error instanceof GardenEmptyError) {
-    return new Response('Notes are not available yet.', { status: 503 });
-  }
-  throw error;
-}
+const garden = await getGardenIndexOrUnavailable();
+if (!garden.ok) return garden.response;
+const index = garden.index;
 ---
 
 <Base title={index.root.title} description={index.root.summary} wide>

@@ -4,10 +4,12 @@ import KnowledgeLandscape, {
   type KnowledgePath,
   type KnowledgePlace,
 } from '../../components/garden/KnowledgeLandscape';
-import { getGardenIndex, getNoteTags } from '@lib/garden';
+import { getGardenIndexOrUnavailable, getNoteTags } from '@lib/garden';
 import '../../styles/components/_atlas.css';
 
-const index = await getGardenIndex();
+const garden = await getGardenIndexOrUnavailable();
+if (!garden.ok) return garden.response;
+const index = garden.index;
 const pairKey = (left: string, right: string) =>
   [left, right].toSorted().join('::');
 const paths: KnowledgePath[] = [];

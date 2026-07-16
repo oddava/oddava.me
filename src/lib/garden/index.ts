@@ -447,3 +447,24 @@ export async function getGardenIndex(): Promise<GardenIndex> {
   if (cachedGardenIndex) return cachedGardenIndex.index;
   throw new Error('The notes garden is being updated. Try again shortly.');
 }
+
+export type GardenIndexResult =
+  { ok: true; index: GardenIndex } | { ok: false; response: Response };
+
+// A garden with no root index document is a content-store state, not a crash:
+// the store may be unconfigured, empty, or mid-migration. Every `/notes` route
+// loads the index through this guard so that state reads as 503 "not ready"
+// instead of a 500. Any other failure is a real bug and still throws.
+export async function getGardenIndexOrUnavailable(): Promise<GardenIndexResult> {
+  try {
+    return { ok: true, index: await getGardenIndex() };
+  } catch (error) {
+    if (error instanceof GardenEmptyError) {
+      return {
+        ok: false,
+        response: new Response('Notes are not available yet.', { status: 503 }),
+      };
+    }
+    throw error;
+  }
+}
