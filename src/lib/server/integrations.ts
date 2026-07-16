@@ -13,13 +13,8 @@ export {
   IntegrationNotManageableError,
   UnknownIntegrationError,
   listIntegrations,
-  revokeIntegrationCredentials,
-  saveIntegrationCredentials,
   testIntegration,
   toggleIntegration,
 } from './integrations/service';
-export {
-  CredentialValidationError,
-  resolveCredentials,
-} from './integrations/store';
+export { resolveCredentials } from './integrations/store';
 export type { IntegrationDefinition } from './integrations/types';

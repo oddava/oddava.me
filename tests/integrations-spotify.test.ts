@@ -288,19 +288,19 @@ describe('spotify provider', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('validates credential formats before they can be stored', () => {
-    const byKey = new Map(
-      spotifyIntegration.credentials.map((field) => [field.key, field]),
-    );
-
-    expect(byKey.get('clientId')?.validate?.('too-short')).toContain(
-      'hexadecimal',
-    );
-    expect(byKey.get('clientId')?.validate?.('a'.repeat(32))).toBeNull();
-    expect(byKey.get('refreshToken')?.validate?.('short')).toContain(
-      'refresh token',
-    );
-    expect(byKey.get('refreshToken')?.validate?.('c'.repeat(64))).toBeNull();
+  it('declares the environment variable behind every required credential', () => {
+    // The env var name is the whole configuration story now, and the admin
+    // panel quotes it back to the operator when a field is missing.
+    expect(
+      spotifyIntegration.credentials.map((field) => [
+        field.key,
+        field.envVars[0],
+      ]),
+    ).toEqual([
+      ['clientId', 'SPOTIFY_CLIENT_ID'],
+      ['clientSecret', 'SPOTIFY_CLIENT_SECRET'],
+      ['refreshToken', 'SPOTIFY_REFRESH_TOKEN'],
+    ]);
   });
 
   it('reports a healthy check with the current track', async () => {

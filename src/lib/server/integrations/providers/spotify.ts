@@ -355,27 +355,6 @@ export async function fetchSpotifyNowPlaying(
   return mapPayload(payload);
 }
 
-function validateClientId(value: string): string | null {
-  return /^[0-9a-f]{32}$/i.test(value)
-    ? null
-    : 'Expected a 32-character hexadecimal client ID.';
-}
-
-function validateClientSecret(value: string): string | null {
-  return /^[0-9a-f]{32}$/i.test(value)
-    ? null
-    : 'Expected a 32-character hexadecimal client secret.';
-}
-
-function validateRefreshToken(value: string): string | null {
-  // Spotify refresh tokens are long, opaque, and URL-safe base64-ish. Length is
-  // the only property worth asserting; anything stricter would reject valid
-  // tokens the day Spotify changes its encoding.
-  return value.length >= 64
-    ? null
-    : 'That does not look like a Spotify refresh token (expected 64+ characters).';
-}
-
 export const spotifyIntegration: IntegrationDefinition = {
   id: 'spotify',
   name: 'Spotify',
@@ -392,7 +371,6 @@ export const spotifyIntegration: IntegrationDefinition = {
       required: true,
       envVars: ['SPOTIFY_CLIENT_ID'],
       help: 'From your app in the Spotify developer dashboard.',
-      validate: validateClientId,
     },
     {
       key: 'clientSecret',
@@ -400,7 +378,6 @@ export const spotifyIntegration: IntegrationDefinition = {
       kind: 'secret',
       required: true,
       envVars: ['SPOTIFY_CLIENT_SECRET'],
-      validate: validateClientSecret,
     },
     {
       key: 'refreshToken',
@@ -409,11 +386,8 @@ export const spotifyIntegration: IntegrationDefinition = {
       required: true,
       envVars: ['SPOTIFY_REFRESH_TOKEN'],
       help: 'Generate with `pnpm run spotify:token`. Requires the user-read-currently-playing scope.',
-      validate: validateRefreshToken,
     },
   ],
-
-  onCredentialsChanged: clearSpotifyTokenCache,
 
   async check(credentials, signal): Promise<IntegrationCheckResult> {
     // Force a refresh so the check exercises the credential that actually

@@ -25,8 +25,6 @@ const definition: IntegrationDefinition = {
       kind: 'secret',
       required: true,
       envVars: ['SPOTIFY_CLIENT_SECRET'],
-      validate: (value) =>
-        value.length >= 4 ? null : 'Must be at least 4 characters.',
     },
     {
       key: 'note',
@@ -53,34 +51,6 @@ function mockRedis(initial: Record<string, string> = {}) {
       data.set(key, value);
       return 'OK';
     }
-    if (op === 'EVAL') {
-      const target = String(command[3]);
-      const patch = JSON.parse(String(command[4])) as Record<
-        string,
-        string | null
-      >;
-      const stored = data.has(target)
-        ? (JSON.parse(data.get(target)!) as {
-            fields: Record<string, string>;
-            updatedAt?: string;
-          })
-        : { fields: {} };
-      for (const [field, next] of Object.entries(patch)) {
-        if (next === null) delete stored.fields[field];
-        else stored.fields[field] = next;
-      }
-      if (Object.keys(stored.fields).length === 0) {
-        data.delete(target);
-      } else {
-        stored.updatedAt = String(command[5]);
-        data.set(target, JSON.stringify(stored));
-      }
-      return 1;
-    }
-    if (op === 'DEL') {
-      data.delete(key);
-      return 1;
-    }
     throw new Error(`Unexpected command: ${op}`);
   });
 
@@ -103,7 +73,7 @@ function mockNoRedis() {
 
 const importStore = () => import('../src/lib/server/integrations/store');
 
-describe('integration credential store', () => {
+describe('integration credential resolution', () => {
   beforeEach(() => {
     vi.resetModules();
   });
@@ -114,230 +84,108 @@ describe('integration credential store', () => {
     vi.doUnmock('../src/lib/server/core');
   });
 
-  it('falls back to the environment when nothing is stored', async () => {
+  it('resolves a credential from the environment', async () => {
     mockNoRedis();
     vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-client-id');
 
     const { resolveCredentials, getCredentialStatuses } = await importStore();
 
-    expect((await resolveCredentials(definition)).clientId).toBe(
-      'env-client-id',
-    );
-
-    const statuses = await getCredentialStatuses(definition);
-    expect(statuses).toContainEqual({
+    expect(resolveCredentials(definition).clientId).toBe('env-client-id');
+    expect(getCredentialStatuses(definition)).toContainEqual({
       key: 'clientId',
       set: true,
       source: 'env',
     });
-    expect(statuses).toContainEqual({
-      key: 'clientSecret',
-      set: false,
-      source: 'none',
-    });
   });
 
-  it('treats .env.example placeholders as unset', async () => {
+  it('treats an example-file placeholder as unconfigured', async () => {
     mockNoRedis();
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'your_spotify_client_id');
-    vi.stubEnv('SPOTIFY_CLIENT_SECRET', 'put_it_here');
+    vi.stubEnv('SPOTIFY_CLIENT_ID', 'your_client_id_here');
 
     const { getCredentialStatuses, isConfigured } = await importStore();
 
-    expect(await getCredentialStatuses(definition)).toEqual([
-      { key: 'clientId', set: false, source: 'none' },
-      { key: 'clientSecret', set: false, source: 'none' },
-      { key: 'note', set: false, source: 'none' },
-    ]);
-    expect(await isConfigured(definition)).toBe(false);
-  });
-
-  it('prefers a stored override over the environment', async () => {
-    mockRedis({
-      'integrations:credentials:spotify': JSON.stringify({
-        fields: { clientId: 'stored-id' },
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }),
-    });
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-id');
-
-    const { resolveCredentials, getCredentialStatuses } = await importStore();
-
-    expect((await resolveCredentials(definition)).clientId).toBe('stored-id');
-    expect(await getCredentialStatuses(definition)).toContainEqual({
+    expect(getCredentialStatuses(definition)).toContainEqual({
       key: 'clientId',
-      set: true,
-      source: 'override',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      set: false,
+      source: 'none',
     });
+    expect(isConfigured(definition)).toBe(false);
   });
 
-  it('ignores malformed stored fields without losing valid values', async () => {
-    mockRedis({
-      'integrations:credentials:spotify': JSON.stringify({
-        fields: { clientId: 42, clientSecret: 'stored-secret' },
-        updatedAt: 'not-a-date',
-      }),
-    });
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-id');
-
-    const { resolveCredentials, getCredentialStatuses } = await importStore();
-
-    expect(await resolveCredentials(definition)).toMatchObject({
-      clientId: 'env-id',
-      clientSecret: 'stored-secret',
-    });
-    expect(await getCredentialStatuses(definition)).toContainEqual({
-      key: 'clientSecret',
-      set: true,
-      source: 'override',
-    });
-  });
-
-  it('ignores optional fields when deciding whether it is configured', async () => {
+  it('reads the first env var that is actually set, in declared order', async () => {
     mockNoRedis();
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'id');
-    vi.stubEnv('SPOTIFY_CLIENT_SECRET', 'secret');
-
-    const { isConfigured } = await importStore();
-
-    // `note` is unset, but it is not required.
-    expect(await isConfigured(definition)).toBe(true);
-  });
-
-  it('adopts credentials written by the pre-registry implementation', async () => {
-    const { data } = mockRedis({
-      'admin:spotify-credentials': JSON.stringify({
-        spotify: { clientId: 'legacy-id', clientSecret: 'legacy-secret' },
-        lanyard: { discordUserId: '123456789012345678' },
-      }),
-    });
+    const multi: IntegrationDefinition = {
+      ...definition,
+      credentials: [
+        {
+          key: 'discordUserId',
+          label: 'Discord user ID',
+          kind: 'text',
+          required: true,
+          envVars: ['DISCORD_USER_ID', 'LANYARD_DISCORD_USER_ID'],
+        },
+      ],
+    };
+    vi.stubEnv('LANYARD_DISCORD_USER_ID', 'fallback-id');
 
     const { resolveCredentials } = await importStore();
 
-    expect(await resolveCredentials(definition)).toMatchObject({
-      clientId: 'legacy-id',
-      clientSecret: 'legacy-secret',
-    });
-
-    // The migration is written back, so the legacy key is read at most once.
-    const migrated = JSON.parse(
-      data.get('integrations:credentials:spotify') as string,
-    );
-    expect(migrated.fields).toEqual({
-      clientId: 'legacy-id',
-      clientSecret: 'legacy-secret',
-    });
+    expect(resolveCredentials(multi).discordUserId).toBe('fallback-id');
   });
 
-  it('rejects a value its field says is invalid, without writing anything', async () => {
-    const { data } = mockRedis();
-    const { updateCredentials, CredentialValidationError } =
-      await importStore();
-
-    await expect(
-      updateCredentials(definition, { clientSecret: 'no' }),
-    ).rejects.toBeInstanceOf(CredentialValidationError);
-
-    expect(data.size).toBe(0);
-  });
-
-  it('rejects fields the integration does not declare', async () => {
-    mockRedis();
-    const { updateCredentials, CredentialValidationError } =
-      await importStore();
-
-    await expect(
-      updateCredentials(definition, { nope: 'value' }),
-    ).rejects.toBeInstanceOf(CredentialValidationError);
-  });
-
-  it('merges a partial update and clears a field sent blank', async () => {
-    const { data } = mockRedis({
-      'integrations:credentials:spotify': JSON.stringify({
-        fields: { clientId: 'old-id', clientSecret: 'kept-secret' },
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }),
-    });
-
-    const { updateCredentials } = await importStore();
-
-    await updateCredentials(definition, { clientId: 'new-id' });
-    expect(
-      JSON.parse(data.get('integrations:credentials:spotify') as string).fields,
-    ).toEqual({ clientId: 'new-id', clientSecret: 'kept-secret' });
-
-    await updateCredentials(definition, { clientId: '   ' });
-    expect(
-      JSON.parse(data.get('integrations:credentials:spotify') as string).fields,
-    ).toEqual({ clientSecret: 'kept-secret' });
-  });
-
-  it('merges concurrent partial credential updates atomically', async () => {
-    const { data } = mockRedis({
-      'integrations:credentials:spotify': JSON.stringify({
-        fields: { clientSecret: 'kept-secret' },
-      }),
-    });
-    const { updateCredentials } = await importStore();
-
-    await Promise.all([
-      updateCredentials(definition, { clientId: 'new-id' }),
-      updateCredentials(definition, { note: 'operator note' }),
-    ]);
-
-    expect(
-      JSON.parse(data.get('integrations:credentials:spotify') as string).fields,
-    ).toEqual({
-      clientId: 'new-id',
-      clientSecret: 'kept-secret',
-      note: 'operator note',
-    });
-  });
-
-  it('does not overwrite stored credentials after a failed strict read', async () => {
-    const original = JSON.stringify({
-      fields: { clientId: 'old-id', clientSecret: 'kept-secret' },
-    });
-    const { data, redisCommand } = mockRedis({
-      'integrations:credentials:spotify': original,
-    });
-    redisCommand.mockRejectedValueOnce(new Error('Redis unavailable'));
-    const { updateCredentials } = await importStore();
-
-    await expect(
-      updateCredentials(definition, { clientId: 'new-id' }),
-    ).rejects.toThrow('Redis unavailable');
-    expect(data.get('integrations:credentials:spotify')).toBe(original);
-  });
-
-  it('refuses to save credentials when storage is unavailable', async () => {
+  it('is configured only when every required field resolves', async () => {
     mockNoRedis();
-    const { clearCredentials, updateCredentials } = await importStore();
+    vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-client-id');
 
-    await expect(
-      updateCredentials(definition, { clientId: 'id' }),
-    ).rejects.toThrow('Persistent storage is not configured.');
-    await expect(clearCredentials('spotify')).rejects.toThrow(
-      'Persistent storage is not configured.',
-    );
+    const { isConfigured } = await importStore();
+
+    // `note` is optional, so its absence must not make the whole thing unconfigured.
+    expect(isConfigured(definition)).toBe(false);
+
+    vi.stubEnv('SPOTIFY_CLIENT_SECRET', 'env-client-secret');
+    expect(isConfigured(definition)).toBe(true);
   });
 
-  it('revokes stored overrides while leaving env values in effect', async () => {
-    const { data } = mockRedis({
+  it('reports a provider with no credentials as configured', async () => {
+    mockNoRedis();
+    const { isConfigured } = await importStore();
+
+    expect(isConfigured({ ...definition, credentials: [] })).toBe(true);
+  });
+
+  /**
+   * The point of the change: credentials are deployment state, so reading them
+   * must not touch the network. A regression here reintroduces a per-request
+   * round trip on the public now-playing path.
+   */
+  it('never touches Redis to resolve credentials', async () => {
+    const { redisCommand } = mockRedis({
       'integrations:credentials:spotify': JSON.stringify({
         fields: { clientId: 'stored-id' },
-        updatedAt: '2026-01-01T00:00:00.000Z',
       }),
     });
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-id');
+    vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-client-id');
 
-    const { clearCredentials, resolveCredentials } = await importStore();
+    const { resolveCredentials, getCredentialStatuses, isConfigured } =
+      await importStore();
 
-    await clearCredentials('spotify');
+    // A leftover override key from the old store is simply not consulted.
+    expect(resolveCredentials(definition).clientId).toBe('env-client-id');
+    getCredentialStatuses(definition);
+    isConfigured(definition);
 
-    expect(data.has('integrations:credentials:spotify')).toBe(false);
-    expect((await resolveCredentials(definition)).clientId).toBe('env-id');
+    expect(redisCommand).not.toHaveBeenCalled();
+  });
+
+  it('never reports a source other than env or none', async () => {
+    mockNoRedis();
+    vi.stubEnv('SPOTIFY_CLIENT_ID', 'env-client-id');
+
+    const { getCredentialStatuses } = await importStore();
+
+    for (const status of getCredentialStatuses(definition)) {
+      expect(['env', 'none']).toContain(status.source);
+    }
   });
 });
 

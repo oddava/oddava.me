@@ -61,7 +61,7 @@ export type IntegrationErrorCode =
   | 'invalid_response'
   | 'unknown';
 
-type CredentialSource = 'override' | 'env' | 'none';
+type CredentialSource = 'env' | 'none';
 type CredentialFieldKind = 'text' | 'secret';
 
 export interface CredentialField {
@@ -77,7 +77,6 @@ export interface CredentialFieldStatus {
   key: string;
   set: boolean;
   source: CredentialSource;
-  updatedAt?: string;
 }
 
 export interface IntegrationStatus {

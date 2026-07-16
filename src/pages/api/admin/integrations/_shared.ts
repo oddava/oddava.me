@@ -3,7 +3,6 @@ import {
   withAdminSecurityHeaders,
 } from '../../../../lib/server/admin';
 import {
-  CredentialValidationError,
   IntegrationNotManageableError,
   UnknownIntegrationError,
 } from '../../../../lib/server/integrations';
@@ -26,20 +25,6 @@ export function integrationErrorResponse(error: unknown): Response {
     return adminJson(
       { error: error.message, code: 'not_manageable' },
       { status: 409 },
-    );
-  }
-
-  if (error instanceof CredentialValidationError) {
-    return adminJson(
-      {
-        error: error.message,
-        code: 'invalid_credentials',
-        issues: error.issues.map((issue) => ({
-          path: [issue.key],
-          message: issue.message,
-        })),
-      },
-      { status: 422 },
     );
   }
 

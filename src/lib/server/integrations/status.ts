@@ -60,7 +60,7 @@ function resultForError(error: IntegrationError): IntegrationCheckResult {
 async function withCheckTimeout(
   definition: IntegrationDefinition,
 ): Promise<IntegrationCheckResult> {
-  const credentials = await resolveCredentials(definition);
+  const credentials = resolveCredentials(definition);
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -129,10 +129,8 @@ async function statusFor(
   enabled: boolean,
   force: boolean,
 ): Promise<IntegrationStatus> {
-  const [credentials, configured] = await Promise.all([
-    getCredentialStatuses(definition),
-    isConfigured(definition),
-  ]);
+  const credentials = getCredentialStatuses(definition);
+  const configured = isConfigured(definition);
 
   const base = {
     id: definition.id,
@@ -142,9 +140,7 @@ async function statusFor(
     manageable: definition.manageable,
     enabled,
     configured,
-    fields: definition.credentials.map(
-      ({ validate: _validate, ...field }) => field,
-    ),
+    fields: definition.credentials,
     credentials,
   } satisfies Omit<IntegrationStatus, 'state' | 'detail'>;
 
@@ -157,20 +153,22 @@ async function statusFor(
   }
 
   if (!configured) {
+    // Name the environment variables rather than the field labels: setting one
+    // is now the only way to configure this, so that is the actionable fact.
     const missing = definition.credentials
       .filter(
         (field) =>
           field.required &&
           !credentials.find((status) => status.key === field.key)?.set,
       )
-      .map((field) => field.label);
+      .map((field) => field.envVars[0] ?? field.label);
 
     return {
       ...base,
       state: 'unconfigured',
       code: 'not_configured',
       detail: missing.length
-        ? `Not configured. Missing: ${missing.join(', ')}.`
+        ? `Not configured. Set ${missing.join(', ')} in the deployment environment.`
         : 'Not configured.',
     };
   }
@@ -235,7 +233,8 @@ export function invalidateIntegrationStatus(id: IntegrationId): void {
 export async function isIntegrationUsable(
   definition: IntegrationDefinition,
 ): Promise<boolean> {
+  if (!isConfigured(definition)) return false;
+
   const enabledMap = await getEnabledMap(INTEGRATIONS);
-  if (!enabledMap[definition.id]) return false;
-  return isConfigured(definition);
+  return enabledMap[definition.id] === true;
 }

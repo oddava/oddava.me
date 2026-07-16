@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { fetchIntegrations, testIntegration, toggleIntegration } from './api';
-import { IntegrationCredentialsForm } from './IntegrationCredentialsForm';
-import { Modal } from './Modal';
 import { SkeletonRow } from './Skeleton';
 import type { IntegrationState, IntegrationStatus } from '../../lib/contracts';
 import { useDialogConfirm } from './useDialogConfirm';
@@ -46,7 +44,6 @@ export function IntegrationsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const { confirm, dialog } = useDialogConfirm();
   const mounted = useRef(true);
 
@@ -132,8 +129,6 @@ export function IntegrationsPanel() {
       () => testIntegration(integration.id),
       (result) => `${result.name}: ${result.detail}`,
     );
-
-  const editing = integrations.find((item) => item.id === editingId) ?? null;
 
   return (
     <article id="integrations" className="admin-card admin-panel">
@@ -232,17 +227,6 @@ export function IntegrationsPanel() {
                   {busy ? 'Testing…' : 'Test'}
                 </button>
 
-                {integration.fields.length > 0 && (
-                  <button
-                    type="button"
-                    className="admin-button admin-button--ghost"
-                    disabled={busy}
-                    onClick={() => setEditingId(integration.id)}
-                  >
-                    Credentials
-                  </button>
-                )}
-
                 {integration.manageable && (
                   <label
                     className={`admin-toggle ${
@@ -278,23 +262,6 @@ export function IntegrationsPanel() {
       </div>
 
       {dialog}
-
-      <Modal
-        open={Boolean(editing)}
-        title={editing ? `${editing.name} credentials` : 'Credentials'}
-        onClose={() => setEditingId(null)}
-      >
-        {editing && (
-          <IntegrationCredentialsForm
-            integration={editing}
-            onSaved={(next) => {
-              replace(next);
-              setEditingId(null);
-              setNotice(`${next.name}: ${next.detail}`);
-            }}
-          />
-        )}
-      </Modal>
     </article>
   );
 }

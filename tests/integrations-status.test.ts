@@ -58,14 +58,14 @@ async function loadStatus(
   }));
 
   vi.doMock('../src/lib/server/integrations/store', () => ({
-    resolveCredentials: async () => ({ clientId: 'value' }),
-    getCredentialStatuses: async () =>
+    resolveCredentials: () => ({ clientId: 'value' }),
+    getCredentialStatuses: () =>
       definition.credentials.map((field) => ({
         key: field.key,
         set: configured,
         source: configured ? 'env' : 'none',
       })),
-    isConfigured: async () => configured,
+    isConfigured: () => configured,
     getEnabledMap: async () => ({ [definition.id]: enabled }),
   }));
 

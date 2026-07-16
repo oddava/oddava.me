@@ -62,22 +62,6 @@ const ADMIN_ROUTES: {
     params: { id: 'spotify' },
   },
   {
-    file: 'integrations/[id]/credentials.ts',
-    module: '../src/pages/api/admin/integrations/[id]/credentials',
-    method: 'PUT',
-    auth: true,
-    sameOrigin: true,
-    params: { id: 'spotify' },
-  },
-  {
-    file: 'integrations/[id]/credentials.ts',
-    module: '../src/pages/api/admin/integrations/[id]/credentials',
-    method: 'DELETE',
-    auth: true,
-    sameOrigin: true,
-    params: { id: 'spotify' },
-  },
-  {
     file: 'integrations/[id]/test.ts',
     module: '../src/pages/api/admin/integrations/[id]/test',
     method: 'POST',
