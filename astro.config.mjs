@@ -20,9 +20,6 @@ export default defineConfig({
   integrations: [preact()],
   compressHTML: true,
   devToolbar: { enabled: false },
-  prefetch: {
-    defaultStrategy: 'hover',
-  },
   security: {
     csp: {
       directives: [
@@ -46,6 +43,11 @@ export default defineConfig({
   trailingSlash: 'never',
   output: 'server',
   adapter: cloudflare({
+    // Not dead config, despite nothing importing `astro:assets` today: this
+    // overrides the adapter's default, which is to route images through
+    // Cloudflare Images and expect an `IMAGES` binding that wrangler.jsonc does
+    // not declare. Dropping the line is silent until the first <Image>, and
+    // then it fails at runtime rather than at build.
     imageService: 'compile',
     // The build-time prerenderer does not need DevTools. Leaving the inspector
     // enabled makes Miniflare allocate an internal ephemeral port, which can
