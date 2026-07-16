@@ -3,6 +3,7 @@ import { readJsonBody, requestBodyErrorResponse } from '../core/body';
 import {
   contentWithOrder,
   ensureFolderDocument,
+  findFolderDocument,
   folderDocumentPath,
   folderExists,
   folderName,
@@ -87,15 +88,13 @@ async function performFolderTreeDuplicate(
     );
   }
 
-  const sourcePage = await store.readFile(
-    folderDocumentPath(collection, sourceFolder),
-  );
+  const sourcePage = await findFolderDocument(store, collection, sourceFolder);
   if (sourcePage) {
     await store.writeTextFile(
       folderDocumentPath(collection, destinationFolder),
       contentWithOrder(
         collection,
-        sourcePage.content,
+        sourcePage.file.content,
         nextSiblingOrder(entries, parentFolder(destinationFolder)),
       ),
       `content: duplicate folder page ${collection.id}/${sourceFolder}`,
@@ -146,9 +145,9 @@ async function duplicateFolderTree(
   destinationFolder: string,
 ): Promise<void> {
   const filesBefore = new Set(
-    (await store.listFiles(collection.sourceDir, collection.extension)).map(
-      (file) => file.path,
-    ),
+    (
+      await store.listFiles(collection.sourceDir, collection.readExtensions)
+    ).map((file) => file.path),
   );
   const directoriesBefore = new Set(
     await store.listDirectories(collection.sourceDir),
@@ -167,7 +166,7 @@ async function duplicateFolderTree(
     // transport failure cannot publish a partial copy.
     try {
       const createdFiles = (
-        await store.listFiles(collection.sourceDir, collection.extension)
+        await store.listFiles(collection.sourceDir, collection.readExtensions)
       ).filter((file) => !filesBefore.has(file.path));
       for (const file of createdFiles.toReversed()) {
         await store
@@ -329,21 +328,26 @@ export async function handleContentFolders(
       );
     }
 
-    const previousPagePath = folderDocumentPath(collection, folder);
+    const previousPage = await findFolderDocument(store, collection, folder);
+    // The page moves to the canonical extension even if it was stored under a
+    // legacy one, so a rename doubles as a migration of that file.
     const nextPagePath = folderDocumentPath(collection, nextFolder);
     const entries = await readEntries(store, collection);
     const conflictingEntry = entries.find(
       (entry) =>
-        entry.id === folderName(nextFolder) && entry.path !== previousPagePath,
+        entry.id === folderName(nextFolder) &&
+        entry.path !== previousPage?.path,
     );
-    if (conflictingEntry || (await store.readFile(nextPagePath))) {
+    if (
+      conflictingEntry ||
+      (await findFolderDocument(store, collection, nextFolder))
+    ) {
       return adminJson(
         { error: 'A note already uses that folder name.', code: 'slug_exists' },
         { status: 409 },
       );
     }
 
-    const previousPage = await store.readFile(previousPagePath);
     try {
       const result = await store.moveDirectory(
         folderRepositoryPath(collection, folder),
@@ -351,9 +355,9 @@ export async function handleContentFolders(
         `content: move folder ${collection.id}/${folder} to ${nextFolder}`,
         previousPage
           ? {
-              from: previousPagePath,
+              from: previousPage.path,
               to: nextPagePath,
-              revision: previousPage.revision,
+              revision: previousPage.file.revision,
             }
           : undefined,
       );
@@ -374,13 +378,12 @@ export async function handleContentFolders(
       return folderNotFound();
     }
 
-    const pagePath = folderDocumentPath(collection, folder);
-    const page = await store.readFile(pagePath);
+    const page = await findFolderDocument(store, collection, folder);
     try {
       const result = await store.deleteDirectory(
         folderRepositoryPath(collection, folder),
         `content: delete folder ${collection.id}/${folder}`,
-        page ? { path: pagePath, revision: page.revision } : undefined,
+        page ? { path: page.path, revision: page.file.revision } : undefined,
       );
       return adminJson({
         folders: await readFolders(store, collection),

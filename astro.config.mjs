@@ -2,7 +2,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
-import mdx from '@astrojs/mdx';
 import cloudflare from '@astrojs/cloudflare';
 import preact from '@astrojs/preact';
 import { localContentAdminDevProxy } from './vite/local-content-admin-dev-proxy.mjs';
@@ -18,14 +17,9 @@ const spotifyWidgetEnabled =
   'false';
 
 export default defineConfig({
-  integrations: [preact(), mdx()],
+  integrations: [preact()],
   compressHTML: true,
   devToolbar: { enabled: false },
-  markdown: {
-    // There are no fenced code blocks in the content collection. Plain code
-    // output avoids Shiki's inline styles and keeps the hashed CSP strict.
-    syntaxHighlight: false,
-  },
   prefetch: {
     defaultStrategy: 'hover',
   },

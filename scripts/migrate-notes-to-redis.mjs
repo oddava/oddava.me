@@ -16,6 +16,14 @@ import {
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_ROOTS = ['src/content/notes', 'public/images/notes'];
 const MEDIA_EXTENSIONS = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
+// `.mdx` is accepted alongside `.md` because a store written before the rename
+// still holds `.mdx` keys. Import treats those as managed, so they are pruned
+// and replaced by their `.md` equivalents — that prune is the key migration.
+const NOTE_EXTENSIONS = new Set(['.md', '.mdx']);
+
+function noteId(path) {
+  return basename(path).replace(/\.mdx?$/i, '');
+}
 const arguments_ = process.argv.slice(2);
 const dryRun = arguments_.includes('--dry-run');
 const prune = arguments_.includes('--prune');
@@ -66,7 +74,7 @@ function loadRecords() {
       const extension = extname(absolutePath).toLowerCase();
       const path = relative(projectRoot, absolutePath).replace(/\\/g, '/');
       const isText =
-        path.startsWith('src/content/notes/') && extension === '.mdx';
+        path.startsWith('src/content/notes/') && NOTE_EXTENSIONS.has(extension);
       const isMedia =
         path.startsWith('public/images/notes/') &&
         MEDIA_EXTENSIONS.has(extension);
@@ -93,7 +101,7 @@ function loadRecords() {
 function managedPath(path) {
   const extension = extname(path).toLowerCase();
   return (
-    (path.startsWith('src/content/notes/') && extension === '.mdx') ||
+    (path.startsWith('src/content/notes/') && NOTE_EXTENSIONS.has(extension)) ||
     (path.startsWith('public/images/notes/') && MEDIA_EXTENSIONS.has(extension))
   );
 }
@@ -173,12 +181,12 @@ async function main() {
   const notePaths = records
     .map(({ path }) => path)
     .filter((path) => path.startsWith('src/content/notes/'));
-  if (!notePaths.includes('src/content/notes/index.mdx')) {
-    throw new Error('The notes import requires src/content/notes/index.mdx.');
+  if (!notePaths.includes('src/content/notes/index.md')) {
+    throw new Error('The notes import requires src/content/notes/index.md.');
   }
   const notePathById = new Map();
   for (const path of notePaths) {
-    const id = basename(path, '.mdx');
+    const id = noteId(path);
     const existing = notePathById.get(id);
     if (existing) {
       throw new Error(

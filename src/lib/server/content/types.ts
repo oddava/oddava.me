@@ -39,7 +39,18 @@ export interface ContentCollectionDefinition {
   label: string;
   singularLabel: string;
   sourceDir: string;
-  extension: 'mdx';
+  /** Extension for new writes. */
+  extension: 'md';
+  /**
+   * Extensions accepted on read, canonical first.
+   *
+   * `mdx` is still here because the content store is live: production keys were
+   * written as `.mdx` and stay that way until `notes:migrate` rewrites them.
+   * Notes have always been plain Markdown — nothing ever used MDX — so this is
+   * a key-naming tail, not a format. Reading both is what lets the rename
+   * deploy without a coordinated data migration.
+   */
+  readExtensions: readonly string[];
   mediaDir: string;
   mediaPublicPath: string;
   routePrefix: string;
@@ -79,7 +90,7 @@ export interface LinkedFileDelete {
 export interface ContentProvider {
   listFiles(
     directory: string,
-    extension?: string,
+    extension?: string | readonly string[],
   ): Promise<ContentSourceFile[]>;
   readFile(path: string): Promise<ContentSourceFile | null>;
   listDirectories(directory: string): Promise<string[]>;

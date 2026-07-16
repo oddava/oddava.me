@@ -6,7 +6,7 @@
 oddava.me/
 ├── src/
 │   ├── components/       # Astro & React island components
-│   ├── content/          # MDX garden notes
+│   ├── content/          # Markdown garden notes
 │   ├── layouts/          # Base, Immersive, AdminLayout
 │   ├── lib/server/       # Server-only code (domain-driven)
 │   ├── pages/            # File-based routes & API endpoints
@@ -57,7 +57,7 @@ pnpm exec prettier --write <changed-files...>
 ```
 
 - Prefer formatting only the files you touched (faster and safer than whole-repo format).
-- Include content files when they changed (e.g. `src/content/**/*.mdx`, YAML, JSON).
+- Include content files when they changed (e.g. `src/content/**/*.md`, YAML, JSON).
 - If many files changed or you are unsure which paths Prettier covers, run `pnpm run format`.
 - Do not hand-edit style to “look” formatted — run Prettier so output matches CI (`pnpm run format:check`).
 - Before handing off a non-trivial change set, confirm formatting with `pnpm run format:check`.

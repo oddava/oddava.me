@@ -13,6 +13,7 @@ import { createLocalContentProvider } from '../src/lib/server/content/local-prov
 import { handleContentMedia } from '../src/lib/server/content/media';
 import {
   assertSafeRepositoryPath,
+  matchesExtension,
   normalizeFolderPath,
   sanitizeFilename,
   slugify,
@@ -65,13 +66,11 @@ class MemoryContentProvider implements ContentProvider {
     }
   }
 
-  async listFiles(directory: string, extension?: string) {
+  async listFiles(directory: string, extension?: string | readonly string[]) {
     const prefix = `${directory}/`;
-    const suffix = extension ? `.${extension}` : '';
     return [...this.files.values()].filter(
       (file) =>
-        file.path.startsWith(prefix) &&
-        (!extension || file.path.endsWith(suffix)),
+        file.path.startsWith(prefix) && matchesExtension(file.path, extension),
     );
   }
 
@@ -310,7 +309,7 @@ describe('content HTTP handlers', () => {
   it('creates, moves, duplicates, and protects non-empty folder trees', async () => {
     const provider = new MemoryContentProvider();
     await provider.writeTextFile(
-      'src/content/notes/index.mdx',
+      'src/content/notes/index.md',
       '# notes',
       'seed',
     );
@@ -322,7 +321,7 @@ describe('content HTTP handlers', () => {
       }),
     );
     expect(createFolder.status).toBe(201);
-    expect(provider.files.has('src/content/notes/reading.mdx')).toBe(true);
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(true);
 
     await handleContentCollection(
       provider,
@@ -347,10 +346,8 @@ describe('content HTTP handlers', () => {
       ),
     );
     expect(moved.status).toBe(200);
-    expect(provider.files.has('src/content/notes/library/books.mdx')).toBe(
-      true,
-    );
-    expect(provider.files.has('src/content/notes/library.mdx')).toBe(true);
+    expect(provider.files.has('src/content/notes/library/books.md')).toBe(true);
+    expect(provider.files.has('src/content/notes/library.md')).toBe(true);
 
     const duplicate = await handleContentFolders(
       provider,
@@ -380,12 +377,12 @@ describe('content HTTP handlers', () => {
     const provider = new MemoryContentProvider();
     await provider.createDirectory('src/content/notes/source', 'mkdir');
     await provider.writeTextFile(
-      'src/content/notes/source.mdx',
+      'src/content/notes/source.md',
       '# source',
       'seed page',
     );
     await provider.writeTextFile(
-      'src/content/notes/source/child.mdx',
+      'src/content/notes/source/child.md',
       '# child',
       'seed child',
     );
@@ -414,7 +411,7 @@ describe('content HTTP handlers', () => {
     expect(
       [...provider.files].filter(
         ([path]) =>
-          path === 'src/content/notes/source-copy.mdx' ||
+          path === 'src/content/notes/source-copy.md' ||
           path.startsWith('src/content/notes/source-copy/'),
       ),
     ).toEqual([]);
@@ -428,7 +425,7 @@ describe('content HTTP handlers', () => {
   it('does not create a folder whose page would duplicate a note id', async () => {
     const provider = new MemoryContentProvider();
     await provider.writeTextFile(
-      'src/content/notes/elsewhere/shared.mdx',
+      'src/content/notes/elsewhere/shared.md',
       '# shared',
       'seed',
     );
@@ -452,7 +449,7 @@ describe('content HTTP handlers', () => {
     const provider = new MemoryContentProvider();
     for (const slug of ['index', 'alpha', 'beta']) {
       await provider.writeTextFile(
-        `src/content/notes/${slug}.mdx`,
+        `src/content/notes/${slug}.md`,
         `# ${slug}`,
         'seed',
       );
@@ -468,7 +465,7 @@ describe('content HTTP handlers', () => {
     expect(reordered.status).toBe(200);
 
     await provider.createDirectory('src/content/notes/archive', 'mkdir');
-    const alpha = provider.files.get('src/content/notes/alpha.mdx');
+    const alpha = provider.files.get('src/content/notes/alpha.md');
     expect(alpha).toBeDefined();
     const moved = await handleContentMove(
       provider,
@@ -522,6 +519,107 @@ describe('content HTTP handlers', () => {
   });
 });
 
+// The live store still holds `.mdx` keys written before notes moved to `.md`,
+// and will until notes:migrate runs against it. Studio has to keep working
+// across that gap, in either order.
+describe('a content store still holding legacy .mdx notes', () => {
+  async function storeWithLegacyNotes() {
+    const provider = new MemoryContentProvider();
+    await provider.writeTextFile(
+      'src/content/notes/index.mdx',
+      '# notes',
+      'seed root',
+    );
+    await provider.writeTextFile(
+      'src/content/notes/reading.mdx',
+      '# reading',
+      'seed folder page',
+    );
+    await provider.writeTextFile(
+      'src/content/notes/reading/books.mdx',
+      '# books',
+      'seed note',
+    );
+    return provider;
+  }
+
+  it('lists legacy notes rather than reporting an empty collection', async () => {
+    const listed = await handleContentCollection(
+      await storeWithLegacyNotes(),
+      'notes',
+      new Request('https://oddava.me/api/admin/content/notes'),
+    );
+    expect(listed.status).toBe(200);
+    const body = await payload<{ entries: { id: string }[] }>(listed);
+    expect(body.entries.map((entry) => entry.id).toSorted()).toEqual([
+      'books',
+      'index',
+      'reading',
+    ]);
+  });
+
+  it('reads a legacy note by its id, extension and all', async () => {
+    const read = await handleContentEntry(
+      await storeWithLegacyNotes(),
+      'notes',
+      'books',
+      new Request('https://oddava.me/api/admin/content/notes/books'),
+    );
+    expect(read.status).toBe(200);
+    await expect(read.json()).resolves.toMatchObject({
+      entry: { id: 'books', body: '# books' },
+    });
+  });
+
+  it('refuses to delete the root note even when it is index.mdx', async () => {
+    // The root guard compared against a hardcoded `index.mdx`. Were it to
+    // compare against only the canonical `.md`, a legacy root would become
+    // deletable — the one file the garden cannot survive losing.
+    const deleted = await handleContentEntry(
+      await storeWithLegacyNotes(),
+      'notes',
+      'index',
+      jsonRequest('DELETE', 'https://oddava.me/api/admin/content/notes/index', {
+        revision: 'r1',
+      }),
+    );
+    expect(deleted.status).toBe(400);
+  });
+
+  it('does not duplicate a legacy folder page when creating the folder', async () => {
+    const provider = await storeWithLegacyNotes();
+    const created = await handleContentFolders(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/folders', {
+        path: 'reading',
+      }),
+    );
+    expect(created.status).toBe(409);
+
+    // Two pages for one folder would collapse to one note id and throw
+    // "Duplicate note id" when the garden index next rebuilt.
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(false);
+    expect(provider.files.has('src/content/notes/reading.mdx')).toBe(true);
+  });
+
+  it('renames a legacy folder page onto the canonical extension', async () => {
+    const provider = await storeWithLegacyNotes();
+    const renamed = await handleContentFolders(
+      provider,
+      'notes',
+      jsonRequest(
+        'PATCH',
+        'https://oddava.me/api/admin/content/notes/folders',
+        { path: 'reading', nextPath: 'library' },
+      ),
+    );
+    expect(renamed.status).toBe(200);
+    expect(provider.files.has('src/content/notes/library.md')).toBe(true);
+    expect(provider.files.has('src/content/notes/reading.mdx')).toBe(false);
+  });
+});
+
 describe('local content provider', () => {
   it('confines writes to the repository and rejects stale revisions', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'oddava-content-'));
@@ -529,14 +627,14 @@ describe('local content provider', () => {
     const provider = createLocalContentProvider(root);
 
     const created = await provider.writeTextFile(
-      'src/content/notes/hello.mdx',
+      'src/content/notes/hello.md',
       '# hello',
       'create',
     );
     expect(created.revision).toHaveLength(64);
     await expect(
       provider.writeTextFile(
-        'src/content/notes/hello.mdx',
+        'src/content/notes/hello.md',
         '# changed',
         'update',
         created.revision,
@@ -544,30 +642,30 @@ describe('local content provider', () => {
     ).resolves.toMatchObject({ revision: expect.any(String) });
     await expect(
       provider.writeTextFile(
-        'src/content/notes/hello.mdx',
+        'src/content/notes/hello.md',
         '# stale',
         'update',
         created.revision,
       ),
     ).rejects.toMatchObject({ code: 'revision_conflict' });
     await expect(
-      provider.writeTextFile('../outside.mdx', '# no', 'escape'),
+      provider.writeTextFile('../outside.md', '# no', 'escape'),
     ).rejects.toThrow('Unsafe content path');
 
     const concurrent = await provider.writeTextFile(
-      'src/content/notes/concurrent.mdx',
+      'src/content/notes/concurrent.md',
       '# original',
       'create',
     );
     const writes = await Promise.allSettled([
       provider.writeTextFile(
-        'src/content/notes/concurrent.mdx',
+        'src/content/notes/concurrent.md',
         '# first',
         'update',
         concurrent.revision,
       ),
       provider.writeTextFile(
-        'src/content/notes/concurrent.mdx',
+        'src/content/notes/concurrent.md',
         '# second',
         'update',
         concurrent.revision,
@@ -632,7 +730,7 @@ describe('local content provider', () => {
 
     await expect(
       provider.writeTextFile(
-        'src/content/notes/linked/escape.mdx',
+        'src/content/notes/linked/escape.md',
         '# no',
         'escape',
       ),

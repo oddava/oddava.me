@@ -20,6 +20,8 @@ import {
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_ROOTS = ['src/content/notes', 'public/images/notes'];
 const MEDIA_EXTENSIONS = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
+// Export mirrors the store, which may still hold legacy `.mdx` keys.
+const NOTE_EXTENSIONS = new Set(['.md', '.mdx']);
 const arguments_ = process.argv.slice(2);
 const dryRun = arguments_.includes('--dry-run');
 const keepRemoved = arguments_.includes('--keep-removed');
@@ -30,7 +32,7 @@ const targetArgument = arguments_
 function managedPath(path) {
   const extension = extname(path).toLowerCase();
   return (
-    (path.startsWith('src/content/notes/') && extension === '.mdx') ||
+    (path.startsWith('src/content/notes/') && NOTE_EXTENSIONS.has(extension)) ||
     (path.startsWith('public/images/notes/') && MEDIA_EXTENSIONS.has(extension))
   );
 }
