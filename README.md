@@ -21,10 +21,9 @@ pnpm run dev
 ```
 
 Fill in `ADMIN_PANEL_TOKEN` and `COMMUNITY_SIGNING_SECRET` before using `/admin`.
-With `CONTENT_WRITE_MODE=local`, `/admin/studio` edits `src/content/notes`
-through an authenticated loopback service. Set it to `redis` to exercise the
-production content path against `LOCAL_REDIS_URL`; public note routes read the
-same store and update immediately.
+Notes live in Redis in every environment, so development needs a store reachable
+at `LOCAL_REDIS_URL` — there is no file-based fallback. `/admin/studio` writes
+that store and public note routes read it, so a save is live immediately.
 
 The two local bridges listen only on loopback:
 

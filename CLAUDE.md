@@ -62,21 +62,28 @@ Notes live in a Redis virtual filesystem. Studio (`/admin/studio`) autosaves
 there, and public note and note-media routes read the same store, so a save is
 live with no commit, push, or deploy. Consequences:
 
-- Never gate Studio on `import.meta.env.DEV`, `CONTENT_WRITE_MODE=local`, or the
-  local filesystem proxy. Production may 503 only when its content store is
-  genuinely unconfigured.
-- `CONTENT_WRITE_MODE=local` plus `vite/local-content-admin-dev-proxy.mjs` is a
-  development-only repository-authoring path. It supplements the Redis provider
-  and must not replace or disable it.
+- Never gate Studio on `import.meta.env.DEV`. Production may 503 only when its
+  content store is genuinely unconfigured.
+- There is exactly one read path and one write path, and both are Redis, in
+  every environment. Dev requires a reachable store; there is no file-based
+  fallback. A local-file mode existed and was deleted — it gave dev a different
+  source _and_ a different consistency model (it skipped the stable-snapshot
+  barrier), so the code that served every visitor was the code least exercised
+  before deploy. Do not reintroduce a local content provider, a mode switch, or
+  a loopback content proxy.
 - The Redis content provider, runtime note rendering, Redis media route, and
   real-Redis coverage are load-bearing — they are not dead code.
 - Preserve authenticated admin access, same-origin mutation checks,
   revision-based compare-and-set, atomic Redis mutations, and cross-isolate
   content-version invalidation.
-- Sync between `src/content/**` and Redis is `pnpm run notes:migrate` /
-  `pnpm run notes:export`, with `-- --target=prod` for production.
+- `src/content/notes` is an export artifact, not a source: nothing reads it at
+  runtime or at build time. `pnpm run notes:export` writes it (git-diffable
+  backup), `pnpm run notes:migrate` imports it back (seed/restore), with
+  `-- --target=prod` for production. That round trip is the only durability
+  story — keep both scripts working.
 
-Note identity comes from its path under `src/content/notes`; an `index.md` at
+Note identity comes from a note's path within the collection — the shape of its
+Redis key, which export mirrors into `src/content/notes`; an `index.md` at
 the collection root is required. `src/lib/garden` builds hierarchy, backlinks,
 tags, search, and graph layout from the live store. `/garden/*` routes are legacy
 301 redirects to `/notes/*`.
@@ -90,9 +97,9 @@ and that compatibility is what keeps the garden readable — dropping `.mdx` fro
 `readExtensions` first would match zero notes and 503 the whole site. The import
 prunes legacy keys, so running it is the migration.
 
-Astro's Vite watcher deliberately ignores `src/content/notes` — an autosave would
-otherwise full-reload and wipe the editor mid-sentence. Hand-edited note files
-won't hot-refresh public pages until the dev server restarts.
+Astro's Vite watcher deliberately ignores `src/content/notes`: only
+`notes:export` writes that tree, in bulk, and nothing renders from it — so
+watching it would mean a full reload per file for no change on screen.
 
 ### Integrations are a registry, not special cases
 
