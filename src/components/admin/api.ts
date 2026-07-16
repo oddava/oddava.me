@@ -42,10 +42,42 @@ function withJsonAccept(init: RequestInit = {}): RequestInit {
   return { ...init, headers };
 }
 
+/**
+ * `fetch` rejects with DOMExceptions and TypeErrors whose messages are written
+ * for a console rather than an operator — an expired `AbortSignal.timeout`
+ * surfaces as the literal string "signal timed out". Normalizing every
+ * rejection into an `AdminApiError` here is what keeps a caller's error state
+ * from rendering a browser internal as if it were advice.
+ */
+async function sendRequest(
+  input: RequestInfo,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      throw new AdminApiError(
+        'The admin API did not respond in time. It may still be starting up, or its data store may be unreachable.',
+        'timeout',
+      );
+    }
+    // An explicit abort is a caller unmounting or superseding this request, not
+    // a fault worth describing as one.
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new AdminApiError('The request was cancelled.', 'aborted');
+    }
+    throw new AdminApiError(
+      'Could not reach the admin API. Check that the server is running and reachable.',
+      'network',
+    );
+  }
+}
+
 async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const requestInit = withJsonAccept(init);
   requestInit.signal ??= AbortSignal.timeout(ADMIN_REQUEST_TIMEOUT_MS);
-  const response = await fetch(input, requestInit);
+  const response = await sendRequest(input, requestInit);
   let payload: T & {
     error?: string;
     code?: string;
@@ -55,7 +87,12 @@ async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   try {
     payload = await response.json();
   } catch {
-    throw new AdminApiError('Admin API returned an invalid JSON response.');
+    // A crashed route answers with an HTML error page, so the status is the
+    // only part of the response that still carries a diagnosis.
+    throw new AdminApiError(
+      `Admin API returned an invalid response (HTTP ${response.status}).`,
+      'invalid_response',
+    );
   }
 
   if (!response.ok) {
