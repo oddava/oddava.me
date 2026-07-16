@@ -1,18 +1,12 @@
 ---
-export const prerender = true;
-
-import { getCollection } from 'astro:content';
-import { uniqueNoteLeafRedirects } from '@lib/garden';
+import { findNoteLeafRedirect, getGardenIndexOrUnavailable } from '@lib/garden';
 
 // Old /blog/<slug> links redirect into the notes garden, keyed off each note's
-// file name.
-export async function getStaticPaths() {
-  const notes = await getCollection('notes');
-  return uniqueNoteLeafRedirects(notes).map(({ slug, redirectTo }) => ({
-    params: { slug },
-    props: { redirectTo },
-  }));
-}
+// file name. See garden/[slug].astro for why this is not prerendered.
+const garden = await getGardenIndexOrUnavailable();
+if (!garden.ok) return garden.response;
 
-return Astro.redirect(Astro.props.redirectTo, 301);
+const redirectTo = findNoteLeafRedirect(garden.index, Astro.params.slug ?? '');
+if (!redirectTo) return Astro.rewrite('/404');
+return Astro.redirect(redirectTo, 301);
 ---

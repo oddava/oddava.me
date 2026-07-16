@@ -1,18 +1,13 @@
 ---
-export const prerender = true;
+import { findNoteLeafRedirect, getGardenIndexOrUnavailable } from '@lib/garden';
 
-import { getCollection } from 'astro:content';
-import { uniqueNoteLeafRedirects } from '@lib/garden';
+// Old /garden/<slug> links live on as redirects into the notes garden, keyed
+// off each note's file name. Server-rendered rather than prerendered so the map
+// follows the live content store instead of the last deploy.
+const garden = await getGardenIndexOrUnavailable();
+if (!garden.ok) return garden.response;
 
-// Old /garden/<slug> links live on as redirects into the notes garden. The map
-// is built straight from where each note sits on disk — no aliases to maintain.
-export async function getStaticPaths() {
-  const notes = await getCollection('notes');
-  return uniqueNoteLeafRedirects(notes).map(({ slug, redirectTo }) => ({
-    params: { slug },
-    props: { redirectTo },
-  }));
-}
-
-return Astro.redirect(Astro.props.redirectTo, 301);
+const redirectTo = findNoteLeafRedirect(garden.index, Astro.params.slug ?? '');
+if (!redirectTo) return Astro.rewrite('/404');
+return Astro.redirect(redirectTo, 301);
 ---
