@@ -240,7 +240,6 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   }, [layout, paths, placeById]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [revealedId, setRevealedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState(layout.rootPlaceId);
   const [journeyKey, setJourneyKey] = useState<string | null>(null);
@@ -256,7 +255,6 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   const [lingeringPlace, setLingeringPlace] =
     useState<PositionedPlace<KnowledgePlace> | null>(null);
 
-  const rootRef = useRef<HTMLElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const worldRef = useRef<SVGGElement>(null);
@@ -267,10 +265,8 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   const overviewRef = useRef(initialCamera);
   const cameraRef = useRef(initialCamera);
   const targetCameraRef = useRef(initialCamera);
-  const velocityRef = useRef({ x: 0, y: 0, scale: 0 });
   const frameRef = useRef<number | null>(null);
   const previousFrameRef = useRef(0);
-  const pendingRevealRef = useRef<string | null>(null);
   const reducedMotionRef = useRef(false);
   const zoomLevelRef = useRef<ZoomLevel>('world');
   const gestureRef = useRef<Gesture | null>(null);
@@ -280,10 +276,9 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
 
   const activeId = hoveredId ?? selectedId;
   const selectedPlace = selectedId ? placeById.get(selectedId) : undefined;
-  const revealedPlace = revealedId ? placeById.get(revealedId) : undefined;
   const normalizedQuery = query.trim().toLowerCase();
-  const cardOpen = Boolean(revealedPlace && revealedId === selectedId);
-  const cardPlace = cardOpen ? revealedPlace : lingeringPlace;
+  const cardOpen = Boolean(selectedPlace);
+  const cardPlace = cardOpen ? selectedPlace : lingeringPlace;
 
   const results = useMemo(
     () =>
@@ -485,8 +480,8 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   useEffect(() => setSearchIndex(0), [normalizedQuery]);
 
   useEffect(() => {
-    if (cardOpen && revealedPlace) {
-      setLingeringPlace(revealedPlace);
+    if (cardOpen && selectedPlace) {
+      setLingeringPlace(selectedPlace);
       return;
     }
     if (!lingeringPlace) return;
@@ -495,7 +490,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       CARD_EXIT_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [cardOpen, lingeringPlace, revealedPlace]);
+  }, [cardOpen, lingeringPlace, selectedPlace]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -520,9 +515,9 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       }
       if (selectedId) {
         const place = placeById.get(selectedId);
-        if (place) travelCamera(cameraTargetForPlace(place), null);
+        if (place) travelCamera(cameraTargetForPlace(place));
       } else {
-        travelCamera(overview, null);
+        travelCamera(overview);
       }
     });
     observer.observe(viewport);
@@ -550,9 +545,6 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   }
 
   function finishTravel(): void {
-    const revealId = pendingRevealRef.current;
-    pendingRevealRef.current = null;
-    if (revealId) setRevealedId(revealId);
     setJourneyKey(null);
   }
 
@@ -593,18 +585,16 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
     frameRef.current = requestAnimationFrame(tick);
   }
 
-  function travelCamera(camera: Camera, revealId: string | null): void {
+  function travelCamera(camera: Camera): void {
     const minimum = Math.max(overviewRef.current.scale * 0.56, 0.16);
     const target = {
       ...camera,
       scale: clamp(camera.scale, minimum, MAX_SCALE),
     };
     targetCameraRef.current = target;
-    pendingRevealRef.current = revealId;
     if (reducedMotionRef.current) {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
-      velocityRef.current = { x: 0, y: 0, scale: 0 };
       commitCamera(target);
       finishTravel();
       return;
@@ -615,7 +605,6 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   function setCameraImmediate(camera: Camera): void {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
-    velocityRef.current = { x: 0, y: 0, scale: 0 };
     targetCameraRef.current = camera;
     commitCamera(camera);
   }
@@ -663,27 +652,22 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       setJourneyKey([selectedId, id].toSorted().join('::'));
     }
     setSelectedId(id);
-    // Reveal the details in the same click that starts the zoom, rather than
-    // waiting for the camera to arrive (which read as needing a second click).
-    setRevealedId(id);
     setHoveredId(null);
     setFocusedId(id);
     setHintVisible(false);
-    travelCamera(cameraTargetForPlace(place), null);
+    travelCamera(cameraTargetForPlace(place));
     if (pushHistory) updateHistory(id, true);
   }
 
   function closeSelection(updateUrl = true): void {
     setSelectedId(null);
-    setRevealedId(null);
     setJourneyKey(null);
-    pendingRevealRef.current = null;
     if (updateUrl && typeof window !== 'undefined') updateHistory(null, false);
   }
 
   function resetWorld(): void {
     closeSelection(true);
-    travelCamera(overviewRef.current, null);
+    travelCamera(overviewRef.current);
   }
 
   function pointFromClient(
@@ -712,14 +696,11 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
     const scale = clamp(target.scale * factor, minimum, MAX_SCALE);
     const worldX = (anchor.x - target.x) / target.scale;
     const worldY = (anchor.y - target.y) / target.scale;
-    travelCamera(
-      {
-        x: anchor.x - worldX * scale,
-        y: anchor.y - worldY * scale,
-        scale,
-      },
-      null,
-    );
+    travelCamera({
+      x: anchor.x - worldX * scale,
+      y: anchor.y - worldY * scale,
+      scale,
+    });
   }
 
   function rebaseGesture(gesture: Gesture): void {
@@ -840,14 +821,11 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       closeSelection(true);
     } else if (!gesture.hadPinch) {
       const camera = cameraRef.current;
-      travelCamera(
-        {
-          ...camera,
-          x: camera.x + gesture.velocityX * 165,
-          y: camera.y + gesture.velocityY * 165,
-        },
-        null,
-      );
+      travelCamera({
+        ...camera,
+        x: camera.x + gesture.velocityX * 165,
+        y: camera.y + gesture.velocityY * 165,
+      });
     }
     gestureRef.current = null;
     setIsPanning(false);
@@ -936,8 +914,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
 
   return (
     <section
-      ref={rootRef}
-      className={`knowledge-landscape${revealedPlace ? ' has-place' : ''}`}
+      className={`knowledge-landscape${selectedPlace ? ' has-place' : ''}`}
       data-zoom={zoomLevel}
       data-density={density}
       data-focus={focus}
@@ -1433,8 +1410,8 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       )}
 
       <p className="knowledge-landscape__sr-status" aria-live="polite">
-        {revealedPlace
-          ? `${revealedPlace.title} selected.`
+        {selectedPlace
+          ? `${selectedPlace.title} selected.`
           : 'Exploring the notes landscape.'}
       </p>
     </section>
