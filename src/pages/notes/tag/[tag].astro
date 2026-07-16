@@ -12,7 +12,12 @@ const tag = Astro.params.tag ?? '';
 const notes = index.documents.filter((note) => getNoteTags(note).includes(tag));
 ---
 
-<Base title={'#' + tag} description={'Notes connected to #' + tag + '.'} wide>
+<Base
+  title={'#' + tag}
+  description={'Notes connected to #' + tag + '.'}
+  wide
+  hideHeader
+>
   <div class="garden-page">
     <div class="garden-index garden-index--topic">
       <header class="garden-topic-header">
