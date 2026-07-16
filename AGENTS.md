@@ -119,17 +119,25 @@ Lowercase subject, imperative mood, optional scope in parentheses.
 - **Integrations** are a registry, not a set of special cases. Each third-party
   connection (Spotify, Lanyard, Turnstile) is one `IntegrationDefinition` under
   `src/lib/server/integrations/providers/`, listed in `registry.ts`. The
-  definition declares its credential fields (with validators and env fallbacks)
-  and a `check()`; everything else — the Redis credential store, enable/disable,
-  status, the `/api/admin/integrations` routes and the admin UI — is generic and
-  needs no changes to add a provider.
-  - Credentials resolve _override (Redis) → env → unconfigured_, so a key can be
-    rotated from the admin panel without a redeploy. They are write-only over
-    the API: responses carry provenance, never secret material.
+  definition declares its credential fields (env vars, in priority order) and a
+  `check()`; everything else — enable/disable, status, the
+  `/api/admin/integrations` routes and the admin UI — is generic and needs no
+  changes to add a provider.
+  - Credentials are **deployment state: `env.ts` only**, resolved synchronously,
+    with no runtime store and no write path. Rotating one means setting a
+    Cloudflare secret and pushing, which redeploys anyway. The Redis override
+    layer that once avoided that redeploy bought nothing and put a storage read
+    on every public request needing a credential. Do not rebuild it: no
+    credential store, no credential API, no credentials form.
+  - Enable/disable **is** Redis-backed and stays so — a kill switch that needs a
+    deploy is not a kill switch. It costs one `MGET`, the only storage read on
+    the public path, and `tests/now-playing-hot-path.test.ts` pins it there.
   - `http.ts` centralizes timeouts, bounded retries with jittered backoff, and
     `Retry-After` handling; `errors.ts` gives every provider one error
-    vocabulary. Repeated failures open a circuit breaker in `status.ts` that is
-    shared by the admin panel and the request path.
+    vocabulary. Retry rate is bounded by the check and response caches. Provider
+    health is deliberately not tracked: a module-level `Map` cannot be shared
+    across per-colo ephemeral isolates, so anything claiming to be a shared
+    health view must live in storage or not exist.
   - **Now-playing** (`src/lib/server/now-playing/`) composes the Spotify and
     Lanyard integrations — it is a _consumer_ of the registry, not part of it.
 - **Redis transports:** Cloudflare Workers use the Upstash REST API in

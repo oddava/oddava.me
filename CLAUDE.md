@@ -98,18 +98,35 @@ won't hot-refresh public pages until the dev server restarts.
 
 Each third-party connection (Spotify, Lanyard, Turnstile) is one
 `IntegrationDefinition` under `src/lib/server/integrations/providers/`, listed in
-`registry.ts`, declaring its credential fields (validators + env fallbacks) and a
-bounded `check()`. The credential store, enable/disable, status, the
-`/api/admin/integrations` routes, and the admin UI are all generic. Adding a
-provider means a definition, a registry entry, and tests — never provider-specific
-routes, forms, Redis keys, or status components.
+`registry.ts`, declaring its credential fields (env vars, in priority order) and
+a bounded `check()`. Enable/disable, status, the `/api/admin/integrations`
+routes, and the admin UI are all generic. Adding a provider means a definition, a
+registry entry, and tests — never provider-specific routes, forms, Redis keys, or
+status components.
 
-Credentials resolve _Redis override → env → unconfigured_, so keys rotate from
-the admin panel without a redeploy. They are write-only at the API boundary:
-responses carry provenance and timestamps, never secret material. `http.ts` owns
-timeouts, bounded retries with jittered backoff, and `Retry-After`; `errors.ts`
-gives one error vocabulary; repeated failures open a circuit breaker in
-`status.ts` shared by the admin panel and the request path.
+**Credentials are deployment state and resolve from `env.ts` only** — no runtime
+store, no admin write path, synchronously. Rotating one means setting a
+Cloudflare secret and pushing, which redeploys anyway. A Redis override layer
+existed to avoid that redeploy; it bought nothing (a push already deploys; the
+one provider it could not help was Turnstile, whose site key ships in client
+HTML) and cost a Redis read on every public request that needed a credential.
+**Do not reintroduce a runtime credential store, a credential write API, or a
+credentials form.** `tests/now-playing-hot-path.test.ts` pins the cost of an
+uncached `/api/spotify` read at exactly one Redis round trip.
+
+Enable/disable _is_ Redis-backed and stays that way: an operator switching a
+provider off mid-incident should not wait for a deploy. That one `MGET` is the
+only storage read on the public path, and it is skipped entirely when nothing is
+configured.
+
+Provider health is not tracked. `http.ts` owns timeouts, bounded retries with
+jittered backoff, and `Retry-After`; `errors.ts` gives one error vocabulary; the
+30s check cache in `status.ts` and the 8–12s response cache in `now-playing`
+bound how often a failing provider is retried. A circuit breaker used to keep
+failure counts in a module-level `Map` and claim the admin panel and the widget
+shared one view of health — **per-colo ephemeral isolates make that false**, so
+any "shared health" mechanism must live in storage or not exist. It does not
+exist.
 
 ### Redis transports differ per environment
 

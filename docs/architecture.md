@@ -103,20 +103,26 @@ atomic renames to enforce compare-and-set semantics.
 ### Integrations
 
 Every external provider is one `IntegrationDefinition` under
-`integrations/providers`. The registry drives credential validation, status,
-enable/disable state, admin routes, and UI. Credentials are write-only at the API
-boundary and resolve as Redis override → environment fallback → unconfigured.
+`integrations/providers`. The registry drives status, enable/disable state, admin
+routes, and UI. Credentials resolve from the deployment environment only, through
+`src/lib/server/env.ts`, and are never returned to a client — the admin panel
+reports whether a field is set and which variable supplies it.
 
-Provider calls share bounded timeouts, retry rules, normalized errors, and a
-circuit breaker. Adding a provider should require a definition and a registry
-entry, not provider-specific routes or admin components.
+Enable/disable is stored in Redis so a provider can be switched off without a
+deploy. Reading it is the single storage round trip on the public now-playing
+path; credential resolution costs none.
+
+Provider calls share bounded timeouts, retry rules, and normalized errors. Retry
+rate is bounded by the status check cache and the now-playing response cache;
+there is no failure tracking, because per-colo ephemeral isolates cannot share
+in-memory health state.
 
 ### Now playing
 
 `now-playing` chooses between usable Spotify and Lanyard providers, stabilizes
 short-lived playback changes, and owns the public response/cache contract. It
-records outcomes through the integration status service so request behavior and
-the admin health view agree.
+asks the status service for both providers' availability in one call, so the
+endpoint every open tab polls makes at most one storage read.
 
 ## Persistence
 
