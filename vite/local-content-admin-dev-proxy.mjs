@@ -6,7 +6,7 @@ import {
   closeHttpServer,
   registerDevProxyCleanup,
 } from './dev-proxy-lifecycle.mjs';
-import { firstConfiguredSecret } from './dev-secrets.mjs';
+import { firstConfiguredSecret } from '../src/lib/server/secrets.ts';
 
 const DEFAULT_PROXY_PORT = 45556;
 const MAX_REQUEST_BYTES = 6 * 1024 * 1024;

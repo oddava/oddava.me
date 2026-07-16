@@ -7,7 +7,7 @@ import {
   closeHttpServer,
   registerDevProxyCleanup,
 } from './dev-proxy-lifecycle.mjs';
-import { firstConfiguredSecret } from './dev-secrets.mjs';
+import { firstConfiguredSecret } from '../src/lib/server/secrets.ts';
 
 const DEFAULT_PROXY_PORT = 45555;
 // A Studio image can be 5 MB before base64 encoding inside a Redis record.

@@ -56,7 +56,15 @@ export function resolveTarget(environment, explicitTarget) {
   return mode === 'upstash' || mode === 'production' ? 'prod' : 'local';
 }
 
-function firstConfiguredValue(...values) {
+/**
+ * Mirrors firstConfiguredSecret in src/lib/server/secrets.ts, which owns this
+ * rule. These scripts run under bare `node` and cannot import the .ts;
+ * tests/storage-namespace.test.ts checks the two agree. Change the .ts first.
+ *
+ * It decides whether a credential is real, so drifting apart means one side
+ * accepts an example-file placeholder as a live secret.
+ */
+export function firstConfiguredSecret(...values) {
   for (const value of values) {
     if (typeof value !== 'string' || !value.trim()) continue;
     const normalized = value.trim().toLowerCase();
@@ -72,7 +80,26 @@ function firstConfiguredValue(...values) {
   return undefined;
 }
 
-function namespaceCommand(command, prefix) {
+/**
+ * The key namespace for a sync target, mirroring getStorageNamespacePrefix in
+ * src/lib/server/core/config.ts. Enforced by tests/storage-namespace.test.ts.
+ *
+ * The app decides this from APP_ENV alone; these scripts also have a target,
+ * because `--target=prod` writes production data from a developer's machine,
+ * where APP_ENV says development. So: prod is production data by definition,
+ * and a local target mirrors the app's own rule — which defaults to
+ * development unless APP_ENV explicitly says production.
+ *
+ * It used to fall back to NODE_ENV when APP_ENV was unset, which the app never
+ * does. `NODE_ENV=production notes:migrate -- --target=local` therefore wrote
+ * un-prefixed keys that the dev server, reading `dev:`, could not see.
+ */
+export function storageNamespacePrefix(target, environment) {
+  const production = target === 'prod' || environment.APP_ENV === 'production';
+  return production ? '' : 'dev:';
+}
+
+export function namespaceCommand(command, prefix) {
   const normalized = command.map(String);
   if (!prefix) return normalized;
   const operation = normalized[0]?.toUpperCase();
@@ -96,10 +123,7 @@ function namespaceCommand(command, prefix) {
 }
 
 export async function createRedisTransport(target, environment) {
-  const development = environment.APP_ENV
-    ? environment.APP_ENV !== 'production'
-    : environment.NODE_ENV !== 'production';
-  const prefix = target === 'local' && development ? 'dev:' : '';
+  const prefix = storageNamespacePrefix(target, environment);
 
   if (target === 'local') {
     const url = environment.LOCAL_REDIS_URL ?? 'redis://127.0.0.1:6379';
@@ -124,11 +148,11 @@ export async function createRedisTransport(target, environment) {
     };
   }
 
-  const url = firstConfiguredValue(
+  const url = firstConfiguredSecret(
     environment.UPSTASH_REDIS_REST_URL,
     environment.UPSTASH_REDIS_REST_KV_REST_API_URL,
   );
-  const token = firstConfiguredValue(
+  const token = firstConfiguredSecret(
     environment.UPSTASH_REDIS_REST_TOKEN,
     environment.UPSTASH_REDIS_REST_KV_REST_API_TOKEN,
   );
