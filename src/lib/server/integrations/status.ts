@@ -221,20 +221,38 @@ export function invalidateIntegrationStatus(id: IntegrationId): void {
 }
 
 /**
- * Whether an integration should be consulted right now: enabled by the operator
- * and holding every credential it requires.
+ * Whether each of these integrations should be consulted right now: enabled by
+ * the operator, and holding every credential it requires.
+ *
+ * Takes a list rather than one definition so that a caller needing several
+ * answers pays one storage round trip for all of them, not one apiece.
  *
  * This deliberately does not consider recent failures. A failing provider is
  * bounded by the caller's own response cache, and a per-isolate failure record
- * cannot describe a fleet of isolates it has no view of — it only made the
- * request path pay a storage read to answer a question it would learn from the
- * upstream anyway.
+ * cannot describe a fleet of isolates it has no view of — consulting one only
+ * made the request path pay to answer a question the upstream answers anyway.
  */
-export async function isIntegrationUsable(
-  definition: IntegrationDefinition,
-): Promise<boolean> {
-  if (!isConfigured(definition)) return false;
+export async function getIntegrationAvailability(
+  definitions: readonly IntegrationDefinition[],
+): Promise<Record<string, boolean>> {
+  // Credentials are env-resolved, so this is free. The enabled map is the only
+  // thing worth a round trip, and it covers every provider at once.
+  const configured = definitions.map(
+    (definition) => [definition, isConfigured(definition)] as const,
+  );
+
+  if (!configured.some(([, isSet]) => isSet)) {
+    return Object.fromEntries(
+      definitions.map((definition) => [definition.id, false]),
+    );
+  }
 
   const enabledMap = await getEnabledMap(INTEGRATIONS);
-  return enabledMap[definition.id] === true;
+
+  return Object.fromEntries(
+    configured.map(([definition, isSet]) => [
+      definition.id,
+      isSet && enabledMap[definition.id] === true,
+    ]),
+  );
 }

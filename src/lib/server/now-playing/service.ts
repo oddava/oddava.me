@@ -3,7 +3,7 @@ import {
   fetchLanyardNowPlaying,
   lanyardIntegration,
   fetchSpotifyNowPlaying,
-  isIntegrationUsable,
+  getIntegrationAvailability,
   resolveCredentials,
   spotifyIntegration,
   type IntegrationDefinition,
@@ -40,13 +40,20 @@ async function readProvider(
   }
 }
 
+/**
+ * Both providers' availability in one storage read — the only one this endpoint
+ * makes. Asking per provider would double it for no new information.
+ */
 async function resolveAvailability(): Promise<SpotifyIntegrations> {
-  const [spotify, lanyard] = await Promise.all([
-    isIntegrationUsable(spotifyIntegration),
-    isIntegrationUsable(lanyardIntegration),
+  const availability = await getIntegrationAvailability([
+    spotifyIntegration,
+    lanyardIntegration,
   ]);
 
-  return { spotify, lanyard };
+  return {
+    spotify: availability[spotifyIntegration.id] === true,
+    lanyard: availability[lanyardIntegration.id] === true,
+  };
 }
 
 /**

@@ -8,7 +8,7 @@ export {
   fetchSpotifyNowPlaying,
   spotifyIntegration,
 } from './integrations/providers/spotify';
-export { isIntegrationUsable } from './integrations/status';
+export { getIntegrationAvailability } from './integrations/status';
 export {
   IntegrationNotManageableError,
   UnknownIntegrationError,

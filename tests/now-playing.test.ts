@@ -38,11 +38,13 @@ async function loadService(options: Options = {}) {
     lanyardIntegration: { id: 'lanyard', name: 'Lanyard' },
   }));
   vi.doMock('../src/lib/server/integrations/status', () => ({
-    isIntegrationUsable: async (definition: { id: string }) =>
-      definition.id === 'spotify' ? spotifyUsable : lanyardUsable,
+    getIntegrationAvailability: async () => ({
+      spotify: spotifyUsable,
+      lanyard: lanyardUsable,
+    }),
   }));
   vi.doMock('../src/lib/server/integrations/store', () => ({
-    resolveCredentials: async () => ({}),
+    resolveCredentials: () => ({}),
   }));
 
   const { getNowPlaying } =
@@ -121,7 +123,7 @@ describe('now playing composition', () => {
     expect(state.error).toBeUndefined();
   });
 
-  it('skips a provider the circuit breaker has taken out of service', async () => {
+  it('skips a provider that is switched off or unconfigured', async () => {
     const { getNowPlaying, fetchSpotifyNowPlaying } = await loadService({
       spotifyUsable: false,
       lanyard: async () => ({ ...PLAYING, fromFallback: true }),

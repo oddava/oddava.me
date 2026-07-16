@@ -42,19 +42,13 @@ function parseStoredSettings(value: unknown): StoredSettings | null {
   return { enabled };
 }
 
-async function readJsonKey(key: string): Promise<unknown | null> {
-  if (!hasRedisConfig()) return null;
-
+function parseJson(raw: string | null | undefined): unknown | null {
+  if (!raw) return null;
   try {
-    // `redisCommand` owns the request timeout. Do not race it with an
-    // independent timer: returning while the fetch is still running leaves
-    // request-bound I/O alive after the Worker request has completed.
-    const raw = await redisCommand<string | null>(['GET', key]);
-    if (!raw) return null;
     return JSON.parse(raw) as unknown;
   } catch {
-    // A corrupt or unreachable store must not throw into whatever request
-    // happened to touch it; the integration falls back to its default state.
+    // A corrupt value must not throw into whatever request happened to touch
+    // it; the integration falls back to its default state.
     return null;
   }
 }
@@ -105,37 +99,51 @@ export function isConfigured(definition: IntegrationDefinition): boolean {
     .every((field) => isConfiguredSecret(credentials[field.key]));
 }
 
-async function readSettings(): Promise<StoredSettings> {
-  const stored = parseStoredSettings(await readJsonKey(SETTINGS_KEY));
-  if (stored) return stored;
-
-  const legacyValue = await readJsonKey(LEGACY_SETTINGS_KEY);
-  const legacy = isRecord(legacyValue)
-    ? (legacyValue as {
-        integrations?: Partial<Record<string, boolean>>;
-      })
+function legacySettingsFrom(value: unknown): StoredSettings {
+  const legacy = isRecord(value)
+    ? (value as { integrations?: Partial<Record<string, boolean>> })
     : null;
 
-  if (typeof legacy?.integrations?.spotify === 'boolean') {
-    return { enabled: { spotify: legacy.integrations.spotify } };
-  }
-
-  return { enabled: {} };
+  return typeof legacy?.integrations?.spotify === 'boolean'
+    ? { enabled: { spotify: legacy.integrations.spotify } }
+    : { enabled: {} };
 }
 
-async function readEnabledOverrides(
+interface EnabledState {
+  overrides: Partial<Record<IntegrationId, boolean>>;
+  settings: StoredSettings;
+}
+
+const EMPTY_STATE: EnabledState = { overrides: {}, settings: { enabled: {} } };
+
+/**
+ * Reads every key the enabled state can come from in one round trip: the
+ * per-provider flags, the settings blob, and the pre-registry settings blob
+ * they superseded.
+ *
+ * This is the only storage read on the public request path, so it is one read.
+ * Fetching the fallbacks unconditionally trades a few bytes of response for the
+ * two extra round trips that reading them on-miss would cost — and on-miss is
+ * the common case, because a provider that was never toggled has no key.
+ */
+async function readEnabledState(
   definitions: readonly IntegrationDefinition[],
-): Promise<Partial<Record<IntegrationId, boolean>>> {
-  if (!hasRedisConfig() || definitions.length === 0) return {};
+): Promise<EnabledState> {
+  if (!hasRedisConfig() || definitions.length === 0) return EMPTY_STATE;
 
   try {
+    // `redisCommand` owns the request timeout. Do not race it with an
+    // independent timer: returning while the fetch is still running leaves
+    // request-bound I/O alive after the Worker request has completed.
     const values = await redisCommand<Array<string | null>>([
       'MGET',
       ...definitions.map((definition) => enabledKey(definition.id)),
+      SETTINGS_KEY,
+      LEGACY_SETTINGS_KEY,
     ]);
-    if (!Array.isArray(values)) return {};
+    if (!Array.isArray(values)) return EMPTY_STATE;
 
-    return Object.fromEntries(
+    const overrides = Object.fromEntries(
       definitions.flatMap((definition, index) => {
         const value = values[index];
         return value === '1' || value === '0'
@@ -143,8 +151,16 @@ async function readEnabledOverrides(
           : [];
       }),
     );
+
+    const settings =
+      parseStoredSettings(parseJson(values[definitions.length])) ??
+      legacySettingsFrom(parseJson(values[definitions.length + 1]));
+
+    return { overrides, settings };
   } catch {
-    return {};
+    // An unreachable store leaves every provider at its declared default rather
+    // than failing the request that happened to touch it.
+    return EMPTY_STATE;
   }
 }
 
@@ -152,10 +168,7 @@ async function readEnabledOverrides(
 export async function getEnabledMap(
   definitions: readonly IntegrationDefinition[],
 ): Promise<Record<IntegrationId, boolean>> {
-  const [overrides, legacySettings] = await Promise.all([
-    readEnabledOverrides(definitions),
-    readSettings(),
-  ]);
+  const { overrides, settings } = await readEnabledState(definitions);
 
   return Object.fromEntries(
     definitions.map((definition) => [
@@ -164,7 +177,7 @@ export async function getEnabledMap(
       // value must not be able to disable it.
       definition.manageable
         ? (overrides[definition.id] ??
-          legacySettings.enabled[definition.id] ??
+          settings.enabled[definition.id] ??
           definition.enabledByDefault)
         : true,
     ]),
