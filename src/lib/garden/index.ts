@@ -1,4 +1,3 @@
-import { getCollection } from 'astro:content';
 import { z } from 'astro/zod';
 
 import { noteDataSchema } from '../content/schemas';
@@ -6,7 +5,6 @@ import {
   parseContentDocument,
   readRedisNoteFiles,
   readStableContentVersion,
-  usesLocalContentFiles,
 } from '../server/content';
 import {
   buildWikiLinkHrefLookup,
@@ -215,15 +213,6 @@ function buildHierarchy(entries: NoteSource[]): {
 }
 
 async function loadNoteSources(): Promise<NoteSource[]> {
-  if (usesLocalContentFiles()) {
-    return (await getCollection('notes')).map((entry) => ({
-      id: entry.id,
-      data: entry.data,
-      body: entry.body ?? '',
-      updatedAt: entry.data.updated ?? '1970-01-01T00:00:00.000Z',
-    }));
-  }
-
   return (await readRedisNoteFiles()).map((file) => {
     const document = parseContentDocument(file.content);
     return {
@@ -348,9 +337,7 @@ function waitForStableContent(): Promise<void> {
 }
 
 export async function getGardenIndex(): Promise<GardenIndex> {
-  if (usesLocalContentFiles()) return buildGardenIndex();
-
-  // A Redis-backed index must be built from one stable snapshot. The mutation
+  // The index must be built from one stable snapshot. The mutation
   // lock covers compound Studio operations; checking the version again after
   // the build also catches a write that began between the first check and the
   // file reads. Only plain data is cached globally—never request-bound I/O.
