@@ -21,7 +21,11 @@ plus the constraints that are easy to violate.
 | `pnpm run verify`                                                                | format:check → check → test → build               |
 
 CI runs `format:check`, `check`, the full suite with `RUN_REDIS_INTEGRATION=1`,
-`build`, and `audit`; a push to `main` deploys via Wrangler only after all pass.
+`build`, and an osv-scanner dependency audit; a push to `main` deploys via
+Wrangler only after all pass. There is no `pnpm run audit`: npm retired the
+endpoint `pnpm audit` calls, so it 410s on every pnpm version — CI scans
+`pnpm-lock.yaml` with osv-scanner instead. Do not "fix" a failing audit with
+`--ignore-registry-errors`; it passes by ignoring the 410 and checks nothing.
 
 After editing files, format them before finishing:
 `pnpm exec prettier --write <changed-files...>` (whole-repo `pnpm run format` if
@@ -140,8 +144,8 @@ exist.
 Upstash REST API in production; direct Redis client in Node tests; and in the
 workerd dev server, the token-authenticated loopback bridge in
 `vite/local-redis-dev-proxy.mjs` (workerd cannot load the Node Redis client).
-Bridges bind to `127.0.0.1`, accept only bounded JSON command arrays, and never
-take a caller-controlled upstream. All keys are namespaced by environment;
+The bridge binds to `127.0.0.1`, accepts only bounded JSON command arrays, and
+never takes a caller-controlled upstream. All keys are namespaced by environment;
 multi-key operations use Lua.
 
 ### Security

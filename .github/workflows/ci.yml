@@ -42,7 +42,16 @@ jobs:
         env:
           RUN_REDIS_INTEGRATION: '1'
       - run: pnpm run build
-      - run: pnpm run audit
+      # Not `pnpm audit`: it calls npm's quick-audit endpoint, which npm retired
+      # and now answers 410 on every request. Every pnpm version does this, so
+      # there is no release to upgrade to. `--ignore-registry-errors` would turn
+      # this green by treating that 410 as a pass, which is a gate that audits
+      # nothing. osv-scanner reads pnpm-lock.yaml against the OSV database and
+      # still fails the build on a real vulnerability.
+      - uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --lockfile=./pnpm-lock.yaml
       - run: pnpm exec wrangler deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:

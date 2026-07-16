@@ -68,12 +68,19 @@ Run the focused test while iterating, then finish with:
 
 ```bash
 pnpm run verify
-pnpm run audit
 ```
 
 CI runs formatting, Astro diagnostics, the full Vitest suite (including the
-real-Redis integration test), a production build, and the production dependency
-audit. A push to `main` deploys only after those checks pass.
+real-Redis integration test), a production build, and a dependency audit. A push
+to `main` deploys only after those checks pass.
+
+The audit is `osv-scanner`, not `pnpm audit`: npm retired the quick-audit
+endpoint that `pnpm audit` calls, so it now fails with a 410 on every pnpm
+version. osv-scanner reads `pnpm-lock.yaml` against the OSV database instead.
+There is no npm wrapper for it, so there is no `pnpm run audit` — CI owns this
+check. To run it by hand, install osv-scanner from
+<https://github.com/google/osv-scanner> and run
+`osv-scanner --lockfile=./pnpm-lock.yaml`.
 
 ## Deployment
 

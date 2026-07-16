@@ -3,8 +3,8 @@
  * during `astro dev`.
  *
  * Without this, proxy sockets keep the Node event loop alive after Ctrl+C /
- * terminal close, which leaves "abandoned" listeners on 45555/45556 (and
- * sometimes the main dev port).
+ * terminal close, which leaves an "abandoned" listener on 45555 (and sometimes
+ * the main dev port).
  */
 
 /**
