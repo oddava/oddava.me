@@ -1,7 +1,7 @@
 // Notes live in the runtime store now, so the feed is generated per request
 // (edge-cached for an hour) instead of frozen at build time.
 import type { APIRoute } from 'astro';
-import { getGardenIndex } from '../lib/garden';
+import { getGardenIndexOrUnavailable } from '../lib/garden';
 import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
 
 function escapeXml(value: string): string {
@@ -17,7 +17,13 @@ export const GET: APIRoute = async () => {
   // The garden index is already sorted most-recent first and carries a derived
   // title / summary and a git-based updated date, so the feed reads straight
   // from it — no separate post metadata to keep in sync.
-  const { documents } = await getGardenIndex();
+  //
+  // Through the same guard every /notes page uses: an empty or mid-mutation
+  // store is not this route's business to distinguish, and a feed reader is
+  // owed the 503 that says "ask again" rather than a 500 that says "broken".
+  const garden = await getGardenIndexOrUnavailable();
+  if (!garden.ok) return garden.response;
+  const { documents } = garden.index;
 
   const items = documents
     .filter((document) => document.id !== 'index')
