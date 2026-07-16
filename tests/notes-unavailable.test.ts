@@ -18,20 +18,35 @@ vi.mock('../src/lib/server/content/redis-store', () => ({
 }));
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const NOTES_ROUTES = path.join(ROOT, 'src', 'pages', 'notes');
+const SRC = path.join(ROOT, 'src');
+// The module that owns both the raw builder and the guard wrapping it. It is
+// the one place allowed to name the unguarded function.
+const GARDEN_MODULE = path.join(SRC, 'lib', 'garden', 'index.ts');
 
-async function collectAstroRoutes(directory: string): Promise<string[]> {
-  const routes: string[] = [];
+const SOURCE_EXTENSIONS = ['.astro', '.ts', '.tsx'];
+
+async function collectSourceFiles(directory: string): Promise<string[]> {
+  const files: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      routes.push(...(await collectAstroRoutes(entryPath)));
-    } else if (entry.isFile() && entry.name.endsWith('.astro')) {
-      routes.push(entryPath);
+      files.push(...(await collectSourceFiles(entryPath)));
+    } else if (
+      entry.isFile() &&
+      SOURCE_EXTENSIONS.some((extension) => entry.name.endsWith(extension))
+    ) {
+      files.push(entryPath);
     }
   }
-  return routes;
+  return files;
 }
+
+/**
+ * `getGardenIndex` as a whole word. `getGardenIndexOrUnavailable` has no word
+ * boundary after the prefix, so it does not match — which is the entire
+ * distinction being enforced.
+ */
+const BARE_INDEX = /\bgetGardenIndex\b/;
 
 describe('getGardenIndexOrUnavailable', () => {
   beforeEach(() => {
@@ -89,21 +104,52 @@ describe('getGardenIndexOrUnavailable', () => {
   });
 });
 
-describe('/notes route guards', () => {
-  it('routes every /notes page through the shared guard', async () => {
-    const routes = await collectAstroRoutes(NOTES_ROUTES);
-    // Five today: index, graph, tag/[tag], folder/[...path], [...path].
-    expect(routes.length).toBeGreaterThanOrEqual(5);
+describe('garden index guard', () => {
+  /**
+   * Enforced by dependency, not by directory.
+   *
+   * The previous version of this test walked `src/pages/notes` and checked the
+   * files it found. That is a rule about a folder, and it could only ever see
+   * the routes that were already in the folder — so `rss.xml.ts`,
+   * `sitemap.xml.ts` and `api/admin/overview.ts` called the unguarded index for
+   * as long as they liked, in the same store state, and the test stayed green.
+   *
+   * The invariant is about the symbol: whoever reaches the garden index reaches
+   * it through the guard. Where the file lives is not part of it.
+   */
+  it('keeps the unguarded index private to the module that owns the guard', async () => {
+    const files = await collectSourceFiles(SRC);
 
-    const unguarded: string[] = [];
-    for (const route of routes) {
-      const source = await readFile(route, 'utf8');
-      const guarded = source.includes('getGardenIndexOrUnavailable');
-      // A bare `getGardenIndex()` call is what makes an empty garden a 500.
-      const bare = /(?<!OrUnavailable)\bgetGardenIndex\s*\(/.test(source);
-      if (!guarded || bare) unguarded.push(path.relative(ROOT, route));
+    const callers: string[] = [];
+    for (const file of files) {
+      if (file === GARDEN_MODULE) continue;
+      if (BARE_INDEX.test(await readFile(file, 'utf8'))) {
+        callers.push(path.relative(ROOT, file).replaceAll('\\', '/'));
+      }
     }
 
-    expect(unguarded).toEqual([]);
+    // Anything listed here answers 500 in a store state that has a 503 for it.
+    expect(callers).toEqual([]);
+  });
+
+  it('still finds the routes it is meant to be protecting', async () => {
+    // A rule that matches nothing passes for the wrong reason. This is the
+    // canary: if the guard is renamed or the routes move, this fails loudly
+    // rather than leaving the rule above vacuously true.
+    const files = await collectSourceFiles(path.join(SRC, 'pages'));
+
+    const guarded: string[] = [];
+    for (const file of files) {
+      if (
+        (await readFile(file, 'utf8')).includes('getGardenIndexOrUnavailable')
+      ) {
+        guarded.push(path.relative(ROOT, file).replaceAll('\\', '/'));
+      }
+    }
+
+    // Five /notes pages, three legacy slug redirects, rss, sitemap, overview.
+    expect(guarded.length).toBeGreaterThanOrEqual(11);
+    expect(guarded).toContain('src/pages/rss.xml.ts');
+    expect(guarded).toContain('src/pages/sitemap.xml.ts');
   });
 });

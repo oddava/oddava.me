@@ -1,7 +1,7 @@
 // Notes live in the runtime store now, so the sitemap is generated per request
 // (edge-cached for an hour) instead of frozen at build time.
 import type { APIRoute } from 'astro';
-import { getGardenIndex } from '../lib/garden';
+import { getGardenIndexOrUnavailable } from '../lib/garden';
 import { siteUrl } from '../lib/site';
 import { getStaticSitemapPaths } from '../lib/site-routes';
 
@@ -14,12 +14,17 @@ function makeEntry(path: string, lastModified?: string): string {
 }
 
 export const GET: APIRoute = async () => {
-  const garden = await getGardenIndex();
+  // Through the same guard every /notes page uses. Publishing a sitemap of
+  // static paths only, while the note routes themselves answer 503, would
+  // advertise a garden that is not there.
+  const garden = await getGardenIndexOrUnavailable();
+  if (!garden.ok) return garden.response;
+
   const entriesByPath = new Map(
     getStaticSitemapPaths().map((path) => [path, makeEntry(path)]),
   );
 
-  for (const document of garden.documents) {
+  for (const document of garden.index.documents) {
     entriesByPath.set(
       document.href,
       makeEntry(document.href, document.updated || undefined),
