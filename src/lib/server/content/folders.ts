@@ -138,7 +138,14 @@ async function performFolderTreeDuplicate(
   }
 }
 
-async function duplicateFolderTree(
+/**
+ * Copies a folder, its page, and everything under it, rolling back on failure.
+ *
+ * Shared with the entry duplicate path: a note that is also a folder's page is
+ * the same object seen from the other side, so duplicating it has to mean this
+ * and not "copy one file".
+ */
+export async function duplicateFolderTree(
   store: ContentProvider,
   collection: ContentCollectionDefinition,
   sourceFolder: string,

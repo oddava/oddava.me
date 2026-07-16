@@ -12,8 +12,10 @@ import {
   toDetail,
   validateFields,
 } from './documents';
+import { duplicateFolderTree } from './folders';
 import {
   contentConflictResponse,
+  contentFolderErrorResponse,
   invalidFolder,
   invalidSlug,
   methodNotAllowed,
@@ -192,7 +194,27 @@ export async function handleContentEntry(
       typeof body.revision === 'string' ? body.revision.trim() : '';
     if (!revision) return revisionRequired();
 
+    // Deleting a folder's page is deleting the folder: leaving the directory
+    // behind would strand its notes under a folder that no longer has a page,
+    // and the folders API is the only thing that could then reach them.
+    // deleteDirectory refuses a non-empty folder, which is the same answer
+    // /folders gives — move the notes out first.
+    const currentFolder = entryFolderFromPath(
+      existing.path,
+      collection.sourceDir,
+    );
+    const pairedFolder = currentFolder ? `${currentFolder}/${id}` : id;
+
     try {
+      if (await folderExists(store, collection, pairedFolder)) {
+        const result = await store.deleteDirectory(
+          folderRepositoryPath(collection, pairedFolder),
+          `content: delete folder ${collection.id}/${pairedFolder}`,
+          { path: existing.path, revision },
+        );
+        return adminJson({ result });
+      }
+
       const result = await store.deleteFile(
         existing.path,
         `content: delete ${collection.id}/${id}`,
@@ -200,7 +222,7 @@ export async function handleContentEntry(
       );
       return adminJson({ result });
     } catch (error) {
-      return contentConflictResponse(error);
+      return contentFolderErrorResponse(error);
     }
   }
 
@@ -321,18 +343,16 @@ export async function handleContentMove(
   );
 
   // A note can also be a folder's page: `reading.md` sitting beside `reading/`.
-  // The two are one thing to the author, and folders.ts already moves them
-  // together through `linkedFile`. Moving only the file would leave the folder
-  // with no page and the page with no folder — both orphaned, and no single
-  // later operation puts them back.
+  // The two are one thing to the author, and folders.ts already treats them
+  // that way. Acting on the file alone would leave the folder with no page and
+  // the page with no folder — both orphaned, and no single later operation puts
+  // them back.
   const pairedFolder = currentFolder ? `${currentFolder}/${id}` : id;
-  const isFolderPage =
-    operation === 'move' &&
-    (await folderExists(store, collection, pairedFolder));
+  const isFolderPage = await folderExists(store, collection, pairedFolder);
+  const nextPairedFolder = folder ? `${folder}/${nextId}` : nextId;
 
   try {
     if (isFolderPage) {
-      const nextPairedFolder = folder ? `${folder}/${nextId}` : nextId;
       if (
         nextPairedFolder === pairedFolder ||
         folder === pairedFolder ||
@@ -340,7 +360,7 @@ export async function handleContentMove(
       ) {
         return adminJson(
           {
-            error: 'A folder cannot be moved inside itself.',
+            error: `A folder cannot be ${operation === 'duplicate' ? 'copied' : 'moved'} inside itself.`,
             code: 'invalid_folder_move',
           },
           { status: 400 },
@@ -351,6 +371,25 @@ export async function handleContentMove(
           { error: 'That folder already exists.', code: 'folder_exists' },
           { status: 409 },
         );
+      }
+
+      if (operation === 'duplicate') {
+        // Same primitive the folders API uses, rollback included: a copy of a
+        // folder page means a copy of the folder.
+        await duplicateFolderTree(
+          store,
+          collection,
+          pairedFolder,
+          nextPairedFolder,
+        );
+        const duplicated = await store.readFile(nextPath);
+        return adminJson({
+          entry: duplicated ? toDetail(collection, duplicated) : null,
+          result: {
+            message: `content: duplicate folder ${collection.id}/${pairedFolder} as ${nextPairedFolder}`,
+            revision: duplicated?.revision,
+          },
+        });
       }
 
       // The directory move and the page move are one script, so the pair cannot

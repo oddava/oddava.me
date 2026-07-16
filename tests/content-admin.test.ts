@@ -616,6 +616,141 @@ describe('content HTTP handlers', () => {
     });
   });
 
+  it('duplicates a folder page together with its folder', async () => {
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'reading']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+    await provider.writeTextFile(
+      'src/content/notes/reading/books.md',
+      '# books',
+      'seed',
+    );
+
+    const page = provider.files.get('src/content/notes/reading.md')!;
+    const response = await handleContentMove(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/move', {
+        id: 'reading',
+        nextId: 'reading-copy',
+        folder: '',
+        operation: 'duplicate',
+        revision: page.revision,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    // A copy of a folder page is a copy of the folder. Copying the one file
+    // would make a page for a folder that does not exist.
+    expect(provider.files.has('src/content/notes/reading-copy.md')).toBe(true);
+    expect(provider.directories.has('src/content/notes/reading-copy')).toBe(
+      true,
+    );
+    expect(
+      [...provider.files.keys()].some((filePath) =>
+        filePath.startsWith('src/content/notes/reading-copy/'),
+      ),
+    ).toBe(true);
+    // And the original is untouched.
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(true);
+    expect(provider.files.has('src/content/notes/reading/books.md')).toBe(true);
+  });
+
+  it('deletes a folder page together with its empty folder', async () => {
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'reading']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+    await provider.createDirectory('src/content/notes/reading', 'mkdir');
+
+    const page = provider.files.get('src/content/notes/reading.md')!;
+    const response = await handleContentEntry(
+      provider,
+      'notes',
+      'reading',
+      jsonRequest(
+        'DELETE',
+        'https://oddava.me/api/admin/content/notes/reading',
+        { revision: page.revision },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(false);
+    // The folder went with it. Left behind, it would be a folder with no page.
+    expect(provider.directories.has('src/content/notes/reading')).toBe(false);
+  });
+
+  it('refuses to delete a folder page while its folder still holds notes', async () => {
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'reading']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+    await provider.writeTextFile(
+      'src/content/notes/reading/books.md',
+      '# books',
+      'seed',
+    );
+
+    const page = provider.files.get('src/content/notes/reading.md')!;
+    const response = await handleContentEntry(
+      provider,
+      'notes',
+      'reading',
+      jsonRequest(
+        'DELETE',
+        'https://oddava.me/api/admin/content/notes/reading',
+        { revision: page.revision },
+      ),
+    );
+
+    // Same answer the folders API gives, because it is the same question.
+    // Deleting the page alone would strand books.md under a folder with no page.
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'folder_not_empty',
+    });
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(true);
+    expect(provider.files.has('src/content/notes/reading/books.md')).toBe(true);
+  });
+
+  it('still deletes an ordinary note that has no folder', async () => {
+    const provider = new MemoryContentProvider();
+    for (const slug of ['index', 'alpha']) {
+      await provider.writeTextFile(
+        `src/content/notes/${slug}.md`,
+        `# ${slug}`,
+        'seed',
+      );
+    }
+
+    const alpha = provider.files.get('src/content/notes/alpha.md')!;
+    const response = await handleContentEntry(
+      provider,
+      'notes',
+      'alpha',
+      jsonRequest('DELETE', 'https://oddava.me/api/admin/content/notes/alpha', {
+        revision: alpha.revision,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(provider.files.has('src/content/notes/alpha.md')).toBe(false);
+  });
+
   it('reports a vanished move source as gone, not as changed', async () => {
     // "This content changed since you opened it. Refresh and try again." is
     // advice that cannot work when the answer is that the content is gone.
