@@ -1,5 +1,5 @@
 import { adminJson } from '../admin/response';
-import { readJsonBody, requestBodyErrorResponse } from '../community/body';
+import { readJsonBody, requestBodyErrorResponse } from '../core/body';
 import {
   contentWithOrder,
   ensureFolderDocument,

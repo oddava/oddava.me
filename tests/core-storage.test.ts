@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-describe('community Redis storage', () => {
+describe('core Redis storage', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
@@ -19,8 +19,7 @@ describe('community Redis storage', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const { redisCommand } =
-      await import('../src/lib/server/community/storage');
+    const { redisCommand } = await import('../src/lib/server/core/storage');
     await redisCommand(['SET', 'community:test', 'value']);
 
     expect(fetchMock).toHaveBeenCalledOnce();

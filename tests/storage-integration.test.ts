@@ -88,8 +88,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
     });
 
     it('enforces rate limits atomically', async () => {
-      const { enforceRedisRateLimit } =
-        await import('../src/lib/server/community');
+      const { enforceRedisRateLimit } = await import('../src/lib/server/core');
       const request = new Request('https://oddava.me/api/test', {
         headers: { 'cf-connecting-ip': '203.0.113.10' },
       });

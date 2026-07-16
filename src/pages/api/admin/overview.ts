@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import type { OverviewResponse } from '../../../lib/contracts';
 import { getGardenIndex } from '../../../lib/garden';
 import { adminJson, requireSecuredAdminApi } from '../../../lib/server/admin';
-import { isStorageUnavailableError } from '../../../lib/server/community';
+import { isStorageUnavailableError } from '../../../lib/server/core';
 import { readGuestbookEntries } from '../../../lib/server/guestbook';
 
 async function readAdminGuestbookEntries() {

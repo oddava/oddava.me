@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizePlainText } from '../src/lib/server/community/sanitize';
+import { sanitizePlainText } from '../src/lib/server/core/sanitize';
 
 describe('sanitizePlainText', () => {
   it('strips HTML tags', () => {

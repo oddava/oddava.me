@@ -1,7 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
-import { safeRedirectPath } from '../../lib/server/community';
+import { safeRedirectPath } from '../../lib/server/core';
 
 if (await isAdminRequest(Astro.cookies)) {
   return Astro.redirect('/admin');

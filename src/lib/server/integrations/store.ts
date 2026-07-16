@@ -1,4 +1,4 @@
-import { hasRedisConfig, redisCommand } from '../community';
+import { hasRedisConfig, redisCommand } from '../core';
 import { getServerEnv } from '../env';
 import {
   firstConfiguredSecret,

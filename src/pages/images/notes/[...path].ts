@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { isStorageUnavailableError } from '../../../lib/server/community';
+import { isStorageUnavailableError } from '../../../lib/server/core';
 import { readRedisBinaryFile } from '../../../lib/server/content';
 
 const CONTENT_TYPES: Record<string, string> = {

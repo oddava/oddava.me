@@ -1,16 +1,16 @@
 import { signHmac } from '../crypto';
-import { getSigningSecret, hasCommunitySigningSecret } from './config';
+import { getSigningSecret, hasSigningSecret } from './config';
 import { json } from './http';
 import { getClientIp } from './request';
 
-export { hasCommunitySigningSecret };
+export { hasSigningSecret };
 
 function signString(value: string): Promise<string> {
   return signHmac(value, getSigningSecret());
 }
 
 export function rejectIfSigningUnavailable(): Response | null {
-  if (hasCommunitySigningSecret()) return null;
+  if (hasSigningSecret()) return null;
   return json(
     {
       error:

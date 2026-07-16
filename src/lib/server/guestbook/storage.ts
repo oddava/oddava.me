@@ -1,7 +1,10 @@
-import { hasRedisConfig, redisCommand } from '../community';
+import { hasRedisConfig, redisCommand } from '../core';
 import { normalizeGuestbookEntry, type GuestbookEntry } from './entries';
 import type { GuestbookStatus } from './status';
 
+// Deliberately still `community:` — this is a live production key. The domain
+// rename to `core` is a code-level change; renaming the key would orphan every
+// stored entry.
 const ENTRIES_KEY = 'community:guestbook:entries';
 const ENTRY_LIMIT = 100;
 

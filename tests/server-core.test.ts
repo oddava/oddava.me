@@ -7,9 +7,9 @@ beforeAll(() => {
   process.env.REDIS_MODE = 'local';
 });
 
-describe('server community utilities', () => {
+describe('server core utilities', () => {
   it('parses bounded JSON bodies', async () => {
-    const { readJsonBody } = await import('../src/lib/server/community');
+    const { readJsonBody } = await import('../src/lib/server/core');
     const request = new Request('https://oddava.me/api/example', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,7 +23,7 @@ describe('server community utilities', () => {
 
   it('rejects invalid and oversized JSON bodies', async () => {
     const { readJsonBody, RequestBodyError } =
-      await import('../src/lib/server/community');
+      await import('../src/lib/server/core');
     const invalid = new Request('https://oddava.me/api/example', {
       method: 'POST',
       body: '{',
@@ -44,7 +44,7 @@ describe('server community utilities', () => {
 
   it('sanitizes redirect paths and detects JSON requests', async () => {
     const { prefersJsonResponse, safeRedirectPath } =
-      await import('../src/lib/server/community');
+      await import('../src/lib/server/core');
 
     expect(safeRedirectPath('/admin?tab=guestbook', '/admin')).toBe(
       '/admin?tab=guestbook',
@@ -72,8 +72,7 @@ describe('server community utilities', () => {
   });
 
   it('can allow development-only rate limiting when Redis is unavailable', async () => {
-    const { enforceRedisRateLimit } =
-      await import('../src/lib/server/community');
+    const { enforceRedisRateLimit } = await import('../src/lib/server/core');
     const request = new Request('https://oddava.me/api/admin/session', {
       headers: { 'x-forwarded-for': '203.0.113.10' },
     });
@@ -87,7 +86,7 @@ describe('server community utilities', () => {
 
   it('classifies local Redis connection timeouts as storage unavailable', async () => {
     const { isStorageUnavailableError } =
-      await import('../src/lib/server/community');
+      await import('../src/lib/server/core');
 
     expect(isStorageUnavailableError(new Error('Connection timeout'))).toBe(
       true,

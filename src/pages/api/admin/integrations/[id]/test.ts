@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { requireSecuredAdminApi } from '../../../../../lib/server/admin';
-import { ensureSameOrigin } from '../../../../../lib/server/community';
+import { ensureSameOrigin } from '../../../../../lib/server/core';
 import { testIntegration } from '../../../../../lib/server/integrations';
 import {
   adminJson,

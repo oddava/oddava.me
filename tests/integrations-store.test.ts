@@ -84,7 +84,7 @@ function mockRedis(initial: Record<string, string> = {}) {
     throw new Error(`Unexpected command: ${op}`);
   });
 
-  vi.doMock('../src/lib/server/community', () => ({
+  vi.doMock('../src/lib/server/core', () => ({
     hasRedisConfig: () => true,
     redisCommand,
   }));
@@ -93,7 +93,7 @@ function mockRedis(initial: Record<string, string> = {}) {
 }
 
 function mockNoRedis() {
-  vi.doMock('../src/lib/server/community', () => ({
+  vi.doMock('../src/lib/server/core', () => ({
     hasRedisConfig: () => false,
     redisCommand: vi.fn(async () => {
       throw new Error('Persistent storage is not configured.');
@@ -111,7 +111,7 @@ describe('integration credential store', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
-    vi.doUnmock('../src/lib/server/community');
+    vi.doUnmock('../src/lib/server/core');
   });
 
   it('falls back to the environment when nothing is stored', async () => {
@@ -348,7 +348,7 @@ describe('integration enablement', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.doUnmock('../src/lib/server/community');
+    vi.doUnmock('../src/lib/server/core');
   });
 
   const manageable = definition;

@@ -8,7 +8,7 @@ import {
   ensureSameOrigin,
   fetchWithTimeout,
   isStorageUnavailableError,
-} from '../community';
+} from '../core';
 import { getServerEnv } from '../env';
 import { usesLocalContentFiles } from './mode';
 import {

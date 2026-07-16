@@ -72,7 +72,7 @@ export function getSigningSecret(): string {
   return secret;
 }
 
-export function hasCommunitySigningSecret(): boolean {
+export function hasSigningSecret(): boolean {
   return Boolean(
     firstConfiguredSecret(getServerEnv('COMMUNITY_SIGNING_SECRET')),
   );

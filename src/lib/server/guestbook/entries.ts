@@ -2,7 +2,7 @@ import type {
   GuestbookEntry as GuestbookEntryContract,
   PublicGuestbookEntry,
 } from '../../contracts';
-import { getClientFingerprint } from '../community';
+import { getClientFingerprint } from '../core';
 
 export type GuestbookEntry = GuestbookEntryContract;
 

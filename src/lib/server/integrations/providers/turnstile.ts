@@ -3,7 +3,7 @@ import {
   getTurnstileSiteKey,
   isTurnstileBypassEnabled,
   TURNSTILE_VERIFY_ENDPOINT,
-} from '../../community/config';
+} from '../../core/config';
 import { IntegrationError } from '../errors';
 import { integrationFetchJson } from '../http';
 import { isConfiguredSecret } from '../../secrets';

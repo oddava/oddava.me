@@ -17,7 +17,7 @@ import {
   rejectIfSigningUnavailable,
   requestBodyErrorResponse,
   safeRedirectPath,
-} from '../../../lib/server/community';
+} from '../../../lib/server/core';
 
 const LOGIN_RATE_LIMIT = { limit: 8, windowMs: 15 * 60 * 1000 };
 

@@ -7,7 +7,7 @@ import {
   parseSessionValue,
   verifySession,
 } from '../src/lib/server/admin/auth-shared';
-import { safeRedirectPath } from '../src/lib/server/community/request';
+import { safeRedirectPath } from '../src/lib/server/core/request';
 
 const SIGNING_SECRET = 'test-signing-secret-with-enough-entropy';
 const ADMIN_TOKEN = 'super-secret-admin-token';
@@ -142,7 +142,7 @@ describe('admin session cookie contents', () => {
   afterEach(() => {
     delete process.env.ADMIN_PANEL_TOKEN;
     delete process.env.COMMUNITY_SIGNING_SECRET;
-    // Importing admin/auth pulls the community barrel — and so rate-limit and
+    // Importing admin/auth pulls the core barrel — and so rate-limit and
     // storage — into the module registry. Leaving them cached would defeat the
     // vi.doMock in the rate-limit suite below, which needs a clean registry.
     vi.resetModules();
@@ -264,7 +264,7 @@ describe('enforceRedisRateLimit (mocked storage)', () => {
     process.env.COMMUNITY_SIGNING_SECRET = SIGNING_SECRET;
   });
   afterEach(() => {
-    vi.doUnmock('../src/lib/server/community/storage');
+    vi.doUnmock('../src/lib/server/core/storage');
     vi.restoreAllMocks();
     vi.resetModules();
     delete process.env.APP_ENV;
@@ -275,7 +275,7 @@ describe('enforceRedisRateLimit (mocked storage)', () => {
     // First call: count=1 (under limit). Second call: count=2 (at limit).
     // Third call: count=3 (over limit) -> 429 with Retry-After.
     let calls = 0;
-    vi.doMock('../src/lib/server/community/storage', () => ({
+    vi.doMock('../src/lib/server/core/storage', () => ({
       hasRedisConfig: () => true,
       isStorageUnavailableError: () => false,
       rejectIfStorageUnavailable: () => null,
@@ -287,7 +287,7 @@ describe('enforceRedisRateLimit (mocked storage)', () => {
     }));
 
     const { enforceRedisRateLimit } =
-      await import('../src/lib/server/community/rate-limit');
+      await import('../src/lib/server/core/rate-limit');
     const request = new Request('https://oddava.me/api/test', {
       headers: { 'cf-connecting-ip': '203.0.113.10' },
     });
@@ -329,7 +329,7 @@ describe('verifyTurnstileToken (happy path with mocked fetch)', () => {
     );
 
     const { verifyTurnstileToken } =
-      await import('../src/lib/server/community/turnstile');
+      await import('../src/lib/server/core/turnstile');
     const request = new Request('https://oddava.me/api/guestbook', {
       headers: { 'cf-connecting-ip': '203.0.113.10' },
     });
@@ -352,7 +352,7 @@ describe('verifyTurnstileToken (happy path with mocked fetch)', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const { verifyTurnstileToken } =
-      await import('../src/lib/server/community/turnstile');
+      await import('../src/lib/server/core/turnstile');
     const result = await verifyTurnstileToken(
       new Request('https://oddava.me/api/guestbook'),
       'dummy-token',
@@ -374,7 +374,7 @@ describe('verifyTurnstileToken (happy path with mocked fetch)', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { verifyTurnstileToken } =
-      await import('../src/lib/server/community/turnstile');
+      await import('../src/lib/server/core/turnstile');
     const response = await verifyTurnstileToken(
       new Request('https://oddava.me/api/guestbook', {
         headers: { 'cf-connecting-ip': '203.0.113.10' },
