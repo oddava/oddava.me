@@ -27,7 +27,6 @@ vi.mock('../src/lib/server/content/redis-store', () => ({
 
 describe('a cold read while the mutation lock is held', () => {
   beforeEach(() => {
-    process.env.CONTENT_WRITE_MODE = 'redis';
     runtime.version = null;
     runtime.versionError = null;
     runtime.files = [

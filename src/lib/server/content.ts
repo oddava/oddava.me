@@ -7,7 +7,6 @@ export {
   adminContentMoveRoute,
   adminContentReorderRoute,
 } from './content/route';
-export { usesLocalContentFiles } from './content/mode';
 export {
   readRedisBinaryFile,
   readRedisNoteFiles,
