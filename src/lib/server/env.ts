@@ -4,13 +4,10 @@ export interface RuntimeEnv {
   ADMIN_PANEL_TOKEN?: string;
   APP_ENV?: string;
   COMMUNITY_SIGNING_SECRET?: string;
-  CONTENT_WRITE_MODE?: string;
   CSP_REPORT_ENDPOINT?: string;
   DISCORD_USER_ID?: string;
   GUESTBOOK_ADMIN_TOKEN?: string;
   LANYARD_DISCORD_USER_ID?: string;
-  LOCAL_CONTENT_PROXY_PORT?: string;
-  LOCAL_CONTENT_PROXY_URL?: string;
   LOCAL_REDIS_PROXY_PORT?: string;
   LOCAL_REDIS_PROXY_TOKEN?: string;
   LOCAL_REDIS_PROXY_URL?: string;

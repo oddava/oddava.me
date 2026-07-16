@@ -20,7 +20,6 @@ const LEGACY_SLUG_ROUTES = [
 
 describe('findNoteLeafRedirect', () => {
   beforeEach(() => {
-    process.env.CONTENT_WRITE_MODE = 'redis';
     runtime.version += 1;
     runtime.files = [
       { sourceId: 'index', content: '# notes', updatedAt: 't0' },

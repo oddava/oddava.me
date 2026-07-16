@@ -1,13 +1,8 @@
 // @ts-check
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import preact from '@astrojs/preact';
-import { localContentAdminDevProxy } from './vite/local-content-admin-dev-proxy.mjs';
 import { localRedisDevProxy } from './vite/local-redis-dev-proxy.mjs';
-
-const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 // Credentials resolve at runtime, but operators can omit the optional client
 // island entirely. Vite replaces this constant at build time and removes the
@@ -62,17 +57,14 @@ export default defineConfig({
     },
     server: {
       watch: {
-        // Studio autosaves notes straight to src/content/notes. If Vite's
-        // watcher saw those writes it would re-sync the content layer and send
-        // a full page reload, wiping the editor mid-sentence on every save.
-        // Studio reads notes back through the content API (fresh from disk), so
-        // it never needs the watcher; ignore the notes tree in dev. Editing a
-        // note file by hand won't hot-refresh public /notes pages until the dev
-        // server restarts — an acceptable trade-off, since Studio is the way
-        // notes are authored.
+        // src/content/notes is an export artifact, not a source: Studio writes
+        // Redis, and nothing reads this tree at runtime or at build time. Only
+        // `notes:export` writes it, in bulk. Letting Vite watch it would mean a
+        // full page reload per written file for a tree that changes nothing —
+        // so ignore it in dev.
         ignored: ['**/dist/**', '**/.pnpm-store/**', '**/src/content/notes/**'],
       },
     },
-    plugins: [localRedisDevProxy(), localContentAdminDevProxy(projectRoot)],
+    plugins: [localRedisDevProxy()],
   },
 });

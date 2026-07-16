@@ -23,7 +23,6 @@ vi.mock('../src/lib/server/content/redis-store', () => ({
 
 describe('Redis-backed notes runtime', () => {
   beforeEach(() => {
-    process.env.CONTENT_WRITE_MODE = 'redis';
     runtime.version = 1;
     runtime.files = [
       {
@@ -71,7 +70,6 @@ describe('Redis-backed notes runtime', () => {
 
 describe('getRelatedNotes', () => {
   beforeEach(() => {
-    process.env.CONTENT_WRITE_MODE = 'redis';
     runtime.version = 2;
     runtime.files = [
       { sourceId: 'index', content: '# notes\n\nHome.', updatedAt: 't0' },

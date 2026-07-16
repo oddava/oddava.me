@@ -50,7 +50,6 @@ const BARE_INDEX = /\bgetGardenIndex\b/;
 
 describe('getGardenIndexOrUnavailable', () => {
   beforeEach(() => {
-    process.env.CONTENT_WRITE_MODE = 'redis';
     runtime.version += 1;
     runtime.readFilesError = null;
     runtime.files = [
