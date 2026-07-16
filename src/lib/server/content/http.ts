@@ -1,5 +1,9 @@
 import { adminJson } from '../admin/response';
-import { ContentConflictError, ContentFolderNotEmptyError } from './types';
+import {
+  ContentConflictError,
+  ContentFolderNotEmptyError,
+  ContentNotFoundError,
+} from './types';
 
 export function methodNotAllowed(allowed: string[]): Response {
   return adminJson(
@@ -66,11 +70,17 @@ export function validationError(error: unknown): Response {
 
 export function contentConflictResponse(error: unknown): Response {
   const code =
-    error instanceof ContentConflictError
+    error instanceof ContentConflictError ||
+    error instanceof ContentNotFoundError
       ? error.code
       : error && typeof error === 'object' && 'code' in error
         ? error.code
         : null;
+
+  // Gone is not the same as changed. Answering 409 "refresh and try again" for
+  // content that no longer exists sends the author round a loop that cannot
+  // terminate.
+  if (code === 'not_found') return missingEntry();
   if (code !== 'revision_conflict' && code !== 'path_exists') throw error;
 
   return adminJson(

@@ -6,7 +6,23 @@ export async function fetchWithTimeout(
   timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<Response> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  // Abort with a named reason rather than the default. Our own deadline and the
+  // caller hanging up both surface as an aborted fetch, and callers have to tell
+  // them apart: a timeout is the upstream failing us, while a disconnect means
+  // nobody is waiting for the answer. Without a reason, both arrive as an
+  // indistinguishable AbortError.
+  const timeout = setTimeout(
+    () =>
+      controller.abort(
+        Object.assign(
+          new Error(`The request timed out after ${timeoutMs}ms.`),
+          {
+            name: 'TimeoutError',
+          },
+        ),
+      ),
+    timeoutMs,
+  );
   const upstreamSignal = init.signal;
   const abortFromUpstream = () => controller.abort(upstreamSignal?.reason);
 

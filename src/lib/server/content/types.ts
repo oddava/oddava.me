@@ -32,6 +32,20 @@ export class ContentFolderNotEmptyError extends Error {
   }
 }
 
+/**
+ * The thing being mutated is not there. Distinct from a revision conflict:
+ * "it changed since you opened it" tells the author to refresh, which is
+ * useless advice when the answer is that it is gone.
+ */
+export class ContentNotFoundError extends Error {
+  readonly code = 'not_found';
+
+  constructor(message = 'That content no longer exists.') {
+    super(message);
+    this.name = 'ContentNotFoundError';
+  }
+}
+
 type ContentCollectionId = 'notes';
 
 export interface ContentCollectionDefinition {
@@ -80,6 +94,18 @@ export interface LinkedFileDelete {
   revision: string;
 }
 
+export interface BatchTextWrite {
+  path: string;
+  content: string;
+  /** Expected current revision. The write is a compare-and-set, never a create. */
+  revision: string;
+}
+
+export interface BatchWriteResult extends ContentWriteResult {
+  /** New revision per path, in the order the writes were given. */
+  revisions: Record<string, string>;
+}
+
 /**
  * Path-addressed persistence used by the notes domain.
  *
@@ -118,6 +144,15 @@ export interface ContentProvider {
     message: string,
     revision?: string,
   ): Promise<ContentWriteResult>;
+  /**
+   * Compare-and-set several existing files as one unit. Either every write
+   * lands or none does, so a caller that fails partway cannot leave the
+   * collection holding half of an intended change.
+   */
+  writeTextFiles(
+    files: readonly BatchTextWrite[],
+    message: string,
+  ): Promise<BatchWriteResult>;
   writeBinaryFile(
     path: string,
     content: Uint8Array,

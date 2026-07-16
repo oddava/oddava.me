@@ -1,7 +1,11 @@
 import { Buffer } from 'node:buffer';
 import { hasRedisConfig, redisCommand } from '../core';
 import { assertSafeRepositoryPath, matchesExtension } from './paths';
-import { ContentConflictError, ContentFolderNotEmptyError } from './types';
+import {
+  ContentConflictError,
+  ContentFolderNotEmptyError,
+  ContentNotFoundError,
+} from './types';
 import type {
   ContentEncoding,
   ContentProvider,
@@ -135,10 +139,21 @@ function result(message: string, revision?: string): ContentWriteResult {
   return { message, revision };
 }
 
+/**
+ * Maps a script's outcome onto the error vocabulary. Every code is named
+ * explicitly: defaulting the unrecognized case to `revision_conflict` told the
+ * author "this content changed since you opened it" for states that were
+ * nothing of the kind — including a source that no longer exists — and made any
+ * future script return value fail as the wrong thing, silently.
+ */
 function mutationError(code: unknown): never {
   if (code === 'path_exists') throw new ContentConflictError('path_exists');
   if (code === 'folder_not_empty') throw new ContentFolderNotEmptyError();
-  throw new ContentConflictError('revision_conflict');
+  if (code === 'not_found') throw new ContentNotFoundError();
+  if (code === 'revision_conflict') {
+    throw new ContentConflictError('revision_conflict');
+  }
+  throw new Error(`Unrecognized content mutation outcome: ${String(code)}`);
 }
 
 async function readStoredFile(
@@ -199,6 +214,30 @@ redis.call('INCR', KEYS[4])
 return 'ok'
 `;
 
+// Two phases, like MOVE_DIRECTORY_SCRIPT: check every revision before writing
+// any of them, so the script cannot commit a prefix and then discover a
+// conflict. KEYS are the file keys, then VERSION_KEY last. ARGV is three
+// entries per file: expected revision, next revision, record.
+const WRITE_FILES_SCRIPT = `
+local fileCount = #KEYS - 1
+local versionKey = KEYS[#KEYS]
+
+for index = 1, fileCount do
+  local current = redis.call('GET', KEYS[index])
+  if not current then return 'not_found' end
+  local ok, decoded = pcall(cjson.decode, current)
+  if not ok or decoded.rev ~= ARGV[((index - 1) * 3) + 1] then
+    return 'revision_conflict'
+  end
+end
+
+for index = 1, fileCount do
+  redis.call('SET', KEYS[index], ARGV[((index - 1) * 3) + 3])
+end
+redis.call('INCR', versionKey)
+return 'ok'
+`;
+
 const CREATE_DIRECTORY_SCRIPT = `
 for index = 1, #ARGV do redis.call('SADD', KEYS[1], ARGV[index]) end
 redis.call('INCR', KEYS[2])
@@ -207,7 +246,7 @@ return 'ok'
 
 const MOVE_FILE_SCRIPT = `
 local current = redis.call('GET', KEYS[1])
-if not current then return 'revision_conflict' end
+if not current then return 'not_found' end
 local ok, decoded = pcall(cjson.decode, current)
 if not ok or decoded.rev ~= ARGV[3] then return 'revision_conflict' end
 if redis.call('EXISTS', KEYS[2]) == 1 then return 'path_exists' end
@@ -230,7 +269,7 @@ local updatedAt = ARGV[4]
 local prefix = from .. '/'
 
 if redis.call('SISMEMBER', KEYS[2], from) == 0 then
-  return 'revision_conflict'
+  return 'not_found'
 end
 if redis.call('SISMEMBER', KEYS[2], destination) == 1 then
   return 'path_exists'
@@ -360,7 +399,7 @@ return 'ok'
 
 const DELETE_FILE_SCRIPT = `
 local current = redis.call('GET', KEYS[1])
-if not current then return 'revision_conflict' end
+if not current then return 'not_found' end
 local ok, decoded = pcall(cjson.decode, current)
 if not ok or decoded.rev ~= ARGV[2] then return 'revision_conflict' end
 redis.call('DEL', KEYS[1])
@@ -603,6 +642,51 @@ export function createRedisContentProvider(
 
     writeTextFile(path, content, message, revision) {
       return writeStoredFile(path, content, 'utf8', message, revision);
+    },
+
+    async writeTextFiles(files, message) {
+      if (files.length === 0) return { message, revisions: {} };
+      for (const file of files) assertSafeRepositoryPath(file.path);
+
+      const existing = await readStoredFiles(
+        command,
+        files.map((file) => file.path),
+      );
+      const timestamp = now().toISOString();
+      const revisions: Record<string, string> = {};
+      const keys: RedisArgument[] = files.map((file) => fileKey(file.path));
+      const arguments_: RedisArgument[] = [];
+
+      for (const file of files) {
+        const current = existing.get(file.path);
+        // The script re-checks this against the live value; this only avoids
+        // sending a record we already know is stale.
+        if (!current) throw new ContentNotFoundError();
+        const revision = newRevision();
+        revisions[file.path] = revision;
+        arguments_.push(
+          file.revision,
+          revision,
+          JSON.stringify({
+            content: file.content,
+            enc: 'utf8',
+            rev: revision,
+            createdAt: current.createdAt,
+            updatedAt: timestamp,
+          } satisfies StoredFile),
+        );
+      }
+      keys.push(VERSION_KEY);
+
+      const outcome = await command<string>([
+        'EVAL',
+        WRITE_FILES_SCRIPT,
+        keys.length,
+        ...keys,
+        ...arguments_,
+      ]);
+      if (outcome !== 'ok') mutationError(outcome);
+      return { message, revisions };
     },
 
     writeBinaryFile(path, content, message) {

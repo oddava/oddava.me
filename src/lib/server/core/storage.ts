@@ -106,20 +106,49 @@ export function rejectIfStorageUnavailable(): Response | null {
   );
 }
 
+/**
+ * Messages the storage layer produces verbatim. Matched whole: `fetch failed`
+ * as a substring also matches a message that merely quotes a failed fetch.
+ */
+const STORAGE_ERROR_MESSAGES: ReadonlySet<string> = new Set([
+  'Persistent storage is not configured.',
+  'fetch failed',
+]);
+
+/**
+ * Driver and transport markers. These are distinctive enough that a substring
+ * match cannot plausibly hit anything else.
+ */
+const STORAGE_ERROR_FRAGMENTS = [
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'The client is closed',
+  'Connection timeout',
+  'Socket closed unexpectedly',
+  'No such module',
+  'Local Redis proxy failed',
+];
+
+/**
+ * Whether an error means "the store could not answer", which callers degrade on
+ * rather than fail on.
+ *
+ * The abort cases are the subtle ones. `fetchWithTimeout` aborts with a named
+ * TimeoutError when *our* deadline expires — the store failing us, so: yes. A
+ * plain AbortError means the request was cancelled from the other end, i.e. the
+ * visitor navigated away. Nothing about the store is known to be wrong, and
+ * there is no longer anyone to serve, so treating it as a storage outage
+ * misreports a client disconnect as infrastructure down. Matching the substring
+ * `aborted` could not tell those apart, and answered "outage" to both.
+ */
 export function isStorageUnavailableError(error: unknown): boolean {
+  if (error instanceof Error && error.name === 'TimeoutError') return true;
+  if (error instanceof Error && error.name === 'AbortError') return false;
+
   const message = error instanceof Error ? error.message : String(error);
-  return [
-    'Persistent storage is not configured.',
-    'ECONNREFUSED',
-    'ENOTFOUND',
-    'EAI_AGAIN',
-    'The client is closed',
-    'Connection timeout',
-    'Socket closed unexpectedly',
-    'fetch failed',
-    'aborted',
-    'AbortError',
-    'No such module',
-    'Local Redis proxy failed',
-  ].some((fragment) => message.includes(fragment));
+  return (
+    STORAGE_ERROR_MESSAGES.has(message) ||
+    STORAGE_ERROR_FRAGMENTS.some((fragment) => message.includes(fragment))
+  );
 }
