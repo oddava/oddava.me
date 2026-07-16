@@ -59,7 +59,7 @@ function toListItem(
   file: ContentSourceFile,
 ): ContentEntryListItem {
   const { fields, body } = parseContentDocument(file.content);
-  const id = entryIdFromPath(file.path, collection.extension);
+  const id = entryIdFromPath(file.path, collection.readExtensions);
   const folder = entryFolderFromPath(file.path, collection.sourceDir);
   const rawOrder = fields[collection.orderField];
   const order = typeof rawOrder === 'number' ? rawOrder : undefined;
@@ -102,7 +102,7 @@ export async function readEntries(
 ): Promise<ContentEntryListItem[]> {
   const files = await provider.listFiles(
     collection.sourceDir,
-    collection.extension,
+    collection.readExtensions,
   );
   return sortEntries(
     files
@@ -118,11 +118,11 @@ export async function findEntry(
 ): Promise<ContentSourceFile | null> {
   const files = await provider.listFiles(
     collection.sourceDir,
-    collection.extension,
+    collection.readExtensions,
   );
   return (
     files.find(
-      (file) => entryIdFromPath(file.path, collection.extension) === id,
+      (file) => entryIdFromPath(file.path, collection.readExtensions) === id,
     ) ?? null
   );
 }
@@ -145,6 +145,7 @@ export function folderRepositoryPath(
   return `${collection.sourceDir}/${normalizeFolderPath(folder)}`;
 }
 
+/** Where a folder's page is written. New pages always take `extension`. */
 export function folderDocumentPath(
   collection: ContentCollectionDefinition,
   folder: string,
@@ -155,6 +156,39 @@ export function folderDocumentPath(
     collection.extension,
     parentFolder(folder),
   );
+}
+
+export interface FolderDocument {
+  path: string;
+  file: ContentSourceFile;
+}
+
+/**
+ * A folder's page as it is actually stored, under whichever read extension it
+ * was written with, or null.
+ *
+ * Looking only at the canonical `.md` path would miss a page the live store
+ * still holds as `.mdx`, and callers treat "not found" as "create it" — which
+ * would leave two files whose note ids collide. Every read, move, and delete of
+ * a folder page therefore resolves through here rather than assuming an
+ * extension.
+ */
+export async function findFolderDocument(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+  folder: string,
+): Promise<FolderDocument | null> {
+  for (const extension of collection.readExtensions) {
+    const path = sourcePath(
+      collection.sourceDir,
+      folderName(folder),
+      extension,
+      parentFolder(folder),
+    );
+    const file = await provider.readFile(path);
+    if (file) return { path, file };
+  }
+  return null;
 }
 
 export async function folderExists(
@@ -173,9 +207,10 @@ export async function ensureFolderDocument(
   collection: ContentCollectionDefinition,
   folder: string,
 ): Promise<ContentSourceFile> {
+  const existing = await findFolderDocument(provider, collection, folder);
+  if (existing) return existing.file;
+
   const path = folderDocumentPath(collection, folder);
-  const existing = await provider.readFile(path);
-  if (existing) return existing;
 
   const body = `# ${folderName(folder).replaceAll('-', ' ')}\n`;
   const fields = validateFields(collection, {

@@ -170,8 +170,12 @@ export async function handleContentEntry(
   }
 
   if (request.method === 'DELETE') {
-    if (id === 'index' && existing.path === `${collection.sourceDir}/index.mdx`)
+    const rootPaths = collection.readExtensions.map(
+      (extension) => `${collection.sourceDir}/index.${extension}`,
+    );
+    if (id === 'index' && rootPaths.includes(existing.path)) {
       return rootEntryResponse();
+    }
 
     let body: { revision?: unknown };
     try {

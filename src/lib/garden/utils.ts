@@ -69,7 +69,8 @@ export function noteIdFromSourceId(value: string): string {
 export function notePathFromSourceId(value: string): string {
   const path = value
     .replace(/\\/g, '/')
-    .replace(/\.mdx$/i, '')
+    // Both, while the live store still holds `.mdx` keys alongside new `.md`.
+    .replace(/\.mdx?$/i, '')
     .split('/')
     .filter(Boolean)
     .join('/');

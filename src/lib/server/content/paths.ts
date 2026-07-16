@@ -39,12 +39,36 @@ export function sourcePath(
     .join('/');
 }
 
-export function entryIdFromPath(path: string, extension: string): string {
-  return path
-    .replace(/\\/g, '/')
-    .replace(new RegExp(`\\.${extension}$`), '')
-    .split('/')
-    .pop()!;
+function extensionList(
+  extension: string | readonly string[],
+): readonly string[] {
+  return typeof extension === 'string' ? [extension] : extension;
+}
+
+/** True when `path` ends in any of `extension`. No extension matches anything. */
+export function matchesExtension(
+  path: string,
+  extension?: string | readonly string[],
+): boolean {
+  if (!extension) return true;
+  const lower = path.toLowerCase();
+  return extensionList(extension).some((candidate) =>
+    lower.endsWith(`.${candidate.toLowerCase()}`),
+  );
+}
+
+export function entryIdFromPath(
+  path: string,
+  extension: string | readonly string[],
+): string {
+  const name = path.replace(/\\/g, '/').split('/').pop()!;
+  for (const candidate of extensionList(extension)) {
+    const suffix = `.${candidate.toLowerCase()}`;
+    if (name.toLowerCase().endsWith(suffix)) {
+      return name.slice(0, -suffix.length);
+    }
+  }
+  return name;
 }
 
 export function entryFolderFromPath(

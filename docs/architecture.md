@@ -1,7 +1,7 @@
 # Architecture
 
 oddava.me is an Astro SSR application deployed as a Cloudflare Worker. Static
-assets and committed MDX live beside a small set of stateful server domains.
+assets and committed Markdown live beside a small set of stateful server domains.
 Preact is used only for interactive islands; Astro components remain the default
 for page and layout rendering.
 
@@ -46,7 +46,7 @@ health state.
   and the local content editor.
 - `src/styles` contains global partials and feature-owned styles.
 
-Note identity comes from its path below `src/content/notes`. An `index.mdx` at
+Note identity comes from its path below `src/content/notes`. An `index.md` at
 the collection root is required. Folders may have a page whose file name matches
 the folder, allowing the filesystem hierarchy and the visible garden hierarchy
 to stay aligned without a second metadata store.

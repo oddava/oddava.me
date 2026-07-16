@@ -3,7 +3,7 @@ import { glob } from 'astro/loaders';
 import { noteDataSchema } from './lib/content/schemas';
 
 const notes = defineCollection({
-  loader: glob({ pattern: '**/*.mdx', base: './src/content/notes' }),
+  loader: glob({ pattern: '**/*.md', base: './src/content/notes' }),
   schema: noteDataSchema,
 });
 

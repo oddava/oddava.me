@@ -27,7 +27,7 @@ content store immediately; there is no draft/publish split. Public note and
 media routes read that store, so a successful save is live without a deploy.
 
 Use `CONTENT_WRITE_MODE=local` during development when Studio should write
-repository files. Review `git diff`, then commit the MDX and any assets under
+repository files. Review `git diff`, then commit the Markdown and any assets under
 `public/images/notes` as one change.
 
 The editor intentionally excludes `src/content/notes` from Vite's watcher. An

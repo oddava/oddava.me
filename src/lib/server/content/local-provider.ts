@@ -11,7 +11,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
-import { assertSafeRepositoryPath } from './paths';
+import { assertSafeRepositoryPath, matchesExtension } from './paths';
 import { ContentConflictError, ContentFolderNotEmptyError } from './types';
 import type {
   ContentEncoding,
@@ -178,9 +178,8 @@ export function createLocalContentProvider(
         normalizedRoot,
         directory,
       );
-      const suffix = extension ? `.${extension.toLowerCase()}` : null;
       const absoluteFiles = (await collectFiles(absoluteDirectory)).filter(
-        (file) => !suffix || file.toLowerCase().endsWith(suffix),
+        (file) => matchesExtension(file, extension),
       );
       const files = await Promise.all(
         absoluteFiles.map((file) =>

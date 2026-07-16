@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { hasRedisConfig, redisCommand } from '../core';
-import { assertSafeRepositoryPath } from './paths';
+import { assertSafeRepositoryPath, matchesExtension } from './paths';
 import { ContentConflictError, ContentFolderNotEmptyError } from './types';
 import type {
   ContentEncoding,
@@ -12,7 +12,11 @@ import type {
 } from './types';
 
 export const NOTES_SOURCE_DIR = 'src/content/notes';
-export const NOTES_EXTENSION = 'mdx';
+export const NOTES_EXTENSION = 'md';
+// Reads accept both: keys written before the move to `.md` are still `.mdx` in
+// the live store until `notes:migrate` rewrites them. See
+// ContentCollectionDefinition.readExtensions.
+export const NOTE_READ_EXTENSIONS = ['md', 'mdx'] as const;
 
 const FILES_SET = 'content:files';
 const DIRECTORIES_SET = 'content:dirs';
@@ -415,9 +419,8 @@ export function createRedisContentProvider(
     async listFiles(directory, extension) {
       assertSafeRepositoryPath(directory);
       const prefix = `${directory}/`;
-      const suffix = extension ? `.${extension}` : null;
       const paths = (await listFilePaths(command)).filter(
-        (path) => path.startsWith(prefix) && (!suffix || path.endsWith(suffix)),
+        (path) => path.startsWith(prefix) && matchesExtension(path, extension),
       );
       const records = await readStoredFiles(command, paths);
       return paths.flatMap((path) => {
@@ -615,18 +618,30 @@ export function createRedisContentProvider(
   };
 }
 
+/** `src/content/notes/reading/books.md` -> `reading/books`, either extension. */
+function noteSourceId(path: string): string {
+  const relative = path.slice(NOTES_SOURCE_DIR.length + 1);
+  for (const extension of NOTE_READ_EXTENSIONS) {
+    const suffix = `.${extension}`;
+    if (relative.toLowerCase().endsWith(suffix)) {
+      return relative.slice(0, -suffix.length);
+    }
+  }
+  return relative;
+}
+
 export async function readRedisNoteFiles(
   command: RedisCommand = defaultContentCommand,
 ): Promise<RedisNoteFile[]> {
   const provider = createRedisContentProvider({ command });
-  const files = await provider.listFiles(NOTES_SOURCE_DIR, NOTES_EXTENSION);
+  const files = await provider.listFiles(
+    NOTES_SOURCE_DIR,
+    NOTE_READ_EXTENSIONS,
+  );
   return files
     .filter((file) => file.encoding === 'utf8')
     .map((file) => ({
-      sourceId: file.path.slice(
-        NOTES_SOURCE_DIR.length + 1,
-        -`.${NOTES_EXTENSION}`.length,
-      ),
+      sourceId: noteSourceId(file.path),
       content: file.content,
       updatedAt: file.updatedAt,
     }));

@@ -76,10 +76,19 @@ live with no commit, push, or deploy. Consequences:
 - Sync between `src/content/**` and Redis is `pnpm run notes:migrate` /
   `pnpm run notes:export`, with `-- --target=prod` for production.
 
-Note identity comes from its path under `src/content/notes`; an `index.mdx` at
+Note identity comes from its path under `src/content/notes`; an `index.md` at
 the collection root is required. `src/lib/garden` builds hierarchy, backlinks,
 tags, search, and graph layout from the live store. `/garden/*` routes are legacy
 301 redirects to `/notes/*`.
+
+Notes are plain Markdown and always were — nothing ever used MDX. New writes are
+`.md`, but reads still accept `.mdx` (`readExtensions` in
+`content/registry.ts`), because the live store holds keys written before the
+rename. **The production store has not been migrated.** Until
+`pnpm run notes:migrate -- --target=prod` runs against it, prod keys are `.mdx`
+and that compatibility is what keeps the garden readable — dropping `.mdx` from
+`readExtensions` first would match zero notes and 503 the whole site. The import
+prunes legacy keys, so running it is the migration.
 
 Astro's Vite watcher deliberately ignores `src/content/notes` — an autosave would
 otherwise full-reload and wipe the editor mid-sentence. Hand-edited note files
