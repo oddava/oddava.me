@@ -1,17 +1,11 @@
 ---
-import { getGardenIndex, GardenEmptyError } from '@lib/garden';
+import { getGardenIndexOrUnavailable } from '@lib/garden';
 
 const requestedPath = Astro.params.path ?? '';
 
-let index;
-try {
-  index = await getGardenIndex();
-} catch (error) {
-  if (error instanceof GardenEmptyError) {
-    return new Response('Notes are not available yet.', { status: 503 });
-  }
-  throw error;
-}
+const garden = await getGardenIndexOrUnavailable();
+if (!garden.ok) return garden.response;
+const index = garden.index;
 
 // A folder path resolves to its own document page. Folders with children
 // redirect to the note that represents them.

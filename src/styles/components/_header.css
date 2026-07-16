@@ -1,0 +1,32 @@
+/* Site header / logo */
+.site-header {
+  padding: var(--space-sm) 0 var(--space-xs);
+}
+
+.page > main.main--has-header {
+  padding-top: var(--space-sm);
+}
+
+.site-header__logo {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--color-brand);
+  text-decoration: none;
+  text-transform: lowercase;
+  transition: color 0.2s ease;
+}
+
+.site-header__logo:hover,
+.site-header__logo:focus-visible {
+  color: var(--color-text-interactive-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header__logo {
+    transition: none;
+  }
+}
