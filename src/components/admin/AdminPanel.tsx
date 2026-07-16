@@ -23,6 +23,7 @@ export default function AdminPanel() {
     [],
   );
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const overviewRequestRef = useRef(0);
@@ -35,25 +36,35 @@ export default function AdminPanel() {
     setGuestbookEntries(await fetchGuestbookEntries(status));
   };
 
-  useEffect(() => {
-    let active = true;
+  /**
+   * Reports into the metric grid rather than the page banner: the counters are
+   * the only thing this failure costs, and the grid is where the retry lives.
+   */
+  const refreshOverview = () => {
     const requestId = ++overviewRequestRef.current;
+    setOverviewError(null);
 
-    void fetchAdminOverview()
+    return fetchAdminOverview()
       .then((data) => {
-        if (!active || requestId !== overviewRequestRef.current) return;
+        if (requestId !== overviewRequestRef.current) return;
         setOverview(data);
-        setGlobalError(null);
+        setOverviewError(null);
       })
       .catch((error) => {
-        if (!active || requestId !== overviewRequestRef.current) return;
-        setGlobalError(
+        if (requestId !== overviewRequestRef.current) return;
+        setOverviewError(
           error instanceof Error ? error.message : 'Could not load admin data.',
         );
       });
+  };
 
+  useEffect(() => {
+    void refreshOverview();
+
+    // Bumping the request id retires any in-flight response, so a late resolve
+    // cannot write to an unmounted panel.
     return () => {
-      active = false;
+      overviewRequestRef.current += 1;
     };
   }, []);
 
@@ -137,7 +148,11 @@ export default function AdminPanel() {
         </p>
       )}
 
-      <MetricGrid overview={overview} />
+      <MetricGrid
+        overview={overview}
+        error={overviewError}
+        onRetry={() => void refreshOverview()}
+      />
 
       <section className="admin-split">
         <GuestbookModeration

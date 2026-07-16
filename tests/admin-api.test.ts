@@ -65,7 +65,45 @@ describe('admin API client', () => {
     );
 
     await expect(fetchAdminOverview()).rejects.toThrow(
-      'Admin API returned an invalid JSON response.',
+      'Admin API returned an invalid response (HTTP 200).',
+    );
+  });
+
+  // A crashed route answers with an HTML error page rather than JSON, so the
+  // status is the only diagnosis left to report.
+  it('reports the status when an error response is not JSON', async () => {
+    mockFetch(
+      new Response('<!doctype html><title>Error</title>', {
+        headers: { 'Content-Type': 'text/html' },
+        status: 500,
+      }),
+    );
+
+    await expect(fetchAdminOverview()).rejects.toThrow(
+      'Admin API returned an invalid response (HTTP 500).',
+    );
+  });
+
+  // `AbortSignal.timeout` rejects with a DOMException whose message is the
+  // literal "signal timed out" — a browser internal that must never reach the
+  // operator as if it were advice.
+  it('normalizes fetch timeouts into an actionable message', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new DOMException('signal timed out', 'TimeoutError'),
+    );
+
+    await expect(fetchAdminOverview()).rejects.toThrow(
+      'The admin API did not respond in time.',
+    );
+  });
+
+  it('normalizes network failures into an actionable message', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new TypeError('Failed to fetch'),
+    );
+
+    await expect(fetchAdminOverview()).rejects.toThrow(
+      'Could not reach the admin API.',
     );
   });
 });
