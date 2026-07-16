@@ -143,13 +143,6 @@ export async function fetchLanyardNowPlaying(
   return mapPayload(payload);
 }
 
-function validateDiscordUserId(value: string): string | null {
-  // Discord snowflakes are 17–20 digit integers.
-  return /^\d{17,20}$/.test(value)
-    ? null
-    : 'Expected a Discord user ID (17–20 digits).';
-}
-
 export const lanyardIntegration: IntegrationDefinition = {
   id: 'lanyard',
   name: 'Lanyard',
@@ -170,7 +163,6 @@ export const lanyardIntegration: IntegrationDefinition = {
         'SPOTIFY_DISCORD_USER_ID',
       ],
       help: 'Enable developer mode in Discord, then right-click your name and copy the user ID. You must also be in the Lanyard Discord server.',
-      validate: validateDiscordUserId,
     },
   ],
 

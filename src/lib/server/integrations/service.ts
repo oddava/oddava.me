@@ -4,7 +4,7 @@ import {
   getIntegrationStatuses,
   invalidateIntegrationStatus,
 } from './status';
-import { clearCredentials, setEnabled, updateCredentials } from './store';
+import { setEnabled } from './store';
 import type { IntegrationDefinition, IntegrationStatus } from './types';
 
 export class UnknownIntegrationError extends Error {
@@ -58,39 +58,5 @@ export async function toggleIntegration(
 /** Runs a live connection test, bypassing the status cache. */
 export async function testIntegration(id: string): Promise<IntegrationStatus> {
   const definition = requireIntegration(id);
-  return getIntegrationStatus(definition, { force: true });
-}
-
-/**
- * Saves a partial credential update, then immediately re-tests so the operator
- * finds out whether the value they just pasted actually works.
- */
-export async function saveIntegrationCredentials(
-  id: string,
-  patch: Record<string, unknown>,
-): Promise<IntegrationStatus> {
-  const definition = requireIntegration(id);
-
-  await updateCredentials(definition, patch);
-  definition.onCredentialsChanged?.();
-  invalidateIntegrationStatus(definition.id);
-
-  return getIntegrationStatus(definition, { force: true });
-}
-
-/**
- * Revokes every stored credential override. Values supplied through the
- * deployment environment survive — the returned status says so rather than
- * pretending the integration is now unconfigured.
- */
-export async function revokeIntegrationCredentials(
-  id: string,
-): Promise<IntegrationStatus> {
-  const definition = requireIntegration(id);
-
-  await clearCredentials(definition.id);
-  definition.onCredentialsChanged?.();
-  invalidateIntegrationStatus(definition.id);
-
   return getIntegrationStatus(definition, { force: true });
 }

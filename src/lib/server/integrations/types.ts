@@ -13,10 +13,8 @@ export interface CredentialFieldDefinition extends Omit<
   CredentialField,
   'envVars'
 > {
-  /** Env vars consulted, in priority order, when no stored override exists. */
+  /** Env vars consulted, in priority order, for this field's value. */
   envVars: RuntimeEnvName[];
-  /** Returns an error message when the value is unusable, otherwise null. */
-  validate?: (value: string) => string | null;
 }
 
 /** Resolved credential values, keyed by field. Server-side only — never serialized to a client. */
@@ -48,13 +46,6 @@ export interface IntegrationDefinition {
     credentials: IntegrationCredentials,
     signal?: AbortSignal,
   ): Promise<IntegrationCheckResult>;
-
-  /**
-   * Called after credentials are saved or revoked, so a provider can drop
-   * anything it derived from the old ones (cached tokens, sessions). Providers
-   * that derive nothing may omit it.
-   */
-  onCredentialsChanged?(): void;
 }
 
 /** The wire shape returned by the admin API and rendered by the admin UI. */
@@ -63,6 +54,6 @@ export interface IntegrationStatus extends Omit<
   'id' | 'fields'
 > {
   id: IntegrationId;
-  /** Field definitions, sans validators, so the UI can render a credential form generically. */
-  fields: Array<Omit<CredentialFieldDefinition, 'validate'>>;
+  /** Field definitions, so the UI can report configuration generically. */
+  fields: CredentialFieldDefinition[];
 }

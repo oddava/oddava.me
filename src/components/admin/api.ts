@@ -154,27 +154,6 @@ export function testIntegration(id: string): Promise<IntegrationResponse> {
   });
 }
 
-export function saveIntegrationCredentials(
-  id: string,
-  credentials: Record<string, string>,
-): Promise<IntegrationResponse> {
-  return readJson<IntegrationResponse>(integrationPath(id, '/credentials'), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials),
-    signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS),
-  });
-}
-
-export function revokeIntegrationCredentials(
-  id: string,
-): Promise<IntegrationResponse> {
-  return readJson<IntegrationResponse>(integrationPath(id, '/credentials'), {
-    method: 'DELETE',
-    signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS),
-  });
-}
-
 export function fetchContentCollections(): Promise<ContentCollectionsResponse> {
   return readContentJson<ContentCollectionsResponse>(
     '/api/admin/content/collections',
