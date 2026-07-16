@@ -4,13 +4,7 @@ import {
   requireSecuredAdminApi,
   withAdminSecurityHeaders,
 } from '../admin';
-import {
-  ensureSameOrigin,
-  fetchWithTimeout,
-  isStorageUnavailableError,
-} from '../core';
-import { getServerEnv } from '../env';
-import { usesLocalContentFiles } from './mode';
+import { ensureSameOrigin, isStorageUnavailableError } from '../core';
 import {
   ContentMutationBusyError,
   createRedisContentProvider,
@@ -20,43 +14,13 @@ import {
 } from './redis-store';
 import { dispatchContentRequest } from './router';
 
-const DEFAULT_LOCAL_CONTENT_PROXY_PORT = '45556';
-const LOCAL_CONTENT_PROXY_TIMEOUT_MS = 30_000;
 const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
-
-class ContentProxyUnavailableError extends Error {
-  constructor() {
-    super(
-      'The local content service is not running. Restart the development server after setting CONTENT_WRITE_MODE=local.',
-    );
-    this.name = 'ContentProxyUnavailableError';
-  }
-}
 
 class ContentPayloadTooLargeError extends Error {
   constructor() {
     super('Content requests are limited to 6 MB.');
     this.name = 'ContentPayloadTooLargeError';
   }
-}
-
-function localContentProxyUrl(): URL {
-  const configured =
-    getServerEnv('LOCAL_CONTENT_PROXY_URL') ??
-    `http://127.0.0.1:${
-      getServerEnv('LOCAL_CONTENT_PROXY_PORT') ??
-      DEFAULT_LOCAL_CONTENT_PROXY_PORT
-    }`;
-  const url = new URL(configured);
-  if (
-    url.protocol !== 'http:' ||
-    !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname)
-  ) {
-    throw new Error(
-      'LOCAL_CONTENT_PROXY_URL must use HTTP on a loopback hostname.',
-    );
-  }
-  return url;
 }
 
 function contentStoreUnavailable(message?: string): Response {
@@ -145,49 +109,6 @@ function waitForContentStore(signal: AbortSignal): Promise<void> {
   });
 }
 
-async function forwardToLocalContentService(
-  request: Request,
-): Promise<Response> {
-  const originalUrl = new URL(request.url);
-  const upstreamUrl = new URL(
-    `${originalUrl.pathname}${originalUrl.search}`,
-    localContentProxyUrl(),
-  );
-  const headers = new Headers(request.headers);
-  headers.set('x-original-url', request.url);
-  const init: RequestInit = {
-    method: request.method,
-    headers,
-    redirect: 'manual',
-    signal: request.signal,
-  };
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    init.body = (await readBoundedRequestBody(request)) as BodyInit;
-  }
-
-  const upstream = await fetchWithTimeout(
-    upstreamUrl,
-    init,
-    LOCAL_CONTENT_PROXY_TIMEOUT_MS,
-  ).catch((error) => {
-    if (error instanceof ContentPayloadTooLargeError) throw error;
-    throw new ContentProxyUnavailableError();
-  });
-  const responseHeaders = new Headers(upstream.headers);
-  responseHeaders.delete('content-encoding');
-  responseHeaders.delete('content-length');
-  return withAdminSecurityHeaders(
-    new Response(
-      upstream.status === 204 ? null : await upstream.arrayBuffer(),
-      {
-        status: upstream.status,
-        statusText: upstream.statusText,
-        headers: responseHeaders,
-      },
-    ),
-  );
-}
-
 async function dispatchRedisRequest(
   request: Request,
   mutation: boolean,
@@ -231,9 +152,6 @@ async function dispatch(
   }
 
   try {
-    if (usesLocalContentFiles()) {
-      return await forwardToLocalContentService(context.request);
-    }
     return await dispatchRedisRequest(context.request, mutation);
   } catch (error) {
     if (error instanceof ContentPayloadTooLargeError) {
@@ -243,12 +161,6 @@ async function dispatch(
       return adminJson(
         { error: error.message, code: error.code },
         { status: 503, headers: { 'Retry-After': '1' } },
-      );
-    }
-    if (error instanceof ContentProxyUnavailableError) {
-      return adminJson(
-        { error: error.message, code: 'content_proxy_unavailable' },
-        { status: 503 },
       );
     }
     if (isStorageUnavailableError(error)) {

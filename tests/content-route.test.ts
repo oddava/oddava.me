@@ -41,9 +41,9 @@ describe('content admin route boundary', () => {
     vi.unstubAllEnvs();
   });
 
-  it('rejects unauthenticated requests before checking local services', async () => {
+  it('rejects unauthenticated requests before reaching the content store', async () => {
     mockAdmin(Response.json({ error: 'Unauthorized.' }, { status: 401 }));
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { dispatch } = mockRedisContentStore(true);
     const { adminContentCollectionsRoute } =
       await import('../src/lib/server/content/route');
 
@@ -54,14 +54,12 @@ describe('content admin route boundary', () => {
     );
 
     expect(response.status).toBe(401);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it('reports unavailable only when the Redis content store is unconfigured', async () => {
     mockAdmin(null);
     mockRedisContentStore(false);
-    vi.stubEnv('CONTENT_WRITE_MODE', 'disabled');
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const { adminContentCollectionsRoute } =
       await import('../src/lib/server/content/route');
 
@@ -75,14 +73,11 @@ describe('content admin route boundary', () => {
     await expect(response.json()).resolves.toMatchObject({
       code: 'content_store_unavailable',
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('dispatches authenticated non-local requests to Redis in production mode', async () => {
+  it('dispatches authenticated mutations to Redis under the mutation lock', async () => {
     mockAdmin(null);
     const { dispatch, lock } = mockRedisContentStore(true);
-    vi.stubEnv('CONTENT_WRITE_MODE', 'disabled');
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const { adminContentCollectionRoute } =
       await import('../src/lib/server/content/route');
     const request = new Request('https://oddava.me/api/admin/content/notes', {
@@ -100,14 +95,12 @@ describe('content admin route boundary', () => {
     await expect(response.json()).resolves.toEqual({ source: 'redis' });
     expect(dispatch).toHaveBeenCalledOnce();
     expect(lock).toHaveBeenCalledOnce();
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('returns non-local Redis reads only after a stable version check', async () => {
+  it('returns Redis reads only after a stable version check', async () => {
     mockAdmin(null);
     const { dispatch, lock, readStableContentVersion } =
       mockRedisContentStore(true);
-    vi.stubEnv('CONTENT_WRITE_MODE', 'redis');
     const { adminContentCollectionsRoute } =
       await import('../src/lib/server/content/route');
 
@@ -123,35 +116,9 @@ describe('content admin route boundary', () => {
     expect(lock).not.toHaveBeenCalled();
   });
 
-  it('forwards authenticated local requests to the loopback service', async () => {
+  it('rejects cross-origin mutations before reaching the content store', async () => {
     mockAdmin(null);
-    vi.stubEnv('CONTENT_WRITE_MODE', 'local');
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(
-        Response.json({ collections: [{ id: 'notes', count: 1 }] }),
-      );
-    const { adminContentCollectionsRoute } =
-      await import('../src/lib/server/content/route');
-    const request = new Request(
-      'https://oddava.me/api/admin/content/collections?fresh=1',
-    );
-
-    const response = await adminContentCollectionsRoute(mockContext(request));
-
-    expect(response.status).toBe(200);
-    expect(fetchSpy).toHaveBeenCalledOnce();
-    const [url, init] = fetchSpy.mock.calls[0]!;
-    expect(String(url)).toBe(
-      'http://127.0.0.1:45556/api/admin/content/collections?fresh=1',
-    );
-    expect(new Headers(init?.headers).get('x-original-url')).toBe(request.url);
-  });
-
-  it('rejects cross-origin mutations before forwarding them', async () => {
-    mockAdmin(null);
-    vi.stubEnv('CONTENT_WRITE_MODE', 'local');
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { dispatch, lock } = mockRedisContentStore(true);
     const { adminContentCollectionRoute } =
       await import('../src/lib/server/content/route');
     const request = new Request('https://oddava.me/api/admin/content/notes', {
@@ -162,13 +129,13 @@ describe('content admin route boundary', () => {
     const response = await adminContentCollectionRoute(mockContext(request));
 
     expect(response.status).toBe(403);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(lock).not.toHaveBeenCalled();
   });
 
-  it('rejects oversized mutations before buffering or forwarding them', async () => {
+  it('rejects oversized mutations before buffering the body', async () => {
     mockAdmin(null);
-    vi.stubEnv('CONTENT_WRITE_MODE', 'local');
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { dispatch } = mockRedisContentStore(true);
     const { adminContentCollectionRoute } =
       await import('../src/lib/server/content/route');
     const request = new Request('https://oddava.me/api/admin/content/notes', {
@@ -185,6 +152,6 @@ describe('content admin route boundary', () => {
     await expect(response.json()).resolves.toMatchObject({
       code: 'payload_too_large',
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });
