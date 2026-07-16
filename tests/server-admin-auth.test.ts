@@ -13,11 +13,11 @@ const SIGNING_SECRET = 'test-signing-secret-with-enough-entropy';
 const ADMIN_TOKEN = 'super-secret-admin-token';
 
 function makeSession(
-  overrides: Partial<{ tokenHash: string; issuedAt: number }> = {},
+  overrides: Partial<{ tokenBinding: string; issuedAt: number }> = {},
 ) {
   return {
     role: 'admin' as const,
-    tokenHash: overrides.tokenHash ?? 'somelonghashvalue',
+    tokenBinding: overrides.tokenBinding ?? 'somelongbindingvalue',
     issuedAt: overrides.issuedAt ?? Date.now(),
   };
 }
@@ -79,10 +79,10 @@ describe('parseSessionValue / verifySession', () => {
   });
 
   it('rejects a body swapped with a different payload but old signature', async () => {
-    const session = makeSession({ tokenHash: 'firsthash' });
+    const session = makeSession({ tokenBinding: 'firstbinding' });
     const signed = await createSignedSessionValue(session, SIGNING_SECRET);
     const other = await createSignedSessionValue(
-      makeSession({ tokenHash: 'secondhash' }),
+      makeSession({ tokenBinding: 'secondbinding' }),
       SIGNING_SECRET,
     );
     const sep = signed.lastIndexOf('.');
@@ -109,9 +109,9 @@ describe('parseSessionValue / verifySession', () => {
     await expect(verifySession(signed, SIGNING_SECRET)).resolves.toBeNull();
   });
 
-  it('rejects missing fields (no role / no tokenHash / no issuedAt)', async () => {
+  it('rejects missing fields (no role / no tokenBinding / no issuedAt)', async () => {
     // Manually craft a signed body with a missing field by signing arbitrary JSON.
-    const body = btoa(JSON.stringify({ role: 'admin', tokenHash: 'abc' }))
+    const body = btoa(JSON.stringify({ role: 'admin', tokenBinding: 'abc' }))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
@@ -130,6 +130,94 @@ describe('parseSessionValue / verifySession', () => {
     await expect(
       parseSessionValue(undefined, SIGNING_SECRET),
     ).resolves.toBeNull();
+  });
+});
+
+describe('admin session cookie contents', () => {
+  beforeEach(() => {
+    process.env.ADMIN_PANEL_TOKEN = ADMIN_TOKEN;
+    process.env.COMMUNITY_SIGNING_SECRET = SIGNING_SECRET;
+    vi.resetModules();
+  });
+  afterEach(() => {
+    delete process.env.ADMIN_PANEL_TOKEN;
+    delete process.env.COMMUNITY_SIGNING_SECRET;
+    // Importing admin/auth pulls the community barrel — and so rate-limit and
+    // storage — into the module registry. Leaving them cached would defeat the
+    // vi.doMock in the rate-limit suite below, which needs a clean registry.
+    vi.resetModules();
+  });
+
+  function cookiesReturning(value: string | undefined) {
+    return {
+      get: (name: string) =>
+        name === 'oddava-admin-session' && value !== undefined
+          ? { value }
+          : undefined,
+    };
+  }
+
+  it('carries no preimage of ADMIN_PANEL_TOKEN', async () => {
+    const { createAdminSessionValue } =
+      await import('../src/lib/server/admin/auth');
+    const cookie = await createAdminSessionValue(ADMIN_TOKEN);
+    const [body] = cookie.split('.');
+    const decoded = Buffer.from(body!, 'base64url').toString('utf8');
+
+    // The raw token must never reach the client.
+    expect(cookie).not.toContain(ADMIN_TOKEN);
+    expect(decoded).not.toContain(ADMIN_TOKEN);
+
+    // Nor an unkeyed digest of it: a plain SHA-256 is offline-guessable, so
+    // shipping one lets an attacker who reads the cookie recover a weak token
+    // by dictionary attack. This is what the cookie used to hold.
+    const unkeyedDigest = await computeTokenHash(ADMIN_TOKEN);
+    expect(cookie).not.toContain(unkeyedDigest);
+    expect(decoded).not.toContain(unkeyedDigest);
+
+    // What it does hold is keyed: the same token under a different secret
+    // produces a different binding, so the cookie is not a token-only function.
+    const parsed = JSON.parse(decoded) as { tokenBinding: string };
+    const { signHmac } = await import('../src/lib/server/crypto');
+    expect(parsed.tokenBinding).toBe(
+      await signHmac(ADMIN_TOKEN, SIGNING_SECRET),
+    );
+    expect(parsed.tokenBinding).not.toBe(
+      await signHmac(ADMIN_TOKEN, 'a-different-signing-secret'),
+    );
+  });
+
+  it('accepts a session minted against the configured token', async () => {
+    const { createAdminSessionValue, isAdminRequest } =
+      await import('../src/lib/server/admin/auth');
+    const cookie = await createAdminSessionValue(ADMIN_TOKEN);
+    await expect(
+      isAdminRequest(cookiesReturning(cookie) as never),
+    ).resolves.toBe(true);
+  });
+
+  it('rejects a still-signed session after the admin token rotates', async () => {
+    const { createAdminSessionValue } =
+      await import('../src/lib/server/admin/auth');
+    const cookie = await createAdminSessionValue(ADMIN_TOKEN);
+
+    // Rotate the token but keep the signing secret: the cookie's signature is
+    // still valid, so only the token binding can catch this.
+    process.env.ADMIN_PANEL_TOKEN = 'rotated-admin-token';
+    vi.resetModules();
+    const { isAdminRequest } = await import('../src/lib/server/admin/auth');
+
+    await expect(verifySession(cookie, SIGNING_SECRET)).resolves.not.toBeNull();
+    await expect(
+      isAdminRequest(cookiesReturning(cookie) as never),
+    ).resolves.toBe(false);
+  });
+
+  it('rejects a missing cookie', async () => {
+    const { isAdminRequest } = await import('../src/lib/server/admin/auth');
+    await expect(
+      isAdminRequest(cookiesReturning(undefined) as never),
+    ).resolves.toBe(false);
   });
 });
 

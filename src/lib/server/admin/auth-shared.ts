@@ -13,7 +13,11 @@ export const ADMIN_SESSION_TTL_MS = ADMIN_SESSION_TTL_SECONDS * 1000;
 
 export interface AdminSession {
   role: 'admin';
-  tokenHash: string;
+  // A keyed binding to the configured admin token — an HMAC under the signing
+  // secret, not a bare digest. It rotates with the token, which is what lets
+  // `isAdminRequest` reject sessions minted against a retired token, and it is
+  // not an offline-guessable preimage of the token itself.
+  tokenBinding: string;
   issuedAt: number;
 }
 
@@ -50,8 +54,8 @@ export async function parseSessionValue(
     ) as Partial<AdminSession>;
     if (
       parsed.role !== 'admin' ||
-      typeof parsed.tokenHash !== 'string' ||
-      !parsed.tokenHash ||
+      typeof parsed.tokenBinding !== 'string' ||
+      !parsed.tokenBinding ||
       typeof parsed.issuedAt !== 'number' ||
       !Number.isFinite(parsed.issuedAt)
     ) {
@@ -59,7 +63,7 @@ export async function parseSessionValue(
     }
     return {
       role: 'admin',
-      tokenHash: parsed.tokenHash,
+      tokenBinding: parsed.tokenBinding,
       issuedAt: parsed.issuedAt,
     };
   } catch {
