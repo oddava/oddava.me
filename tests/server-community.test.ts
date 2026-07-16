@@ -8,17 +8,6 @@ beforeAll(() => {
 });
 
 describe('server community utilities', () => {
-  it('round-trips signed values and rejects tampering', async () => {
-    const { createSignedValue, readSignedValue } =
-      await import('../src/lib/server/community');
-    const signed = await createSignedValue({ role: 'admin', issuedAt: 123 });
-
-    await expect(
-      readSignedValue<{ role: string; issuedAt: number }>(signed),
-    ).resolves.toEqual({ role: 'admin', issuedAt: 123 });
-    await expect(readSignedValue(`${signed}tampered`)).resolves.toBeNull();
-  });
-
   it('parses bounded JSON bodies', async () => {
     const { readJsonBody } = await import('../src/lib/server/community');
     const request = new Request('https://oddava.me/api/example', {

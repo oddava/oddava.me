@@ -58,29 +58,11 @@ export type GardenDocument = {
   backlinks: string[];
 };
 
-type GardenConnection = {
-  sourceId: string;
-  targetId: string;
-};
-
-type SearchDocument = {
-  id: string;
-  href: string;
-  title: string;
-  folder: string;
-  body: string;
-  backlinks: number;
-};
-
 export type GardenIndex = {
   root: GardenDocument;
   documents: GardenDocument[];
   byId: Map<string, GardenDocument>;
-  connections: GardenConnection[];
-  tags: { name: string; count: number }[];
-  searchDocuments: SearchDocument[];
   wikiLinkHrefs: Map<string, string>;
-  unresolvedLinks: { sourceId: string; target: string }[];
 };
 
 export class GardenEmptyError extends Error {
@@ -126,10 +108,6 @@ function extractLinks(body: string): GardenLink[] {
     target: match[1]!.trim(),
     label: match[2]?.trim(),
   }));
-}
-
-function allTags(note: NoteSource): string[] {
-  return getNoteTags({ body: readBody(note) });
 }
 
 function buildLookup(entries: NoteSource[]): Map<string, NoteSource> {
@@ -247,34 +225,15 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     ),
   }));
   const backlinkMap = new Map<string, string[]>();
-  const unresolvedLinks: GardenIndex['unresolvedLinks'] = [];
-  const connectionKeys = new Set<string>();
-  const connections: GardenConnection[] = [];
-
-  function addConnection(sourceId: string, targetId: string): void {
-    if (sourceId === targetId) return;
-    const pair = [sourceId, targetId].toSorted().join('::');
-    if (connectionKeys.has(pair)) return;
-    connectionKeys.add(pair);
-    connections.push({ sourceId, targetId });
-  }
 
   for (const { id, outbound } of linkedSources) {
     for (const link of outbound) {
-      if (!link.resolvedId) {
-        unresolvedLinks.push({ sourceId: id, target: link.target });
-        continue;
-      }
+      if (!link.resolvedId) continue;
       if (link.resolvedId === id) continue;
       const sources = backlinkMap.get(link.resolvedId) ?? [];
       sources.push(id);
       backlinkMap.set(link.resolvedId, sources);
-      addConnection(id, link.resolvedId);
     }
-  }
-
-  for (const [parentId, childIds] of childrenById) {
-    for (const childId of childIds) addConnection(parentId, childId);
   }
 
   const documents: GardenDocument[] = linkedSources.map(
@@ -299,40 +258,8 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     },
   );
 
-  const tagCounts = new Map<string, number>();
-  for (const note of entries) {
-    for (const tag of allTags(note)) {
-      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-    }
-  }
-
-  const tags = [...tagCounts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .toSorted(
-      (left, right) =>
-        right.count - left.count || left.name.localeCompare(right.name),
-    );
   const byId = new Map(documents.map((document) => [document.id, document]));
   const root = byId.get(ROOT_DOCUMENT_ID)!;
-  const searchDocuments = documents.map((document) => {
-    const parentTitles: string[] = [];
-    let parentId = document.parentId;
-    while (parentId && parentId !== ROOT_DOCUMENT_ID) {
-      const parent = byId.get(parentId);
-      if (!parent) break;
-      parentTitles.unshift(parent.title);
-      parentId = parent.parentId;
-    }
-
-    return {
-      id: document.id,
-      href: document.href,
-      title: document.title,
-      folder: parentTitles.join(' / '),
-      body: document.body,
-      backlinks: document.backlinks.length,
-    };
-  });
   const wikiLinkHrefs = buildWikiLinkHrefLookup(
     documents.map((document) => ({
       id: document.id,
@@ -341,16 +268,7 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     })),
   );
 
-  return {
-    root,
-    documents,
-    byId,
-    connections,
-    tags,
-    searchDocuments,
-    wikiLinkHrefs,
-    unresolvedLinks,
-  };
+  return { root, documents, byId, wikiLinkHrefs };
 }
 
 // Discovery links, not structure: two notes are "related" when they share at

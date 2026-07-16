@@ -302,5 +302,6 @@ export function adminContentReorderRoute(
 }
 
 export function adminContentMediaRoute(context: APIContext): Promise<Response> {
-  return dispatch(context, context.request.method !== 'GET');
+  // Upload only, so always a mutation.
+  return dispatch(context, true);
 }

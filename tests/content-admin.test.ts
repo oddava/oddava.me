@@ -486,7 +486,7 @@ describe('content HTTP handlers', () => {
     });
   });
 
-  it('verifies image bytes and supports listing and deletion', async () => {
+  it('verifies image bytes on upload', async () => {
     const provider = new MemoryContentProvider();
     const png = new File(
       [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
@@ -505,23 +505,20 @@ describe('content HTTP handlers', () => {
       }),
     );
     expect(uploaded.status).toBe(201);
-    const uploadedBody = await payload<{ media: { url: string } }>(uploaded);
+    const body = await payload<{ media: { url: string } }>(uploaded);
+    // sanitizeFilename appends a uuid, so match the shape rather than the name.
+    expect(body.media.url).toMatch(
+      /^\/images\/notes\/hello\/cover-[\w-]+\.png$/,
+    );
+  });
 
+  it('rejects a method other than POST', async () => {
+    const provider = new MemoryContentProvider();
     const listed = await handleContentMedia(
       provider,
       new Request('https://oddava.me/api/admin/content/media'),
     );
-    await expect(listed.json()).resolves.toMatchObject({
-      media: [{ url: uploadedBody.media.url, size: 8 }],
-    });
-
-    const deleted = await handleContentMedia(
-      provider,
-      jsonRequest('DELETE', 'https://oddava.me/api/admin/content/media', {
-        url: uploadedBody.media.url,
-      }),
-    );
-    expect(deleted.status).toBe(200);
+    expect(listed.status).toBe(405);
   });
 });
 

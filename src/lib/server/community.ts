@@ -19,10 +19,8 @@ export {
   rejectIfStorageUnavailable,
 } from './community/storage';
 export {
-  createSignedValue,
   getClientFingerprint,
   hasCommunitySigningSecret,
-  readSignedValue,
   rejectIfSigningUnavailable,
 } from './community/signing';
 export { sanitizePlainText } from './community/sanitize';
