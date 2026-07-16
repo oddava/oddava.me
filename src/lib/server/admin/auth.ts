@@ -2,6 +2,7 @@ import type { AstroCookies } from 'astro';
 import { getServerEnv } from '../env';
 import { hasCommunitySigningSecret, isSecureRequest, json } from '../community';
 import { firstConfiguredSecret } from '../secrets';
+import { signHmac } from '../crypto';
 import {
   ADMIN_COOKIE,
   ADMIN_SESSION_TTL_SECONDS,
@@ -59,14 +60,24 @@ export async function verifyAdminToken(token: string): Promise<boolean> {
   );
 }
 
+// What the cookie records about the admin token. Keyed under the signing
+// secret, so the cookie body carries no offline-guessable digest of
+// ADMIN_PANEL_TOKEN: recovering the token from it means forging an HMAC.
+// Deriving it in one place is what keeps the mint below and the rotation check
+// in `isAdminRequest` agreeing.
+function tokenBinding(token: string, secret: string): Promise<string> {
+  return signHmac(token, secret);
+}
+
 export async function createAdminSessionValue(token: string): Promise<string> {
+  const secret = requireSigningSecret();
   return createSignedSessionValue(
     {
       role: 'admin',
-      tokenHash: await computeTokenHash(token),
+      tokenBinding: await tokenBinding(token, secret),
       issuedAt: Date.now(),
     } satisfies AdminSession,
-    requireSigningSecret(),
+    secret,
   );
 }
 
@@ -79,9 +90,12 @@ export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
   const session = await verifySession(cookies.get(ADMIN_COOKIE)?.value, secret);
   if (!session) return false;
 
+  // Rotating ADMIN_PANEL_TOKEN changes this binding, so a session minted
+  // against the retired token stops verifying even though its signature is
+  // still intact.
   return constantTimeCompare(
-    session.tokenHash,
-    await computeTokenHash(configured),
+    session.tokenBinding,
+    await tokenBinding(configured, secret),
   );
 }
 
