@@ -18,6 +18,7 @@ import {
   noteParentIdFromSourceId,
   notePathFromSourceId,
   normalizeWikiLinkTarget,
+  uniqueNoteLeafRedirects,
 } from './utils';
 export {
   getNoteTags,
@@ -364,6 +365,21 @@ export async function getGardenIndex(): Promise<GardenIndex> {
 
   if (cachedGardenIndex) return cachedGardenIndex.index;
   throw new Error('The notes garden is being updated. Try again shortly.');
+}
+
+// The legacy /garden, /blog, and /projects slugs redirect into the notes
+// garden by bare file name. Resolve against the live index, never a build-time
+// snapshot: notes are authored in Studio straight to Redis, so a map frozen at
+// build time silently omits every note written since the last deploy.
+// An ambiguous name resolves to null — see `uniqueNoteLeafRedirects`.
+export function findNoteLeafRedirect(
+  index: GardenIndex,
+  slug: string,
+): string | null {
+  const match = uniqueNoteLeafRedirects(
+    index.documents.map((document) => ({ id: document.sourceId })),
+  ).find((entry) => entry.slug === slug);
+  return match?.redirectTo ?? null;
 }
 
 export type GardenIndexResult =
