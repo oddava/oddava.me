@@ -94,7 +94,6 @@ export interface IntegrationStatus {
   fields: CredentialField[];
   credentials: CredentialFieldStatus[];
   checkedAt?: string;
-  retryAt?: string;
 }
 
 export interface IntegrationResponse {

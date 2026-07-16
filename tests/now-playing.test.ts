@@ -28,7 +28,6 @@ async function loadService(options: Options = {}) {
 
   const fetchSpotifyNowPlaying = vi.fn(spotify);
   const fetchLanyardNowPlaying = vi.fn(lanyard);
-  const recordIntegrationOutcome = vi.fn();
 
   vi.doMock('../src/lib/server/integrations/providers/spotify', () => ({
     fetchSpotifyNowPlaying,
@@ -41,7 +40,6 @@ async function loadService(options: Options = {}) {
   vi.doMock('../src/lib/server/integrations/status', () => ({
     isIntegrationUsable: async (definition: { id: string }) =>
       definition.id === 'spotify' ? spotifyUsable : lanyardUsable,
-    recordIntegrationOutcome,
   }));
   vi.doMock('../src/lib/server/integrations/store', () => ({
     resolveCredentials: async () => ({}),
@@ -50,12 +48,7 @@ async function loadService(options: Options = {}) {
   const { getNowPlaying } =
     await import('../src/lib/server/now-playing/service');
 
-  return {
-    getNowPlaying,
-    fetchSpotifyNowPlaying,
-    fetchLanyardNowPlaying,
-    recordIntegrationOutcome,
-  };
+  return { getNowPlaying, fetchSpotifyNowPlaying, fetchLanyardNowPlaying };
 }
 
 describe('now playing composition', () => {
@@ -104,7 +97,7 @@ describe('now playing composition', () => {
   });
 
   it('falls back to Lanyard when Spotify fails outright', async () => {
-    const { getNowPlaying, recordIntegrationOutcome } = await loadService({
+    const { getNowPlaying } = await loadService({
       spotify: async () => {
         throw new Error('Spotify is down.');
       },
@@ -114,10 +107,6 @@ describe('now playing composition', () => {
     const state = await getNowPlaying();
 
     expect(state).toMatchObject({ isPlaying: true, source: 'lanyard' });
-    expect(recordIntegrationOutcome).toHaveBeenCalledWith('spotify', {
-      ok: false,
-      error: expect.any(Error),
-    });
   });
 
   it('prefers a confident Spotify idle over the fallback’s silence', async () => {
@@ -204,16 +193,20 @@ describe('now playing composition', () => {
     expect(state.error).toBe('Now playing is temporarily unavailable.');
   });
 
-  it('reports a healthy read back to the breaker', async () => {
-    const { getNowPlaying, recordIntegrationOutcome } = await loadService({
-      spotify: async () => PLAYING,
+  it('keeps trying a failing provider rather than latching it off', async () => {
+    const spotify = vi.fn(async () => {
+      throw new Error('Spotify is down.');
+    });
+    const { getNowPlaying, fetchSpotifyNowPlaying } = await loadService({
+      spotify,
     });
 
     await getNowPlaying();
+    await getNowPlaying();
 
-    expect(recordIntegrationOutcome).toHaveBeenCalledWith('spotify', {
-      ok: true,
-    });
+    // No failure record means no self-imposed cooldown. Bounding the retry rate
+    // is the response cache's job, and it does it for the whole endpoint.
+    expect(fetchSpotifyNowPlaying).toHaveBeenCalledTimes(2);
   });
 });
 

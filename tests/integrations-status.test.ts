@@ -194,75 +194,6 @@ describe('integration status', () => {
     });
   });
 
-  it('opens a circuit breaker after repeated failures and stops probing', async () => {
-    const { check, definition } = makeDefinition();
-    check.mockRejectedValue(
-      new IntegrationError({
-        code: 'upstream_unavailable',
-        message: 'Spotify is down.',
-      }),
-    );
-
-    const { getIntegrationStatus } = await loadStatus(definition);
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await getIntegrationStatus(definition, { force: true });
-    }
-    expect(check).toHaveBeenCalledTimes(3);
-
-    // The breaker is now open: an ordinary status read must not touch the API.
-    const status = await getIntegrationStatus(definition);
-    expect(check).toHaveBeenCalledTimes(3);
-    expect(status.retryAt).toBeDefined();
-    expect(status.state).toBe('error');
-  });
-
-  it('lets an explicit test punch through an open breaker', async () => {
-    const { check, definition } = makeDefinition();
-    check.mockRejectedValue(
-      new IntegrationError({
-        code: 'upstream_unavailable',
-        message: 'Spotify is down.',
-      }),
-    );
-
-    const { getIntegrationStatus } = await loadStatus(definition);
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await getIntegrationStatus(definition, { force: true });
-    }
-
-    // The operator has just fixed it and wants to confirm — that must reach the API.
-    check.mockResolvedValue({ state: 'ok', detail: 'Connected.' });
-    const status = await getIntegrationStatus(definition, { force: true });
-
-    expect(check).toHaveBeenCalledTimes(4);
-    expect(status.state).toBe('ok');
-    expect(status.retryAt).toBeUndefined();
-  });
-
-  it('does not trip the breaker on a credential problem', async () => {
-    // These do not resolve on their own, but they also cost one cheap failed
-    // request — and the operator is probably fixing them right now.
-    const { check, definition } = makeDefinition();
-    check.mockRejectedValue(
-      new IntegrationError({
-        code: 'invalid_credentials',
-        message: 'Token revoked.',
-      }),
-    );
-
-    const { getIntegrationStatus } = await loadStatus(definition);
-
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      await getIntegrationStatus(definition, { force: true });
-    }
-
-    const status = await getIntegrationStatus(definition, { force: true });
-    expect(status.retryAt).toBeUndefined();
-    expect(status.state).toBe('error');
-  });
-
   it('contains a provider that throws a non-integration error', async () => {
     const { check, definition } = makeDefinition();
     check.mockRejectedValue(new Error('kaboom'));
@@ -274,47 +205,96 @@ describe('integration status', () => {
     expect(status.detail).toBe('kaboom');
   });
 
-  it('feeds a request-path failure back into the shared breaker', async () => {
-    const { definition } = makeDefinition();
-    const { isIntegrationUsable, recordIntegrationOutcome } =
-      await loadStatus(definition);
+  /**
+   * What used to be the circuit breaker's job. The check cache — not a failure
+   * counter — is what bounds probing, and it does so whether the provider is
+   * healthy or not.
+   */
+  it('still bounds probing of a failing provider without a breaker', async () => {
+    const { check, definition } = makeDefinition();
+    check.mockRejectedValue(
+      new IntegrationError({
+        code: 'upstream_unavailable',
+        message: 'Spotify is down.',
+      }),
+    );
 
-    expect(await isIntegrationUsable(definition)).toBe(true);
+    const { getIntegrationStatus } = await loadStatus(definition);
 
-    const error = new IntegrationError({
-      code: 'upstream_unavailable',
-      message: 'down',
-    });
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      recordIntegrationOutcome('spotify', { ok: false, error });
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await getIntegrationStatus(definition);
     }
 
-    // The widget's own polling is what detected the outage; the next poll skips it.
-    expect(await isIntegrationUsable(definition)).toBe(false);
-
-    recordIntegrationOutcome('spotify', { ok: true });
-    expect(await isIntegrationUsable(definition)).toBe(true);
+    // One live probe; the other four were served from the 30s check cache.
+    expect(check).toHaveBeenCalledTimes(1);
   });
 
-  it('stops request-path retries after an operator-action failure', async () => {
-    const { definition } = makeDefinition();
-    const {
-      invalidateIntegrationStatus,
-      isIntegrationUsable,
-      recordIntegrationOutcome,
-    } = await loadStatus(definition);
-
-    recordIntegrationOutcome('spotify', {
-      ok: false,
-      error: new IntegrationError({
-        code: 'invalid_credentials',
-        message: 'Token revoked.',
+  it('recovers as soon as the provider does, with no cooldown to wait out', async () => {
+    const { check, definition } = makeDefinition();
+    check.mockRejectedValue(
+      new IntegrationError({
+        code: 'upstream_unavailable',
+        message: 'Spotify is down.',
       }),
+    );
+
+    const { getIntegrationStatus } = await loadStatus(definition);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await getIntegrationStatus(definition, { force: true });
+    }
+
+    // Under the old breaker this many failures opened a five-minute cooldown
+    // that a forced check had to punch through. Now it is simply the next read.
+    check.mockResolvedValue({ state: 'ok', detail: 'Connected.' });
+    const status = await getIntegrationStatus(definition, { force: true });
+
+    expect(status.state).toBe('ok');
+  });
+
+  describe('isIntegrationUsable', () => {
+    it('reports an enabled, configured integration as usable', async () => {
+      const { definition } = makeDefinition();
+      const { isIntegrationUsable } = await loadStatus(definition);
+
+      expect(await isIntegrationUsable(definition)).toBe(true);
     });
 
-    expect(await isIntegrationUsable(definition)).toBe(false);
+    it('reports a disabled integration as unusable — the kill switch', async () => {
+      const { definition } = makeDefinition();
+      const { isIntegrationUsable } = await loadStatus(definition, {
+        enabled: false,
+      });
 
-    invalidateIntegrationStatus('spotify');
-    expect(await isIntegrationUsable(definition)).toBe(true);
+      expect(await isIntegrationUsable(definition)).toBe(false);
+    });
+
+    it('reports an unconfigured integration as unusable', async () => {
+      const { definition } = makeDefinition();
+      const { isIntegrationUsable } = await loadStatus(definition, {
+        configured: false,
+      });
+
+      expect(await isIntegrationUsable(definition)).toBe(false);
+    });
+
+    it('does not consult check history — a failed check never gates the request path', async () => {
+      const { check, definition } = makeDefinition();
+      check.mockRejectedValue(
+        new IntegrationError({
+          code: 'upstream_unavailable',
+          message: 'down',
+        }),
+      );
+
+      const { getIntegrationStatus, isIntegrationUsable } =
+        await loadStatus(definition);
+
+      await getIntegrationStatus(definition, { force: true });
+
+      // The upstream is down, but that is the upstream's business to report on
+      // the next read — not a reason for this isolate to refuse to try.
+      expect(await isIntegrationUsable(definition)).toBe(true);
+    });
   });
 });

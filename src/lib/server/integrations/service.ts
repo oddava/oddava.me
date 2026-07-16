@@ -55,7 +55,7 @@ export async function toggleIntegration(
   return getIntegrationStatus(definition, { force: enabled });
 }
 
-/** Runs a live connection test, bypassing both the status cache and the breaker. */
+/** Runs a live connection test, bypassing the status cache. */
 export async function testIntegration(id: string): Promise<IntegrationStatus> {
   const definition = requireIntegration(id);
   return getIntegrationStatus(definition, { force: true });

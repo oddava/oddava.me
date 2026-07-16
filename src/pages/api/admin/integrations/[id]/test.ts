@@ -9,8 +9,8 @@ import {
 } from '../_shared';
 
 /**
- * Runs a live connection test, bypassing the status cache and the circuit
- * breaker. POST rather than GET because it makes a real upstream call.
+ * Runs a live connection test, bypassing the status cache. POST rather than GET
+ * because it makes a real upstream call.
  */
 export const POST: APIRoute = async ({ request, cookies, params }) => {
   const sameOriginError = ensureSameOrigin(request);

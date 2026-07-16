@@ -4,7 +4,6 @@ import {
   lanyardIntegration,
   fetchSpotifyNowPlaying,
   isIntegrationUsable,
-  recordIntegrationOutcome,
   resolveCredentials,
   spotifyIntegration,
   type IntegrationDefinition,
@@ -22,9 +21,9 @@ export const NOW_PLAYING_UNAVAILABLE_MESSAGE =
   'Now playing is temporarily unavailable.';
 
 /**
- * Reads a provider, feeding the outcome back into the shared circuit breaker so
- * that the widget's own polling — not just the admin panel — is what detects a
- * provider going bad, and so a known-bad provider is skipped on the next poll.
+ * Reads a provider, containing any failure. A failing provider is not recorded
+ * anywhere: the response cache in `cache.ts` already bounds how often this runs,
+ * and the operator learns about the failure from the admin panel's own check.
  */
 async function readProvider(
   definition: IntegrationDefinition,
@@ -34,11 +33,8 @@ async function readProvider(
 ): Promise<{ state: SpotifyNowPlaying } | { failed: true }> {
   try {
     const credentials = await resolveCredentials(definition);
-    const state = await read(credentials);
-    recordIntegrationOutcome(definition.id, { ok: true });
-    return { state };
+    return { state: await read(credentials) };
   } catch (error) {
-    recordIntegrationOutcome(definition.id, { ok: false, error });
     console.error(`[now-playing] ${definition.id} read failed`, error);
     return { failed: true };
   }
