@@ -66,12 +66,41 @@ export type GardenIndex = {
   wikiLinkHrefs: Map<string, string>;
 };
 
-export class GardenEmptyError extends Error {
+/**
+ * The garden cannot be served right now, and that is a content-store state
+ * rather than a bug. Every subclass reads as 503 through
+ * `getGardenIndexOrUnavailable`; anything else still throws.
+ */
+export abstract class GardenUnavailableError extends Error {
+  abstract readonly code: string;
+
+  /** Seconds to advertise in `Retry-After`, when the wait is knowable. */
+  readonly retryAfterSeconds?: number;
+}
+
+export class GardenEmptyError extends GardenUnavailableError {
   readonly code = 'garden_empty';
 
   constructor() {
     super('The notes garden needs an index document as its root.');
     this.name = 'GardenEmptyError';
+  }
+}
+
+/**
+ * A compound mutation holds the content lock, so no stable snapshot exists to
+ * build from, and this isolate has no cached index to fall back on. A warm
+ * isolate never gets here — it serves its cache. `notes:migrate` holds the lock
+ * for its whole run, so this is the state a cold request meets during a
+ * migration, and it must read as "not ready", not as a crash.
+ */
+export class GardenBusyError extends GardenUnavailableError {
+  readonly code = 'garden_busy';
+  override readonly retryAfterSeconds = 5;
+
+  constructor() {
+    super('The notes garden is being updated. Try again shortly.');
+    this.name = 'GardenBusyError';
   }
 }
 
@@ -364,7 +393,7 @@ export async function getGardenIndex(): Promise<GardenIndex> {
   }
 
   if (cachedGardenIndex) return cachedGardenIndex.index;
-  throw new Error('The notes garden is being updated. Try again shortly.');
+  throw new GardenBusyError();
 }
 
 // The legacy /garden, /blog, and /projects slugs redirect into the notes
@@ -385,18 +414,23 @@ export function findNoteLeafRedirect(
 export type GardenIndexResult =
   { ok: true; index: GardenIndex } | { ok: false; response: Response };
 
-// A garden with no root index document is a content-store state, not a crash:
-// the store may be unconfigured, empty, or mid-migration. Every `/notes` route
-// loads the index through this guard so that state reads as 503 "not ready"
-// instead of a 500. Any other failure is a real bug and still throws.
+// A garden with no root index document, or one whose store is mid-mutation, is
+// a content-store state, not a crash. Every route that reaches the index loads
+// it through this guard so those states read as 503 "not ready" instead of a
+// 500. Any other failure is a real bug and still throws.
 export async function getGardenIndexOrUnavailable(): Promise<GardenIndexResult> {
   try {
     return { ok: true, index: await getGardenIndex() };
   } catch (error) {
-    if (error instanceof GardenEmptyError) {
+    if (error instanceof GardenUnavailableError) {
       return {
         ok: false,
-        response: new Response('Notes are not available yet.', { status: 503 }),
+        response: new Response('Notes are not available yet.', {
+          status: 503,
+          headers: error.retryAfterSeconds
+            ? { 'Retry-After': String(error.retryAfterSeconds) }
+            : undefined,
+        }),
       };
     }
     throw error;
