@@ -6,7 +6,6 @@ export type {
   ContentEntryListItem,
   ContentFolder,
   ContentWriteResult,
-  MediaAsset,
 } from '../../contracts';
 
 export class ContentConflictError extends Error {

@@ -151,14 +151,6 @@ export interface ContentFolder {
   documentId?: string;
 }
 
-export interface MediaAsset {
-  path: string;
-  url: string;
-  name: string;
-  size: number;
-  modifiedAt: string;
-}
-
 export interface ContentCollectionsResponse {
   collections: ContentCollectionMeta[];
 }
@@ -186,8 +178,4 @@ export interface ContentDeleteResponse {
 export interface ContentMediaResponse {
   media: { url: string; path: string };
   result: ContentWriteResult;
-}
-
-export interface ContentMediaListResponse {
-  media: MediaAsset[];
 }

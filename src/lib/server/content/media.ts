@@ -1,14 +1,12 @@
 import { adminJson } from '../admin/response';
-import { readJsonBody, requestBodyErrorResponse } from '../community/body';
-import type { ContentMediaListResponse } from '../../contracts';
 import {
   contentConflictResponse,
   methodNotAllowed,
   missingCollection,
 } from './http';
 import { isValidSlug, sanitizeFilename } from './paths';
-import { getContentCollection, NOTES_COLLECTION } from './registry';
-import type { ContentProvider, MediaAsset } from './types';
+import { getContentCollection } from './registry';
+import type { ContentProvider } from './types';
 
 const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -40,86 +38,14 @@ function detectImageType(bytes: Uint8Array): SupportedImageType | null {
   return null;
 }
 
-function mediaUrl(path: string): string {
-  return `${NOTES_COLLECTION.mediaPublicPath}${path.slice(
-    NOTES_COLLECTION.mediaDir.length,
-  )}`;
-}
-
-function mediaPath(url: string): string | null {
-  if (!url.startsWith(`${NOTES_COLLECTION.mediaPublicPath}/`)) return null;
-  const relative = url.slice(NOTES_COLLECTION.mediaPublicPath.length + 1);
-  if (
-    !relative ||
-    relative.includes('\\') ||
-    relative.split('/').some((part) => !part || part === '.' || part === '..')
-  ) {
-    return null;
-  }
-  return `${NOTES_COLLECTION.mediaDir}/${relative}`;
-}
-
-async function listMedia(store: ContentProvider): Promise<MediaAsset[]> {
-  return (await store.listFiles(NOTES_COLLECTION.mediaDir))
-    .filter((file) => file.encoding === 'base64')
-    .map((file) => ({
-      path: file.path,
-      url: mediaUrl(file.path),
-      name: file.path.split('/').at(-1) ?? file.path,
-      size: file.byteLength,
-      modifiedAt: file.updatedAt,
-    }))
-    .toSorted((left, right) => right.modifiedAt.localeCompare(left.modifiedAt));
-}
-
+// Upload only. Studio has no media browser or delete affordance, and the
+// public read path is `/images/notes/[...path]`, which reads Redis directly.
 export async function handleContentMedia(
   store: ContentProvider,
   request: Request,
 ): Promise<Response> {
-  if (request.method === 'GET') {
-    return adminJson({
-      media: await listMedia(store),
-    } satisfies ContentMediaListResponse);
-  }
-
-  if (request.method === 'DELETE') {
-    let body: { url?: unknown };
-    try {
-      body = await readJsonBody(request);
-    } catch (error) {
-      return requestBodyErrorResponse(error);
-    }
-
-    const url = String(body.url ?? '');
-    const path = mediaPath(url);
-    if (!path) {
-      return adminJson(
-        { error: 'Invalid media URL.', code: 'invalid_media_url' },
-        { status: 400 },
-      );
-    }
-    const file = await store.readFile(path);
-    if (!file || file.encoding !== 'base64') {
-      return adminJson(
-        { error: 'Media was not found.', code: 'not_found' },
-        { status: 404 },
-      );
-    }
-
-    try {
-      await store.deleteFile(
-        path,
-        `content: delete media ${url}`,
-        file.revision,
-      );
-      return adminJson({ deleted: url });
-    } catch (error) {
-      return contentConflictResponse(error);
-    }
-  }
-
   if (request.method !== 'POST') {
-    return methodNotAllowed(['GET', 'POST', 'DELETE']);
+    return methodNotAllowed(['POST']);
   }
 
   let formData: FormData;
