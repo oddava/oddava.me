@@ -81,20 +81,20 @@ mutation lock so readers never publish a partial sync.
 ## Runtime configuration
 
 Copy `.env.example` for the complete configuration contract. In production,
-shared state uses the Upstash Redis REST API. Integration credentials resolve in
-this order:
+shared state uses the Upstash Redis REST API.
 
-1. operator override stored in Redis
-2. deployment environment variable
-3. unconfigured
+Integration credentials come from the deployment environment — a Cloudflare
+secret in production, `.env` locally — and nowhere else. A field with no value
+set, or one still holding an example placeholder such as `your_...`, reads as
+unconfigured. Rotating a credential is `wrangler secret put` plus a deploy.
 
-The admin API reports only whether each credential is set and where it came
-from; secret values are never returned to the browser.
+The admin API reports only whether each credential is set and which variable
+supplies it; secret values are never returned to the browser, and there is no
+way to set one from the panel.
 
-For `pnpm run spotify:token`, register
-`http://127.0.0.1:8888/callback` as an exact redirect URI in the Spotify
-application first. A Spotify credential saved in `/admin` takes precedence over
-the generated `.env` fallback.
+For `pnpm run spotify:token`, register `http://127.0.0.1:8888/callback` as an
+exact redirect URI in the Spotify application first, then put the generated
+refresh token in `.env` locally or in a Cloudflare secret for production.
 
 ## Architecture
 

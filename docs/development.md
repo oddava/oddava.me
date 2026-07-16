@@ -45,17 +45,21 @@ checking a target; import accepts `--prune`, while export accepts
 
 1. Implement one `IntegrationDefinition` in
    `src/lib/server/integrations/providers`.
-2. Declare credential fields, environment fallbacks, validators, and a bounded
-   `check()` implementation.
+2. Declare credential fields with the environment variables that supply them, in
+   priority order, and a bounded `check()` implementation.
 3. Add the definition to `integrations/registry.ts` and extend `IntegrationId`.
-4. Add provider and service tests.
+4. Add the variables to `RuntimeEnv` in `src/lib/server/env.ts`.
+5. Add provider and service tests.
 
 Do not add provider-specific admin routes, credential forms, Redis keys, or
 status components. The registry contract exists so those surfaces remain
-generic.
+generic. Do not add a runtime credential store either: credentials are
+deployment state, resolved from env, and the request path must not read storage
+to learn them.
 
 Credential values returned from `resolveCredentials` are server-only. API
-responses may include source and timestamp metadata, never secret material.
+responses may report whether a field is set and which variable supplies it,
+never secret material.
 
 ## Verification
 
@@ -73,8 +77,9 @@ audit. A push to `main` deploys only after those checks pass.
 ## Deployment
 
 `pnpm run deploy` invokes Wrangler using `wrangler.jsonc`. Runtime secrets belong
-in Cloudflare or the integration credential store, never in committed files.
-Environment values remain fallbacks when an operator override exists in Redis.
+in Cloudflare, never in committed files. Rotating an integration credential is
+`wrangler secret put` followed by a deploy; there is no runtime override, and a
+push to `main` deploys anyway.
 
 After changing a compatibility date, adapter, Worker binding, or security
 header, run a production build and preview rather than relying only on type
