@@ -10,7 +10,10 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs, but never cancel a main-branch run: it ends in a
+  # wrangler deploy, and cancelling mid-deploy leaves a verified commit that was
+  # never shipped, with no failure signal beyond a cancelled run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify-and-deploy:

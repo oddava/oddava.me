@@ -34,7 +34,10 @@ export const GET: APIRoute = async ({ params }) => {
     if (!bytes) return new Response('Not found', { status: 404 });
     return new Response(bytes as BodyInit, {
       headers: {
-        'Cache-Control': 'public, max-age=3600',
+        // Upload filenames carry a random UUID suffix (see sanitizeFilename), so
+        // a given URL always maps to the same bytes — it is safe to cache
+        // immutably and skip the per-visit Redis read + base64 decode on revisit.
+        'Cache-Control': 'public, max-age=31536000, immutable',
         'Content-Length': String(bytes.byteLength),
         'Content-Type': contentType,
         'X-Content-Type-Options': 'nosniff',

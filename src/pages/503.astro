@@ -1,0 +1,25 @@
+---
+// Branded "content store not ready" page. The notes routes rewrite here when
+// the garden index cannot be served (mid-migration, empty store) so visitors
+// see a styled page instead of a plain-text 503. Feed readers still get the
+// plain Response from `getGardenIndexOrUnavailable` on /rss.xml.
+import Base from '../layouts/Base.astro';
+import '../styles/components/_status-page.css';
+
+Astro.response.status = 503;
+Astro.response.headers.set('Retry-After', '5');
+---
+
+<Base title="503" description="The notes are being tended.">
+  <meta slot="head" name="robots" content="noindex" />
+  <section class="status-page">
+    <h1>503</h1>
+    <p class="status-page__copy">
+      the notes are being tended right now — a save or a migration is
+      mid-flight. give it a few seconds and try again.
+    </p>
+    <p class="status-page__links">
+      <a href="/">← back to home</a>
+    </p>
+  </section>
+</Base>

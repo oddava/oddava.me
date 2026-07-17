@@ -121,9 +121,11 @@ describe('integration HTTP layer', () => {
   });
 
   it('retries a rate limit whose Retry-After is short', async () => {
+    // Retry-After: 0 keeps the retry immediate. A non-zero value would sleep for
+    // real here, because Retry-After bypasses the pinned-to-zero jitter above.
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(response(429, '', { 'Retry-After': '1' }))
+      .mockResolvedValueOnce(response(429, '', { 'Retry-After': '0' }))
       .mockResolvedValueOnce(response(200, '{}'));
 
     await expect(

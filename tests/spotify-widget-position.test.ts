@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveInitialMinimized } from '../src/components/spotify/minimizedState';
 import {
   calculateDraggedWidgetPosition,
   clampWidgetPosition,
@@ -131,5 +132,29 @@ describe('Spotify widget position helpers', () => {
       offsetX: 16,
       offsetY: 16,
     });
+  });
+});
+
+describe('Spotify widget initial minimized state', () => {
+  it('honors a stored minimized preference on any viewport', () => {
+    expect(resolveInitialMinimized('true', false)).toBe(true);
+    expect(resolveInitialMinimized('true', true)).toBe(true);
+  });
+
+  it('honors a stored expanded preference even on small viewports', () => {
+    expect(resolveInitialMinimized('false', true)).toBe(false);
+  });
+
+  it('defaults to minimized on small viewports without a preference', () => {
+    expect(resolveInitialMinimized(null, true)).toBe(true);
+  });
+
+  it('defaults to expanded on large viewports without a preference', () => {
+    expect(resolveInitialMinimized(null, false)).toBe(false);
+  });
+
+  it('treats corrupted stored values as no preference', () => {
+    expect(resolveInitialMinimized('garbage', true)).toBe(true);
+    expect(resolveInitialMinimized('garbage', false)).toBe(false);
   });
 });

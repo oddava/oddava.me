@@ -1,8 +1,10 @@
 ---
 // Old /garden/tag/<tag> links live on as redirects into the notes garden.
-// A pure param redirect — no need to enumerate tags from the store.
+// A pure param redirect — no need to enumerate tags from the store. Slash
+// tags (#tag/sub) are rest params, so encode per segment, not the whole.
 return Astro.redirect(
-  '/notes/tag/' + encodeURIComponent(Astro.params.tag ?? ''),
+  '/notes/tag/' +
+    (Astro.params.tag ?? '').split('/').map(encodeURIComponent).join('/'),
   301,
 );
 ---

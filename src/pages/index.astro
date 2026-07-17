@@ -8,7 +8,7 @@ import '../styles/components/_home.css';
 <Base
   title="oddava"
   description="the notebook i keep out in the open — things i'm making, reading, and thinking about."
-  image="/og-default.svg"
+  hideNav
 >
   <section class="home-hero home-hero--intro">
     <img
@@ -27,14 +27,14 @@ import '../styles/components/_home.css';
     </p>
 
     <nav class="home-hero__cta" aria-label="primary">
-      <a href="/notes" class="home-cta home-cta--icon" aria-label="notes">
-        <LinkIcon name="graph" />
+      <a href="/notes" class="home-cta">
+        <LinkIcon name="pen" /> notes
       </a>
-      <a href="/about" class="home-cta home-cta--icon" aria-label="about">
-        <LinkIcon name="user" />
+      <a href="/about" class="home-cta">
+        <LinkIcon name="user" /> about
       </a>
-      <a href="/links" class="home-cta home-cta--icon" aria-label="links">
-        <LinkIcon name="link" />
+      <a href="/links" class="home-cta">
+        <LinkIcon name="link" /> links
       </a>
     </nav>
   </section>

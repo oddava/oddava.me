@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bodyProvidesTitleHeading,
   buildWikiLinkHrefLookup,
   deriveSummary,
   deriveTitle,
@@ -86,6 +87,15 @@ describe('notes helpers', () => {
     );
     expect(deriveTitle('# A [linked](https://x.com) title', 'x')).toBe(
       'A linked title',
+    );
+  });
+
+  it('knows when a body opens with its own h1', () => {
+    expect(bodyProvidesTitleHeading('# Title\n\nBody.')).toBe(true);
+    expect(bodyProvidesTitleHeading('## A quieter start')).toBe(false);
+    expect(bodyProvidesTitleHeading('\n\n# After blank lines')).toBe(true);
+    expect(bodyProvidesTitleHeading('Just a paragraph, no headings.')).toBe(
+      false,
     );
   });
 

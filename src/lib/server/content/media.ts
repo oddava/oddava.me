@@ -40,6 +40,14 @@ function detectImageType(bytes: Uint8Array): SupportedImageType | null {
 
 // Upload only. Studio has no media browser or delete affordance, and the
 // public read path is `/images/notes/[...path]`, which reads Redis directly.
+//
+// Note deletion intentionally does NOT delete the note's uploaded media: an
+// image URL is baked into a note's body and can outlive a rename or be
+// referenced from more than one note, so cascading a delete here would risk
+// breaking a live reference. Abandoned uploads are reclaimed out of band:
+// `notes:migrate -- --prune` deletes any managed media key not present in the
+// committed `public/images/notes` tree, so an orphan that was never exported to
+// the repo is dropped by a prune run. This is the media garbage-collection path.
 export async function handleContentMedia(
   store: ContentProvider,
   request: Request,

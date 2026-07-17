@@ -1,78 +1,28 @@
 ---
-export const prerender = true;
+// Server-rendered so the status code is a real 404 — both for direct misses
+// and for the notes routes that rewrite here on unknown paths. A prerendered
+// 404 would be served 200 by those rewrites (a soft 404).
 import Base from '../layouts/Base.astro';
+import '../styles/components/_status-page.css';
+
+Astro.response.status = 404;
 ---
 
-<Base title="404" description="This page wandered off." image="/og-default.svg">
+<Base title="404" description="This page wandered off.">
   <meta slot="head" name="robots" content="noindex" />
-  <section class="not-found">
+  <section class="status-page">
     <h1>404</h1>
-    <p class="not-found__copy">
+    <p class="status-page__copy">
       this page wandered off. maybe it's in the notes, or maybe it never existed
       at all.
     </p>
-    <ul class="not-found__links">
+    <ul class="status-page__links">
       <li><a href="/">home</a></li>
       <li><a href="/notes">notes</a></li>
       <li><a href="/about">about</a></li>
     </ul>
-    <p class="not-found__hint">
+    <p class="status-page__hint">
       or check the url — typos happen to the best of us.
     </p>
   </section>
 </Base>
-
-<style is:global>
-  .not-found {
-    text-align: center;
-    padding: var(--space-xl) 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-sm);
-  }
-
-  .not-found h1 {
-    font-family: var(--font-mono);
-    font-size: clamp(3rem, 12vw, 6rem);
-    font-weight: 700;
-    margin: 0;
-    color: var(--color-text-interactive);
-    letter-spacing: -0.04em;
-  }
-
-  .not-found__copy {
-    max-width: 32rem;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
-  .not-found__links {
-    list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.75rem 1.25rem;
-    padding: 0;
-    margin: var(--space-sm) 0 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-  }
-
-  .not-found__links a {
-    color: var(--color-text-interactive);
-    text-decoration: none;
-  }
-
-  .not-found__links a:hover {
-    color: var(--color-text-interactive-hover);
-    text-decoration: underline;
-  }
-
-  .not-found__hint {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    color: var(--color-text-muted);
-    margin: var(--space-sm) 0 0;
-  }
-</style>

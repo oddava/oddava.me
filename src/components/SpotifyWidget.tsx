@@ -68,6 +68,13 @@ export default function SpotifyWidget() {
   }
 
   const alignmentClasses = `side-${position.edgeX} side-${position.edgeY}`;
+  // Changes only when the track identity changes, so the live region stays
+  // silent across progress ticks and repeated polls of the same track.
+  const trackAnnouncement = displayData.title
+    ? `now playing: ${displayData.title}${
+        displayData.artist ? ` — ${displayData.artist}` : ''
+      }`
+    : '';
   const progressPercent = displayData.durationMs
     ? (currentProgress / displayData.durationMs) * 100
     : 0;
@@ -106,6 +113,9 @@ export default function SpotifyWidget() {
       <div
         className={`spotify-widget-wrapper render-${renderState} ${isMinimized ? 'is-minimized' : ''} ${alignmentClasses}`}
       >
+        <span className="sr-only" aria-live="polite">
+          {trackAnnouncement}
+        </span>
         <div className="spotify-widget-full-view">
           <div className="spotify-widget-controls">
             <div />
@@ -120,7 +130,7 @@ export default function SpotifyWidget() {
           <div className="spotify-widget-container" draggable={false}>
             <img
               src={displayData.albumImageUrl}
-              alt={displayData.title}
+              alt=""
               className="spotify-widget-album"
               draggable={false}
               onDragStart={(event) => event.preventDefault()}

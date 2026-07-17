@@ -2,7 +2,6 @@ import { json } from './http';
 import { getClientFingerprint } from './signing';
 import {
   hasRedisConfig,
-  isStorageUnavailableError,
   redisCommand,
   rejectIfStorageUnavailable,
 } from './storage';
@@ -19,17 +18,15 @@ export async function enforceRedisRateLimit(
   windowMs: number,
   options: RedisRateLimitOptions = {},
 ): Promise<Response | null> {
+  // Opted-in routes (admin login) skip rate limiting entirely in development,
+  // so a local Redis or signing hiccup can never lock the developer out. This
+  // is also why the catch below only needs to handle the production case.
   if (options.failOpenInDevelopment && isDevelopmentEnv()) return null;
 
   if (!hasRedisConfig()) {
     return rejectIfStorageUnavailable();
   }
 
-  const ipHash = await getClientFingerprint(request);
-  const bucket = Math.floor(Date.now() / windowMs);
-  // `community:` is kept for the same reason as the guestbook entries key: it
-  // is a live key prefix, and the rename is code-level only.
-  const key = `community:rate-limit:${feature}:${ipHash}:${bucket}`;
   const script = `
     local count = redis.call('INCR', KEYS[1])
     if count == 1 then
@@ -39,6 +36,14 @@ export async function enforceRedisRateLimit(
   `;
   let result: Array<number | string>;
   try {
+    // The fingerprint (an HMAC under the signing secret) is computed inside the
+    // try so a misconfigured secret degrades to the same 503 as a storage
+    // outage, rather than throwing an unhandled 500 out of this guard.
+    const ipHash = await getClientFingerprint(request);
+    const bucket = Math.floor(Date.now() / windowMs);
+    // `community:` is kept for the same reason as the guestbook entries key: it
+    // is a live key prefix, and the rename is code-level only.
+    const key = `community:rate-limit:${feature}:${ipHash}:${bucket}`;
     result = await redisCommand<Array<number | string>>([
       'EVAL',
       script,
@@ -47,18 +52,6 @@ export async function enforceRedisRateLimit(
       windowMs,
     ]);
   } catch (error) {
-    if (
-      options.failOpenInDevelopment &&
-      isDevelopmentEnv() &&
-      isStorageUnavailableError(error)
-    ) {
-      console.warn(
-        `[rate-limit] ${feature} unavailable in development; allowing request.`,
-        error,
-      );
-      return null;
-    }
-
     console.error(`[rate-limit] ${feature} failed`, error);
     return json(
       {

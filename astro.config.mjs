@@ -15,6 +15,11 @@ export default defineConfig({
   integrations: [preact()],
   compressHTML: true,
   devToolbar: { enabled: false },
+  // Notes render at runtime through `marked`, so Astro's own Markdown pipeline
+  // is never used — but leaving Shiki as its default highlighter makes Astro warn
+  // that its inline styles could loosen the hashed CSP. Turning it off matches
+  // the documented security posture (no inline-style source) and quiets the warn.
+  markdown: { syntaxHighlight: false },
   security: {
     csp: {
       directives: [

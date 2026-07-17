@@ -1,0 +1,35 @@
+/* Site header — big cute wordmark, sharing the reading column so it stacks
+   above the page's own wayfinding row instead of floating out at the shell
+   edge on wide pages. Narrow pages are already inside 44rem, so min() keeps
+   them flush with their own content. */
+.site-nav {
+  display: flex;
+  align-items: baseline;
+  width: min(100%, 44rem);
+  margin: 0 auto;
+  padding: var(--space-md) 0 var(--space-sm);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.site-nav__wordmark {
+  font-family: var(--font-body);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--color-brand);
+  text-decoration: none;
+  text-transform: lowercase;
+}
+
+@media (max-width: 640px) {
+  .site-nav__wordmark {
+    font-size: 1.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .site-nav__wordmark {
+    font-size: 1.6rem;
+  }
+}

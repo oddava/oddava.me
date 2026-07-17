@@ -1,12 +1,9 @@
 /**
- * Heading utilities for MDX anchor links.
+ * Heading slug utility for in-page anchors.
  *
- * Used by `Heading.astro` to slugify heading text into stable, URL-safe ids
- * for in-page anchors (GitHub-style, without a rehype plugin dependency).
- */
-
-/**
- * Convert a rendered-HTML heading body into a URL-safe slug.
+ * Used by the note renderer (`src/lib/garden/render.ts`) to turn heading text
+ * into stable, URL-safe ids (GitHub-style, without a rehype plugin dependency).
+ *
  * Strips tags and entities so the slug matches the visible heading text.
  */
 export function slugifyHeading(

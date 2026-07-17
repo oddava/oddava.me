@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CONTENT_KEYS,
   ancestorsOfDirectory,
+  assertKnownArgs,
   createRedisTransport,
   loadEnvironment,
   parentDirectory,
@@ -25,6 +26,7 @@ function noteId(path) {
   return basename(path).replace(/\.mdx?$/i, '');
 }
 const arguments_ = process.argv.slice(2);
+assertKnownArgs(arguments_, ['--dry-run', '--prune', '--target']);
 const dryRun = arguments_.includes('--dry-run');
 const prune = arguments_.includes('--prune');
 const targetArgument = arguments_
@@ -82,9 +84,13 @@ function loadRecords() {
       const bytes = readFileSync(absolutePath);
       const updatedAt = gitDate(absolutePath, false) || timestamp;
       const createdAt = gitDate(absolutePath, true) || updatedAt;
+      // Store notes under the canonical `.md` key even when the disk file is a
+      // legacy `.mdx`, so importing is itself the extension migration: with
+      // `--prune`, the old `.mdx` key is dropped and replaced by its `.md` form.
+      const storePath = isText ? path.replace(/\.mdx$/i, '.md') : path;
       return [
         {
-          path,
+          path: storePath,
           record: {
             content: isText ? bytes.toString('utf8') : bytes.toString('base64'),
             enc: isText ? 'utf8' : 'base64',

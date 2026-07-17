@@ -80,9 +80,13 @@ export function toDetail(
   file: ContentSourceFile,
 ): ContentEntryDetail {
   const parsed = parseContentDocument(file.content);
+  // Writes validate strictly (see the create/update handlers); reads must not.
+  // If a stored note has invalid frontmatter, opening it in Studio is the only
+  // way to repair it, so surface the raw fields rather than throwing a 500.
+  const validated = collection.schema.safeParse(parsed.fields);
   return {
     ...toListItem(collection, file),
-    fields: validateFields(collection, parsed.fields),
+    fields: validated.success ? validated.data : parsed.fields,
     body: parsed.body,
   };
 }
@@ -116,15 +120,19 @@ export async function findEntry(
   collection: ContentCollectionDefinition,
   id: string,
 ): Promise<ContentSourceFile | null> {
-  const files = await provider.listFiles(
-    collection.sourceDir,
-    collection.readExtensions,
+  // Entry ids are unique across the collection, so resolve id -> path from the
+  // paths alone and read only the one record — rather than transferring every
+  // note's full content (an MGET of the whole corpus) on each Studio open,
+  // autosave, and delete just to pick one out.
+  const path = (
+    await provider.listFilePaths(
+      collection.sourceDir,
+      collection.readExtensions,
+    )
+  ).find(
+    (candidate) => entryIdFromPath(candidate, collection.readExtensions) === id,
   );
-  return (
-    files.find(
-      (file) => entryIdFromPath(file.path, collection.readExtensions) === id,
-    ) ?? null
-  );
+  return path ? provider.readFile(path) : null;
 }
 
 export function folderName(folder: string): string {

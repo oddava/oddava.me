@@ -195,6 +195,40 @@
   text-underline-offset: 0.2em;
 }
 
+/* A wiki link whose note doesn't exist yet: visibly a link-shaped wish,
+   not a destination. */
+.prose .wiki-link--broken {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-text-muted) 55%,
+    transparent
+  );
+  text-underline-offset: 0.2em;
+  cursor: default;
+}
+
+/* Outbound links carry a small, non-underlined outward mark. The inline-block
+   keeps the underline from running beneath the arrow. */
+.prose .external-link::after {
+  content: '\2197';
+  display: inline-block;
+  margin-left: 0.15em;
+  color: var(--color-text-muted);
+  font-size: 0.7em;
+}
+
+/* Inline #tags — mono like every other tag accent on the site. */
+.prose .note-tag {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
 /* --- Code --- */
 
 .prose code {

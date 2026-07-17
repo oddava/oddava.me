@@ -12,8 +12,10 @@ export interface GuestbookApiResponse {
   captchaRequired?: boolean;
   turnstileSiteKey?: string;
   submitted?: boolean;
+  status?: GuestbookStatus;
   message?: string;
   error?: string;
+  code?: string;
   retryAfterSeconds?: number;
 }
 

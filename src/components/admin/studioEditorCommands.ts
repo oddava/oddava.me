@@ -107,8 +107,20 @@ function toggleWrap(
     return;
   }
 
-  // Markers sit just outside the selection → unwrap outward.
-  if (before.endsWith(marker) && after.startsWith(marker)) {
+  // Markers sit just outside the selection → unwrap outward. But `_` is
+  // word-internal in snake_case and code, where it is not emphasis at all:
+  // unwrapping `my_word_here` around `word` would silently delete two real
+  // underscores. Only treat surrounding `_` as a wrap when it is not flanked by
+  // word characters on both sides (`*`/`**`/`~~` legitimately go intra-word, so
+  // this guard applies to `_` only).
+  const flankedByWordChars =
+    /\w/.test(before[before.length - len - 1] ?? '') &&
+    /\w/.test(after[len] ?? '');
+  const surroundedByMarkers =
+    before.endsWith(marker) &&
+    after.startsWith(marker) &&
+    !(marker === '_' && flankedByWordChars);
+  if (surroundedByMarkers) {
     replaceRange(
       el,
       commit,

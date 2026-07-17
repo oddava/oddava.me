@@ -71,7 +71,10 @@ describe('server core utilities', () => {
     expect(parseGuestbookStatus(null)).toBeNull();
   });
 
-  it('can allow development-only rate limiting when Redis is unavailable', async () => {
+  it('skips rate limiting entirely in development for opted-in routes', async () => {
+    // `failOpenInDevelopment` short-circuits before any storage or signing work,
+    // so a local Redis/secret hiccup never blocks the developer. The success
+    // path returns null here without touching Redis at all.
     const { enforceRedisRateLimit } = await import('../src/lib/server/core');
     const request = new Request('https://oddava.me/api/admin/session', {
       headers: { 'x-forwarded-for': '203.0.113.10' },

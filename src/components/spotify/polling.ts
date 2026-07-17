@@ -24,3 +24,23 @@ export function hasTrackChanged(
     previous.artist !== next.artist
   );
 }
+
+export interface ProgressAnchor {
+  progressMs: number;
+  timestamp: number;
+}
+
+/**
+ * Re-derives playback progress from the last fetched position plus the
+ * wall-clock time elapsed since, clamped to the track duration. Used when a
+ * hidden tab becomes visible again so the paused progress tick doesn't show a
+ * stale bar while the visible-tab refetch is in flight.
+ */
+export function extrapolateProgress(
+  anchor: ProgressAnchor,
+  now: number,
+  durationMs: number,
+): number {
+  const elapsed = Math.max(0, now - anchor.timestamp);
+  return Math.min(anchor.progressMs + elapsed, durationMs);
+}

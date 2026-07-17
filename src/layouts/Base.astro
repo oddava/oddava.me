@@ -4,10 +4,13 @@ import Footer from '../components/Footer.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
+import SiteNav from '../components/SiteNav.astro';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
 export interface Props extends SiteHeadProps {
   hideFooter?: boolean;
+  /** The homepage hero is its own navigation; every other page shows the nav. */
+  hideNav?: boolean;
   wide?: boolean;
 }
 
@@ -17,6 +20,7 @@ const {
   image,
   type,
   hideFooter = false,
+  hideNav = false,
   wide = false,
 } = Astro.props;
 
@@ -33,6 +37,8 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
   <body>
     <div class:list={['page', wide && 'page--wide']}>
       <a href="#main" class="skip-link">Skip to content</a>
+
+      {!hideNav && <SiteNav />}
 
       <main id="main">
         <slot />

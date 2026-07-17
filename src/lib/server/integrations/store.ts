@@ -9,6 +9,14 @@ import type {
   IntegrationId,
 } from './types';
 
+/**
+ * A settings blob written by an earlier implementation that stored all provider
+ * flags together. Nothing writes it anymore — `setEnabled` writes one
+ * `integrations:enabled:<id>` key per provider — but it is still read as a
+ * fallback so a store seeded before per-provider keys keeps its toggles. It can
+ * be dropped (here and from the hot-path test's pinned key list) once the live
+ * stores are confirmed to hold no `integrations:settings` value.
+ */
 const SETTINGS_KEY = 'integrations:settings';
 const ENABLED_KEY_PREFIX = 'integrations:enabled:';
 

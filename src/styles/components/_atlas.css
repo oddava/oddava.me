@@ -251,7 +251,7 @@
 }
 
 .knowledge-landscape__root-meta {
-  fill: var(--color-text-disabled);
+  fill: var(--color-text-muted);
   stroke-width: 5px;
   font: 8px var(--font-mono);
   letter-spacing: 0.055em;
@@ -495,8 +495,8 @@
 }
 
 .knowledge-landscape__search-trigger kbd {
-  color: var(--color-text-disabled);
-  font: 0.54rem var(--font-mono);
+  color: var(--color-text-muted);
+  font: var(--text-2xs) var(--font-mono);
 }
 
 .knowledge-landscape__context {
@@ -658,7 +658,7 @@
   white-space: nowrap;
 }
 
-.knowledge-landscape__card h1 {
+.knowledge-landscape__card h2 {
   margin: 0;
   color: var(--landscape-ink);
   font-size: 1.3rem;
@@ -814,7 +814,7 @@
 }
 
 .knowledge-landscape__search-panel input::placeholder {
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   opacity: 1;
 }
 
@@ -832,8 +832,8 @@
 .knowledge-landscape__search-panel > p {
   margin: 0;
   padding: 0.75rem 1rem 0.45rem;
-  color: var(--color-text-disabled);
-  font: 0.52rem var(--font-mono);
+  color: var(--color-text-muted);
+  font: var(--text-2xs) var(--font-mono);
   letter-spacing: 0.04em;
 }
 
@@ -872,8 +872,8 @@
 }
 
 .knowledge-landscape__search-panel li button small {
-  color: var(--color-text-disabled);
-  font: 0.5rem var(--font-mono);
+  color: var(--color-text-muted);
+  font: var(--text-2xs) var(--font-mono);
   text-transform: lowercase;
 }
 
@@ -904,6 +904,64 @@
   color: var(--color-text-muted);
   background: var(--color-surface);
   font: 0.68rem var(--font-mono);
+}
+
+/* With JavaScript off the SSR-rendered map is decorative, so a plain index of
+   every note covers it. The immersive shell underneath is overflow: hidden at
+   100dvh, so this layer is fixed and scrolls on its own. */
+.landscape-noscript {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  max-height: 100dvh;
+  padding: max(3rem, env(safe-area-inset-top))
+    max(1.5rem, env(safe-area-inset-right))
+    max(4rem, env(safe-area-inset-bottom))
+    max(1.5rem, env(safe-area-inset-left));
+  overflow-y: auto;
+  background: var(--color-surface);
+}
+
+.landscape-noscript__inner {
+  max-width: var(--max-width);
+  margin-inline: auto;
+}
+
+.landscape-noscript__inner > p {
+  margin: 0 0 1.75rem;
+  color: var(--color-text-muted);
+  font: var(--text-2xs) var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+.landscape-noscript__inner > p:last-child {
+  margin-bottom: 0;
+}
+
+.landscape-noscript__inner > p a {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.landscape-noscript__inner ul {
+  margin: 0 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.landscape-noscript__inner li a {
+  display: inline-block;
+  padding: 0.3rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.landscape-noscript__inner a:hover,
+.landscape-noscript__inner a:focus-visible {
+  color: var(--color-text-primary);
+  text-decoration: underline;
 }
 
 @keyframes landscape-ink-in {
@@ -1004,7 +1062,7 @@
     padding: 1rem 1.05rem;
   }
 
-  .knowledge-landscape__card h1 {
+  .knowledge-landscape__card h2 {
     font-size: 1.2rem;
   }
 

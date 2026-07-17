@@ -4,11 +4,11 @@ import KnowledgeLandscape, {
   type KnowledgePath,
   type KnowledgePlace,
 } from '../../components/garden/KnowledgeLandscape';
-import { getGardenIndexOrUnavailable, getNoteTags } from '@lib/garden';
+import { getGardenIndexOrUnavailable } from '@lib/garden';
 import '../../styles/components/_atlas.css';
 
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
 const pairKey = (left: string, right: string) =>
   [left, right].toSorted().join('::');
@@ -40,7 +40,7 @@ for (const note of index.documents) {
 // least two specific themes overlap so generic tags never redraw the terrain.
 for (let leftIndex = 0; leftIndex < index.documents.length; leftIndex += 1) {
   const left = index.documents[leftIndex]!;
-  const leftTags = new Set(getNoteTags(left));
+  const leftTags = new Set(left.tags);
 
   for (
     let rightIndex = leftIndex + 1;
@@ -50,7 +50,7 @@ for (let leftIndex = 0; leftIndex < index.documents.length; leftIndex += 1) {
     const right = index.documents[rightIndex]!;
     const key = pairKey(left.id, right.id);
     if (pathKindsByPair.has(key)) continue;
-    const sharedTopics = getNoteTags(right).filter((tag) => leftTags.has(tag));
+    const sharedTopics = right.tags.filter((tag: string) => leftTags.has(tag));
     if (sharedTopics.length < 2) continue;
     addPath({ sourceId: left.id, targetId: right.id, kind: 'affinity' });
   }
@@ -73,14 +73,40 @@ const places: KnowledgePlace[] = index.documents.map((note) => ({
   href: note.href,
   parentId: note.parentId,
   childIds: note.childIds,
-  tags: getNoteTags(note),
+  tags: note.tags,
   linkCount: linkCount.get(note.id) ?? 0,
 }));
+
+// With JavaScript off, the SSR-rendered map is decorative; every note it shows
+// gets a plain link instead.
+const noscriptNotes = index.documents.filter(
+  (note) => note.id !== index.root.id,
+);
 ---
 
 <Immersive
   title="thought landscape"
   description="a living landscape shaped by notes, folders, and the paths between them."
 >
+  <h1 class="sr-only">map of notes</h1>
   <KnowledgeLandscape client:load places={places} paths={paths} />
+  <noscript>
+    <div class="landscape-noscript">
+      <div class="landscape-noscript__inner">
+        <p>
+          the interactive map needs javascript — here is everything it shows.
+        </p>
+        <ul>
+          {
+            noscriptNotes.map((note) => (
+              <li>
+                <a href={note.href}>{note.title}</a>
+              </li>
+            ))
+          }
+        </ul>
+        <p><a href="/notes">back to notes</a></p>
+      </div>
+    </div>
+  </noscript>
 </Immersive>

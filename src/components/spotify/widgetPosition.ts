@@ -53,16 +53,16 @@ export function clampWidgetPosition(
   position: WidgetPosition,
   viewport: ViewportBounds,
 ): WidgetPosition {
+  // The upper bound resets a widget that would sit past the far edge; the lower
+  // bound (>= 0) keeps a keyboard nudge toward the anchored edge from driving the
+  // offset negative and sliding the widget permanently offscreen.
+  const clampOffset = (offset: number, extent: number): number =>
+    offset > extent - OFFSCREEN_BUFFER ? VIEWPORT_PADDING : Math.max(0, offset);
+
   return {
     ...position,
-    offsetX:
-      position.offsetX > viewport.width - OFFSCREEN_BUFFER
-        ? VIEWPORT_PADDING
-        : position.offsetX,
-    offsetY:
-      position.offsetY > viewport.height - OFFSCREEN_BUFFER
-        ? VIEWPORT_PADDING
-        : position.offsetY,
+    offsetX: clampOffset(position.offsetX, viewport.width),
+    offsetY: clampOffset(position.offsetY, viewport.height),
   };
 }
 

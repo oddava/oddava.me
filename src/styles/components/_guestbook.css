@@ -79,8 +79,17 @@
   color: var(--color-text-muted);
 }
 
-.guestbook__count.is-over {
-  color: var(--color-text-error);
+.guestbook__captcha {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.guestbook__captcha-hint {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: lowercase;
+  color: var(--color-text-muted);
 }
 
 .guestbook__submit {
@@ -140,6 +149,30 @@
 .guestbook__entry p {
   margin: 0.35rem 0 0;
   color: var(--color-text-secondary);
+}
+
+.guestbook__more {
+  justify-self: start;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-transform: lowercase;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--color-rule);
+  padding: 0.2rem 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.guestbook__more:hover {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-text-interactive);
+}
+
+.guestbook__more:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
 }
 
 .guestbook__empty {

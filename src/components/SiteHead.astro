@@ -16,9 +16,9 @@ export interface Props {
 const {
   title = SITE_NAME,
   description = SITE_DESCRIPTION,
-  // Default OG/social image. SVG is parsed by some consumers (X, Slack) but
-  // not all (e.g. some messengers) — a PNG should eventually replace this.
-  image = '/og-default.svg',
+  // Default OG/social image. PNG rendered from public/og-default.svg (the
+  // diffable source) — SVG itself is not parsed by every consumer.
+  image = '/og-default.png',
   type = 'website',
 } = Astro.props;
 

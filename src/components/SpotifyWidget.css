@@ -7,6 +7,6 @@
   .spotify-widget-wrapper,
   .spotify-widget-full-view,
   .spotify-widget-min-view {
-    transition-duration: 0.01ms;
+    transition-duration: 0.01ms !important;
   }
 }

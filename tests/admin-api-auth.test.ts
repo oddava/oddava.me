@@ -26,12 +26,25 @@ const ADMIN_API_DIR = path.join(ROOT, 'src', 'pages', 'api', 'admin');
  * that call still passes auth, which is exactly the regression this table
  * exists to catch.
  */
+const HTTP_METHODS = [
+  'GET',
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+  'OPTIONS',
+  'ALL',
+] as const;
+
 const ADMIN_ROUTES: {
   file: string;
   module: string;
   method: string;
   auth: boolean;
   sameOrigin: boolean;
+  // True for admin routes that live outside src/pages/api/admin (they are
+  // enumerated for coverage from their explicit module path, not the dir walk).
+  external?: boolean;
   params?: Record<string, string>;
   why?: string;
   // For the unauthenticated exceptions: a body that should succeed with no
@@ -171,6 +184,34 @@ const ADMIN_ROUTES: {
     sameOrigin: true,
     params: { collection: 'notes' },
   },
+  // The guestbook moderation API is an admin route that lives outside
+  // src/pages/api/admin (its URL is /api/guestbook/admin). It is the most
+  // destructive route in the repo — POST {action:'clear', all:true} wipes the
+  // whole guestbook — so it owes the same guarantees and is covered explicitly.
+  {
+    file: 'guestbook/admin.ts',
+    module: '../src/pages/api/guestbook/admin',
+    method: 'GET',
+    auth: true,
+    sameOrigin: false,
+    external: true,
+  },
+  {
+    file: 'guestbook/admin.ts',
+    module: '../src/pages/api/guestbook/admin',
+    method: 'PATCH',
+    auth: true,
+    sameOrigin: true,
+    external: true,
+  },
+  {
+    file: 'guestbook/admin.ts',
+    module: '../src/pages/api/guestbook/admin',
+    method: 'POST',
+    auth: true,
+    sameOrigin: true,
+    external: true,
+  },
   // The two deliberate exceptions. Asserted rather than skipped, so that
   // "unauthenticated" stays a decision on the record instead of an oversight.
   {
@@ -282,12 +323,44 @@ describe('admin API auth matrix', () => {
     delete process.env.COMMUNITY_SIGNING_SECRET;
   });
 
-  it('covers every route file under src/pages/api/admin', async () => {
-    const onDisk = (await collectRouteFiles(ADMIN_API_DIR)).toSorted();
-    const inTable = [...new Set(ADMIN_ROUTES.map((r) => r.file))].toSorted();
-    // A new admin route must be added here with its auth expectations. If this
-    // fails, the route below it is untested, not merely unlisted.
-    expect(inTable).toEqual(onDisk);
+  it('covers every admin (route file, HTTP method) pair', async () => {
+    // Enumerate the actual exported handlers, not just file names: a new HTTP
+    // method added to an existing route file must appear in the table too, or
+    // it ships with neither the 401 nor the 403 assertion below.
+    const exportedMethods = async (
+      file: string,
+      specifier: string,
+    ): Promise<string[]> => {
+      const module = (await import(/* @vite-ignore */ specifier)) as Record<
+        string,
+        unknown
+      >;
+      return HTTP_METHODS.filter(
+        (method) => typeof module[method] === 'function',
+      ).map((method) => `${file}:${method}`);
+    };
+
+    const onDisk = new Set<string>();
+    for (const file of await collectRouteFiles(ADMIN_API_DIR)) {
+      const specifier = `../src/pages/api/admin/${file.replace(/\.ts$/, '')}`;
+      for (const pair of await exportedMethods(file, specifier)) {
+        onDisk.add(pair);
+      }
+    }
+    // The one admin route that lives outside src/pages/api/admin.
+    for (const pair of await exportedMethods(
+      'guestbook/admin.ts',
+      '../src/pages/api/guestbook/admin',
+    )) {
+      onDisk.add(pair);
+    }
+
+    const inTable = new Set(
+      ADMIN_ROUTES.map((route) => `${route.file}:${route.method}`),
+    );
+    // A new admin route or method must be added here with its auth expectations.
+    // If this fails, the (file, method) it names is untested, not merely unlisted.
+    expect([...inTable].toSorted()).toEqual([...onDisk].toSorted());
   });
 
   describe.each(ADMIN_ROUTES)('$method /$file', (route) => {

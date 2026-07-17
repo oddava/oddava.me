@@ -159,6 +159,15 @@ function stripInlineMarkdown(value: string): string {
     .trim();
 }
 
+// True when the body opens with its own `# h1` (blank lines allowed before
+// it). The page shell then skips its fallback title, so a note never renders
+// two competing h1s — and always renders exactly one.
+export function bodyProvidesTitleHeading(body: string): boolean {
+  const firstLine =
+    body.split('\n').find((line) => line.trim().length > 0) ?? '';
+  return /^#\s+\S/.test(firstLine.trim());
+}
+
 // The title emerges from the content: the first heading you write, else the
 // humanized file name. No separate title field to keep in sync.
 export function deriveTitle(body: string, id: string): string {

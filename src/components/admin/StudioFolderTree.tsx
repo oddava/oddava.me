@@ -595,7 +595,7 @@ export default function StudioFolderTree({
               className="studio-tree-row__label"
               disabled={
                 busyKey ===
-                `entry-${isFolder ? node.document?.id : node.entry.id}`
+                `open-${isFolder ? node.document?.id : node.entry.id}`
               }
               onClick={() => {
                 if (isFolder) {

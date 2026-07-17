@@ -209,7 +209,7 @@ local current = redis.call('GET', KEYS[1])
 if ARGV[2] == 'create' then
   if current then return 'path_exists' end
 else
-  if not current then return 'revision_conflict' end
+  if not current then return 'not_found' end
   local ok, decoded = pcall(cjson.decode, current)
   if not ok or decoded.rev ~= ARGV[3] then return 'revision_conflict' end
 end
@@ -385,7 +385,7 @@ end
 local linked = ARGV[2]
 if linked == '1' then
   local current = redis.call('GET', KEYS[4])
-  if not current then return 'revision_conflict' end
+  if not current then return 'not_found' end
   local ok, decoded = pcall(cjson.decode, current)
   if not ok or decoded.rev ~= ARGV[4] then return 'revision_conflict' end
 end
@@ -486,6 +486,14 @@ export function createRedisContentProvider(
         const record = records.get(path);
         return record ? [toSourceFile(path, record)] : [];
       });
+    },
+
+    async listFilePaths(directory, extension) {
+      assertSafeRepositoryPath(directory);
+      const prefix = `${directory}/`;
+      return (await listFilePaths(command)).filter(
+        (path) => path.startsWith(prefix) && matchesExtension(path, extension),
+      );
     },
 
     async readFile(path) {

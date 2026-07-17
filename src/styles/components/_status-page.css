@@ -1,0 +1,54 @@
+/* Shared shell for the status pages (404, 500, 503). */
+.status-page {
+  text-align: center;
+  padding: var(--space-xl) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.status-page h1 {
+  font-family: var(--font-mono);
+  font-size: clamp(3rem, 12vw, 6rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-interactive);
+  letter-spacing: -0.04em;
+}
+
+.status-page__copy {
+  max-width: 32rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.status-page__links {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0;
+  margin: var(--space-sm) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.status-page__links a {
+  color: var(--color-text-interactive);
+  text-decoration: none;
+}
+
+.status-page__links a:hover,
+.status-page__links a:focus-visible {
+  color: var(--color-text-interactive-hover);
+  text-decoration: underline;
+}
+
+.status-page__hint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin: var(--space-sm) 0 0;
+}

@@ -4,7 +4,7 @@ import { getGardenIndexOrUnavailable } from '@lib/garden';
 const requestedPath = Astro.params.path ?? '';
 
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
 
 // A folder path resolves to its own document page. Folders with children

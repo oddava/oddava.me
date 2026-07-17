@@ -6,8 +6,8 @@
   },
   "links": [
     { "title": "Notes", "url": "/notes", "icon": "pen" },
-    { "title": "GitHub", "url": "https://github.com", "icon": "github" },
-    { "title": "X", "url": "https://x.com", "icon": "twitter" },
+    { "title": "GitHub", "url": "https://github.com/oddava", "icon": "github" },
+    { "title": "X", "url": "https://x.com/oddava", "icon": "twitter" },
     { "title": "Email", "url": "mailto:hello@oddava.me", "icon": "mail" }
   ],
   "theme": {

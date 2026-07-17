@@ -153,6 +153,78 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       expect(await readStableContentVersion()).toEqual(expect.any(String));
     });
 
+    it('batches reorder writes as an all-or-nothing compare-and-set', async () => {
+      const { createRedisContentProvider, readStableContentVersion } =
+        await import('../src/lib/server/content/redis-store');
+      const provider = createRedisContentProvider();
+      const notes = 'src/content/notes';
+
+      const a = await provider.writeTextFile(
+        `${notes}/a.md`,
+        '# a',
+        'create a',
+      );
+      const b = await provider.writeTextFile(
+        `${notes}/b.md`,
+        '# b',
+        'create b',
+      );
+      const versionBefore = await readStableContentVersion();
+
+      // One stale revision must reject the whole batch, leaving every file and
+      // the content version untouched — never a committed prefix.
+      await expect(
+        provider.writeTextFiles(
+          [
+            { path: `${notes}/a.md`, content: '# a2', revision: a.revision! },
+            { path: `${notes}/b.md`, content: '# b2', revision: 'stale' },
+          ],
+          'batch with a stale revision',
+        ),
+      ).rejects.toMatchObject({ code: 'revision_conflict' });
+      expect((await provider.readFile(`${notes}/a.md`))?.content).toBe('# a');
+      expect((await provider.readFile(`${notes}/b.md`))?.content).toBe('# b');
+      expect(await readStableContentVersion()).toBe(versionBefore);
+
+      // A missing target is 'not_found', not a revision conflict.
+      await expect(
+        provider.writeTextFiles(
+          [{ path: `${notes}/missing.md`, content: '# x', revision: 'r' }],
+          'batch with a missing file',
+        ),
+      ).rejects.toMatchObject({ code: 'not_found' });
+
+      // A clean batch changes every file atomically and advances the version.
+      const written = await provider.writeTextFiles(
+        [
+          { path: `${notes}/a.md`, content: '# a2', revision: a.revision! },
+          { path: `${notes}/b.md`, content: '# b2', revision: b.revision! },
+        ],
+        'clean batch',
+      );
+      expect((await provider.readFile(`${notes}/a.md`))?.content).toBe('# a2');
+      expect((await provider.readFile(`${notes}/b.md`))?.content).toBe('# b2');
+      expect(written.revisions[`${notes}/a.md`]).toEqual(expect.any(String));
+      expect(await readStableContentVersion()).not.toBe(versionBefore);
+
+      // Updating a file that has since been deleted is 'not_found', so the
+      // author is told it is gone rather than to refresh a nonexistent note.
+      const c = await provider.writeTextFile(
+        `${notes}/c.md`,
+        '# c',
+        'create c',
+      );
+      await provider.deleteFile(`${notes}/c.md`, 'delete c', c.revision!);
+      await expect(
+        provider.writeTextFile(
+          `${notes}/c.md`,
+          '# c2',
+          'update deleted c',
+          c.revision!,
+        ),
+      ).rejects.toMatchObject({ code: 'not_found' });
+    });
+
     it('moves folder trees and round-trips runtime media atomically', async () => {
       const { createRedisContentProvider, readRedisBinaryFile } =
         await import('../src/lib/server/content/redis-store');
