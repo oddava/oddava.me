@@ -136,4 +136,10 @@ describe('renderNoteHtml', () => {
     expect(html).not.toContain('external-link');
     expect(html).not.toContain('rel=');
   });
+
+  it('keeps hashtags inside image alt text as plain text', () => {
+    const html = renderNoteHtml('![see #tag here](/img.png)');
+    expect(html).toContain('<img src="/img.png" alt="see #tag here">');
+    expect(html).not.toContain('note-tag');
+  });
 });

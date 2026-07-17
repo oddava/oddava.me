@@ -1297,6 +1297,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       >
         {sidebarVisible && (
           <section className="studio-sidebar" aria-label="Notes">
+            <div
+              className="studio-sidebar__backdrop"
+              aria-hidden="true"
+              onClick={() => patchSession({ sidebarCollapsed: true })}
+            />
             {loading ? (
               <p className="admin-empty" role="status">
                 Gathering your notes…
@@ -1422,7 +1427,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                     className="studio-bar__autosave-dot"
                     aria-hidden="true"
                   />
-                  Autosave
+                  <span className="studio-bar__autosave-label">Autosave</span>
                 </button>
                 {hasBody && (
                   <div
