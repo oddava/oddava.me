@@ -66,3 +66,19 @@ export function toPublicGuestbookEntries(
     createdAt,
   }));
 }
+
+export const PUBLIC_GUESTBOOK_ENTRY_LIMIT = 100;
+
+/**
+ * Public read view: approved entries only, capped at the latest
+ * PUBLIC_GUESTBOOK_ENTRY_LIMIT (the store is newest-first), private fields
+ * stripped. The admin moderation path reads the full store via
+ * readGuestbookEntries instead.
+ */
+export function getPublicGuestbookEntries(
+  entries: GuestbookEntry[],
+): PublicGuestbookEntry[] {
+  return toPublicGuestbookEntries(
+    getApprovedGuestbookEntries(entries).slice(0, PUBLIC_GUESTBOOK_ENTRY_LIMIT),
+  );
+}

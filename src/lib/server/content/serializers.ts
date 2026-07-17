@@ -11,10 +11,21 @@ export function parseContentDocument(content: string): ParsedContentDocument {
   const match = content.match(FRONTMATTER_PATTERN);
   if (!match) return { fields: {}, body: content };
 
-  return {
-    fields: (YAML.parse(match[1]) ?? {}) as Record<string, unknown>,
-    body: (match[2] ?? '').replace(/^\r?\n/, ''),
-  };
+  const body = (match[2] ?? '').replace(/^\r?\n/, '');
+  // Malformed frontmatter (a hand-edited note re-imported via notes:migrate,
+  // say) must not throw: one bad note would otherwise 500 every page built from
+  // the shared garden index, and lock Studio out of opening it to repair it.
+  // Degrade to empty fields — the body still renders and the note stays editable.
+  let fields: Record<string, unknown> = {};
+  try {
+    const parsed = YAML.parse(match[1]);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      fields = parsed as Record<string, unknown>;
+    }
+  } catch {
+    fields = {};
+  }
+  return { fields, body };
 }
 
 export function serializeContentDocument(

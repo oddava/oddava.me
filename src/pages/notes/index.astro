@@ -5,8 +5,13 @@ import { getGardenIndexOrUnavailable } from '@lib/garden';
 import '../../styles/components/_garden.css';
 
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
+
+// Documents are already sorted most-recently-updated first.
+const recent = index.documents
+  .filter((document) => document.id !== index.root.id)
+  .slice(0, 5);
 ---
 
 <Base title={index.root.title} description={index.root.summary} wide>
@@ -31,6 +36,28 @@ const index = garden.index;
           </li>
         </ul>
       </nav>
+
+      {
+        recent.length > 0 && (
+          <section class="garden-recent" aria-labelledby="recently-tended">
+            <h2 class="garden-recent__heading" id="recently-tended">
+              recently tended
+            </h2>
+            <ul class="garden-recent__list">
+              {recent.map((note) => (
+                <li>
+                  <a href={note.href} class="garden-recent__link">
+                    <span class="garden-recent__title">{note.title}</span>
+                    <time class="garden-recent__date" datetime={note.updated}>
+                      {note.updated.slice(0, 10)}
+                    </time>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
     </GardenDocumentPage>
   </div>
 </Base>

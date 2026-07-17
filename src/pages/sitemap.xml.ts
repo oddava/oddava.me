@@ -1,5 +1,7 @@
 // Notes live in the runtime store now, so the sitemap is generated per request
-// (edge-cached for an hour) instead of frozen at build time.
+// instead of frozen at build time. A one-hour browser cache keeps the
+// regeneration cost off most crawls (a Worker response is not written to any
+// shared edge cache unless the code explicitly uses the Cache API).
 import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '../lib/garden';
 import { siteUrl } from '../lib/site';
@@ -39,7 +41,7 @@ ${[...entriesByPath.values()].join('')}
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'max-age=0, s-maxage=3600',
+      'Cache-Control': 'public, max-age=3600',
     },
   });
 };

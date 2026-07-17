@@ -42,7 +42,14 @@ export function useWidgetPosition({
   }, [position]);
 
   useEffect(() => {
-    const savedPosition = localStorage.getItem(POSITION_STORAGE_KEY);
+    // Reading localStorage can throw when storage is blocked (private mode,
+    // hardened settings). Never let that crash the whole widget island.
+    let savedPosition: string | null = null;
+    try {
+      savedPosition = localStorage.getItem(POSITION_STORAGE_KEY);
+    } catch {
+      /* Storage unavailable — fall back to the default position. */
+    }
     if (savedPosition) {
       try {
         const parsed: unknown = JSON.parse(savedPosition);
@@ -145,10 +152,14 @@ export function useWidgetPosition({
       if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
       rAFRef.current = null;
 
-      localStorage.setItem(
-        POSITION_STORAGE_KEY,
-        JSON.stringify(positionRef.current),
-      );
+      try {
+        localStorage.setItem(
+          POSITION_STORAGE_KEY,
+          JSON.stringify(positionRef.current),
+        );
+      } catch {
+        /* Ignore storage failures — the position just won't persist. */
+      }
 
       const totalMovement = totalMovementRef.current;
       if (totalMovement < CLICK_MOVEMENT_THRESHOLD && isMinimized) {
@@ -175,11 +186,17 @@ export function useWidgetPosition({
     setPosition((current) => {
       const width = window.innerWidth;
       const height = window.innerHeight;
+      // `offset*` is measured from the anchored edge, so a right/bottom anchor
+      // grows the offset in the opposite direction to the visual nudge. Flip the
+      // delta for those edges so arrow keys always move the widget the way they
+      // point — otherwise ArrowDown moves the default (bottom-anchored) widget up.
+      const directionX = current.edgeX === 'right' ? -1 : 1;
+      const directionY = current.edgeY === 'bottom' ? -1 : 1;
       const next = clampWidgetPosition(
         {
           ...current,
-          offsetX: current.offsetX + deltaX,
-          offsetY: current.offsetY + deltaY,
+          offsetX: current.offsetX + deltaX * directionX,
+          offsetY: current.offsetY + deltaY * directionY,
         },
         { width, height },
       );

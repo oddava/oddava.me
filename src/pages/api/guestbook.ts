@@ -19,9 +19,8 @@ import {
 import {
   appendGuestbookEntry,
   createGuestbookEntry,
-  getApprovedGuestbookEntries,
+  getPublicGuestbookEntries,
   readGuestbookEntries,
-  toPublicGuestbookEntries,
 } from '../../lib/server/guestbook';
 import { sanitizePlainText } from '../../lib/server/core';
 
@@ -32,9 +31,7 @@ const MESSAGE_MAX_LENGTH = 280;
 
 export const GET: APIRoute = async () => {
   try {
-    const entries = toPublicGuestbookEntries(
-      getApprovedGuestbookEntries(await readGuestbookEntries()),
-    );
+    const entries = getPublicGuestbookEntries(await readGuestbookEntries());
     return json(
       {
         entries,

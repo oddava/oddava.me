@@ -5,7 +5,7 @@ import { findNoteLeafRedirect, getGardenIndexOrUnavailable } from '@lib/garden';
 // off each note's file name. Server-rendered rather than prerendered so the map
 // follows the live content store instead of the last deploy.
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 
 const redirectTo = findNoteLeafRedirect(garden.index, Astro.params.slug ?? '');
 if (!redirectTo) return Astro.rewrite('/404');

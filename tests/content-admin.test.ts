@@ -72,6 +72,16 @@ class MemoryContentProvider implements ContentProvider {
     );
   }
 
+  async listFilePaths(
+    directory: string,
+    extension?: string | readonly string[],
+  ) {
+    const prefix = `${directory}/`;
+    return [...this.files.keys()].filter(
+      (path) => path.startsWith(prefix) && matchesExtension(path, extension),
+    );
+  }
+
   async readFile(path: string) {
     return this.files.get(path) ?? null;
   }

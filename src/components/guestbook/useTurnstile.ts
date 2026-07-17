@@ -13,6 +13,7 @@ export function useTurnstile({
   siteKey,
 }: UseTurnstileOptions) {
   const [captchaToken, setCaptchaToken] = useState('');
+  const [widgetLoading, setWidgetLoading] = useState(false);
   const widgetContainerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
@@ -20,15 +21,21 @@ export function useTurnstile({
     const container = widgetContainerRef.current;
     if (!enabled || !siteKey || !container) {
       setCaptchaToken('');
+      setWidgetLoading(false);
       return;
     }
 
     let cancelled = false;
     let renderedWidgetId: string | null = null;
 
+    setWidgetLoading(true);
     ensureTurnstileScript()
       .then(() => {
-        if (cancelled || !container.isConnected || !window.turnstile) return;
+        if (cancelled) return;
+        if (!container.isConnected || !window.turnstile) {
+          setWidgetLoading(false);
+          return;
+        }
 
         renderedWidgetId = window.turnstile.render(container, {
           sitekey: siteKey,
@@ -43,12 +50,15 @@ export function useTurnstile({
             setCaptchaToken('');
             onError();
           },
-          theme: 'auto',
+          theme: 'dark',
         });
         widgetIdRef.current = renderedWidgetId;
+        setWidgetLoading(false);
       })
       .catch(() => {
-        if (!cancelled) onError();
+        if (cancelled) return;
+        setWidgetLoading(false);
+        onError();
       });
 
     return () => {
@@ -69,5 +79,5 @@ export function useTurnstile({
     }
   }, []);
 
-  return { captchaToken, resetCaptcha, widgetContainerRef };
+  return { captchaToken, resetCaptcha, widgetContainerRef, widgetLoading };
 }

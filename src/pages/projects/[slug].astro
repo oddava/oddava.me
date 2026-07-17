@@ -4,7 +4,7 @@ import { findNoteLeafRedirect, getGardenIndexOrUnavailable } from '@lib/garden';
 // Old /projects/<slug> links redirect into the notes garden, keyed off each
 // note's file name. See garden/[slug].astro for why this is not prerendered.
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 
 const redirectTo = findNoteLeafRedirect(garden.index, Astro.params.slug ?? '');
 if (!redirectTo) return Astro.rewrite('/404');

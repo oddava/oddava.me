@@ -1,4 +1,4 @@
-import { getServerEnv } from '../env';
+import { isDevelopmentEnv } from './config';
 import { json } from './http';
 
 function getRequestOrigin(request: Request): string | null {
@@ -56,11 +56,10 @@ export function getClientIp(request: Request): string {
   const cloudflareIp = request.headers.get('cf-connecting-ip');
   if (cloudflareIp) return cloudflareIp.trim();
 
-  const isProduction =
-    getServerEnv('APP_ENV') === 'production' ||
-    import.meta.env.MODE === 'production';
-
-  if (isProduction) {
+  // One definition of production-ness (core/config.ts), so the branch that
+  // decides whether spoofable x-forwarded-for is trusted can never drift from
+  // the rest of core.
+  if (!isDevelopmentEnv()) {
     // In production we expect to be running behind Cloudflare, so a missing
     // `cf-connecting-ip` is suspicious: the request may be reaching the
     // worker through an unproxied path, in which case `x-forwarded-for` is

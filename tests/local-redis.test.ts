@@ -45,4 +45,26 @@ describe('local Redis transport selection', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     await closeLocalRedisConnection();
   });
+
+  it('uses the workerd-reachable localhost URL for the dev proxy', async () => {
+    vi.stubEnv('DEV', true);
+    vi.stubEnv('VITEST', '');
+    vi.stubEnv('LOCAL_REDIS_PROXY_TOKEN', 'configured-proxy-token');
+    vi.stubEnv('LOCAL_REDIS_PROXY_PORT', '45555');
+    vi.stubEnv('LOCAL_REDIS_PROXY_URL', '');
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ result: 'PONG' }));
+
+    const { executeLocalRedisCommand } =
+      await import('../src/lib/server/local-redis');
+    await expect(
+      executeLocalRedisCommand(['PING'], 'redis://127.0.0.1:6379'),
+    ).resolves.toBe('PONG');
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://localhost:45555/__local_redis',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

@@ -11,6 +11,7 @@ import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CONTENT_KEYS,
+  assertKnownArgs,
   createRedisTransport,
   loadEnvironment,
   resolveTarget,
@@ -23,6 +24,7 @@ const MEDIA_EXTENSIONS = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
 // Export mirrors the store, which may still hold legacy `.mdx` keys.
 const NOTE_EXTENSIONS = new Set(['.md', '.mdx']);
 const arguments_ = process.argv.slice(2);
+assertKnownArgs(arguments_, ['--dry-run', '--keep-removed', '--target']);
 const dryRun = arguments_.includes('--dry-run');
 const keepRemoved = arguments_.includes('--keep-removed');
 const targetArgument = arguments_

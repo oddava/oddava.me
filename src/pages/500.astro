@@ -1,63 +1,18 @@
 ---
 import Base from '../layouts/Base.astro';
+import '../styles/components/_status-page.css';
 ---
 
-<Base
-  title="500"
-  description="Something broke on our end."
-  image="/og-default.svg"
->
+<Base title="500" description="Something broke on our end.">
   <meta slot="head" name="robots" content="noindex" />
-  <section class="server-error">
+  <section class="status-page">
     <h1>500</h1>
-    <p class="server-error__copy">
+    <p class="status-page__copy">
       something broke on our end. not you — us. try heading back home and giving
       it another go.
     </p>
-    <p class="server-error__links">
+    <p class="status-page__links">
       <a href="/">← back to home</a>
     </p>
   </section>
 </Base>
-
-<style is:global>
-  .server-error {
-    text-align: center;
-    padding: var(--space-xl) 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-sm);
-  }
-
-  .server-error h1 {
-    font-family: var(--font-mono);
-    font-size: clamp(3rem, 12vw, 6rem);
-    font-weight: 700;
-    margin: 0;
-    color: var(--color-text-interactive);
-    letter-spacing: -0.04em;
-  }
-
-  .server-error__copy {
-    max-width: 32rem;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
-  .server-error__links {
-    margin: var(--space-sm) 0 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-  }
-
-  .server-error__links a {
-    color: var(--color-text-interactive);
-    text-decoration: none;
-  }
-
-  .server-error__links a:hover {
-    color: var(--color-text-interactive-hover);
-    text-decoration: underline;
-  }
-</style>

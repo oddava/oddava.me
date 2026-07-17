@@ -47,6 +47,13 @@
   overflow-wrap: break-word;
 }
 
+/* Shown only when the guestbook island cannot run (JS disabled). */
+.guestbook-noscript {
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 @media (max-width: 640px) {
   .post-header {
     padding-top: var(--space-sm);

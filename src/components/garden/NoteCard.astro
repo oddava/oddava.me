@@ -21,6 +21,9 @@ const { note } = Astro.props;
         )
       }
     </div>
+    <time class="note-card__date" datetime={note.updated}>
+      {note.updated.slice(0, 10)}
+    </time>
     <span class="note-card__arrow" aria-hidden="true">→</span>
   </a>
 </article>

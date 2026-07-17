@@ -17,7 +17,10 @@ function getLocalRedisDevProxyUrl(): string {
   const port =
     getServerEnv('LOCAL_REDIS_PROXY_PORT') ??
     String(DEFAULT_LOCAL_REDIS_PROXY_PORT);
-  return `http://127.0.0.1:${port}/__local_redis`;
+  // Miniflare/workerd routes the localhost hostname to host-side development
+  // services. A raw 127.0.0.1 URL can fail inside its Windows runtime even
+  // though the Node bridge is reachable from the host process.
+  return `http://localhost:${port}/__local_redis`;
 }
 
 function shouldUseDevProxy(): boolean {

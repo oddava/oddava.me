@@ -7,7 +7,7 @@ import '../../styles/components/_garden.css';
 const requestedPath = Astro.params.path ?? '';
 
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
 
 const document = index.documents.find((entry) => entry.path === requestedPath);

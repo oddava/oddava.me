@@ -499,9 +499,18 @@ export async function handleContentReorder(
   const writes: BatchTextWrite[] = [];
   const pathsById = new Map<string, string>();
 
+  // Read every sibling's content in one batch rather than a serial GET per
+  // sibling: those round trips run while the global mutation lock is held, so
+  // an N-note reorder held the store N Upstash hops longer than it needed to.
+  const filesByPath = new Map(
+    (
+      await store.listFiles(collection.sourceDir, collection.readExtensions)
+    ).map((file) => [file.path, file]),
+  );
+
   for (const [order, id] of ids.entries()) {
     const entry = byId.get(id)!;
-    const file = await store.readFile(entry.path);
+    const file = filesByPath.get(entry.path);
     // Every id was just checked against the sibling list, and the whole request
     // holds the content mutation lock, so a file missing here is a genuine
     // disagreement about what the collection contains — not something to paper

@@ -1,3 +1,7 @@
+# Local Redis for development. Persistence is intentionally OFF (no snapshot,
+# no AOF, no volume), so this store is EPHEMERAL: restarting the container — or
+# the machine — wipes every Studio edit made since the last `pnpm run notes:export`.
+# Snapshot with `pnpm run notes:export`, reseed with `pnpm run notes:migrate`.
 services:
   redis:
     image: redis:7-alpine

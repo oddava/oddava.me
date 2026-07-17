@@ -1,6 +1,7 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { renderNoteHtml } from '@lib/garden/render';
+import { bodyProvidesTitleHeading } from '@lib/garden/utils';
 import NoteContents from './NoteContents.astro';
 import NoteBacklinks from './NoteBacklinks.astro';
 import RelatedNotes from './RelatedNotes.astro';
@@ -15,10 +16,69 @@ const { document, index } = Astro.props;
 const html = document.body.trim()
   ? renderNoteHtml(document.body, { wikiLinkHrefs: index.wikiLinkHrefs })
   : '';
+
+const isRoot = document.id === index.root.id;
+
+// Breadcrumb trail: the folders between the notes root and this page.
+const ancestors: GardenDocument[] = [];
+if (!isRoot) {
+  let cursor = document.parentId
+    ? index.byId.get(document.parentId)
+    : undefined;
+  while (cursor && cursor.id !== index.root.id) {
+    ancestors.unshift(cursor);
+    cursor = cursor.parentId ? index.byId.get(cursor.parentId) : undefined;
+  }
+}
+
+// A note whose body opens with its own `# h1` supplies the page title itself;
+// otherwise the shell provides it, so every note page has exactly one h1.
+const showShellTitle = !bodyProvidesTitleHeading(document.body);
+const isStub = !html && document.childIds.length === 0;
 ---
 
+{
+  !isRoot && (
+    <header class="garden-document__header">
+      <nav class="garden-breadcrumbs" aria-label="breadcrumb">
+        <ol class="garden-breadcrumbs__list">
+          <li class="garden-breadcrumbs__item">
+            <a href="/notes">notes</a>
+          </li>
+          {ancestors.map((ancestor) => (
+            <li class="garden-breadcrumbs__item">
+              <span class="garden-breadcrumbs__separator" aria-hidden="true">
+                /
+              </span>
+              <a href={ancestor.href}>{ancestor.title}</a>
+            </li>
+          ))}
+          <li class="garden-breadcrumbs__item">
+            <span class="garden-breadcrumbs__separator" aria-hidden="true">
+              /
+            </span>
+            <span aria-current="page">{document.title}</span>
+          </li>
+        </ol>
+      </nav>
+      <p class="garden-document__tended">
+        tended{' '}
+        <time datetime={document.updated}>{document.updated.slice(0, 10)}</time>
+      </p>
+    </header>
+  )
+}
+
 <article class="garden-document">
+  {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
   {html && <div class="prose garden-document__body" set:html={html} />}
+  {
+    isStub && (
+      <p class="garden-document__stub">
+        this note is still a stub — nothing here yet.
+      </p>
+    )
+  }
 
   <NoteContents document={document} index={index} />
   <NoteBacklinks document={document} index={index} />

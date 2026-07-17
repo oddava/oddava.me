@@ -27,6 +27,12 @@ endpoint `pnpm audit` calls, so it 410s on every pnpm version — CI scans
 `pnpm-lock.yaml` with osv-scanner instead. Do not "fix" a failing audit with
 `--ignore-registry-errors`; it passes by ignoring the 410 and checks nothing.
 
+`pnpm run verify` is a local subset of that pipeline: it omits the real-Redis
+integration suite (`describe.skipIf`-gated on `RUN_REDIS_INTEGRATION`) and the
+osv-scanner audit. To exercise the content Lua scripts the way CI does, run
+`RUN_REDIS_INTEGRATION=1 pnpm exec vitest run tests/storage-integration.test.ts`
+against a local Redis before pushing.
+
 After editing files, format them before finishing:
 `pnpm exec prettier --write <changed-files...>` (whole-repo `pnpm run format` if
 unsure). CI gates on `format:check`, so do not hand-align style.
@@ -96,10 +102,14 @@ Notes are plain Markdown and always were — nothing ever used MDX. New writes a
 `.md`, but reads still accept `.mdx` (`readExtensions` in
 `content/registry.ts`), because the live store holds keys written before the
 rename. **The production store has not been migrated.** Until
-`pnpm run notes:migrate -- --target=prod` runs against it, prod keys are `.mdx`
-and that compatibility is what keeps the garden readable — dropping `.mdx` from
-`readExtensions` first would match zero notes and 503 the whole site. The import
-prunes legacy keys, so running it is the migration.
+`pnpm run notes:migrate -- --prune --target=prod` runs against it from the
+committed `.md` tree, prod keys are `.mdx` and that compatibility is what keeps
+the garden readable — dropping `.mdx` from `readExtensions` first would match
+zero notes and 503 the whole site. The migration is that command specifically:
+import writes each note under its canonical `.md` key (even a `.mdx` on disk is
+normalized), and `--prune` drops the superseded `.mdx` keys. Run it from the
+committed tree, never from a fresh prod export — an export would re-materialize
+the `.mdx` keys on disk first.
 
 Astro's Vite watcher deliberately ignores `src/content/notes`: only
 `notes:export` writes that tree, in bulk, and nothing renders from it — so

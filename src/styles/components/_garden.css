@@ -39,7 +39,7 @@
 .note-card__link {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 1.5rem;
   padding: 1.35rem 0.4rem;
@@ -87,6 +87,12 @@
   margin-top: 0.5rem;
   color: var(--color-text-disabled);
   font: 0.6rem var(--font-mono);
+}
+
+.note-card__date {
+  color: var(--color-text-muted);
+  font: 0.65rem var(--font-mono);
+  white-space: nowrap;
 }
 
 .note-card__arrow {
@@ -139,9 +145,86 @@
 
 /* Document reader */
 
+/* Slim wayfinding row above the article: breadcrumbs left, tended date right.
+   Mono and muted so it reads as chrome, not content. */
+
+.garden-document__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+  width: min(100%, 44rem);
+  margin: 0 auto clamp(1.75rem, 5vw, 2.75rem);
+  color: var(--color-text-muted);
+  font: 0.7rem var(--font-mono);
+  line-height: 1.6;
+}
+
+.garden-breadcrumbs__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.garden-breadcrumbs__item {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.garden-breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.garden-breadcrumbs a:hover,
+.garden-breadcrumbs a:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.garden-breadcrumbs [aria-current='page'] {
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+}
+
+.garden-breadcrumbs__separator {
+  color: var(--color-text-disabled);
+}
+
+.garden-document__tended {
+  margin: 0;
+  color: var(--color-text-disabled);
+  white-space: nowrap;
+}
+
 .garden-document {
   width: min(100%, 44rem);
   margin: 0 auto;
+}
+
+/* Fallback title when the body doesn't open with its own h1 — sized like the
+   prose h1 so both kinds of notes read the same. */
+.garden-document__title {
+  margin: 0 0 0.6em;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.garden-document__stub {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
 }
 
 /* The rendered body's own styles live in `_note-prose.css` — shared with the
@@ -221,6 +304,68 @@
   font-weight: 500;
   line-height: 1.4;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Recently tended: a quiet list under the views nav on /notes. */
+
+.garden-recent {
+  margin-top: clamp(2rem, 5vw, 3rem);
+  padding-top: clamp(1.25rem, 3vw, 1.75rem);
+  border-top: 1px solid var(--color-rule);
+}
+
+.garden-recent__heading {
+  margin: 0 0 0.6rem;
+  color: var(--color-text-muted);
+  font: 0.7rem var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.garden-recent__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.garden-recent__link {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 -0.55rem;
+  padding: 0.55rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 180ms ease;
+}
+
+.garden-recent__link:hover,
+.garden-recent__link:focus-visible {
+  color: inherit;
+  background: color-mix(in srgb, var(--color-overlay-soft) 62%, transparent);
+}
+
+.garden-recent__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 0.96rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-recent__date {
+  color: var(--color-text-muted);
+  font: 0.65rem var(--font-mono);
   white-space: nowrap;
 }
 

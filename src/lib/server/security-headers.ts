@@ -55,7 +55,14 @@ export function applySecurityHeaders(
     headers.set('Strict-Transport-Security', STRICT_TRANSPORT_SECURITY);
   }
 
-  if (shouldApplyContentSecurityPolicy(url.pathname)) {
+  // Set-if-missing, like the baseline headers above: Astro emits its hashed
+  // policy as a <meta> element rather than a header, so responses normally have
+  // no CSP header for this to fill in — but if a handler ever sets a stricter
+  // one, replacing it wholesale with frame-ancestors-only would be a downgrade.
+  if (
+    shouldApplyContentSecurityPolicy(url.pathname) &&
+    !headers.has('Content-Security-Policy')
+  ) {
     headers.set('Content-Security-Policy', buildContentSecurityPolicy());
   }
 

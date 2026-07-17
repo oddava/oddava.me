@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extrapolateProgress,
   getNowPlayingPollInterval,
   hasTrackChanged,
 } from '../src/components/spotify/polling';
@@ -47,5 +48,37 @@ describe('spotify polling helpers', () => {
     };
 
     expect(hasTrackChanged(previous, next)).toBe(true);
+  });
+});
+
+describe('progress extrapolation after a hidden tab becomes visible', () => {
+  it('advances progress by the wall-clock time since the last fetch', () => {
+    expect(
+      extrapolateProgress(
+        { progressMs: 10_000, timestamp: 1_000 },
+        6_000,
+        180_000,
+      ),
+    ).toBe(15_000);
+  });
+
+  it('clamps extrapolated progress to the track duration', () => {
+    expect(
+      extrapolateProgress(
+        { progressMs: 170_000, timestamp: 0 },
+        60_000,
+        180_000,
+      ),
+    ).toBe(180_000);
+  });
+
+  it('never rewinds when the clock reads earlier than the anchor', () => {
+    expect(
+      extrapolateProgress(
+        { progressMs: 10_000, timestamp: 5_000 },
+        1_000,
+        180_000,
+      ),
+    ).toBe(10_000);
   });
 });

@@ -47,13 +47,32 @@ export function loadEnvironment(projectRoot) {
   return environment;
 }
 
-export function resolveTarget(environment, explicitTarget) {
+export function resolveTarget(_environment, explicitTarget) {
   if (explicitTarget && !['local', 'prod'].includes(explicitTarget)) {
     throw new Error('--target must be either local or prod.');
   }
-  if (explicitTarget) return explicitTarget;
-  const mode = environment.REDIS_MODE ?? environment.APP_ENV;
-  return mode === 'upstash' || mode === 'production' ? 'prod' : 'local';
+  // Never infer the production target from local env (REDIS_MODE/APP_ENV): a dev
+  // who pointed their .env at Upstash to debug must not overwrite live prod data
+  // by running the bare command. Writing production requires an explicit
+  // `--target=prod`.
+  return explicitTarget ?? 'local';
+}
+
+/**
+ * Rejects unrecognized argv so a mistyped flag (`--target prod` with a space, a
+ * misspelling) can never be silently dropped and fall back to a different — and
+ * possibly destructive — target than intended.
+ */
+export function assertKnownArgs(args, allowed) {
+  const known = new Set(allowed);
+  for (const arg of args) {
+    const name = arg.startsWith('--target=') ? '--target' : arg;
+    if (!known.has(name)) {
+      throw new Error(
+        `Unknown argument: ${arg}. Known flags: ${allowed.join(', ')}.`,
+      );
+    }
+  }
 }
 
 /**

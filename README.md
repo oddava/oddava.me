@@ -2,9 +2,10 @@
 
 Personal website and interconnected notes garden built with Astro, Preact, and
 Cloudflare Workers. The authenticated Studio edits a Redis-backed virtual
-content filesystem in production, so notes and uploaded media go live without a
-build. A local repository-writing mode remains available for file-based
-authoring and version-control snapshots.
+content filesystem in every environment, so notes and uploaded media go live
+without a build. `notes:export` / `notes:migrate` round-trip that store to and
+from `src/content/notes` for version-control snapshots and restores — there is
+no file-based authoring mode.
 
 ## Requirements
 
@@ -17,13 +18,17 @@ authoring and version-control snapshots.
 ```bash
 pnpm install
 cp .env.example .env
+docker compose -f docker-compose.local.yml up -d   # start local Redis
+pnpm run notes:migrate                              # seed the store from the repo
 pnpm run dev
 ```
 
 Fill in `ADMIN_PANEL_TOKEN` and `COMMUNITY_SIGNING_SECRET` before using `/admin`.
 Notes live in Redis in every environment, so development needs a store reachable
-at `LOCAL_REDIS_URL` — there is no file-based fallback. `/admin/studio` writes
-that store and public note routes read it, so a save is live immediately.
+at `LOCAL_REDIS_URL` — there is no file-based fallback, and the site answers 503
+until one is running and seeded. `/admin/studio` writes that store and public
+note routes read it, so a save is live immediately. The local Redis is
+ephemeral (see `docker-compose.local.yml`); snapshot with `pnpm run notes:export`.
 
 The local bridge listens only on loopback:
 

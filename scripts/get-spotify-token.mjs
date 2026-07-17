@@ -110,7 +110,7 @@ async function authorize(clientId, clientSecret) {
         'Spotify authorization succeeded. SPOTIFY_REFRESH_TOKEN was updated in .env.',
       );
       console.info(
-        'A token saved in Admin → Integrations overrides this environment fallback.',
+        'For production, set the same value as a Cloudflare secret: wrangler secret put SPOTIFY_REFRESH_TOKEN.',
       );
       finish(
         server,

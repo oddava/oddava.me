@@ -365,18 +365,22 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // Browsers do not await async work in beforeunload. Flush when the page first
   // becomes hidden, then retain a native leave-page warning while work remains.
+  // A failed save ('error') still holds unsaved edits, so it must warn and retry
+  // on hide too — otherwise closing the tab after a save error loses them silently.
   useEffect(() => {
+    const hasUnsavedWork =
+      saveState === 'dirty' || saveState === 'saving' || saveState === 'error';
     function onVisibilityChange() {
       if (
         document.visibilityState === 'hidden' &&
         autosaveRef.current &&
-        (saveState === 'dirty' || saveState === 'saving')
+        hasUnsavedWork
       ) {
         void saveNow();
       }
     }
     function onBeforeUnload(event: BeforeUnloadEvent) {
-      if (saveState === 'dirty' || saveState === 'saving') {
+      if (hasUnsavedWork) {
         event.preventDefault();
         Reflect.set(event, 'returnValue', '');
       }

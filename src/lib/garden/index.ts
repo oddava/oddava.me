@@ -55,6 +55,10 @@ export type GardenDocument = {
   body: string;
   outbound: GardenLink[];
   backlinks: string[];
+  // Inline #tags, derived once at index build. Every consumer (tag pages, the
+  // graph's affinity edges, related-note discovery) reads these instead of
+  // re-parsing note bodies per request — the graph did so O(n²) times.
+  tags: string[];
 };
 
 export type GardenIndex = {
@@ -215,9 +219,19 @@ function buildHierarchy(entries: NoteSource[]): {
 async function loadNoteSources(): Promise<NoteSource[]> {
   return (await readRedisNoteFiles()).map((file) => {
     const document = parseContentDocument(file.content);
+    // Field-level validation failures (a hand-edited `order: 1.5`, an
+    // unparseable `updated`) degrade this one note to defaults rather than
+    // throwing out of the shared index build and 500-ing the whole garden.
+    const parsed = noteDataSchema.safeParse(document.fields);
+    if (!parsed.success) {
+      console.warn(
+        `[garden] Ignoring invalid frontmatter for note "${file.sourceId}".`,
+        parsed.error.issues,
+      );
+    }
     return {
       id: file.sourceId,
-      data: noteDataSchema.parse(document.fields),
+      data: parsed.success ? parsed.data : {},
       body: document.body,
       updatedAt: file.updatedAt,
     };
@@ -273,6 +287,7 @@ async function buildGardenIndex(): Promise<GardenIndex> {
         body,
         outbound,
         backlinks,
+        tags: getNoteTags({ body }),
       };
     },
   );
@@ -301,7 +316,7 @@ export function getRelatedNotes(
   options: { limit?: number } = {},
 ): GardenDocument[] {
   const limit = options.limit ?? 5;
-  const tags = new Set(getNoteTags({ body: document.body }));
+  const tags = new Set(document.tags);
   if (tags.size < 2) return [];
 
   const excluded = new Set<string>([document.id]);
@@ -316,9 +331,7 @@ export function getRelatedNotes(
     .filter((candidate) => !excluded.has(candidate.id))
     .map((candidate) => ({
       candidate,
-      shared: getNoteTags({ body: candidate.body }).filter((tag) =>
-        tags.has(tag),
-      ).length,
+      shared: candidate.tags.filter((tag) => tags.has(tag)).length,
     }))
     .filter((entry) => entry.shared >= 2)
     .toSorted(

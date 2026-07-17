@@ -6,6 +6,7 @@ import { useTurnstile } from './guestbook/useTurnstile';
 import { SkeletonRow } from './admin/Skeleton';
 
 const MAX_MESSAGE_LENGTH = 280;
+const INITIAL_VISIBLE_ENTRIES = 12;
 
 export function Guestbook() {
   const {
@@ -28,11 +29,13 @@ export function Guestbook() {
       ),
     [markPostingUnavailable],
   );
-  const { captchaToken, resetCaptcha, widgetContainerRef } = useTurnstile({
-    enabled: captchaRequired && writable,
-    onError: handleTurnstileError,
-    siteKey: turnstileSiteKey,
-  });
+  const { captchaToken, resetCaptcha, widgetContainerRef, widgetLoading } =
+    useTurnstile({
+      enabled: captchaRequired && writable,
+      onError: handleTurnstileError,
+      siteKey: turnstileSiteKey,
+    });
+  const [showAllEntries, setShowAllEntries] = useState(false);
   const handleAfterSubmit = useCallback(async () => {
     setMessage('');
     resetCaptcha();
@@ -41,6 +44,7 @@ export function Guestbook() {
   const { notice, setNotice, submitEntry, submitting } = useGuestbookSubmit({
     captchaToken,
     onAfterSubmit: handleAfterSubmit,
+    onFailedSubmit: resetCaptcha,
     setError,
   });
 
@@ -48,6 +52,10 @@ export function Guestbook() {
     () => MAX_MESSAGE_LENGTH - message.length,
     [message],
   );
+  const visibleEntries = showAllEntries
+    ? entries
+    : entries.slice(0, INITIAL_VISIBLE_ENTRIES);
+  const hiddenEntryCount = entries.length - visibleEntries.length;
 
   const handleSubmit = async (event: { preventDefault(): void }) => {
     event.preventDefault();
@@ -89,16 +97,21 @@ export function Guestbook() {
             rows={3}
             required
             aria-required="true"
+            aria-describedby="guestbook-message-count"
           />
-          <span
-            className={`guestbook__count ${remaining < 0 ? 'is-over' : ''}`}
-            aria-live="polite"
-            aria-atomic="true"
-          >
+          <span className="guestbook__count" id="guestbook-message-count">
             {remaining}
+            <span className="sr-only"> characters remaining</span>
           </span>
         </label>
-        {captchaRequired && writable && <div ref={widgetContainerRef} />}
+        {captchaRequired && writable && (
+          <div className="guestbook__captcha">
+            <div ref={widgetContainerRef} />
+            {widgetLoading && (
+              <p className="guestbook__captcha-hint">loading spam check…</p>
+            )}
+          </div>
+        )}
         <button
           className="guestbook__submit"
           type="submit"
@@ -133,7 +146,7 @@ export function Guestbook() {
         {!loading && entries.length === 0 && (
           <p className="guestbook__empty">No notes yet.</p>
         )}
-        {entries.map((entry) => (
+        {visibleEntries.map((entry) => (
           <article key={entry.id} className="guestbook__entry">
             <div className="guestbook__meta">
               <span>{entry.name}</span>
@@ -148,6 +161,15 @@ export function Guestbook() {
             <p>{entry.message}</p>
           </article>
         ))}
+        {hiddenEntryCount > 0 && (
+          <button
+            type="button"
+            className="guestbook__more"
+            onClick={() => setShowAllEntries(true)}
+          >
+            show more ({hiddenEntryCount})
+          </button>
+        )}
         {notice && (
           <p className="guestbook__notice" role="status" aria-live="polite">
             {notice}

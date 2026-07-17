@@ -5,7 +5,7 @@
 ```
 oddava.me/
 ├── src/
-│   ├── components/       # Astro & React island components
+│   ├── components/       # Astro & Preact island components
 │   ├── content/          # Markdown garden notes
 │   ├── layouts/          # Base, Immersive, AdminLayout
 │   ├── lib/server/       # Server-only code (domain-driven)
@@ -46,7 +46,7 @@ Server code is organized by domain under `src/lib/server/`: `admin/`, `content/`
 - **No ESLint** configured
 - **Path aliases:** `@lib/*`, `@components/*`, `@styles/*`, `@layouts/*`, `@/*`
 - **CSS:** Underscore-prefixed partials (`_variables.css`, `_reset.css`), domain-specific component styles under `src/styles/components/`
-- **Components:** `.astro` for static UI, `.tsx` for React islands; hooks colocated with feature components
+- **Components:** `.astro` for static UI, `.tsx` for Preact islands; hooks colocated with feature components
 
 ## Agent Workflow (required)
 
@@ -93,7 +93,7 @@ Lowercase subject, imperative mood, optional scope in parentheses.
 ## Architecture Notes
 
 - **SSR on Cloudflare Workers** via `@astrojs/cloudflare` adapter
-- **React islands** for interactive features (guestbook, Spotify widget, admin)
+- **Preact islands** for interactive features (guestbook, Spotify widget, admin)
 - **Custom content admin** lives under `src/lib/server/content/` behind the
   `ContentProvider` boundary. Keep routing/authentication, document operations,
   folders, media, serialization, and storage concerns separated behind clean

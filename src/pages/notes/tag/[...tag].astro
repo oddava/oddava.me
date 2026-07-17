@@ -1,24 +1,27 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import NoteCard from '../../../components/garden/NoteCard.astro';
-import { getGardenIndexOrUnavailable, getNoteTags } from '@lib/garden';
+import { getGardenIndexOrUnavailable } from '@lib/garden';
 import '../../../styles/components/_garden.css';
 
 const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return garden.response;
+if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
 
 const tag = Astro.params.tag ?? '';
-const notes = index.documents.filter((note) => getNoteTags(note).includes(tag));
+const notes = index.documents.filter((note) => note.tags.includes(tag));
+
+// A tag nothing carries is not a page — it is a 404, not an empty list.
+if (notes.length === 0) return Astro.rewrite('/404');
 ---
 
 <Base title={'#' + tag} description={'Notes connected to #' + tag + '.'} wide>
   <div class="garden-page">
     <div class="garden-index garden-index--topic">
       <header class="garden-topic-header">
-        <a href="/notes" class="garden-topic-header__back">← Notes</a>
+        <a href="/notes" class="garden-topic-header__back">← notes</a>
         <h1>#{tag}</h1>
-        <p>A few pages I’ve kept under this word.</p>
+        <p>a few pages i’ve kept under this word.</p>
       </header>
 
       <section aria-label={`Notes about ${tag}`}>

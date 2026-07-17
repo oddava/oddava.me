@@ -6,9 +6,8 @@ const PLACEHOLDER_SECRETS = new Set([
 ]);
 
 /**
- * Normalizes a secret without deciding whether the value is configured. This
- * is useful when persisting write-only credentials where an empty value means
- * "remove the override".
+ * Normalizes a secret without deciding whether the value is configured:
+ * trims whitespace and maps empty or non-string values to undefined.
  */
 export function normalizeSecret(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;

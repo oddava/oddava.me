@@ -118,6 +118,15 @@ export interface ContentProvider {
     directory: string,
     extension?: string | readonly string[],
   ): Promise<ContentSourceFile[]>;
+  /**
+   * Paths only, without fetching any file's content. Resolving one entry's id
+   * to its path costs a single set read this way, rather than transferring the
+   * whole collection's contents just to discard all but one record.
+   */
+  listFilePaths(
+    directory: string,
+    extension?: string | readonly string[],
+  ): Promise<string[]>;
   readFile(path: string): Promise<ContentSourceFile | null>;
   listDirectories(directory: string): Promise<string[]>;
   createDirectory(path: string, message: string): Promise<ContentWriteResult>;

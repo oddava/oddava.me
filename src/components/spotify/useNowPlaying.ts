@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { SpotifyNowPlaying } from '../../lib/contracts';
-import { getNowPlayingPollInterval, hasTrackChanged } from './polling';
+import {
+  extrapolateProgress,
+  getNowPlayingPollInterval,
+  hasTrackChanged,
+  type ProgressAnchor,
+} from './polling';
 import { fetchNowPlaying } from './spotifyApi';
 
 const PROGRESS_INTERVAL_MS = 1000;
@@ -33,10 +38,16 @@ export function useNowPlaying() {
   const [currentProgress, setCurrentProgress] = useState(0);
   const dataRef = useRef(data);
   const idleStreakRef = useRef(0);
+  const progressAnchorRef = useRef<ProgressAnchor | null>(null);
 
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
+
+  const anchorProgress = useCallback((progressMs: number) => {
+    progressAnchorRef.current = { progressMs, timestamp: Date.now() };
+    setCurrentProgress(progressMs);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -53,9 +64,9 @@ export function useNowPlaying() {
         hasTrackChanged(previous, accepted) ||
         accepted.isPlaying !== previous.isPlaying
       ) {
-        setCurrentProgress(accepted.progressMs ?? 0);
+        anchorProgress(accepted.progressMs ?? 0);
       } else if (typeof accepted.progressMs === 'number') {
-        setCurrentProgress(accepted.progressMs);
+        anchorProgress(accepted.progressMs);
       }
 
       setData(accepted);
@@ -64,7 +75,7 @@ export function useNowPlaying() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [anchorProgress]);
 
   useEffect(() => {
     let active = true;
@@ -104,13 +115,46 @@ export function useNowPlaying() {
   useEffect(() => {
     if (!data.isPlaying || !data.durationMs) return;
 
-    const timer = setInterval(() => {
-      setCurrentProgress((previous) =>
-        Math.min(previous + PROGRESS_INTERVAL_MS, data.durationMs ?? 0),
-      );
-    }, PROGRESS_INTERVAL_MS);
+    const durationMs = data.durationMs;
+    let timer: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(timer);
+    const stopTicking = () => {
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    const startTicking = () => {
+      if (timer !== null) return;
+      timer = setInterval(() => {
+        setCurrentProgress((previous) =>
+          Math.min(previous + PROGRESS_INTERVAL_MS, durationMs),
+        );
+      }, PROGRESS_INTERVAL_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopTicking();
+        return;
+      }
+      // The bar froze while hidden; re-derive elapsed progress from the last
+      // fetch so it doesn't sit stale until the visible-tab refetch lands.
+      const anchor = progressAnchorRef.current;
+      if (anchor) {
+        setCurrentProgress(extrapolateProgress(anchor, Date.now(), durationMs));
+      }
+      startTicking();
+    };
+
+    if (!document.hidden) startTicking();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopTicking();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [data.isPlaying, data.durationMs, data.title]);
 
   return { currentProgress, data, loading };

@@ -1,7 +1,10 @@
 // Notes live in the runtime store now, so the feed is generated per request
-// (edge-cached for an hour) instead of frozen at build time.
+// instead of frozen at build time. A one-hour browser/reader cache keeps the
+// regeneration cost off most polls (a Worker response is not written to any
+// shared edge cache unless the code explicitly uses the Cache API).
 import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '../lib/garden';
+import { isStorageUnavailableError } from '../lib/server/core';
 import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
 
 function escapeXml(value: string): string {
@@ -21,7 +24,18 @@ export const GET: APIRoute = async () => {
   // Through the same guard every /notes page uses: an empty or mid-mutation
   // store is not this route's business to distinguish, and a feed reader is
   // owed the 503 that says "ask again" rather than a 500 that says "broken".
-  const garden = await getGardenIndexOrUnavailable();
+  let garden;
+  try {
+    garden = await getGardenIndexOrUnavailable();
+  } catch (error) {
+    if (isStorageUnavailableError(error)) {
+      return new Response('Notes are not available yet.', {
+        status: 503,
+        headers: { 'Retry-After': '5' },
+      });
+    }
+    throw error;
+  }
   if (!garden.ok) return garden.response;
   const { documents } = garden.index;
 
@@ -55,7 +69,7 @@ export const GET: APIRoute = async () => {
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'max-age=0, s-maxage=3600',
+      'Cache-Control': 'public, max-age=3600',
     },
   });
 };

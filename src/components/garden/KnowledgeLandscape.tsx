@@ -273,6 +273,11 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   const measuredRef = useRef(false);
   const searchOpenRef = useRef(searchOpen);
   searchOpenRef.current = searchOpen;
+  // Mirror the current selection so long-lived handlers (global keydown/popstate,
+  // the ResizeObserver) read the live value instead of the one captured when
+  // they were first created.
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   const activeId = hoveredId ?? selectedId;
   const selectedPlace = selectedId ? placeById.get(selectedId) : undefined;
@@ -495,6 +500,12 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    // Track the last observed size so the observer only re-frames on a genuine
+    // viewport resize. ResizeObserver fires an initial callback on observe(), so
+    // without this a re-subscribe (or the mount observe) would yank the camera —
+    // and closing a card must not teleport back to the overview.
+    let lastWidth = 0;
+    let lastHeight = 0;
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) return;
       const { width, height } = entry.contentRect;
@@ -510,9 +521,15 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
 
       if (!measuredRef.current) {
         measuredRef.current = true;
-        if (!selectedId) setCameraImmediate(overview);
+        lastWidth = width;
+        lastHeight = height;
+        if (!selectedIdRef.current) setCameraImmediate(overview);
         return;
       }
+      if (width === lastWidth && height === lastHeight) return;
+      lastWidth = width;
+      lastHeight = height;
+      const selectedId = selectedIdRef.current;
       if (selectedId) {
         const place = placeById.get(selectedId);
         if (place) travelCamera(cameraTargetForPlace(place));
@@ -522,7 +539,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
     });
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [layout.bounds, placeById, selectedId]);
+  }, [layout.bounds, placeById]);
 
   function zoomForScale(scale: number): ZoomLevel {
     const fit = Math.max(overviewRef.current.scale, 0.01);
@@ -648,8 +665,12 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
   function selectPlace(id: string, pushHistory = true): void {
     const place = placeById.get(id);
     if (!place) return;
-    if (selectedId && selectedId !== id) {
-      setJourneyKey([selectedId, id].toSorted().join('::'));
+    // Read the live previous selection from the ref: history-driven selection
+    // (Back/Forward) runs through a handler captured on first render, where the
+    // plain `selectedId` closure would be stale and skip the journey trace.
+    const previousId = selectedIdRef.current;
+    if (previousId && previousId !== id) {
+      setJourneyKey([previousId, id].toSorted().join('::'));
     }
     setSelectedId(id);
     setHoveredId(null);
@@ -1297,7 +1318,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
           <p className="knowledge-landscape__card-location">
             {regionById.get(cardPlace.regionId)?.title ?? 'notes'}
           </p>
-          <h1>{cardPlace.title}</h1>
+          <h2>{cardPlace.title}</h2>
           <p className="knowledge-landscape__card-summary">
             {cardPlace.summary ||
               'This place is still waiting for a first line.'}
@@ -1351,6 +1372,9 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                 value={query}
                 placeholder="find a thought"
                 autoComplete="off"
+                role="combobox"
+                aria-expanded={true}
+                aria-autocomplete="list"
                 aria-controls="landscape-search-results"
                 aria-activedescendant={
                   results[searchIndex]
