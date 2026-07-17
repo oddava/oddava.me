@@ -164,6 +164,18 @@ function createRenderer(): Renderer {
     );
   };
 
+  // Image alt text must be plain text: inline extensions (tags, wiki links)
+  // still parse inside the description, but the resulting HTML is stripped
+  // back to text before it reaches the alt attribute.
+  renderer.image = function image(token: Tokens.Image): string {
+    const alt = this.parser.parseInline(token.tokens).replace(/<[^>]+>/g, '');
+    let html = `<img src="${escapeAttr(token.href)}" alt="${escapeAttr(alt)}"`;
+    if (token.title) {
+      html += ` title="${escapeAttr(token.title)}"`;
+    }
+    return `${html}>`;
+  };
+
   return renderer;
 }
 
