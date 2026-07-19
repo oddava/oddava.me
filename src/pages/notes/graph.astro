@@ -5,7 +5,10 @@ import KnowledgeLandscape, {
   type KnowledgePlace,
 } from '../../components/garden/KnowledgeLandscape';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
+import { deriveLocalMap } from '@lib/garden/local-map';
 import '../../styles/components/_atlas.css';
+
+export const prerender = false;
 
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
@@ -75,6 +78,7 @@ const places: KnowledgePlace[] = index.documents.map((note) => ({
   childIds: note.childIds,
   tags: note.tags,
   linkCount: linkCount.get(note.id) ?? 0,
+  localMapHref: deriveLocalMap(note, index) ? `${note.href}#local-map` : null,
 }));
 
 // With JavaScript off, the SSR-rendered map is decorative; every note it shows

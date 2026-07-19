@@ -7,6 +7,7 @@ const projectRoot = path.resolve(
   '..',
 );
 const clientRoot = path.join(projectRoot, 'dist', 'client');
+const serverEntryPath = path.join(projectRoot, 'dist', 'server', 'entry.mjs');
 
 async function collectHtmlFiles(directory) {
   const files = [];
@@ -59,6 +60,14 @@ if (
   failures.push('dist/client/_headers: missing static frame policy');
 }
 
+const serverEntry = await readFile(serverEntryPath, 'utf8');
+if (
+  !serverEntry.includes('"route": "/notes/graph"') ||
+  !serverEntry.includes('"component": "src/pages/notes/graph.astro"')
+) {
+  failures.push('dist/server/entry.mjs: missing the /notes/graph SSR route');
+}
+
 if (failures.length > 0) {
   throw new Error(
     `Build security verification failed:\n${failures.join('\n')}`,
@@ -66,5 +75,5 @@ if (failures.length > 0) {
 }
 
 console.info(
-  `[build] Verified strict CSP output for ${htmlFiles.length} prerendered pages.`,
+  `[build] Verified strict CSP output for ${htmlFiles.length} prerendered pages and the /notes/graph SSR route.`,
 );
