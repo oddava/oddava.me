@@ -25,6 +25,7 @@ export type KnowledgePlace = {
   childIds: string[];
   tags: string[];
   linkCount: number;
+  localMapHref: string | null;
 };
 
 export type KnowledgePath = {
@@ -1323,9 +1324,19 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
             {cardPlace.summary ||
               'This place is still waiting for a first line.'}
           </p>
-          <a className="knowledge-landscape__read" href={cardPlace.href}>
-            read the note <span aria-hidden="true">↗</span>
-          </a>
+          <div className="knowledge-landscape__card-actions">
+            <a className="knowledge-landscape__read" href={cardPlace.href}>
+              read the note <span aria-hidden="true">↗</span>
+            </a>
+            {cardPlace.localMapHref && (
+              <a
+                className="knowledge-landscape__local-map"
+                href={cardPlace.localMapHref}
+              >
+                local map <span aria-hidden="true">↙</span>
+              </a>
+            )}
+          </div>
 
           {onwardPlaces.length > 0 && (
             <div className="knowledge-landscape__onward">

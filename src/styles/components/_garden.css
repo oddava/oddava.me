@@ -145,19 +145,17 @@
 
 /* Document reader */
 
-/* Slim wayfinding row above the article: breadcrumbs left, tended date right.
-   Mono and muted so it reads as chrome, not content. */
+/* Wayfinding belongs to the context rail, leaving the reading column authored. */
 
 .garden-document__header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.5rem;
-  align-items: baseline;
-  justify-content: space-between;
-  width: min(100%, 44rem);
-  margin: 0 auto clamp(1.75rem, 5vw, 2.75rem);
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid var(--color-rule);
   color: var(--color-text-muted);
-  font: 0.7rem var(--font-mono);
+  font: 0.66rem var(--font-mono);
   line-height: 1.6;
 }
 
@@ -203,9 +201,14 @@
   white-space: nowrap;
 }
 
-.garden-document {
+.garden-document-layout {
+  position: relative;
   width: min(100%, 44rem);
   margin: 0 auto;
+}
+
+.garden-document {
+  width: 100%;
 }
 
 /* Fallback title when the body doesn't open with its own h1 — sized like the
@@ -225,6 +228,20 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: 0.95rem;
+}
+
+/* The authored h1 is split from the rest of the rendered body so the compact
+   TOC can sit between title and prose without changing either one's markup. */
+.garden-document__body--continuation > h2:first-child {
+  margin-top: 2.8em;
+}
+
+.garden-document__body--continuation > h3:first-child {
+  margin-top: 2em;
+}
+
+.garden-document__body--continuation > h4:first-child {
+  margin-top: 1.75em;
 }
 
 /* The rendered body's own styles live in `_note-prose.css` — shared with the
@@ -436,6 +453,370 @@
   line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Per-note context follows the article on small screens and becomes the left
+   navigation rail wherever two calm columns fit. */
+
+.note-context:not(:has(.note-context__section)) {
+  display: none;
+}
+
+.note-context {
+  margin-top: clamp(2.5rem, 7vw, 4rem);
+  padding-top: clamp(1.5rem, 4vw, 2rem);
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-context__inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-context__section,
+.note-context .note-links {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.note-context__section + .note-context__section {
+  margin-top: clamp(1.5rem, 4vw, 2.25rem);
+  padding-top: clamp(1.25rem, 3vw, 1.75rem);
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-context__label,
+.note-toc__summary {
+  margin: 0 0 0.65rem;
+  color: var(--color-text-muted);
+  font: 500 0.7rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.note-toc__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-toc__item--depth-3 {
+  padding-left: 1rem;
+}
+
+.note-toc__item--depth-4 {
+  padding-left: 2rem;
+}
+
+.note-toc__link {
+  display: block;
+  padding: 0.25rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.note-toc__link:hover,
+.note-toc__link:focus-visible,
+.note-toc__link[aria-current='location'] {
+  color: var(--color-text-primary);
+}
+
+.note-toc__link[aria-current='location'] {
+  font-weight: 600;
+}
+
+.note-toc--rail {
+  display: none;
+}
+
+.note-toc--mobile {
+  margin: 1.25rem 0 1.75rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.note-toc__summary {
+  margin: 0;
+  cursor: pointer;
+}
+
+.note-toc--mobile[open] .note-toc__summary {
+  margin-bottom: 0.65rem;
+}
+
+.note-context__supplementary {
+  margin-top: 1.4rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-context__supplementary .note-contents--views,
+.note-context__supplementary .garden-recent {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.note-context__supplementary .garden-recent {
+  margin-top: 1.4rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-context__supplementary + .note-context__section {
+  margin-top: 1.4rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.garden-document__header + .local-note-map {
+  margin-top: 1.2rem;
+}
+
+.local-note-map {
+  --local-map-edge: color-mix(
+    in srgb,
+    var(--color-text-muted) 48%,
+    transparent
+  );
+  --local-map-active: var(--color-text-interactive-hover);
+}
+
+.local-note-map__canvas {
+  position: relative;
+  margin: 0.35rem 0 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.local-note-map__graphic {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.local-note-map marker path {
+  fill: var(--color-text-disabled);
+  transition: fill 180ms ease;
+}
+
+.local-note-map__edge {
+  stroke: var(--local-map-edge);
+  stroke-width: 0.9;
+  opacity: 0.68;
+  transition:
+    stroke 180ms ease,
+    stroke-width 180ms ease,
+    opacity 180ms ease;
+  vector-effect: non-scaling-stroke;
+}
+
+.local-note-map__edge--reference {
+  stroke-dasharray: 2 4;
+}
+
+.local-note-map__edge.is-active {
+  stroke: var(--local-map-active);
+  stroke-width: 1.45;
+  opacity: 0.92;
+}
+
+.local-note-map__edge.is-muted {
+  opacity: 0.08;
+}
+
+.local-note-map__node-link {
+  color: inherit;
+  cursor: pointer;
+  opacity: 1;
+  outline: none;
+  transition: opacity 180ms ease;
+  touch-action: manipulation;
+}
+
+.local-note-map__node-link.is-muted {
+  opacity: 0.2;
+}
+
+.local-note-map__hit-area {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.local-note-map__focus-ring {
+  fill: none;
+  stroke: var(--color-focus-ring);
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  vector-effect: non-scaling-stroke;
+}
+
+.local-note-map__node {
+  fill: var(--color-surface);
+  stroke: var(--color-text-muted);
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    fill 180ms ease,
+    stroke 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  vector-effect: non-scaling-stroke;
+}
+
+.local-note-map__node-link--parent .local-note-map__node,
+.local-note-map__node-link--child .local-note-map__node {
+  stroke: var(--color-text-secondary);
+}
+
+.local-note-map__node--current {
+  fill: var(--color-text-interactive);
+  stroke: var(--color-text-interactive-hover);
+}
+
+.local-note-map__node-link:hover .local-note-map__node,
+.local-note-map__node-link:focus-visible .local-note-map__node,
+.local-note-map__node-link.is-active .local-note-map__node {
+  fill: var(--local-map-active);
+  stroke: var(--local-map-active);
+  transform: scale(1.28);
+}
+
+.local-note-map__node-link:focus-visible .local-note-map__focus-ring {
+  opacity: 0.95;
+}
+
+.local-note-map__text {
+  fill: var(--color-text-muted);
+  font: 500 7.5px var(--font-mono);
+  letter-spacing: -0.01em;
+  pointer-events: none;
+  transition: fill 180ms ease;
+}
+
+.local-note-map__text--current {
+  fill: var(--color-text-primary);
+  font-size: 8.5px;
+  font-weight: 600;
+}
+
+.local-note-map__node-link:hover .local-note-map__text,
+.local-note-map__node-link:focus-visible .local-note-map__text,
+.local-note-map__node-link.is-active .local-note-map__text {
+  fill: var(--color-text-primary);
+}
+
+@media (min-width: 80rem) {
+  .note-toc--mobile {
+    display: none;
+  }
+
+  .note-toc--rail {
+    display: block;
+  }
+
+  .note-context {
+    position: absolute;
+    top: 0;
+    right: calc(100% + 2.5rem);
+    width: 15rem;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .note-context__inner {
+    position: sticky;
+    top: 1.5rem;
+    max-height: calc(100vh - 3rem);
+    padding: 0.2rem 0.45rem 0.2rem 0.15rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-strong) transparent;
+  }
+
+  .note-context__section + .note-context__section {
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+  }
+
+  .note-context__supplementary .garden-recent__heading {
+    font-size: 0.64rem;
+  }
+
+  .note-context__supplementary .garden-recent__link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.12rem;
+    align-items: start;
+    margin: 0 -0.4rem;
+    padding: 0.4rem;
+  }
+
+  .note-context__supplementary .garden-recent__title {
+    font-size: 0.76rem;
+    line-height: 1.35;
+  }
+
+  .note-context__supplementary .garden-recent__date {
+    font-size: 0.54rem;
+  }
+
+  .note-context .note-content__title,
+  .note-context .note-link__title {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .note-context .note-content__link {
+    grid-template-columns: 0.9rem minmax(0, 1fr);
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.38rem 0.4rem;
+  }
+
+  .note-context .note-content__icon {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .note-context .note-link__anchor {
+    margin: 0;
+    padding: 0.4rem;
+  }
+
+  .note-context .note-link__summary {
+    display: none;
+  }
+
+  .note-context__label {
+    font-size: 0.64rem;
+  }
+
+  .note-toc__link {
+    font-size: 0.74rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .local-note-map__edge,
+  .local-note-map__node,
+  .local-note-map__node-link,
+  .local-note-map__text {
+    transition: none;
+  }
 }
 
 /* The full-page notes landscape lives in _atlas.css. */

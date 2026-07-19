@@ -15,10 +15,10 @@ const sources = document.backlinks
 {
   sources.length > 0 && (
     <section
-      class="note-links"
+      class="note-links note-context__section"
       aria-label={`Notes that link to ${document.title}`}
     >
-      <h2 class="note-links__label">Backlinks</h2>
+      <h2 class="note-context__label">Backlinks</h2>
       <ul class="note-links__list">
         {sources.map((source) => (
           <li class="note-link">

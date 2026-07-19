@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderNoteHtml } from '../src/lib/garden/render';
+import { renderNote, renderNoteHtml } from '../src/lib/garden/render';
 
 // `renderNoteHtml` is the only note renderer: the published page and the Studio
 // preview both call it, so these assertions describe what BOTH surfaces show.
@@ -55,11 +55,49 @@ describe('renderNoteHtml', () => {
   });
 
   it('keeps repeated heading anchors unique within a document', () => {
-    const html = renderNoteHtml('## Repeat\n\n## Repeat\n\n## Repeat');
+    const { headings, html } = renderNote(
+      '## Repeat\n\n## Repeat\n\n## Repeat',
+    );
 
     expect(html).toContain('id="repeat"');
     expect(html).toContain('id="repeat-1"');
     expect(html).toContain('id="repeat-2"');
+    expect(headings.map((heading) => heading.id)).toEqual([
+      'repeat',
+      'repeat-1',
+      'repeat-2',
+    ]);
+  });
+
+  it('collects nested h2-h4 labels from the same render that assigns ids', () => {
+    const { headings, html } = renderNote(
+      [
+        '# Page title',
+        '## A **bold** [link](/notes)',
+        '### Café & escaped \\*asterisks\\*',
+        '#### [[target|Wiki Label]]',
+        '##### Too deep',
+        '###### Also too deep',
+      ].join('\n\n'),
+    );
+
+    expect(headings).toEqual([
+      { id: 'a-bold-link', text: 'A bold link', depth: 2 },
+      {
+        id: 'café-escaped-asterisks',
+        text: 'Café & escaped *asterisks*',
+        depth: 3,
+      },
+      { id: 'wiki-label', text: 'Wiki Label', depth: 4 },
+    ]);
+    expect(headings.map((heading) => heading.depth)).not.toContain(1);
+    expect(headings.map((heading) => heading.depth)).not.toContain(5);
+    expect(headings.map((heading) => heading.depth)).not.toContain(6);
+
+    for (const heading of headings) {
+      expect(html).toContain(`id="${heading.id}"`);
+      expect(html).toContain(`href="#${heading.id}"`);
+    }
   });
 
   it('leaves wiki links inside code untouched', () => {

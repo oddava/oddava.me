@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
+import { NOTES_GRAPH_PATH } from '@lib/site-routes';
 import '../../styles/components/_garden.css';
 
 const garden = await getGardenIndexOrUnavailable();
@@ -17,11 +18,11 @@ const recent = index.documents
 <Base title={index.root.title} description={index.root.summary} wide>
   <div class="garden-page">
     <GardenDocumentPage document={index.root} index={index}>
-      <!-- Map of the whole garden: under root contents, same reading column. -->
+      <!-- Global navigation and activity live in the context rail. -->
       <nav class="note-contents note-contents--views" aria-label="Notes views">
         <ul class="note-contents__list">
           <li class="note-content">
-            <a href="/notes/graph" class="note-content__link">
+            <a href={NOTES_GRAPH_PATH} class="note-content__link">
               <span class="note-content__icon" aria-hidden="true">
                 <svg viewBox="0 0 20 20" fill="none">
                   <circle cx="5" cy="6" r="2"></circle>
@@ -31,7 +32,7 @@ const recent = index.documents
                   ></path>
                 </svg>
               </span>
-              <span class="note-content__title">map</span>
+              <span class="note-content__title">global map</span>
             </a>
           </li>
         </ul>

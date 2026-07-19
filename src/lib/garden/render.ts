@@ -135,7 +135,42 @@ function ensureConfigured(): void {
   configured = true;
 }
 
-function createRenderer(): Renderer {
+export interface NoteHeading {
+  id: string;
+  text: string;
+  depth: 2 | 3 | 4;
+}
+
+export interface RenderedNote {
+  html: string;
+  headings: NoteHeading[];
+}
+
+function plainTextFromHtml(value: string): string {
+  const entities: Record<string, string> = {
+    amp: '&',
+    apos: "'",
+    gt: '>',
+    lt: '<',
+    quot: '"',
+  };
+
+  return value
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
+      if (code.startsWith('#x')) {
+        return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
+      }
+      if (code.startsWith('#')) {
+        return String.fromCodePoint(Number.parseInt(code.slice(1), 10));
+      }
+      return entities[code.toLowerCase()] ?? entity;
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function createRenderer(headings: NoteHeading[]): Renderer {
   const renderer = new Renderer();
   const slugCounts = new Map<string, number>();
 
@@ -147,6 +182,11 @@ function createRenderer(): Renderer {
       const occurrence = slugCounts.get(baseSlug) ?? 0;
       slugCounts.set(baseSlug, occurrence + 1);
       const slug = occurrence === 0 ? baseSlug : `${baseSlug}-${occurrence}`;
+      headings.push({
+        id: slug,
+        text: plainTextFromHtml(text),
+        depth: depth as NoteHeading['depth'],
+      });
       return `<h${depth} id="${slug}" tabindex="-1">${text}<a href="#${slug}" class="anchor" aria-hidden="true">#</a></h${depth}>\n`;
     }
     return `<h${depth}>${text}</h${depth}>\n`;
@@ -183,14 +223,15 @@ export interface RenderNoteOptions {
   wikiLinkHrefs?: ReadonlyMap<string, string>;
 }
 
-export function renderNoteHtml(
+export function renderNote(
   body: string,
   options: RenderNoteOptions = {},
-): string {
+): RenderedNote {
   ensureConfigured();
-  return marked.parse(body, {
+  const headings: NoteHeading[] = [];
+  const html = marked.parse(body, {
     async: false,
-    renderer: createRenderer(),
+    renderer: createRenderer(headings),
     walkTokens(token) {
       if (!isWikiLinkToken(token)) return;
       token.href = options.wikiLinkHrefs?.get(
@@ -198,4 +239,13 @@ export function renderNoteHtml(
       );
     },
   }) as string;
+
+  return { html, headings };
+}
+
+export function renderNoteHtml(
+  body: string,
+  options: RenderNoteOptions = {},
+): string {
+  return renderNote(body, options).html;
 }

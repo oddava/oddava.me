@@ -17,10 +17,10 @@ const related = getRelatedNotes(document, index);
 {
   related.length > 0 && (
     <section
-      class="note-links"
+      class="note-links note-context__section"
       aria-label={`Notes related to ${document.title}`}
     >
-      <h2 class="note-links__label">Related</h2>
+      <h2 class="note-context__label">Related</h2>
       <ul class="note-links__list">
         {related.map((note) => (
           <li class="note-link">

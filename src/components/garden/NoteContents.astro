@@ -14,7 +14,11 @@ const children = document.childIds
 
 {
   children.length > 0 && (
-    <section class="note-contents" aria-label={`${document.title} contents`}>
+    <section
+      class="note-contents note-context__section"
+      aria-label={`${document.title} contents`}
+    >
+      <h2 class="note-context__label">Inside this folder</h2>
       <ul class="note-contents__list">
         {children.map((child) => (
           <li class="note-content">

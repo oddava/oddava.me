@@ -1,0 +1,335 @@
+---
+import type { GardenDocument, GardenIndex } from '@lib/garden';
+import { deriveLocalMap, type LocalMapNeighbor } from '@lib/garden/local-map';
+import { NOTES_GRAPH_PATH } from '@lib/site-routes';
+
+interface Props {
+  document: GardenDocument;
+  index: GardenIndex;
+}
+
+interface PositionedNeighbor extends LocalMapNeighbor {
+  x: number;
+  y: number;
+  labelX: number;
+  labelY: number;
+  textAnchor: 'start' | 'middle' | 'end';
+}
+
+const { document, index } = Astro.props;
+const map = deriveLocalMap(document, index);
+const center = { x: 120, y: 96 };
+const markerId = 'local-note-map-arrow';
+
+const relationshipLabels: Record<LocalMapNeighbor['relationship'], string> = {
+  parent: 'parent folder',
+  child: 'inside this folder',
+  outbound: 'linked note',
+  backlink: 'links here',
+};
+
+const shorten = (value: string, limit: number) => {
+  const characters = [...value];
+  return characters.length <= limit
+    ? value
+    : `${characters.slice(0, limit - 1).join('')}…`;
+};
+
+const positionsFor = (
+  relationship: LocalMapNeighbor['relationship'],
+  count: number,
+) => {
+  if (relationship === 'parent') return [{ x: 120, y: 22 }];
+  if (relationship === 'child') {
+    if (count === 1) return [{ x: 120, y: 171 }];
+    if (count === 2) {
+      return [
+        { x: 72, y: 171 },
+        { x: 168, y: 171 },
+      ];
+    }
+    return [
+      { x: 38, y: 171 },
+      { x: 120, y: 171 },
+      { x: 202, y: 171 },
+    ];
+  }
+
+  const x = relationship === 'backlink' ? 28 : 212;
+  if (count === 1) return [{ x, y: 96 }];
+  return [
+    { x, y: 63 },
+    { x, y: 129 },
+  ];
+};
+
+const positioned: PositionedNeighbor[] = map
+  ? (['parent', 'child', 'outbound', 'backlink'] as const).flatMap(
+      (relationship) => {
+        const neighbors = map.neighbors.filter(
+          (neighbor) => neighbor.relationship === relationship,
+        );
+        const positions = positionsFor(relationship, neighbors.length);
+        return neighbors.map((neighbor, positionIndex) => {
+          const position = positions[positionIndex]!;
+          if (relationship === 'backlink') {
+            return {
+              ...neighbor,
+              ...position,
+              labelX: position.x + 13,
+              labelY: position.y + 3,
+              textAnchor: 'start' as const,
+            };
+          }
+          if (relationship === 'outbound') {
+            return {
+              ...neighbor,
+              ...position,
+              labelX: position.x - 13,
+              labelY: position.y + 3,
+              textAnchor: 'end' as const,
+            };
+          }
+          return {
+            ...neighbor,
+            ...position,
+            labelX: position.x,
+            labelY: relationship === 'parent' ? 42 : 191,
+            textAnchor: 'middle' as const,
+          };
+        });
+      },
+    )
+  : [];
+
+const landscapeDestination = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.id)}`;
+---
+
+{
+  map && (
+    <section
+      id="local-map"
+      class="local-note-map note-context__section"
+      aria-labelledby="local-map-heading"
+      data-local-note-map
+    >
+      <h2 id="local-map-heading" class="note-context__label">
+        Local map
+      </h2>
+
+      <div class="local-note-map__canvas">
+        <svg
+          class="local-note-map__graphic"
+          viewBox="0 0 240 196"
+          role="group"
+          aria-labelledby="local-map-heading local-map-description"
+        >
+          <desc id="local-map-description">
+            An interactive map centered on {document.title}. Select a node to
+            open it; the center opens the whole notes map.
+          </desc>
+          <defs>
+            <marker
+              id={markerId}
+              viewBox="0 0 6 6"
+              refX="5"
+              refY="3"
+              markerWidth="5"
+              markerHeight="5"
+              orient="auto-start-reverse"
+            >
+              <path d="M0 0 6 3 0 6Z" />
+            </marker>
+          </defs>
+
+          {positioned.map((neighbor) => {
+            const isIncoming =
+              neighbor.relationship === 'parent' ||
+              neighbor.relationship === 'backlink';
+            const isReference =
+              neighbor.relationship === 'backlink' ||
+              neighbor.relationship === 'outbound';
+            return (
+              <line
+                class:list={[
+                  'local-note-map__edge',
+                  isReference && 'local-note-map__edge--reference',
+                ]}
+                data-map-edge
+                data-node-id={neighbor.document.id}
+                x1={isIncoming ? neighbor.x : center.x}
+                y1={isIncoming ? neighbor.y : center.y}
+                x2={isIncoming ? center.x : neighbor.x}
+                y2={isIncoming ? center.y : neighbor.y}
+                marker-end={`url(#${markerId})`}
+              />
+            );
+          })}
+
+          <a
+            class="local-note-map__node-link local-note-map__node-link--current"
+            href={landscapeDestination}
+            aria-label={`Open the whole notes map focused on ${document.title}`}
+            data-map-node
+            data-node-id={document.id}
+          >
+            <title>Open the whole notes map focused on {document.title}</title>
+            <circle
+              class="local-note-map__hit-area"
+              cx={center.x}
+              cy={center.y}
+              r="24"
+            />
+            <circle
+              class="local-note-map__focus-ring"
+              cx={center.x}
+              cy={center.y}
+              r="14"
+            />
+            <circle
+              class="local-note-map__node local-note-map__node--current"
+              cx={center.x}
+              cy={center.y}
+              r="7"
+            />
+            <text
+              class="local-note-map__text local-note-map__text--current"
+              x={center.x}
+              y={center.y + 22}
+              text-anchor="middle"
+            >
+              {shorten(document.title, 22)}
+            </text>
+          </a>
+
+          {positioned.map((neighbor) => (
+            <a
+              class={`local-note-map__node-link local-note-map__node-link--${neighbor.relationship}`}
+              href={neighbor.document.href}
+              aria-label={`${relationshipLabels[neighbor.relationship]}: ${neighbor.document.title}`}
+              data-map-node
+              data-node-id={neighbor.document.id}
+            >
+              <title>
+                {relationshipLabels[neighbor.relationship]}:{' '}
+                {neighbor.document.title}
+              </title>
+              <circle
+                class="local-note-map__hit-area"
+                cx={neighbor.x}
+                cy={neighbor.y}
+                r="18"
+              />
+              <circle
+                class="local-note-map__focus-ring"
+                cx={neighbor.x}
+                cy={neighbor.y}
+                r="11"
+              />
+              <circle
+                class="local-note-map__node"
+                cx={neighbor.x}
+                cy={neighbor.y}
+                r="5"
+              />
+              <text
+                class="local-note-map__text"
+                x={neighbor.labelX}
+                y={neighbor.labelY}
+                text-anchor={neighbor.textAnchor}
+              >
+                {shorten(
+                  neighbor.document.title,
+                  neighbor.relationship === 'parent' ||
+                    neighbor.relationship === 'child'
+                    ? 14
+                    : 11,
+                )}
+              </text>
+            </a>
+          ))}
+        </svg>
+      </div>
+    </section>
+  )
+}
+
+<script>
+  const localMaps = document.querySelectorAll<HTMLElement>(
+    '[data-local-note-map]',
+  );
+
+  for (const localMap of localMaps) {
+    const nodes = Array.from(
+      localMap.querySelectorAll<SVGAElement>('[data-map-node]'),
+    );
+    const edges = Array.from(
+      localMap.querySelectorAll<SVGLineElement>('[data-map-edge]'),
+    );
+    const currentNode = nodes[0];
+
+    if (!currentNode) continue;
+
+    const highlightNode = (node: SVGAElement) => {
+      const nodeId = node.dataset.nodeId ?? '';
+      const isCurrent = node === currentNode;
+
+      for (const candidate of nodes) {
+        const staysVisible =
+          isCurrent || candidate === node || candidate === currentNode;
+        candidate.classList.toggle('is-active', candidate === node);
+        candidate.classList.toggle('is-muted', !staysVisible);
+      }
+
+      for (const edge of edges) {
+        const isActive = !isCurrent && edge.dataset.nodeId === nodeId;
+        edge.classList.toggle('is-active', isActive);
+        edge.classList.toggle('is-muted', !isCurrent && !isActive);
+      }
+    };
+
+    nodes.forEach((node, nodeIndex) => {
+      node.addEventListener('pointerenter', () => highlightNode(node));
+      node.addEventListener('focus', () => highlightNode(node));
+      node.addEventListener('keydown', (event) => {
+        const previousKeys = ['ArrowUp', 'ArrowLeft'];
+        const nextKeys = ['ArrowDown', 'ArrowRight'];
+        let nextIndex: number | null = null;
+
+        if (previousKeys.includes(event.key)) {
+          nextIndex = (nodeIndex - 1 + nodes.length) % nodes.length;
+        } else if (nextKeys.includes(event.key)) {
+          nextIndex = (nodeIndex + 1) % nodes.length;
+        } else if (event.key === 'Home' || event.key === 'Escape') {
+          nextIndex = 0;
+        } else if (event.key === 'End') {
+          nextIndex = nodes.length - 1;
+        }
+
+        if (nextIndex === null) return;
+        event.preventDefault();
+        nodes[nextIndex]?.focus();
+      });
+    });
+
+    localMap.addEventListener('pointerleave', () => {
+      const focused =
+        document.activeElement?.closest<SVGAElement>('[data-map-node]');
+      highlightNode(
+        focused && localMap.contains(focused) ? focused : currentNode,
+      );
+    });
+
+    localMap.addEventListener('focusout', () => {
+      window.requestAnimationFrame(() => {
+        const focused =
+          document.activeElement?.closest<SVGAElement>('[data-map-node]');
+        if (!focused || !localMap.contains(focused)) {
+          highlightNode(currentNode);
+        }
+      });
+    });
+
+    highlightNode(currentNode);
+  }
+</script>

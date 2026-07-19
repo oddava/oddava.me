@@ -1,9 +1,11 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
-import { renderNoteHtml } from '@lib/garden/render';
+import { renderNote } from '@lib/garden/render';
 import { bodyProvidesTitleHeading } from '@lib/garden/utils';
-import NoteContents from './NoteContents.astro';
+import LocalNoteMap from './LocalNoteMap.astro';
 import NoteBacklinks from './NoteBacklinks.astro';
+import NoteContents from './NoteContents.astro';
+import NoteTableOfContents from './NoteTableOfContents.astro';
 import RelatedNotes from './RelatedNotes.astro';
 import '../../styles/components/_note-prose.css';
 
@@ -13,9 +15,10 @@ interface Props {
 }
 
 const { document, index } = Astro.props;
-const html = document.body.trim()
-  ? renderNoteHtml(document.body, { wikiLinkHrefs: index.wikiLinkHrefs })
-  : '';
+const rendered = document.body.trim()
+  ? renderNote(document.body, { wikiLinkHrefs: index.wikiLinkHrefs })
+  : { html: '', headings: [] };
+const tocHeadings = rendered.headings.length >= 2 ? rendered.headings : [];
 
 const isRoot = document.id === index.root.id;
 
@@ -34,54 +37,105 @@ if (!isRoot) {
 // A note whose body opens with its own `# h1` supplies the page title itself;
 // otherwise the shell provides it, so every note page has exactly one h1.
 const showShellTitle = !bodyProvidesTitleHeading(document.body);
-const isStub = !html && document.childIds.length === 0;
+let authoredTitleHtml = '';
+let bodyHtml = rendered.html;
+if (!showShellTitle) {
+  const titleEnd = bodyHtml.indexOf('</h1>');
+  if (titleEnd >= 0) {
+    authoredTitleHtml = bodyHtml.slice(0, titleEnd + '</h1>'.length);
+    bodyHtml = bodyHtml.slice(titleEnd + '</h1>'.length).trimStart();
+  }
+}
+const isStub = !rendered.html && document.childIds.length === 0;
+const hasSupplementary = Astro.slots.has('default');
 ---
 
-{
-  !isRoot && (
-    <header class="garden-document__header">
-      <nav class="garden-breadcrumbs" aria-label="breadcrumb">
-        <ol class="garden-breadcrumbs__list">
-          <li class="garden-breadcrumbs__item">
-            <a href="/notes">notes</a>
-          </li>
-          {ancestors.map((ancestor) => (
-            <li class="garden-breadcrumbs__item">
-              <span class="garden-breadcrumbs__separator" aria-hidden="true">
-                /
-              </span>
-              <a href={ancestor.href}>{ancestor.title}</a>
-            </li>
-          ))}
-          <li class="garden-breadcrumbs__item">
-            <span class="garden-breadcrumbs__separator" aria-hidden="true">
-              /
-            </span>
-            <span aria-current="page">{document.title}</span>
-          </li>
-        </ol>
-      </nav>
-      <p class="garden-document__tended">
-        updated{' '}
-        <time datetime={document.updated}>{document.updated.slice(0, 10)}</time>
-      </p>
-    </header>
-  )
-}
+<div class="garden-document-layout">
+  <article class="garden-document">
+    {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
+    {
+      authoredTitleHtml && (
+        <div
+          class="prose garden-document__authored-title"
+          set:html={authoredTitleHtml}
+        />
+      )
+    }
+    <NoteTableOfContents headings={tocHeadings} variant="mobile" />
+    {
+      bodyHtml && (
+        <div
+          class:list={[
+            'prose',
+            'garden-document__body',
+            authoredTitleHtml && 'garden-document__body--continuation',
+          ]}
+          set:html={bodyHtml}
+        />
+      )
+    }
+    {
+      isStub && (
+        <p class="garden-document__stub">
+          this note is still a stub — nothing here yet.
+        </p>
+      )
+    }
+  </article>
 
-<article class="garden-document">
-  {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
-  {html && <div class="prose garden-document__body" set:html={html} />}
-  {
-    isStub && (
-      <p class="garden-document__stub">
-        this note is still a stub — nothing here yet.
-      </p>
-    )
-  }
-
-  <NoteContents document={document} index={index} />
-  <NoteBacklinks document={document} index={index} />
-  <RelatedNotes document={document} index={index} />
-  <slot />
-</article>
+  <aside class="note-context" aria-label={`Context for ${document.title}`}>
+    <div class="note-context__inner">
+      {
+        !isRoot && (
+          <header class="garden-document__header">
+            <nav class="garden-breadcrumbs" aria-label="breadcrumb">
+              <ol class="garden-breadcrumbs__list">
+                <li class="garden-breadcrumbs__item">
+                  <a href="/notes">notes</a>
+                </li>
+                {ancestors.map((ancestor) => (
+                  <li class="garden-breadcrumbs__item">
+                    <span
+                      class="garden-breadcrumbs__separator"
+                      aria-hidden="true"
+                    >
+                      /
+                    </span>
+                    <a href={ancestor.href}>{ancestor.title}</a>
+                  </li>
+                ))}
+                <li class="garden-breadcrumbs__item">
+                  <span
+                    class="garden-breadcrumbs__separator"
+                    aria-hidden="true"
+                  >
+                    /
+                  </span>
+                  <span aria-current="page">{document.title}</span>
+                </li>
+              </ol>
+            </nav>
+            <p class="garden-document__tended">
+              updated{' '}
+              <time datetime={document.updated}>
+                {document.updated.slice(0, 10)}
+              </time>
+            </p>
+          </header>
+        )
+      }
+      <LocalNoteMap document={document} index={index} />
+      <NoteTableOfContents headings={tocHeadings} variant="rail" />
+      {
+        hasSupplementary && (
+          <div class="note-context__supplementary">
+            <slot />
+          </div>
+        )
+      }
+      <NoteContents document={document} index={index} />
+      <NoteBacklinks document={document} index={index} />
+      <RelatedNotes document={document} index={index} />
+    </div>
+  </aside>
+</div>
