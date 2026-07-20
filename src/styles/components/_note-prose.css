@@ -269,6 +269,126 @@
   margin: 1.5em 0;
 }
 
+.prose .note-figure {
+  margin: 1.2em 0;
+}
+
+.prose :is(.note-figure--align-left, figure[style*='text-align:left']) {
+  text-align: left;
+}
+
+.prose :is(.note-figure--align-center, figure[style*='text-align:center']) {
+  text-align: center;
+}
+
+.prose :is(.note-figure--align-right, figure[style*='text-align:right']) {
+  text-align: right;
+}
+
+.prose .note-figure .note-image {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.prose :is(.note-image--align-left, img[style*='float:left']) {
+  float: left;
+  margin: 0.4em 1.2em 0.8em 0;
+}
+
+.prose :is(.note-image--align-center, img[style*='display:block']) {
+  display: block;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.prose :is(.note-image--align-right, img[style*='float:right']) {
+  float: right;
+  margin: 0.4em 0 0.8em 1.2em;
+}
+
+.prose :is(.note-image--width-10, img[style*='width:10%']) {
+  width: 10%;
+}
+
+.prose :is(.note-image--width-15, img[style*='width:15%']) {
+  width: 15%;
+}
+
+.prose :is(.note-image--width-20, img[style*='width:20%']) {
+  width: 20%;
+}
+
+.prose :is(.note-image--width-25, img[style*='width:25%']) {
+  width: 25%;
+}
+
+.prose :is(.note-image--width-30, img[style*='width:30%']) {
+  width: 30%;
+}
+
+.prose :is(.note-image--width-33, img[style*='width:33%']) {
+  width: 33%;
+}
+
+.prose :is(.note-image--width-35, img[style*='width:35%']) {
+  width: 35%;
+}
+
+.prose :is(.note-image--width-40, img[style*='width:40%']) {
+  width: 40%;
+}
+
+.prose :is(.note-image--width-45, img[style*='width:45%']) {
+  width: 45%;
+}
+
+.prose :is(.note-image--width-50, img[style*='width:50%']) {
+  width: 50%;
+}
+
+.prose :is(.note-image--width-55, img[style*='width:55%']) {
+  width: 55%;
+}
+
+.prose :is(.note-image--width-60, img[style*='width:60%']) {
+  width: 60%;
+}
+
+.prose :is(.note-image--width-65, img[style*='width:65%']) {
+  width: 65%;
+}
+
+.prose :is(.note-image--width-70, img[style*='width:70%']) {
+  width: 70%;
+}
+
+.prose :is(.note-image--width-75, img[style*='width:75%']) {
+  width: 75%;
+}
+
+.prose :is(.note-image--width-80, img[style*='width:80%']) {
+  width: 80%;
+}
+
+.prose :is(.note-image--width-85, img[style*='width:85%']) {
+  width: 85%;
+}
+
+.prose :is(.note-image--width-90, img[style*='width:90%']) {
+  width: 90%;
+}
+
+.prose :is(.note-image--width-95, img[style*='width:95%']) {
+  width: 95%;
+}
+
+.prose figcaption {
+  margin-top: 0.5em;
+  color: var(--color-text-muted);
+  font-size: 0.82em;
+  line-height: 1.55;
+}
+
 .prose iframe,
 .prose video {
   max-width: 100%;

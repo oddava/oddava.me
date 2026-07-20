@@ -399,6 +399,8 @@ function escapeAttr(value: string): string {
  * Build the markup for an image. When it needs no styling or caption we emit a
  * plain Markdown image so the source stays clean; anything richer becomes inline
  * HTML (which `marked` renders verbatim in both the preview and the live page).
+ * Presentation is expressed through classes because the site's CSP deliberately
+ * blocks inline styles.
  */
 export function buildImageMarkup(options: ImageMarkupOptions): string {
   const { src, alt, caption, widthPercent, align } = options;
@@ -409,26 +411,19 @@ export function buildImageMarkup(options: ImageMarkupOptions): string {
     return `![${alt}](${src})`;
   }
 
-  const styles: string[] = [];
-  if (hasWidth) styles.push(`width:${widthPercent}%`);
-  if (align === 'center') {
-    styles.push('display:block', 'margin-left:auto', 'margin-right:auto');
-  } else if (align === 'left') {
-    styles.push('float:left', 'margin:0.4em 1.2em 0.8em 0');
-  } else if (align === 'right') {
-    styles.push('float:right', 'margin:0.4em 0 0.8em 1.2em');
-  }
-  const styleAttr = styles.length ? ` style="${styles.join(';')}"` : '';
-  const img = `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}"${styleAttr}>`;
+  const imageClasses = ['note-image'];
+  if (hasWidth) imageClasses.push(`note-image--width-${widthPercent}`);
+  if (align !== 'inline') imageClasses.push(`note-image--align-${align}`);
+  const img = `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" class="${imageClasses.join(' ')}">`;
 
   if (!trimmedCaption) return img;
 
   const figureAlign =
     align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
   return [
-    `<figure style="margin:1.2em 0;text-align:${figureAlign}">`,
+    `<figure class="note-figure note-figure--align-${figureAlign}">`,
     `  ${img}`,
-    `  <figcaption style="margin-top:0.5em;font-size:0.85em;opacity:0.7">${escapeAttr(
+    `  <figcaption class="note-image-caption">${escapeAttr(
       trimmedCaption,
     )}</figcaption>`,
     `</figure>`,
