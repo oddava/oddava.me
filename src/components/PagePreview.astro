@@ -37,6 +37,9 @@ import '../styles/components/_page-preview.css';
     const HOVER_INTENT_MS = 140;
     const MAX_CACHE_ENTRIES = 24;
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const previewsDisabled = window.matchMedia(
+      '(max-width: 720px), (hover: none), (pointer: coarse)',
+    );
     const cache = new Map<string, Promise<PagePreviewData | null>>();
     let activeLink: HTMLAnchorElement | null = null;
     let previousDescription: string | null = null;
@@ -44,6 +47,7 @@ import '../styles/components/_page-preview.css';
     let requestToken = 0;
 
     const eligibleLink = (target: EventTarget | null) => {
+      if (previewsDisabled.matches) return null;
       if (!(target instanceof Element)) return null;
       const link = target.closest<HTMLAnchorElement>('a[href]');
       if (
@@ -181,6 +185,10 @@ import '../styles/components/_page-preview.css';
         renderPreview(data);
       }, delay);
     };
+
+    previewsDisabled.addEventListener('change', () => {
+      if (previewsDisabled.matches) closePreview();
+    });
 
     document.addEventListener('pointerover', (event) => {
       if (!finePointer.matches) return;
