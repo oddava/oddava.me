@@ -182,6 +182,29 @@ describe('renderNoteHtml', () => {
     expect(html).not.toContain('note-tag');
   });
 
+  it('uses CSP-compatible classes for sized external images and captions', () => {
+    const markup = buildImageMarkup({
+      src: 'https://images.example/photo.jpg',
+      alt: 'A distant mountain',
+      caption: 'Seen from the valley.',
+      widthPercent: 50,
+      align: 'center',
+    });
+
+    const html = renderNoteHtml(markup);
+
+    expect(html).toContain(
+      '<figure class="note-figure note-figure--align-center">',
+    );
+    expect(html).toContain(
+      '<img src="https://images.example/photo.jpg" alt="A distant mountain" class="note-image note-image--width-50 note-image--align-center">',
+    );
+    expect(html).toContain(
+      '<figcaption class="note-image-caption">Seen from the valley.</figcaption>',
+    );
+    expect(html).not.toContain('style=');
+  });
+
   it('renders resolved wiki links inside generated image captions', () => {
     const markup = buildImageMarkup({
       src: '/images/notes/tged.png',
