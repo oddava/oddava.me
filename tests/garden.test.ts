@@ -108,6 +108,14 @@ describe('notes helpers', () => {
     expect(deriveSummary('![cover](/x.png)\n\nAfter the image.')).toBe(
       'After the image.',
     );
+    expect(
+      deriveSummary(
+        '<figure class="note-figure">\n<img src="/x.png" alt="cover">\n<figcaption>[[Cover note]]</figcaption>\n</figure>\n\nThe actual note content.',
+      ),
+    ).toBe('The actual note content.');
+    expect(deriveSummary('<p>Plain <strong>HTML</strong> text.</p>')).toBe(
+      'Plain HTML text.',
+    );
   });
 
   it('uses the first public note image for social previews', () => {

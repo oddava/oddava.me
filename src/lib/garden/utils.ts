@@ -175,6 +175,8 @@ function stripInlineMarkdown(value: string): string {
     .replace(/\[\[[^\]|\n]+\|([^\]\n]+)\]\]/g, '$1')
     .replace(/\[\[([^\]|\n]+)\]\]/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
     .replace(/[*_`~]+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -204,7 +206,13 @@ export function deriveTitle(body: string, id: string): string {
 export function deriveSummary(body: string): string {
   for (const block of body.split(/\n{2,}/)) {
     const line = block.trim();
-    if (!line || line.startsWith('#') || line.startsWith('![')) continue;
+    if (
+      !line ||
+      line.startsWith('#') ||
+      line.startsWith('![') ||
+      /^<(?:figure|picture|img|video|audio)\b/i.test(line)
+    )
+      continue;
     const text = stripInlineMarkdown(line.replace(/^>\s?/gm, ''));
     if (text) return text;
   }
