@@ -145,17 +145,19 @@
 
 /* Document reader */
 
-/* Wayfinding belongs to the context rail, leaving the reading column authored. */
+/* Wayfinding opens the reading column. It used to live in the rail, but the
+   rail follows the article below 78rem — so on a phone "where am I" only
+   arrived after the whole note. Location has to precede the thing it locates. */
 
 .garden-document__header {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  margin: 0;
-  padding: 0 0 1rem;
-  border-bottom: 1px solid var(--color-rule);
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 1.4rem;
   color: var(--color-text-muted);
-  font: 0.66rem var(--font-mono);
+  font: 0.72rem var(--font-mono);
   line-height: 1.6;
 }
 
@@ -201,14 +203,21 @@
   white-space: nowrap;
 }
 
+/* The reading column stays centred on the page; the rail occupies the gutter
+   beside it. Symmetric side tracks are what keep the article centred — a
+   two-track grid would centre article+rail together and pull the prose left.
+   Below the two-column breakpoint the rail is just the next block in source
+   order, so there is no positioning to undo. */
 .garden-document-layout {
-  position: relative;
-  width: min(100%, 44rem);
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 44rem);
+  justify-content: center;
+  align-items: start;
+  column-gap: 2.5rem;
 }
 
 .garden-document {
-  width: 100%;
+  min-width: 0;
 }
 
 /* Fallback title when the body doesn't open with its own h1 — sized like the
@@ -247,19 +256,10 @@
 /* The rendered body's own styles live in `_note-prose.css` — shared with the
    Studio preview so the two can't drift. */
 
+/* Only the global-map nav on /notes uses this now — the folder listing was
+   removed in favour of the local map, which draws the same children. */
 .note-contents {
   margin-top: 0;
-}
-
-.garden-document__body + .note-contents {
-  margin-top: clamp(2.5rem, 7vw, 4rem);
-}
-
-/* The map view sits under the folder list, set apart by a hairline rule. */
-.note-contents--views {
-  margin-top: 0.6rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--color-rule);
 }
 
 .note-contents__list {
@@ -324,68 +324,6 @@
   white-space: nowrap;
 }
 
-/* Recently tended: a quiet list under the views nav on /notes. */
-
-.garden-recent {
-  margin-top: clamp(2rem, 5vw, 3rem);
-  padding-top: clamp(1.25rem, 3vw, 1.75rem);
-  border-top: 1px solid var(--color-rule);
-}
-
-.garden-recent__heading {
-  margin: 0 0 0.6rem;
-  color: var(--color-text-muted);
-  font: 0.7rem var(--font-mono);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.garden-recent__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.garden-recent__link {
-  display: flex;
-  gap: 1rem;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 0 -0.55rem;
-  padding: 0.55rem;
-  border-radius: var(--radius-md);
-  color: inherit;
-  text-decoration: none;
-  transition: background-color 180ms ease;
-}
-
-.garden-recent__link:hover,
-.garden-recent__link:focus-visible {
-  color: inherit;
-  background: color-mix(in srgb, var(--color-overlay-soft) 62%, transparent);
-}
-
-.garden-recent__title {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  font-size: 0.96rem;
-  font-weight: 500;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.garden-recent__date {
-  color: var(--color-text-muted);
-  font: 0.65rem var(--font-mono);
-  white-space: nowrap;
-}
-
 /* Connections: backlinks and tag affinity ("Related"). Both
    sit below the body/contents, set apart by a hairline rule, and share one
    quiet card language. */
@@ -399,15 +337,6 @@
 .note-links + .note-links {
   margin-top: clamp(1.5rem, 4vw, 2.25rem);
   padding-top: clamp(1.25rem, 3vw, 1.75rem);
-}
-
-.note-links__label {
-  margin: 0 0 0.6rem;
-  color: var(--color-text-muted);
-  font: 0.7rem var(--font-mono);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .note-links__list {
@@ -455,17 +384,22 @@
   white-space: nowrap;
 }
 
-/* Per-note context follows the article on small screens and becomes the left
-   navigation rail wherever two calm columns fit. */
+/* Per-note context trails the article as a self-contained card on narrow
+   screens, and becomes the right-hand rail wherever two calm columns fit.
+   Order is by usefulness while reading: this page → this folder → what
+   connects here → the map that summarises those connections. */
 
 .note-context:not(:has(.note-context__section)) {
   display: none;
 }
 
 .note-context {
+  min-width: 0;
   margin-top: clamp(2.5rem, 7vw, 4rem);
-  padding-top: clamp(1.5rem, 4vw, 2rem);
-  border-top: 1px solid var(--color-rule);
+  padding: clamp(1.25rem, 4vw, 1.75rem);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
 }
 
 .note-context__inner {
@@ -481,17 +415,18 @@
 }
 
 .note-context__section + .note-context__section {
-  margin-top: clamp(1.5rem, 4vw, 2.25rem);
-  padding-top: clamp(1.25rem, 3vw, 1.75rem);
+  margin-top: clamp(1.25rem, 3vw, 1.6rem);
+  padding-top: clamp(1.25rem, 3vw, 1.6rem);
   border-top: 1px solid var(--color-rule);
 }
 
+/* One label voice for every section, in the rail and in the mobile card. */
 .note-context__label,
 .note-toc__summary {
-  margin: 0 0 0.65rem;
-  color: var(--color-text-muted);
+  margin: 0 0 0.7rem;
+  color: var(--color-text-secondary);
   font: 500 0.7rem var(--font-mono);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
@@ -558,17 +493,14 @@
   border-top: 1px solid var(--color-rule);
 }
 
-.note-context__supplementary .note-contents--views,
-.note-context__supplementary .garden-recent {
+/* Dividers separate sections, so the first one must not carry a leading rule.
+   Which section comes first varies — the TOC when a note has headings, the
+   supplementary slot on /notes, folder contents otherwise — so this guards
+   whatever lands there rather than any one section. */
+.note-context__inner > :first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
-}
-
-.note-context__supplementary .garden-recent {
-  margin-top: 1.4rem;
-  padding-top: 1.15rem;
-  border-top: 1px solid var(--color-rule);
 }
 
 .note-context__supplementary + .note-context__section {
@@ -577,9 +509,8 @@
   border-top: 1px solid var(--color-rule);
 }
 
-.garden-document__header + .local-note-map {
-  margin-top: 1.2rem;
-}
+/* The map is a picture of the links listed above it, so it reads as their
+   summary rather than as a seventh list. */
 
 .local-note-map {
   --local-map-edge: color-mix(
@@ -597,10 +528,13 @@
   background: transparent;
 }
 
+/* Sized by its own width/height attributes, which are derived from the cropped
+   viewBox — `width: 100%` would stretch a sparse map back to a wide frame. */
 .local-note-map__graphic {
   display: block;
-  width: 100%;
+  max-width: 100%;
   height: auto;
+  margin-inline: auto;
   overflow: visible;
 }
 
@@ -716,7 +650,34 @@
   fill: var(--color-text-primary);
 }
 
-@media (min-width: 80rem) {
+/* Two calm columns. A centred 44rem column with a rail beside it needs
+   44 + 2 × (gap + rail) of room, because the left gutter has to mirror the
+   right one for the prose to stay centred — so 78rem is the honest gate. */
+@media (min-width: 78rem) {
+  /* Break out of the 70rem page shell: inside it the gutters are only ~13rem
+     and the rail ends up pinned against the viewport edge. Scoped to pages
+     that actually have a rail — tag and listing pages keep the shell width. */
+  .garden-page:has(.garden-document-layout) {
+    width: min(100vw - 2 * var(--page-padding), 80rem);
+    margin-left: calc(50% - min(50vw - var(--page-padding), 40rem));
+  }
+
+  .garden-document-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 44rem) minmax(0, 1fr);
+  }
+
+  .garden-document {
+    grid-column: 2;
+  }
+
+  /* Sits at the inner edge of the right gutter so it reads as attached to the
+     article, not adrift against the window. */
+  .note-context {
+    grid-column: 3;
+    justify-self: start;
+    width: min(100%, 15rem);
+  }
+
   .note-toc--mobile {
     display: none;
   }
@@ -725,15 +686,13 @@
     display: block;
   }
 
+  /* The card framing is for the mobile stack; in the rail the sections stand
+     on their own and a second box would only fight the article's edge. */
   .note-context {
-    position: absolute;
-    top: 0;
-    right: calc(100% + 2.5rem);
-    width: 15rem;
-    height: 100%;
     margin: 0;
     padding: 0;
     border: 0;
+    background: none;
   }
 
   .note-context__inner {
@@ -743,70 +702,42 @@
     padding: 0.2rem 0.45rem 0.2rem 0.15rem;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: var(--color-rule-strong) transparent;
   }
 
   .note-context__section + .note-context__section {
-    margin-top: 1.25rem;
-    padding-top: 1.1rem;
+    margin-top: 1.4rem;
+    padding-top: 1.25rem;
   }
 
-  .note-context__supplementary .garden-recent__heading {
-    font-size: 0.64rem;
-  }
-
-  .note-context__supplementary .garden-recent__link {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.12rem;
-    align-items: start;
-    margin: 0 -0.4rem;
-    padding: 0.4rem;
-  }
-
-  .note-context__supplementary .garden-recent__title {
-    font-size: 0.76rem;
-    line-height: 1.35;
-  }
-
-  .note-context__supplementary .garden-recent__date {
-    font-size: 0.54rem;
-  }
-
+  /* Rail type steps down one notch from the article, no further: the previous
+     0.54–0.74rem range put four different sizes below 12px in one column. */
   .note-context .note-content__title,
   .note-context .note-link__title {
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     line-height: 1.4;
   }
 
   .note-context .note-content__link {
-    grid-template-columns: 0.9rem minmax(0, 1fr);
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0.38rem 0.4rem;
-  }
-
-  .note-context .note-content__icon {
-    width: 0.9rem;
-    height: 0.9rem;
-  }
-
-  .note-context .note-link__anchor {
-    margin: 0;
+    gap: 0.55rem;
+    margin: 0 -0.4rem;
     padding: 0.4rem;
   }
 
+  .note-context .note-link__anchor {
+    margin: 0 -0.4rem;
+    padding: 0.45rem 0.4rem;
+  }
+
+  /* Summaries would wrap to four lines at 16rem and bury the titles. */
   .note-context .note-link__summary {
     display: none;
   }
 
-  .note-context__label {
-    font-size: 0.64rem;
-  }
-
   .note-toc__link {
-    font-size: 0.74rem;
+    font-size: 0.8125rem;
   }
 }
 

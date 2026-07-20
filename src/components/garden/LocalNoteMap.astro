@@ -11,6 +11,7 @@ interface Props {
 interface PositionedNeighbor extends LocalMapNeighbor {
   x: number;
   y: number;
+  label: string;
   labelX: number;
   labelY: number;
   textAnchor: 'start' | 'middle' | 'end';
@@ -70,12 +71,15 @@ const positioned: PositionedNeighbor[] = map
           (neighbor) => neighbor.relationship === relationship,
         );
         const positions = positionsFor(relationship, neighbors.length);
+        const isStacked = relationship === 'parent' || relationship === 'child';
         return neighbors.map((neighbor, positionIndex) => {
           const position = positions[positionIndex]!;
+          const label = shorten(neighbor.document.title, isStacked ? 14 : 11);
           if (relationship === 'backlink') {
             return {
               ...neighbor,
               ...position,
+              label,
               labelX: position.x + 13,
               labelY: position.y + 3,
               textAnchor: 'start' as const,
@@ -85,6 +89,7 @@ const positioned: PositionedNeighbor[] = map
             return {
               ...neighbor,
               ...position,
+              label,
               labelX: position.x - 13,
               labelY: position.y + 3,
               textAnchor: 'end' as const,
@@ -93,6 +98,7 @@ const positioned: PositionedNeighbor[] = map
           return {
             ...neighbor,
             ...position,
+            label,
             labelX: position.x,
             labelY: relationship === 'parent' ? 42 : 191,
             textAnchor: 'middle' as const,
@@ -101,6 +107,67 @@ const positioned: PositionedNeighbor[] = map
       },
     )
   : [];
+
+const currentLabel = shorten(document.title, 22);
+
+// The frame is cropped to what is actually drawn. The slots below are fixed
+// (parent above, children below, references either side), so a note with only
+// a parent used to render two dots stranded in a half-empty 240×196 box.
+const CHAR_WIDTH = 4.5; // JetBrains Mono advance at the 7.5px label size
+const LABEL_ASCENT = 6;
+const LABEL_DESCENT = 2;
+const PADDING = 5;
+
+let minX = Infinity;
+let minY = Infinity;
+let maxX = -Infinity;
+let maxY = -Infinity;
+
+const cover = (x1: number, y1: number, x2: number, y2: number) => {
+  minX = Math.min(minX, x1);
+  minY = Math.min(minY, y1);
+  maxX = Math.max(maxX, x2);
+  maxY = Math.max(maxY, y2);
+};
+
+// Bounds use the focus-ring radius, not the dot, so a focused node is never
+// clipped by the edge of the frame.
+const coverLabel = (
+  text: string,
+  x: number,
+  y: number,
+  anchor: PositionedNeighbor['textAnchor'],
+) => {
+  const width = text.length * CHAR_WIDTH;
+  const left =
+    anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
+  cover(left, y - LABEL_ASCENT, left + width, y + LABEL_DESCENT);
+};
+
+if (map) {
+  cover(center.x - 14, center.y - 14, center.x + 14, center.y + 14);
+  coverLabel(currentLabel, center.x, center.y + 22, 'middle');
+  for (const neighbor of positioned) {
+    cover(neighbor.x - 11, neighbor.y - 11, neighbor.x + 11, neighbor.y + 11);
+    coverLabel(
+      neighbor.label,
+      neighbor.labelX,
+      neighbor.labelY,
+      neighbor.textAnchor,
+    );
+  }
+}
+
+const viewWidth = maxX - minX + PADDING * 2;
+const viewHeight = maxY - minY + PADDING * 2;
+const viewBox = `${minX - PADDING} ${minY - PADDING} ${viewWidth} ${viewHeight}`;
+
+// Intrinsic size travels as width/height attributes rather than an inline
+// style, which the strict CSP would drop. 1.25× keeps a sparse map from
+// reading as tiny without magnifying a dense one into the article.
+const renderScale = 1.25;
+const renderWidth = Math.round(viewWidth * renderScale);
+const renderHeight = Math.round(viewHeight * renderScale);
 
 const landscapeDestination = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.id)}`;
 ---
@@ -120,7 +187,9 @@ const landscapeDestination = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(doc
       <div class="local-note-map__canvas">
         <svg
           class="local-note-map__graphic"
-          viewBox="0 0 240 196"
+          viewBox={viewBox}
+          width={renderWidth}
+          height={renderHeight}
           role="group"
           aria-labelledby="local-map-heading local-map-description"
         >
@@ -198,7 +267,7 @@ const landscapeDestination = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(doc
               y={center.y + 22}
               text-anchor="middle"
             >
-              {shorten(document.title, 22)}
+              {currentLabel}
             </text>
           </a>
 
@@ -238,13 +307,7 @@ const landscapeDestination = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(doc
                 y={neighbor.labelY}
                 text-anchor={neighbor.textAnchor}
               >
-                {shorten(
-                  neighbor.document.title,
-                  neighbor.relationship === 'parent' ||
-                    neighbor.relationship === 'child'
-                    ? 14
-                    : 11,
-                )}
+                {neighbor.label}
               </text>
             </a>
           ))}

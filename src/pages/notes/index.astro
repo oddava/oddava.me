@@ -8,18 +8,13 @@ import '../../styles/components/_garden.css';
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
-
-// Documents are already sorted most-recently-updated first.
-const recent = index.documents
-  .filter((document) => document.id !== index.root.id)
-  .slice(0, 5);
 ---
 
 <Base title={index.root.title} description={index.root.summary} wide>
   <div class="garden-page">
     <GardenDocumentPage document={index.root} index={index}>
-      <!-- Global navigation and activity live in the context rail. -->
-      <nav class="note-contents note-contents--views" aria-label="Notes views">
+      <!-- Global navigation lives in the context rail. -->
+      <nav class="note-contents" aria-label="Notes views">
         <ul class="note-contents__list">
           <li class="note-content">
             <a href={NOTES_GRAPH_PATH} class="note-content__link">
@@ -37,28 +32,6 @@ const recent = index.documents
           </li>
         </ul>
       </nav>
-
-      {
-        recent.length > 0 && (
-          <section class="garden-recent" aria-labelledby="recently-tended">
-            <h2 class="garden-recent__heading" id="recently-tended">
-              recently updated
-            </h2>
-            <ul class="garden-recent__list">
-              {recent.map((note) => (
-                <li>
-                  <a href={note.href} class="garden-recent__link">
-                    <span class="garden-recent__title">{note.title}</span>
-                    <time class="garden-recent__date" datetime={note.updated}>
-                      {note.updated.slice(0, 10)}
-                    </time>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )
-      }
     </GardenDocumentPage>
   </div>
 </Base>
