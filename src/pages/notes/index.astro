@@ -2,15 +2,27 @@
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
+import { deriveNoteSocialImage } from '@lib/garden/utils';
 import { NOTES_GRAPH_PATH } from '@lib/site-routes';
 import '../../styles/components/_garden.css';
 
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
+const socialImage = deriveNoteSocialImage(index.root.body);
+const description =
+  index.root.summary || 'a note from oddava’s digital garden.';
 ---
 
-<Base title={index.root.title} description={index.root.summary} wide>
+<Base
+  title={index.root.title}
+  {description}
+  image={socialImage?.src}
+  imageAlt={socialImage?.alt}
+  type="article"
+  modifiedTime={index.root.updated}
+  wide
+>
   <div class="garden-page">
     <GardenDocumentPage document={index.root} index={index}>
       <!-- Global navigation lives in the context rail. -->

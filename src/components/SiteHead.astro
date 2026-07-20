@@ -10,7 +10,9 @@ export interface Props {
   title?: string;
   description?: string;
   image?: string;
+  imageAlt?: string;
   type?: 'website' | 'article';
+  modifiedTime?: string;
 }
 
 const {
@@ -19,7 +21,9 @@ const {
   // Default OG/social image. PNG rendered from public/og-default.svg (the
   // diffable source) — SVG itself is not parsed by every consumer.
   image = '/og-default.png',
+  imageAlt = `${SITE_NAME} social preview`,
   type = 'website',
+  modifiedTime,
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
@@ -41,7 +45,16 @@ const socialImage = new URL(image, Astro.site ?? Astro.url).href;
 <meta property="og:description" content={description} />
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonicalUrl} />
+<meta property="og:site_name" content={SITE_NAME} />
+<meta property="og:locale" content="en_US" />
 <meta property="og:image" content={socialImage} />
+<meta property="og:image:secure_url" content={socialImage} />
+<meta property="og:image:alt" content={imageAlt} />
+{
+  type === 'article' && modifiedTime && (
+    <meta property="article:modified_time" content={modifiedTime} />
+  )
+}
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
@@ -49,6 +62,7 @@ const socialImage = new URL(image, Astro.site ?? Astro.url).href;
 <meta name="twitter:title" content={pageTitle} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={socialImage} />
+<meta name="twitter:image:alt" content={imageAlt} />
 
 <link
   rel="alternate"

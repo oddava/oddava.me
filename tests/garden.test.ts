@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bodyProvidesTitleHeading,
   buildWikiLinkHrefLookup,
+  deriveNoteSocialImage,
   deriveSummary,
   deriveTitle,
   folderTitle,
@@ -106,6 +107,27 @@ describe('notes helpers', () => {
     expect(deriveSummary('# Only a heading')).toBe('');
     expect(deriveSummary('![cover](/x.png)\n\nAfter the image.')).toBe(
       'After the image.',
+    );
+  });
+
+  it('uses the first public note image for social previews', () => {
+    expect(
+      deriveNoteSocialImage(
+        '# Entry\n\n![A linked cover](/images/cover.webp)\n\nText.',
+      ),
+    ).toEqual({ src: '/images/cover.webp', alt: 'A linked cover' });
+
+    expect(
+      deriveNoteSocialImage(
+        '<figure><img src="https://images.example/photo.jpg" alt="A photo"></figure>',
+      ),
+    ).toEqual({
+      src: 'https://images.example/photo.jpg',
+      alt: 'A photo',
+    });
+
+    expect(deriveNoteSocialImage('![private](data:image/png;base64,abc)')).toBe(
+      undefined,
     );
   });
 
