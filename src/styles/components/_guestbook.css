@@ -58,9 +58,7 @@
 
 .guestbook__field input:focus-visible,
 .guestbook__field textarea:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 3px;
-  border-bottom-color: var(--color-text-interactive);
+  outline: none;
 }
 
 .guestbook__field input:focus:not(:focus-visible),
