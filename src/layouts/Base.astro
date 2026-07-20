@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
+import PagePreview from '../components/PagePreview.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
@@ -46,6 +47,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
 
       {!hideFooter && <Footer />}
     </div>
+    {Astro.url.pathname !== '/' && <PagePreview />}
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
   </body>
 </html>

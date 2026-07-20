@@ -1,0 +1,215 @@
+---
+import '../styles/components/_page-preview.css';
+---
+
+<aside
+  id="page-preview"
+  class="page-preview"
+  popover="manual"
+  role="tooltip"
+  aria-live="polite"
+  hidden
+>
+  <span class="page-preview__path" data-page-preview-path></span>
+  <strong class="page-preview__title" data-page-preview-title></strong>
+  <span class="page-preview__summary" data-page-preview-summary></span>
+</aside>
+
+<script>
+  import { previewPageUrl } from '../lib/page-preview';
+
+  interface PagePreviewData {
+    path: string;
+    title: string;
+    summary: string;
+  }
+
+  const preview = document.querySelector<HTMLElement>('#page-preview');
+  const path = preview?.querySelector<HTMLElement>('[data-page-preview-path]');
+  const title = preview?.querySelector<HTMLElement>(
+    '[data-page-preview-title]',
+  );
+  const summary = preview?.querySelector<HTMLElement>(
+    '[data-page-preview-summary]',
+  );
+
+  if (preview && path && title && summary) {
+    const HOVER_INTENT_MS = 140;
+    const MAX_CACHE_ENTRIES = 24;
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const cache = new Map<string, Promise<PagePreviewData | null>>();
+    let activeLink: HTMLAnchorElement | null = null;
+    let previousDescription: string | null = null;
+    let intentTimer = 0;
+    let requestToken = 0;
+
+    const eligibleLink = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return null;
+      const link = target.closest<HTMLAnchorElement>('a[href]');
+      if (
+        !link ||
+        link.hasAttribute('download') ||
+        link.hasAttribute('data-page-preview-ignore') ||
+        (link.target && link.target !== '_self')
+      ) {
+        return null;
+      }
+      return previewPageUrl(link.href, window.location.href) ? link : null;
+    };
+
+    const closePreview = () => {
+      window.clearTimeout(intentTimer);
+      requestToken += 1;
+
+      if (activeLink) {
+        activeLink.classList.remove('page-preview-link');
+        if (previousDescription === null) {
+          activeLink.removeAttribute('aria-describedby');
+        } else {
+          activeLink.setAttribute('aria-describedby', previousDescription);
+        }
+      }
+
+      activeLink = null;
+      previousDescription = null;
+      if (preview.matches(':popover-open')) preview.hidePopover();
+      preview.hidden = true;
+    };
+
+    const openPreview = () => {
+      preview.hidden = false;
+      if (!preview.matches(':popover-open')) preview.showPopover();
+    };
+
+    const renderLoading = (url: URL) => {
+      preview.classList.add('page-preview--loading');
+      path.textContent = url.pathname;
+      title.textContent = 'Loading page…';
+      summary.textContent = '';
+    };
+
+    const renderPreview = (data: PagePreviewData) => {
+      preview.classList.remove('page-preview--loading');
+      path.textContent = data.path;
+      title.textContent = data.title;
+      summary.textContent = data.summary;
+      summary.hidden = !data.summary;
+    };
+
+    const loadPreview = (url: string): Promise<PagePreviewData | null> => {
+      const cached = cache.get(url);
+      if (cached) {
+        // Refresh insertion order so frequently revisited pages survive the
+        // small LRU cache without keeping an unbounded browsing history.
+        cache.delete(url);
+        cache.set(url, cached);
+        return cached;
+      }
+
+      const request = fetch(url, {
+        credentials: 'same-origin',
+        headers: { Accept: 'text/html' },
+      })
+        .then(async (response): Promise<PagePreviewData | null> => {
+          if (!response.ok) return null;
+          if (!response.headers.get('content-type')?.includes('text/html')) {
+            return null;
+          }
+          if (new URL(response.url).origin !== window.location.origin) {
+            return null;
+          }
+
+          const document = new DOMParser().parseFromString(
+            await response.text(),
+            'text/html',
+          );
+          const heading = document
+            .querySelector('main h1')
+            ?.textContent?.trim();
+          const documentTitle = document.title
+            .replace(/\s+\|\s+oddava(?:\.me)?$/i, '')
+            .trim();
+          const previewTitle = heading || documentTitle;
+          if (!previewTitle) return null;
+
+          const description =
+            document
+              .querySelector<HTMLMetaElement>('meta[name=description]')
+              ?.content.trim() ?? '';
+          const responseUrl = new URL(response.url);
+          return {
+            path: responseUrl.pathname,
+            title: previewTitle,
+            summary: description,
+          };
+        })
+        .catch(() => null);
+
+      cache.set(url, request);
+      if (cache.size > MAX_CACHE_ENTRIES) {
+        cache.delete(cache.keys().next().value!);
+      }
+      return request;
+    };
+
+    const schedulePreview = (link: HTMLAnchorElement, delay: number) => {
+      window.clearTimeout(intentTimer);
+      const resolved = previewPageUrl(link.href, window.location.href);
+      if (!resolved) return;
+
+      intentTimer = window.setTimeout(async () => {
+        if (activeLink && activeLink !== link) closePreview();
+
+        activeLink = link;
+        previousDescription = link.getAttribute('aria-describedby');
+        link.classList.add('page-preview-link');
+        link.setAttribute(
+          'aria-describedby',
+          [previousDescription, preview.id].filter(Boolean).join(' '),
+        );
+
+        const token = ++requestToken;
+        renderLoading(new URL(resolved));
+        openPreview();
+
+        const data = await loadPreview(resolved);
+        if (token !== requestToken || activeLink !== link) return;
+        if (!data) {
+          closePreview();
+          return;
+        }
+        renderPreview(data);
+      }, delay);
+    };
+
+    document.addEventListener('pointerover', (event) => {
+      if (!finePointer.matches) return;
+      const link = eligibleLink(event.target);
+      if (!link || link.contains(event.relatedTarget as Node | null)) return;
+      schedulePreview(link, HOVER_INTENT_MS);
+    });
+
+    document.addEventListener('pointerout', (event) => {
+      const link = eligibleLink(event.target);
+      if (!link || link.contains(event.relatedTarget as Node | null)) return;
+      if (link === activeLink) closePreview();
+      else window.clearTimeout(intentTimer);
+    });
+
+    document.addEventListener('focusin', (event) => {
+      const link = eligibleLink(event.target);
+      if (link) schedulePreview(link, 0);
+    });
+
+    document.addEventListener('focusout', (event) => {
+      const link = eligibleLink(event.target);
+      if (link && !link.contains(event.relatedTarget as Node | null)) {
+        closePreview();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && activeLink) closePreview();
+    });
+  }
+</script>

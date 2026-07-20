@@ -33,6 +33,7 @@ const CLOSED: WikiAutocompleteState = {
 // label. The captured group is the query typed so far.
 const OPEN_TOKEN = /\[\[([^\]\n|]*)$/;
 const MAX_SUGGESTIONS = 8;
+type WikiAutocompleteInput = HTMLInputElement | HTMLTextAreaElement;
 
 function buildSuggestion(entry: ContentEntryListItem): WikiSuggestion {
   const target = [entry.folder, entry.id].filter(Boolean).join('/');
@@ -68,7 +69,7 @@ const MIRRORED_PROPERTIES = [
 ] as const;
 
 function caretCoordinates(
-  el: HTMLTextAreaElement,
+  el: WikiAutocompleteInput,
   position: number,
 ): { top: number; left: number; height: number } {
   const mirror = document.createElement('div');
@@ -103,7 +104,7 @@ function caretCoordinates(
 }
 
 export function useWikiLinkAutocomplete(
-  getEditor: () => HTMLTextAreaElement | null,
+  getEditor: () => WikiAutocompleteInput | null,
   entries: ContentEntryListItem[],
   replaceRange: (
     from: number,
@@ -187,7 +188,7 @@ export function useWikiLinkAutocomplete(
   // Consumed by the editor's keydown before its own handling. Returns true when
   // the popover handled the key so the caller can stop.
   const onKeyDown = useCallback(
-    (event: TargetedKeyboardEvent<HTMLTextAreaElement>): boolean => {
+    (event: TargetedKeyboardEvent<WikiAutocompleteInput>): boolean => {
       if (!state.open) return false;
       if (event.key === 'ArrowDown') {
         event.preventDefault();

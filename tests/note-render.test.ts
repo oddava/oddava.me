@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildImageMarkup } from '../src/components/admin/studioEditorCommands';
 import { renderNote, renderNoteHtml } from '../src/lib/garden/render';
 
 // `renderNoteHtml` is the only note renderer: the published page and the Studio
@@ -179,5 +180,46 @@ describe('renderNoteHtml', () => {
     const html = renderNoteHtml('![see #tag here](/img.png)');
     expect(html).toContain('<img src="/img.png" alt="see #tag here">');
     expect(html).not.toContain('note-tag');
+  });
+
+  it('renders resolved wiki links inside generated image captions', () => {
+    const markup = buildImageMarkup({
+      src: '/images/notes/tged.png',
+      alt: 'The Greatest Estate Developer',
+      caption:
+        'See [[reading/manhwa/the-greatest-estate-developer|tged]] for notes.',
+      widthPercent: 100,
+      align: 'inline',
+    });
+    const wikiLinkHrefs = new Map([
+      [
+        'reading/manhwa/the-greatest-estate-developer',
+        '/notes/reading/manhwa/the-greatest-estate-developer',
+      ],
+    ]);
+
+    const html = renderNoteHtml(markup, { wikiLinkHrefs });
+
+    expect(html).toContain(
+      '<a class="wiki-link" data-wiki-target="reading/manhwa/the-greatest-estate-developer" href="/notes/reading/manhwa/the-greatest-estate-developer">tged</a>',
+    );
+  });
+
+  it('keeps image captions escaped while rendering broken wiki links', () => {
+    const markup = buildImageMarkup({
+      src: '/image.png',
+      alt: 'Safe image',
+      caption: 'A [[missing|rock & roll]] <caption>',
+      widthPercent: 100,
+      align: 'inline',
+    });
+
+    const html = renderNoteHtml(markup);
+
+    expect(html).toContain(
+      `<span class="wiki-link wiki-link--broken" title="this note doesn't exist yet">rock &amp; roll</span>`,
+    );
+    expect(html).toContain('&lt;caption&gt;');
+    expect(html).not.toContain('<caption>');
   });
 });

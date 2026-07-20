@@ -1,10 +1,19 @@
 import { createPortal } from 'preact/compat';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'preact/hooks';
+import type { ContentEntryListItem } from '../../lib/contracts';
 import {
   buildImageMarkup,
   type ImageAlign,
   type ImageMarkupOptions,
 } from './studioEditorCommands';
+import WikiLinkAutocomplete from './WikiLinkAutocomplete';
+import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
 
 interface StudioImageDialogProps {
   open: boolean;
@@ -12,6 +21,7 @@ interface StudioImageDialogProps {
   /** Upload a file and resolve with its URL (or null on failure). */
   onUpload: (file: File) => Promise<string | null>;
   onSubmit: (markup: string) => void;
+  entries: ContentEntryListItem[];
 }
 
 type Tab = 'upload' | 'url';
@@ -35,6 +45,7 @@ export default function StudioImageDialog({
   onClose,
   onUpload,
   onSubmit,
+  entries,
 }: StudioImageDialogProps) {
   const [tab, setTab] = useState<Tab>('upload');
   const [src, setSrc] = useState('');
@@ -47,7 +58,28 @@ export default function StudioImageDialog({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const captionInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  const replaceCaptionRange = useCallback(
+    (from: number, to: number, text: string, caret = from + text.length) => {
+      const input = captionInputRef.current;
+      if (!input) return;
+      input.setRangeText(text, from, to, 'end');
+      setCaption(input.value);
+      requestAnimationFrame(() => {
+        input.focus();
+        input.setSelectionRange(caret, caret);
+      });
+    },
+    [],
+  );
+
+  const captionWikiMenu = useWikiLinkAutocomplete(
+    () => captionInputRef.current,
+    entries,
+    replaceCaptionRange,
+  );
 
   // Reset every time the dialog opens.
   useEffect(() => {
@@ -62,7 +94,8 @@ export default function StudioImageDialog({
     setUploading(false);
     setDragging(false);
     setError(null);
-  }, [open]);
+    captionWikiMenu.close();
+  }, [open, captionWikiMenu.close]);
 
   useEffect(() => {
     if (!open) return;
@@ -295,10 +328,30 @@ export default function StudioImageDialog({
             <label className="studio-imgdlg__field">
               <span>Caption (optional)</span>
               <input
+                ref={captionInputRef}
                 type="text"
                 value={caption}
                 placeholder="Shown under the image"
-                onInput={(event) => setCaption(event.currentTarget.value)}
+                onInput={(event) => {
+                  setCaption(event.currentTarget.value);
+                  captionWikiMenu.refresh();
+                }}
+                onKeyDown={(event) => {
+                  if (captionWikiMenu.onKeyDown(event)) {
+                    event.stopPropagation();
+                  }
+                }}
+                onKeyUp={(event) => {
+                  if (
+                    event.key.startsWith('Arrow') ||
+                    event.key === 'Home' ||
+                    event.key === 'End'
+                  ) {
+                    captionWikiMenu.refresh();
+                  }
+                }}
+                onClick={() => captionWikiMenu.refresh()}
+                onBlur={() => captionWikiMenu.close()}
               />
             </label>
 
@@ -351,6 +404,14 @@ export default function StudioImageDialog({
               </div>
             </div>
           </fieldset>
+          <WikiLinkAutocomplete
+            open={captionWikiMenu.open}
+            items={captionWikiMenu.items}
+            activeIndex={captionWikiMenu.activeIndex}
+            position={captionWikiMenu.position}
+            onHover={captionWikiMenu.setActiveIndex}
+            onChoose={captionWikiMenu.accept}
+          />
         </div>
 
         <footer className="studio-imgdlg__foot">

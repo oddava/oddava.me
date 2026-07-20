@@ -31,6 +31,29 @@ function escapeAttr(value: string): string {
   return escapeHtml(value).replace(/"/g, '&quot;');
 }
 
+function decodeHtmlEntities(value: string): string {
+  const entities: Record<string, string> = {
+    amp: '&',
+    apos: "'",
+    gt: '>',
+    lt: '<',
+    quot: '"',
+  };
+
+  return value.replace(
+    /&(#x[\da-f]+|#\d+|[a-z]+);/gi,
+    (entity, code: string) => {
+      if (code.startsWith('#x')) {
+        return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
+      }
+      if (code.startsWith('#')) {
+        return String.fromCodePoint(Number.parseInt(code.slice(1), 10));
+      }
+      return entities[code.toLowerCase()] ?? entity;
+    },
+  );
+}
+
 interface WikiLinkToken extends Tokens.Generic {
   type: 'wikiLink';
   raw: string;
@@ -45,6 +68,17 @@ function isWikiLinkToken(token: Token): token is WikiLinkToken {
     typeof token.target === 'string' &&
     typeof token.label === 'string'
   );
+}
+
+function renderWikiLink(target: string, label: string, href?: string): string {
+  if (!href) {
+    return `<span class="wiki-link wiki-link--broken" title="this note doesn't exist yet">${escapeHtml(
+      label,
+    )}</span>`;
+  }
+  return `<a class="wiki-link" data-wiki-target="${escapeAttr(
+    target,
+  )}" href="${escapeAttr(href)}">${escapeHtml(label)}</a>`;
 }
 
 const wikiLinkExtension = {
@@ -67,16 +101,7 @@ const wikiLinkExtension = {
   },
   renderer(token: Tokens.Generic) {
     if (!isWikiLinkToken(token)) return false;
-    // A wiki link with no resolved note is a wish, not a destination: render
-    // it as an inert span instead of guessing a path that would 404.
-    if (!token.href) {
-      return `<span class="wiki-link wiki-link--broken" title="this note doesn't exist yet">${escapeHtml(
-        token.label,
-      )}</span>`;
-    }
-    return `<a class="wiki-link" data-wiki-target="${escapeAttr(
-      token.target,
-    )}" href="${escapeAttr(token.href)}">${escapeHtml(token.label)}</a>`;
+    return renderWikiLink(token.target, token.label, token.href);
   },
 };
 
@@ -147,30 +172,40 @@ export interface RenderedNote {
 }
 
 function plainTextFromHtml(value: string): string {
-  const entities: Record<string, string> = {
-    amp: '&',
-    apos: "'",
-    gt: '>',
-    lt: '<',
-    quot: '"',
-  };
-
-  return value
-    .replace(/<[^>]+>/g, '')
-    .replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
-      if (code.startsWith('#x')) {
-        return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
-      }
-      if (code.startsWith('#')) {
-        return String.fromCodePoint(Number.parseInt(code.slice(1), 10));
-      }
-      return entities[code.toLowerCase()] ?? entity;
-    })
+  return decodeHtmlEntities(value.replace(/<[^>]+>/g, ''))
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function createRenderer(headings: NoteHeading[]): Renderer {
+const CAPTION_WIKI_LINK = /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g;
+
+function renderCaptionWikiLinks(
+  html: string,
+  wikiLinkHrefs?: ReadonlyMap<string, string>,
+): string {
+  return html.replace(
+    /(<figcaption\b[^>]*>)([\s\S]*?)(<\/figcaption>)/gi,
+    (_match, open: string, caption: string, close: string) => {
+      const renderedCaption = caption.replace(
+        CAPTION_WIKI_LINK,
+        (_wikiLink, encodedTarget: string, encodedLabel?: string) => {
+          const target = decodeHtmlEntities(encodedTarget).trim();
+          const label = decodeHtmlEntities(
+            encodedLabel ?? encodedTarget,
+          ).trim();
+          const href = wikiLinkHrefs?.get(normalizeWikiLinkTarget(target));
+          return renderWikiLink(target, label, href);
+        },
+      );
+      return `${open}${renderedCaption}${close}`;
+    },
+  );
+}
+
+function createRenderer(
+  headings: NoteHeading[],
+  wikiLinkHrefs?: ReadonlyMap<string, string>,
+): Renderer {
   const renderer = new Renderer();
   const slugCounts = new Map<string, number>();
 
@@ -216,6 +251,15 @@ function createRenderer(headings: NoteHeading[]): Renderer {
     return `${html}>`;
   };
 
+  // Styled images are emitted as a raw HTML figure. Marked deliberately does
+  // not tokenize text inside an HTML block, so opt figcaptions back into the
+  // same wiki-link resolution used by ordinary note prose. Caption text was
+  // escaped by the image builder; decoding just each link's target and label
+  // before rendering avoids double escaping without reopening arbitrary HTML.
+  renderer.html = function html(token: Tokens.HTML): string {
+    return renderCaptionWikiLinks(token.text, wikiLinkHrefs);
+  };
+
   return renderer;
 }
 
@@ -231,7 +275,7 @@ export function renderNote(
   const headings: NoteHeading[] = [];
   const html = marked.parse(body, {
     async: false,
-    renderer: createRenderer(headings),
+    renderer: createRenderer(headings, options.wikiLinkHrefs),
     walkTokens(token) {
       if (!isWikiLinkToken(token)) return;
       token.href = options.wikiLinkHrefs?.get(

@@ -1585,6 +1585,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       />
       <StudioImageDialog
         open={imageDialogOpen}
+        entries={entries}
         onClose={() => setImageDialogOpen(false)}
         onUpload={uploadImageFile}
         onSubmit={(markup) => editorCommands.insertBlock(markup)}
