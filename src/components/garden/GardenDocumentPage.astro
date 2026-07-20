@@ -1,10 +1,9 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { renderNote } from '@lib/garden/render';
-import { bodyProvidesTitleHeading } from '@lib/garden/utils';
+import { bodyProvidesTitleHeading, formatNoteDate } from '@lib/garden/utils';
 import LocalNoteMap from './LocalNoteMap.astro';
 import NoteBacklinks from './NoteBacklinks.astro';
-import NoteContents from './NoteContents.astro';
 import NoteTableOfContents from './NoteTableOfContents.astro';
 import RelatedNotes from './RelatedNotes.astro';
 import '../../styles/components/_note-prose.css';
@@ -52,6 +51,42 @@ const hasSupplementary = Astro.slots.has('default');
 
 <div class="garden-document-layout">
   <article class="garden-document">
+    {
+      !isRoot && (
+        <header class="garden-document__header">
+          <nav class="garden-breadcrumbs" aria-label="breadcrumb">
+            <ol class="garden-breadcrumbs__list">
+              <li class="garden-breadcrumbs__item">
+                <a href="/notes">notes</a>
+              </li>
+              {ancestors.map((ancestor) => (
+                <li class="garden-breadcrumbs__item">
+                  <span
+                    class="garden-breadcrumbs__separator"
+                    aria-hidden="true"
+                  >
+                    /
+                  </span>
+                  <a href={ancestor.href}>{ancestor.title}</a>
+                </li>
+              ))}
+              <li class="garden-breadcrumbs__item">
+                <span class="garden-breadcrumbs__separator" aria-hidden="true">
+                  /
+                </span>
+                <span aria-current="page">{document.title}</span>
+              </li>
+            </ol>
+          </nav>
+          <p class="garden-document__tended">
+            updated{' '}
+            <time datetime={document.updated}>
+              {formatNoteDate(document.updated)}
+            </time>
+          </p>
+        </header>
+      )
+    }
     {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
     {
       authoredTitleHtml && (
@@ -85,46 +120,6 @@ const hasSupplementary = Astro.slots.has('default');
 
   <aside class="note-context" aria-label={`Context for ${document.title}`}>
     <div class="note-context__inner">
-      {
-        !isRoot && (
-          <header class="garden-document__header">
-            <nav class="garden-breadcrumbs" aria-label="breadcrumb">
-              <ol class="garden-breadcrumbs__list">
-                <li class="garden-breadcrumbs__item">
-                  <a href="/notes">notes</a>
-                </li>
-                {ancestors.map((ancestor) => (
-                  <li class="garden-breadcrumbs__item">
-                    <span
-                      class="garden-breadcrumbs__separator"
-                      aria-hidden="true"
-                    >
-                      /
-                    </span>
-                    <a href={ancestor.href}>{ancestor.title}</a>
-                  </li>
-                ))}
-                <li class="garden-breadcrumbs__item">
-                  <span
-                    class="garden-breadcrumbs__separator"
-                    aria-hidden="true"
-                  >
-                    /
-                  </span>
-                  <span aria-current="page">{document.title}</span>
-                </li>
-              </ol>
-            </nav>
-            <p class="garden-document__tended">
-              updated{' '}
-              <time datetime={document.updated}>
-                {document.updated.slice(0, 10)}
-              </time>
-            </p>
-          </header>
-        )
-      }
-      <LocalNoteMap document={document} index={index} />
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
       {
         hasSupplementary && (
@@ -133,9 +128,16 @@ const hasSupplementary = Astro.slots.has('default');
           </div>
         )
       }
-      <NoteContents document={document} index={index} />
       <NoteBacklinks document={document} index={index} />
       <RelatedNotes document={document} index={index} />
+      {
+        /* Folder notes only. On a leaf note the map has nothing to show that
+           the breadcrumb and link lists haven't already said — usually just a
+           parent and the note itself, which reads as decoration. */
+        document.childIds.length > 0 && (
+          <LocalNoteMap document={document} index={index} />
+        )
+      }
     </div>
   </aside>
 </div>

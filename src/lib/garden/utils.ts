@@ -128,6 +128,27 @@ export function folderTitle(value: string): string {
     .join(' ');
 }
 
+const NOTE_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  // The stored date is a UTC calendar day. Formatting it in the runtime's
+  // local zone would render the 11th as the 10th anywhere behind UTC, and a
+  // Worker's zone is not the reader's anyway.
+  timeZone: 'UTC',
+});
+
+// Machine-readable timestamps stay in the `datetime` attribute; this is only
+// the visible label. Unparseable input falls back to the raw ISO day rather
+// than rendering "Invalid Date".
+export function formatNoteDate(value: string): string {
+  const isoDay = value.slice(0, 10);
+  const parsed = new Date(`${isoDay}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime())
+    ? isoDay
+    : NOTE_DATE_FORMAT.format(parsed);
+}
+
 function extractInlineTags(body: string): string[] {
   return [...body.matchAll(TAG_PATTERN)].map((match) =>
     match[2]!.toLowerCase(),

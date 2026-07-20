@@ -1,5 +1,6 @@
 ---
 import type { GardenDocument } from '@lib/garden';
+import { formatNoteDate } from '@lib/garden/utils';
 
 interface Props {
   note: GardenDocument;
@@ -22,7 +23,7 @@ const { note } = Astro.props;
       }
     </div>
     <time class="note-card__date" datetime={note.updated}>
-      {note.updated.slice(0, 10)}
+      {formatNoteDate(note.updated)}
     </time>
     <span class="note-card__arrow" aria-hidden="true">→</span>
   </a>
