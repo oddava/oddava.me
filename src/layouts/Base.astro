@@ -19,7 +19,9 @@ const {
   title,
   description,
   image,
+  imageAlt,
   type,
+  modifiedTime,
   hideFooter = false,
   hideNav = false,
   wide = false,
@@ -31,7 +33,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
 <!doctype html>
 <html lang="en" data-theme="dark">
   <head>
-    <SiteHead {title} {description} {image} {type}>
+    <SiteHead {title} {description} {image} {imageAlt} {type} {modifiedTime}>
       <slot name="head" />
     </SiteHead>
   </head>

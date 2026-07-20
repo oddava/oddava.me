@@ -210,3 +210,47 @@ export function deriveSummary(body: string): string {
   }
   return '';
 }
+
+export interface NoteSocialImage {
+  src: string;
+  alt?: string;
+}
+
+const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\(\s*(?:<([^>]+)>|([^\s)]+))/i;
+const HTML_IMAGE_PATTERN = /<img\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1[^>]*>/i;
+const HTML_IMAGE_ALT_PATTERN = /\balt\s*=\s*(["'])(.*?)\1/i;
+
+function isSocialImageUrl(value: string): boolean {
+  return value.startsWith('/') || /^https?:\/\//i.test(value);
+}
+
+/**
+ * Reuse the first image the author put in a note for its social card. Both
+ * ordinary Markdown images and Studio's styled HTML figures are supported.
+ * Other URL schemes are deliberately ignored because crawlers need a public
+ * HTTP resource, not a data/blob URL.
+ */
+export function deriveNoteSocialImage(
+  body: string,
+): NoteSocialImage | undefined {
+  const markdown = MARKDOWN_IMAGE_PATTERN.exec(body);
+  const html = HTML_IMAGE_PATTERN.exec(body);
+  const markdownIndex = markdown?.index ?? Number.POSITIVE_INFINITY;
+  const htmlIndex = html?.index ?? Number.POSITIVE_INFINITY;
+
+  if (markdown && markdownIndex < htmlIndex) {
+    const src = (markdown[2] ?? markdown[3] ?? '').trim();
+    if (!isSocialImageUrl(src)) return undefined;
+    const alt = stripInlineMarkdown(markdown[1] ?? '');
+    return { src, ...(alt ? { alt } : {}) };
+  }
+
+  if (html) {
+    const src = (html[2] ?? '').trim();
+    if (!isSocialImageUrl(src)) return undefined;
+    const alt = HTML_IMAGE_ALT_PATTERN.exec(html[0])?.[2]?.trim();
+    return { src, ...(alt ? { alt } : {}) };
+  }
+
+  return undefined;
+}

@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import { getGardenIndexOrUnavailable, noteIdFromSourceId } from '@lib/garden';
+import { deriveNoteSocialImage } from '@lib/garden/utils';
 import '../../styles/components/_garden.css';
 
 const requestedPath = Astro.params.path ?? '';
@@ -22,9 +23,20 @@ if (!document) {
   if (aliases.length === 1) return Astro.redirect(aliases[0]!.href, 301);
   return Astro.rewrite('/404');
 }
+
+const socialImage = deriveNoteSocialImage(document.body);
+const description = document.summary || 'a note from oddava’s digital garden.';
 ---
 
-<Base title={document.title} description={document.summary} wide>
+<Base
+  title={document.title}
+  {description}
+  image={socialImage?.src}
+  imageAlt={socialImage?.alt}
+  type="article"
+  modifiedTime={document.updated}
+  wide
+>
   <div class="garden-page">
     <GardenDocumentPage document={document} index={index} />
   </div>
