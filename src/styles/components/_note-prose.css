@@ -57,6 +57,8 @@
   color: var(--color-text-primary);
   line-height: var(--leading-tight);
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 /* The page opens with whatever heading you write. Keep the default calm — a
@@ -436,9 +438,18 @@
     margin-top: 1.5em;
   }
 
+  .prose :is(h2, h3, h4) {
+    padding-left: 1.15em;
+  }
+
   .prose :is(h2, h3, h4) .anchor {
-    position: static;
-    margin-right: 0.25rem;
+    position: absolute;
+    top: 0;
+    right: auto;
+    bottom: auto;
+    left: 0;
+    margin: 0;
+    padding-right: 0.35em;
     opacity: 0.7;
   }
 

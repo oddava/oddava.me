@@ -72,9 +72,8 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
   .page-preview {
-    inset-inline: var(--page-padding);
-    width: auto;
+    display: none;
   }
 }
