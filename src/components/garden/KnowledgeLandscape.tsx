@@ -1226,7 +1226,9 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
         <a href="/" className="knowledge-landscape__brand">
           oddava
         </a>
-        <span aria-hidden="true">/</span>
+        <span className="knowledge-landscape__sep" aria-hidden="true">
+          ›
+        </span>
         <a href="/notes">notes</a>
       </nav>
 
@@ -1251,7 +1253,11 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
         >
           {breadcrumbs.map(({ region, place }, index) => (
             <span key={region.id || 'root'}>
-              {index > 0 && <i aria-hidden="true">/</i>}
+              {index > 0 && (
+                <i className="knowledge-landscape__sep" aria-hidden="true">
+                  ›
+                </i>
+              )}
               <button type="button" onClick={() => selectPlace(place.id)}>
                 {region.title}
               </button>
@@ -1259,7 +1265,9 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
           ))}
           {!selectedPlace.isRegionAnchor && (
             <span>
-              <i aria-hidden="true">/</i>
+              <i className="knowledge-landscape__sep" aria-hidden="true">
+                ›
+              </i>
               <b>{selectedPlace.title}</b>
             </span>
           )}

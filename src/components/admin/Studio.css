@@ -1505,10 +1505,10 @@
     z-index: 40;
     width: min(86vw, 320px);
     max-width: none;
-    border-right: 1px solid var(--admin-line);
+    border-right: 0;
     border-radius: 0;
-    background: var(--admin-surface);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.28);
+    /* Same ground as the editor — the dimmed backdrop separates layers. */
+    background: var(--admin-bg);
   }
 
   .studio-sidebar__backdrop {
@@ -1516,7 +1516,7 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background: color-mix(in srgb, #000 48%, transparent);
+    background: color-mix(in srgb, #000 40%, transparent);
   }
 
   .studio-tree-row {

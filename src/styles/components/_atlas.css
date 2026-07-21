@@ -437,7 +437,7 @@
   left: max(1.25rem, env(safe-area-inset-left));
   display: flex;
   align-items: center;
-  gap: 0.48rem;
+  gap: 0.35rem;
   min-height: 2.6rem;
   color: var(--color-text-disabled);
   font: 0.66rem var(--font-mono);
@@ -451,7 +451,7 @@
 
 .knowledge-landscape__nav a:hover,
 .knowledge-landscape__nav a:focus-visible {
-  color: var(--landscape-ink);
+  color: var(--color-text-muted);
 }
 
 .knowledge-landscape__brand {
@@ -459,6 +459,18 @@
   font-family: var(--font-body) !important;
   font-size: 0.82rem !important;
   font-weight: 650;
+}
+
+.knowledge-landscape__sep {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 1.15em;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  user-select: none;
 }
 
 .knowledge-landscape__search-trigger {
@@ -505,6 +517,7 @@
   display: flex;
   max-width: min(46rem, calc(100vw - 22rem));
   align-items: center;
+  gap: 0.1rem;
   overflow: hidden;
   color: var(--color-text-disabled);
   font: 0.59rem var(--font-mono);
@@ -516,28 +529,38 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
+  gap: 0.1rem;
 }
 
-.knowledge-landscape__context i {
-  margin: 0 0.45rem;
-  color: color-mix(in srgb, var(--color-text-disabled) 55%, transparent);
-  font-style: normal;
+.knowledge-landscape__context .knowledge-landscape__sep {
+  margin: 0 0.28rem;
 }
 
 .knowledge-landscape__context button {
+  max-width: 10rem;
   padding: 0.35rem 0;
+  overflow: hidden;
   border: 0;
   color: var(--color-text-muted);
   background: transparent;
   font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .knowledge-landscape__context button:hover,
-.knowledge-landscape__context button:focus-visible,
+.knowledge-landscape__context button:focus-visible {
+  color: var(--color-text-muted);
+}
+
 .knowledge-landscape__context b {
-  color: var(--color-text-secondary);
+  max-width: 12rem;
+  overflow: hidden;
+  color: var(--color-text-muted);
   font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .knowledge-landscape__controls {

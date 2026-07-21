@@ -1,25 +1,25 @@
 /* One reusable preview follows any same-origin page link. The bottom-corner
    placement is the safe fallback; browsers with CSS anchor positioning attach
    it directly to the active link without script-authored inline styles, which
-   keeps the site's strict style CSP intact. */
+   keeps the site's strict style CSP intact.
+
+   Visual language matches the rest of the site: solid raised surface, thin
+   rule border, no shadow or glass. Meta path uses the same mono label voice
+   as section headings elsewhere. */
 .page-preview {
   position: fixed;
   inset: auto var(--page-padding) var(--page-padding) auto;
   z-index: 1000;
   display: grid;
+  gap: 0.35rem;
   width: min(22rem, calc(100vw - 2 * var(--page-padding)));
   margin: 0;
-  padding: 1rem 1.1rem 1.05rem;
+  padding: 0.75rem 0.9rem 0.8rem;
   border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-overlay);
-  box-shadow:
-    0 1rem 2.8rem color-mix(in srgb, #000 46%, transparent),
-    inset 0 1px color-mix(in srgb, #fff 4%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
   color: var(--color-text-primary);
   pointer-events: none;
-  opacity: 1;
-  backdrop-filter: blur(18px);
 }
 
 .page-preview[hidden] {
@@ -30,24 +30,24 @@
   overflow: hidden;
   color: var(--color-text-muted);
   font: 500 var(--text-2xs) var(--font-mono);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   text-overflow: ellipsis;
+  text-transform: lowercase;
   white-space: nowrap;
 }
 
 .page-preview__title {
-  margin-top: 0.35rem;
-  font-size: 1.05rem;
-  line-height: 1.35;
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: var(--leading-tight);
   letter-spacing: -0.02em;
 }
 
 .page-preview__summary {
   display: -webkit-box;
-  margin-top: 0.45rem;
   overflow: hidden;
   color: var(--color-text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -55,6 +55,7 @@
 
 .page-preview--loading .page-preview__title {
   color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 @supports (anchor-name: --page-preview-anchor) {
@@ -67,7 +68,7 @@
     position-anchor: --page-preview-anchor;
     position-area: block-end span-inline-end;
     inset: auto;
-    margin-block-start: 0.65rem;
+    margin-block-start: 0.5rem;
     position-try-fallbacks: flip-block, flip-inline;
   }
 }
