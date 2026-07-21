@@ -20,6 +20,8 @@ const rendered = document.body.trim()
 const tocHeadings = rendered.headings.length >= 2 ? rendered.headings : [];
 
 const isRoot = document.id === index.root.id;
+// Like Explorer: a trailing › only when this page is a folder with contents.
+const hasNestedContents = document.childIds.length > 0;
 
 // Breadcrumb trail: the folders between the notes root and this page.
 const ancestors: GardenDocument[] = [];
@@ -57,7 +59,9 @@ const hasSupplementary = Astro.slots.has('default');
           <nav class="garden-breadcrumbs" aria-label="breadcrumb">
             <ol class="garden-breadcrumbs__list">
               <li class="garden-breadcrumbs__item">
-                <a href="/notes">notes</a>
+                <a class="garden-breadcrumbs__crumb" href="/notes">
+                  notes
+                </a>
               </li>
               {ancestors.map((ancestor) => (
                 <li class="garden-breadcrumbs__item">
@@ -65,16 +69,28 @@ const hasSupplementary = Astro.slots.has('default');
                     class="garden-breadcrumbs__separator"
                     aria-hidden="true"
                   >
-                    /
+                    ›
                   </span>
-                  <a href={ancestor.href}>{ancestor.title}</a>
+                  <a class="garden-breadcrumbs__crumb" href={ancestor.href}>
+                    {ancestor.title}
+                  </a>
                 </li>
               ))}
               <li class="garden-breadcrumbs__item">
                 <span class="garden-breadcrumbs__separator" aria-hidden="true">
-                  /
+                  ›
                 </span>
-                <span aria-current="page">{document.title}</span>
+                <span class="garden-breadcrumbs__crumb" aria-current="page">
+                  {document.title}
+                </span>
+                {hasNestedContents && (
+                  <span
+                    class="garden-breadcrumbs__separator"
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
+                )}
               </li>
             </ol>
           </nav>
