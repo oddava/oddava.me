@@ -38,6 +38,9 @@ const { profile, links, theme } = linksData;
               <a
                 href={link.url}
                 class="links-item__link"
+                data-page-preview-ignore={
+                  link.url === '/notes' ? '' : undefined
+                }
                 target={isExternal ? '_blank' : undefined}
                 rel={isExternal ? 'noopener noreferrer' : undefined}
                 aria-label={

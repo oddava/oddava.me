@@ -13,7 +13,12 @@ interface Props {
   activeFolder: string;
   expandedFolders: Set<string>;
   busyKey: string | null;
+  sort: 'manual' | 'name' | 'type';
   onQueryChange: (query: string) => void;
+  onSortChange: (sort: 'manual' | 'name' | 'type') => void;
+  onCollapseAll: () => void;
+  onRefresh: () => void;
+  onRequestClose: () => void;
   onToggleFolder: (id: string) => void;
   onSelectFolder: (id: string) => void;
   onEditEntry: (entry: ContentEntryListItem) => void;
@@ -167,7 +172,12 @@ export default function StudioFolderTree({
   activeFolder,
   expandedFolders,
   busyKey,
+  sort,
   onQueryChange,
+  onSortChange,
+  onCollapseAll,
+  onRefresh,
+  onRequestClose,
   onToggleFolder,
   onSelectFolder,
   onEditEntry,
@@ -195,6 +205,7 @@ export default function StudioFolderTree({
   } | null>(null);
   const [inlineBusy, setInlineBusy] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
 
   // Close the row context menu when the click lands anywhere outside it, so it
   // never gets stuck open. Clicks on the ••• trigger are ignored here — its own
@@ -218,12 +229,13 @@ export default function StudioFolderTree({
   const { childrenByFolder, rootDocument } = useMemo(() => {
     const documents = new Map<string, ContentEntryListItem>();
     const consumedPaths = new Set<string>();
+    const entriesByLocation = new Map(
+      entries.map((entry) => [`${entry.folder}/${entry.id}`, entry]),
+    );
 
     for (const folder of folders) {
       const parent = folder.parentId ?? '';
-      const document = entries.find(
-        (entry) => entry.id === folder.name && entry.folder === parent,
-      );
+      const document = entriesByLocation.get(`${parent}/${folder.name}`);
       if (!document) continue;
       documents.set(folder.id, document);
       consumedPaths.add(`${document.folder}/${document.id}`);
@@ -253,11 +265,16 @@ export default function StudioFolderTree({
     }
 
     for (const siblings of children.values()) {
-      siblings.sort(
-        (left, right) =>
+      siblings.sort((left, right) => {
+        if (sort === 'name')
+          return nodeLabel(left).localeCompare(nodeLabel(right));
+        if (sort === 'type' && left.kind !== right.kind)
+          return left.kind === 'folder' ? -1 : 1;
+        return (
           nodeOrder(left) - nodeOrder(right) ||
-          nodeLabel(left).localeCompare(nodeLabel(right)),
-      );
+          nodeLabel(left).localeCompare(nodeLabel(right))
+        );
+      });
     }
 
     return {
@@ -266,9 +283,32 @@ export default function StudioFolderTree({
         (entry) => entry.folder === '' && entry.id === 'index',
       ),
     };
-  }, [entries, folders]);
+  }, [entries, folders, sort]);
 
   const normalizedQuery = query.trim().toLowerCase();
+
+  const matchingFolders = useMemo(() => {
+    const matches = new Set<string>();
+    if (!normalizedQuery) return matches;
+    const visit = (parent: string): boolean => {
+      let found = false;
+      for (const node of childrenByFolder.get(parent) ?? []) {
+        const direct = `${nodeLabel(node)} ${
+          node.kind === 'folder' ? node.folder.id : node.entry.path
+        }`
+          .toLowerCase()
+          .includes(normalizedQuery);
+        const descendant = node.kind === 'folder' && visit(node.folder.id);
+        if (direct || descendant) {
+          found = true;
+          if (node.kind === 'folder') matches.add(node.folder.id);
+        }
+      }
+      return found;
+    };
+    visit('');
+    return matches;
+  }, [childrenByFolder, normalizedQuery]);
 
   function visibleChildren(parent: string): TreeNode[] {
     const children = childrenByFolder.get(parent) ?? [];
@@ -281,10 +321,36 @@ export default function StudioFolderTree({
       ) {
         return true;
       }
-      return (
-        node.kind === 'folder' && visibleChildren(node.folder.id).length > 0
-      );
+      return node.kind === 'folder' && matchingFolders.has(node.folder.id);
     });
+  }
+
+  function moveTreeFocus(current: HTMLElement, offset: number) {
+    const targets = Array.from(
+      treeRef.current?.querySelectorAll<HTMLElement>('[data-tree-target]') ??
+        [],
+    );
+    const index = targets.indexOf(current);
+    targets[Math.min(Math.max(index + offset, 0), targets.length - 1)]?.focus();
+  }
+
+  function onTreeKeyDown(event: KeyboardEvent, node?: TreeNode) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveTreeFocus(event.currentTarget as HTMLElement, 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveTreeFocus(event.currentTarget as HTMLElement, -1);
+    } else if (node?.kind === 'folder' && event.key === 'ArrowRight') {
+      event.preventDefault();
+      if (!expandedFolders.has(node.folder.id)) onToggleFolder(node.folder.id);
+      else moveTreeFocus(event.currentTarget as HTMLElement, 1);
+    } else if (node?.kind === 'folder' && event.key === 'ArrowLeft') {
+      if (expandedFolders.has(node.folder.id)) {
+        event.preventDefault();
+        onToggleFolder(node.folder.id);
+      }
+    }
   }
 
   function beginCreate(kind: 'entry' | 'folder', parent = activeFolder) {
@@ -524,7 +590,10 @@ export default function StudioFolderTree({
           className={`studio-tree-row ${active ? 'is-active' : ''} ${
             marker ? `is-drop-${marker}` : ''
           }`}
-          draggable={!renameActive && !busyKey}
+          role="treeitem"
+          aria-selected={active}
+          aria-expanded={isFolder ? expanded || forceExpanded : undefined}
+          draggable={sort === 'manual' && !renameActive && !busyKey}
           onDragStart={(event) => startDrag(event, nodeRef(node))}
           onDragEnd={() => {
             setDragging(null);
@@ -593,6 +662,7 @@ export default function StudioFolderTree({
             <button
               type="button"
               className="studio-tree-row__label"
+              data-tree-target
               disabled={
                 busyKey ===
                 `open-${isFolder ? node.document?.id : node.entry.id}`
@@ -607,6 +677,7 @@ export default function StudioFolderTree({
                   onEditEntry(node.entry);
                 }
               }}
+              onKeyDown={(event) => onTreeKeyDown(event, node)}
             >
               <span className="studio-tree-row__icon">
                 {isFolder ? (
@@ -615,7 +686,14 @@ export default function StudioFolderTree({
                   <FileIcon />
                 )}
               </span>
-              <span>{nodeLabel(node)}</span>
+              <span className="studio-tree-row__text">
+                <span>{nodeLabel(node)}</span>
+                {normalizedQuery && (
+                  <small>
+                    {node.kind === 'folder' ? node.folder.id : node.entry.path}
+                  </small>
+                )}
+              </span>
             </button>
           )}
 
@@ -638,7 +716,9 @@ export default function StudioFolderTree({
         {renderMove(node)}
 
         {isFolder && (expanded || forceExpanded) && (
-          <ul className="studio-tree-children">{renderChildren(folderId)}</ul>
+          <ul className="studio-tree-children" role="group">
+            {renderChildren(folderId)}
+          </ul>
         )}
       </li>
     );
@@ -700,6 +780,48 @@ export default function StudioFolderTree({
 
   return (
     <>
+      <div className="studio-explorer__heading">
+        <div>
+          <strong>Files</strong>
+          <span>{entries.length}</span>
+        </div>
+        <div className="studio-explorer__actions">
+          <button
+            type="button"
+            className="studio-icon-button"
+            aria-label="Collapse all folders"
+            title="Collapse all"
+            onClick={onCollapseAll}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m6 8 4-4 4 4M6 12l4 4 4-4" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="studio-icon-button"
+            aria-label="Refresh files"
+            title="Refresh files"
+            onClick={onRefresh}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M15.5 7A6 6 0 1 0 16 11" />
+              <path d="M15.5 3.5V7H12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="studio-icon-button studio-explorer__close"
+            aria-label="Close Files explorer"
+            title="Close explorer"
+            onClick={onRequestClose}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m6 6 8 8M14 6l-8 8" />
+            </svg>
+          </button>
+        </div>
+      </div>
       <div className="studio-library__search">
         <input
           className="admin-input"
@@ -729,13 +851,41 @@ export default function StudioFolderTree({
         </button>
       </div>
 
-      <div className="studio-entry-list studio-folder-tree">
+      <div className="studio-explorer__meta">
+        <span>{normalizedQuery ? 'Search results' : 'Knowledge base'}</span>
+        <label>
+          <span className="sr-only">Sort files</span>
+          <select
+            value={sort}
+            aria-label="Sort files"
+            onChange={(event) =>
+              onSortChange(
+                event.currentTarget.value as 'manual' | 'name' | 'type',
+              )
+            }
+          >
+            <option value="manual">Manual order</option>
+            <option value="name">Name</option>
+            <option value="type">Folders first</option>
+          </select>
+        </label>
+      </div>
+
+      <div
+        className="studio-entry-list studio-folder-tree"
+        ref={treeRef}
+        role="tree"
+        aria-label="Knowledge base files"
+      >
         <div
           className={`studio-tree-row studio-tree-row--root ${
             activeFolder === '' && currentId === rootDocument?.id
               ? 'is-active'
               : ''
           } ${dropMarker?.key === 'root' ? 'is-drop-inside' : ''}`}
+          role="treeitem"
+          aria-selected={activeFolder === '' && currentId === rootDocument?.id}
+          aria-expanded={rootExpanded}
           onDragOver={(event) => {
             if (!dragging) return;
             event.preventDefault();
@@ -757,6 +907,8 @@ export default function StudioFolderTree({
           <button
             type="button"
             className="studio-tree-row__label"
+            data-tree-target
+            onKeyDown={(event) => onTreeKeyDown(event)}
             onClick={() => {
               onSelectFolder('');
               if (rootDocument) onEditEntry(rootDocument);
@@ -792,7 +944,10 @@ export default function StudioFolderTree({
         </div>
 
         {rootExpanded && (
-          <ul className="studio-tree-children studio-tree-children--root">
+          <ul
+            className="studio-tree-children studio-tree-children--root"
+            role="group"
+          >
             {renderChildren('')}
           </ul>
         )}
