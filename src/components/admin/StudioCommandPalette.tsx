@@ -131,8 +131,8 @@ export default function StudioCommandPalette({
         <input
           ref={inputRef}
           className="studio-palette__input"
-          placeholder="Search notes or run a command…"
-          aria-label="Search notes or run a command"
+          placeholder="Go to a file or run a command…"
+          aria-label="Go to a file or run a command"
           value={query}
           onChange={(event) => {
             setQuery(event.currentTarget.value);

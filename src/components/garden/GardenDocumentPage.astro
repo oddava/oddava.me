@@ -59,7 +59,11 @@ const hasSupplementary = Astro.slots.has('default');
           <nav class="garden-breadcrumbs" aria-label="breadcrumb">
             <ol class="garden-breadcrumbs__list">
               <li class="garden-breadcrumbs__item">
-                <a class="garden-breadcrumbs__crumb" href="/notes">
+                <a
+                  class="garden-breadcrumbs__crumb"
+                  href="/notes"
+                  data-page-preview-ignore
+                >
                   notes
                 </a>
               </li>
@@ -71,7 +75,11 @@ const hasSupplementary = Astro.slots.has('default');
                   >
                     ›
                   </span>
-                  <a class="garden-breadcrumbs__crumb" href={ancestor.href}>
+                  <a
+                    class="garden-breadcrumbs__crumb"
+                    href={ancestor.href}
+                    data-page-preview-ignore
+                  >
                     {ancestor.title}
                   </a>
                 </li>

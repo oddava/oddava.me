@@ -40,6 +40,8 @@ import StudioCommandPalette, {
 } from './StudioCommandPalette';
 import StudioToolbar from './StudioToolbar';
 import StudioImageDialog from './StudioImageDialog';
+import StudioTabs from './StudioTabs';
+import StudioSecondaryEditor from './StudioSecondaryEditor';
 import WikiLinkAutocomplete from './WikiLinkAutocomplete';
 import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
 import { makeEditorCommands } from './studioEditorCommands';
@@ -64,8 +66,11 @@ interface StudioSession {
   sidebarCollapsed: boolean;
   view: ViewMode;
   lastOpenId: string;
+  openIds: string[];
+  secondaryId: string;
   expandedFolders: string[];
   autosave: boolean;
+  sort: 'manual' | 'name' | 'type';
 }
 
 const DEFAULT_SESSION: StudioSession = {
@@ -73,8 +78,11 @@ const DEFAULT_SESSION: StudioSession = {
   sidebarCollapsed: false,
   view: 'write',
   lastOpenId: '',
+  openIds: [],
+  secondaryId: '',
   expandedFolders: [''],
   autosave: true,
+  sort: 'manual',
 };
 
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
@@ -104,10 +112,18 @@ function readSession(): StudioSession {
         : DEFAULT_SESSION.view,
       lastOpenId:
         typeof parsed.lastOpenId === 'string' ? parsed.lastOpenId : '',
+      openIds: Array.isArray(parsed.openIds)
+        ? parsed.openIds.filter((id) => typeof id === 'string').slice(-24)
+        : [],
+      secondaryId:
+        typeof parsed.secondaryId === 'string' ? parsed.secondaryId : '',
       expandedFolders: Array.isArray(parsed.expandedFolders)
         ? parsed.expandedFolders.filter((id) => typeof id === 'string')
         : DEFAULT_SESSION.expandedFolders,
       autosave: parsed.autosave !== false,
+      sort: ['manual', 'name', 'type'].includes(parsed.sort ?? '')
+        ? (parsed.sort as StudioSession['sort'])
+        : 'manual',
     };
   } catch {
     return DEFAULT_SESSION;
@@ -140,7 +156,7 @@ function contentRequestError(caught: unknown, fallback: string): string {
     caught instanceof Error &&
     (caught.name === 'AbortError' || caught.name === 'TimeoutError')
   ) {
-    return 'Studio could not reach the local content service. Restart the development server and try again.';
+    return 'Files could not reach the local content service. Restart the development server and try again.';
   }
   return caught instanceof Error ? caught.message : fallback;
 }
@@ -163,6 +179,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [folders, setFolders] = useState<ContentFolder[]>([]);
 
   const [openId, setOpenId] = useState('');
+  const [openIds, setOpenIds] = useState<string[]>([]);
+  const [secondaryId, setSecondaryId] = useState('');
+  const [secondaryDirty, setSecondaryDirty] = useState(false);
   const [body, setBody] = useState('');
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -182,6 +201,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
 
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
+  const [sessionRestored, setSessionRestored] = useState(false);
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const docRef = useRef<OpenDoc | null>(null);
@@ -224,10 +247,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   useEffect(() => {
     const stored = readSession();
     setSession(stored);
+    setOpenIds(stored.openIds);
+    setSecondaryId(stored.secondaryId);
     setExpandedFolders(new Set(stored.expandedFolders));
   }, []);
 
   useEffect(() => {
+    if (!sessionRestored) return;
     const timer = window.setTimeout(() => {
       try {
         window.localStorage.setItem(
@@ -235,6 +261,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           JSON.stringify({
             ...session,
             lastOpenId: openId,
+            openIds,
+            secondaryId,
             expandedFolders: [...expandedFolders],
           }),
         );
@@ -243,11 +271,19 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       }
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [session, openId, expandedFolders]);
+  }, [session, sessionRestored, openId, openIds, secondaryId, expandedFolders]);
 
   const patchSession = useCallback((patch: Partial<StudioSession>) => {
     setSession((current) => ({ ...current, ...patch }));
   }, []);
+
+  const handleSecondaryDirty = useCallback((_id: string, dirty: boolean) => {
+    setSecondaryDirty(dirty);
+  }, []);
+
+  useEffect(() => {
+    if (!secondaryId) setSecondaryDirty(false);
+  }, [secondaryId]);
 
   // --- Autosave ------------------------------------------------------------
 
@@ -431,7 +467,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       })
       .catch((caught) => {
         if (!active) return;
-        setError(contentRequestError(caught, 'Could not load Studio.'));
+        setError(contentRequestError(caught, 'Could not load Files.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -443,10 +479,32 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Opening notes -------------------------------------------------------
 
+  const rememberHistory = useCallback((id: string) => {
+    const current = historyRef.current[historyIndexRef.current];
+    if (current === id) return;
+    const next = historyRef.current.slice(0, historyIndexRef.current + 1);
+    next.push(id);
+    historyRef.current = next.slice(-80);
+    historyIndexRef.current = historyRef.current.length - 1;
+    setHistoryVersion((value) => value + 1);
+  }, []);
+
   const openNote = useCallback(
-    async (id: string, folderHint?: string) => {
+    async (
+      id: string,
+      folderHint?: string,
+      options: { remember?: boolean; focus?: boolean } = {},
+    ) => {
       if (!collection || !id) return;
-      if (id === openId) return;
+      setOpenIds((current) =>
+        current.includes(id) ? current : [...current, id].slice(-24),
+      );
+      if (options.remember !== false) rememberHistory(id);
+      if (id === openId) {
+        if (options.focus !== false)
+          requestAnimationFrame(() => editorRef.current?.focus());
+        return;
+      }
       // Flush the note we're leaving before swapping documents.
       if (
         (saveState === 'dirty' || saveState === 'saving') &&
@@ -486,7 +544,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             return next;
           });
         }
-        requestAnimationFrame(() => editorRef.current?.focus());
+        if (options.focus !== false)
+          requestAnimationFrame(() => editorRef.current?.focus());
       } catch (caught) {
         setError(
           caught instanceof Error ? caught.message : 'Could not open the note.',
@@ -495,7 +554,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         setBusyKey(null);
       }
     },
-    [collection, openId, saveState, saveNow],
+    [collection, openId, rememberHistory, saveState, saveNow],
   );
 
   // Reopen the last note once the tree is loaded.
@@ -503,11 +562,31 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   useEffect(() => {
     if (restoredRef.current || !collection || entries.length === 0) return;
     restoredRef.current = true;
-    const target = readSession().lastOpenId;
+    const stored = readSession();
+    const validOpenIds = stored.openIds.filter((id) =>
+      entries.some((entry) => entry.id === id),
+    );
+    setOpenIds(validOpenIds);
+    setSecondaryId(
+      stored.secondaryId &&
+        stored.secondaryId !== stored.lastOpenId &&
+        entries.some((entry) => entry.id === stored.secondaryId)
+        ? stored.secondaryId
+        : '',
+    );
+    const target = stored.lastOpenId;
     if (target && entries.some((entry) => entry.id === target)) {
-      void openNote(target);
+      void openNote(target).finally(() => setSessionRestored(true));
+    } else {
+      setSessionRestored(true);
     }
   }, [collection, entries, openNote]);
+
+  useEffect(() => {
+    if (!loading && (!collection || entries.length === 0)) {
+      setSessionRestored(true);
+    }
+  }, [collection, entries.length, loading]);
 
   function editEntry(entry: ContentEntryListItem) {
     // If this entry is a folder's index page, make the folder itself active so
@@ -520,6 +599,81 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     );
     setActiveFolder(folderNode ? folderNode.id : entry.folder);
     void openNote(entry.id, entry.folder);
+    if (window.matchMedia('(max-width: 720px)').matches) {
+      patchSession({ sidebarCollapsed: true });
+    }
+  }
+
+  function openEntryToSide(entry: ContentEntryListItem) {
+    if (secondaryDirty && secondaryId && secondaryId !== entry.id) {
+      setNotice('Save the second editor before replacing it.');
+      return;
+    }
+    setOpenIds((current) =>
+      current.includes(entry.id) ? current : [...current, entry.id].slice(-24),
+    );
+    setSecondaryId(entry.id === openId ? '' : entry.id);
+  }
+
+  function goThroughHistory(direction: -1 | 1) {
+    const nextIndex = historyIndexRef.current + direction;
+    const id = historyRef.current[nextIndex];
+    if (!id || !entries.some((entry) => entry.id === id)) return;
+    historyIndexRef.current = nextIndex;
+    setHistoryVersion((value) => value + 1);
+    void openNote(id, undefined, { remember: false });
+  }
+
+  async function closeTab(id: string) {
+    const position = openIds.indexOf(id);
+    if (position < 0) return;
+    if (id === secondaryId && secondaryDirty) {
+      setNotice('Save the second editor before closing its file.');
+      return;
+    }
+    if (
+      id === openId &&
+      (saveState === 'dirty' ||
+        saveState === 'saving' ||
+        saveState === 'error') &&
+      !(await saveNow())
+    ) {
+      return;
+    }
+    const remaining = openIds.filter((candidate) => candidate !== id);
+    setOpenIds(remaining);
+    if (secondaryId === id) setSecondaryId('');
+    if (id !== openId) return;
+    const nextId = remaining[Math.min(position, remaining.length - 1)];
+    if (nextId) {
+      await openNote(nextId);
+    } else {
+      closeIfOpen(id);
+    }
+  }
+
+  function toggleSecondEditor() {
+    if (secondaryId) {
+      if (secondaryDirty) {
+        setNotice('Save the second editor before closing the split.');
+        return;
+      }
+      setSecondaryId('');
+      return;
+    }
+    const candidate =
+      [...openIds].reverse().find((id) => id !== openId) ??
+      entries.find((entry) => entry.id !== openId)?.id ??
+      '';
+    if (candidate) {
+      if (view === 'split') patchSession({ view: 'write' });
+      setOpenIds((current) =>
+        current.includes(candidate) ? current : [...current, candidate],
+      );
+      setSecondaryId(candidate);
+    } else {
+      setNotice('Open another file before splitting the editor.');
+    }
   }
 
   function closeIfOpen(id: string) {
@@ -529,6 +683,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     documentVersionRef.current = 0;
     persistedVersionRef.current = 0;
     setOpenId('');
+    setOpenIds((current) => current.filter((candidate) => candidate !== id));
+    setSecondaryId((current) => (current === id ? '' : current));
     setBody('');
     setSaveState('idle');
   }
@@ -702,6 +858,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           };
         }
       }
+      setOpenIds((current) =>
+        current.map((id) => (id === entry.id ? nextId : id)),
+      );
+      setSecondaryId((current) => (current === entry.id ? nextId : current));
+      historyRef.current = historyRef.current.map((id) =>
+        id === entry.id ? nextId : id,
+      );
       await refreshTree();
       return true;
     } catch (caught) {
@@ -761,6 +924,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       if (!revision) return false;
       await deleteContentEntry(collection.id, entry.id, revision);
       closeIfOpen(entry.id);
+      setOpenIds((current) =>
+        current.filter((candidate) => candidate !== entry.id),
+      );
+      setSecondaryId((current) => (current === entry.id ? '' : current));
       await refreshTree();
       setNotice('Note deleted.');
       return true;
@@ -856,6 +1023,17 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           folder: remapFolderPath(docRef.current.folder, folder.id, nextPath),
         };
       }
+      if (folder.documentId && folder.documentId !== nextName) {
+        setOpenIds((current) =>
+          current.map((id) => (id === folder.documentId ? nextName : id)),
+        );
+        setSecondaryId((current) =>
+          current === folder.documentId ? nextName : current,
+        );
+        historyRef.current = historyRef.current.map((id) =>
+          id === folder.documentId ? nextName : id,
+        );
+      }
       setActiveFolder((current) =>
         remapFolderPath(current, folder.id, nextPath),
       );
@@ -943,6 +1121,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       if (openId === folder.documentId && !(await saveNow())) return false;
       await deleteContentFolder(collection.id, folder.id);
       if (openId === folder.documentId) closeIfOpen(folder.documentId ?? '');
+      if (folder.documentId) {
+        setOpenIds((current) =>
+          current.filter((id) => id !== folder.documentId),
+        );
+        setSecondaryId((current) =>
+          current === folder.documentId ? '' : current,
+        );
+      }
       if (
         activeFolder === folder.id ||
         activeFolder.startsWith(`${folder.id}/`)
@@ -1161,8 +1347,45 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         return;
       }
       if (mod && event.key === '\\') {
+        if (event.altKey) {
+          event.preventDefault();
+          toggleSecondEditor();
+          return;
+        }
         event.preventDefault();
         patchSession({ sidebarCollapsed: !session.sidebarCollapsed });
+        return;
+      }
+      if (mod && event.key.toLowerCase() === 'w' && openId) {
+        event.preventDefault();
+        void closeTab(openId);
+        return;
+      }
+      if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goThroughHistory(-1);
+        return;
+      }
+      if (event.altKey && event.key === 'ArrowRight') {
+        event.preventDefault();
+        goThroughHistory(1);
+        return;
+      }
+      if (mod && event.key === 'Tab' && openIds.length > 1) {
+        event.preventDefault();
+        const index = openIds.indexOf(openId);
+        const offset = event.shiftKey ? -1 : 1;
+        const next =
+          openIds[(index + offset + openIds.length) % openIds.length];
+        if (next) void openNote(next);
+        return;
+      }
+      if (mod && /^[1-9]$/.test(event.key)) {
+        const next = openIds[Number(event.key) - 1];
+        if (next) {
+          event.preventDefault();
+          void openNote(next);
+        }
         return;
       }
       if (mod && event.key === 'e' && openId) {
@@ -1172,7 +1395,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [session.sidebarCollapsed, openId, cycleView, patchSession]);
+  }, [
+    session.sidebarCollapsed,
+    openId,
+    openIds,
+    cycleView,
+    patchSession,
+    openNote,
+    secondaryId,
+  ]);
 
   // --- Sidebar resize ------------------------------------------------------
 
@@ -1286,6 +1517,17 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       : ({
           '--studio-sidebar-w': `${session.sidebar}px`,
         } satisfies CSSProperties);
+  const hasPrimaryUnsaved =
+    saveState === 'dirty' || saveState === 'saving' || saveState === 'error';
+  const dirtyIds = new Set([
+    ...(hasPrimaryUnsaved && openId ? [openId] : []),
+    ...(secondaryDirty && secondaryId ? [secondaryId] : []),
+  ]);
+  void historyVersion;
+  const canGoBack = historyIndexRef.current > 0;
+  const canGoForward =
+    historyIndexRef.current >= 0 &&
+    historyIndexRef.current < historyRef.current.length - 1;
 
   return (
     <article
@@ -1296,7 +1538,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         style={sidebarStyle}
       >
         {sidebarVisible && (
-          <section className="studio-sidebar" aria-label="Notes">
+          <section className="studio-sidebar" aria-label="Files explorer">
             <div
               className="studio-sidebar__backdrop"
               aria-hidden="true"
@@ -1304,7 +1546,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             />
             {loading ? (
               <p className="admin-empty" role="status">
-                Gathering your notes…
+                Indexing files…
               </p>
             ) : (
               <StudioFolderTree
@@ -1315,7 +1557,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 activeFolder={activeFolder}
                 expandedFolders={expandedFolders}
                 busyKey={busyKey}
+                sort={session.sort}
                 onQueryChange={setQuery}
+                onSortChange={(sort) => patchSession({ sort })}
+                onCollapseAll={() => setExpandedFolders(new Set(['']))}
+                onRefresh={() => void refreshTree()}
+                onRequestClose={() => patchSession({ sidebarCollapsed: true })}
                 onToggleFolder={toggleFolder}
                 onSelectFolder={setActiveFolder}
                 onEditEntry={editEntry}
@@ -1362,205 +1609,277 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           </section>
         )}
 
-        <section className="studio-editor" aria-label="Editor">
-          {!openId || !collection ? (
-            <div className="studio-blank">
-              <p className="studio-blank__title">
-                Open a note to start writing
-              </p>
-              <p className="studio-blank__hint">
-                Press <kbd>⌘</kbd>
-                <kbd>K</kbd> to search, or pick one from the sidebar.
-              </p>
-            </div>
-          ) : (
-            <>
-              <header className="studio-bar">
-                <button
-                  type="button"
-                  className="studio-bar__toggle"
-                  aria-label={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
-                  title="Toggle sidebar (⌘\\)"
-                  onClick={() =>
-                    patchSession({ sidebarCollapsed: sidebarVisible })
-                  }
-                >
-                  <svg viewBox="0 0 20 20" aria-hidden="true">
-                    <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" />
-                    <path d="M7.75 3.75v12.5" />
-                  </svg>
-                </button>
-                <div className="studio-bar__title">
-                  <strong>{currentTitle}</strong>
-                  <code>{publishedUrl || openId}</code>
+        <div className="studio-workbench">
+          <StudioTabs
+            entries={entries}
+            openIds={openIds}
+            activeId={openId}
+            secondaryId={secondaryId}
+            dirtyIds={dirtyIds}
+            canGoBack={canGoBack}
+            canGoForward={canGoForward}
+            sidebarVisible={sidebarVisible}
+            onActivate={(id) => {
+              if (id === secondaryId && secondaryDirty) {
+                setNotice('Save the second editor before moving this file.');
+                return;
+              }
+              if (id === secondaryId) setSecondaryId('');
+              void openNote(id);
+            }}
+            onOpenToSide={(id) => {
+              const entry = entries.find((candidate) => candidate.id === id);
+              if (entry) openEntryToSide(entry);
+            }}
+            onClose={(id) => void closeTab(id)}
+            onGoBack={() => goThroughHistory(-1)}
+            onGoForward={() => goThroughHistory(1)}
+            onToggleSidebar={() =>
+              patchSession({ sidebarCollapsed: sidebarVisible })
+            }
+            onQuickOpen={() => setPaletteOpen(true)}
+            onToggleSplit={toggleSecondEditor}
+          />
+          <div
+            className={`studio-editor-groups ${secondaryId ? 'has-secondary' : ''}`}
+          >
+            <section
+              className="studio-editor studio-editor--primary"
+              aria-label="Primary editor"
+            >
+              {!openId || !collection ? (
+                <div className="studio-blank">
+                  <p className="studio-blank__title">
+                    Open a file to start writing
+                  </p>
+                  <p className="studio-blank__hint">
+                    Press <kbd>⌘</kbd>
+                    <kbd>P</kbd> to go to a file, or pick one from the explorer.
+                  </p>
                 </div>
-                <SaveIndicator
-                  state={saveState}
-                  savedAt={savedAt}
-                  manual={!session.autosave}
-                  onSave={() => void saveNow()}
-                />
-                <button
-                  type="button"
-                  className="studio-bar__autosave"
-                  role="switch"
-                  aria-checked={session.autosave}
-                  title={
-                    session.autosave
-                      ? 'Autosave on — click to save manually with ⌘S'
-                      : 'Autosave off — save with ⌘S'
-                  }
-                  onClick={() => {
-                    const autosave = !session.autosave;
-                    autosaveRef.current = autosave;
-                    patchSession({ autosave });
-                    if (!autosave) {
-                      clearScheduledSave();
-                    } else if (
-                      documentVersionRef.current > persistedVersionRef.current
-                    ) {
-                      void saveNow();
-                    }
-                  }}
-                >
-                  <span
-                    className="studio-bar__autosave-dot"
-                    aria-hidden="true"
-                  />
-                  <span className="studio-bar__autosave-label">Autosave</span>
-                </button>
-                {hasBody && (
-                  <div
-                    className="studio-view-switch"
-                    role="group"
-                    aria-label="Editor view"
-                  >
-                    {VIEW_MODES.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        className={view === item.id ? 'is-active' : ''}
-                        aria-pressed={view === item.id}
-                        onClick={() => patchSession({ view: item.id })}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {publishedUrl && (
-                  <a
-                    className="studio-bar__open"
-                    href={publishedUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Open published page"
-                    aria-label="Open published page"
-                  >
-                    <svg viewBox="0 0 20 20" aria-hidden="true">
-                      <path d="M8 4.75H5.5A1.75 1.75 0 0 0 3.75 6.5v8A1.75 1.75 0 0 0 5.5 16.25h8a1.75 1.75 0 0 0 1.75-1.75V12" />
-                      <path d="M11.5 3.75h4.75v4.75M16 4l-7 7" />
-                    </svg>
-                  </a>
-                )}
-              </header>
-
-              <div className={`studio-panes is-${view}`}>
-                {view !== 'preview' && (
-                  <div className="studio-write">
-                    <StudioToolbar
-                      commands={editorCommands}
-                      onInsertImage={() => setImageDialogOpen(true)}
-                    />
-                    <textarea
-                      ref={editorRef}
-                      className="studio-textarea"
-                      aria-label="Note body"
-                      placeholder="Write what you want to remember…"
-                      spellcheck
-                      value={body}
-                      onKeyDown={onEditorKeyDown}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        setBody(value);
-                        markDirty({ body: value });
-                        wikiMenu.refresh();
-                      }}
-                      onKeyUp={(event) => {
-                        // Caret moves that don't change text still change context.
-                        if (
-                          event.key.startsWith('Arrow') ||
-                          event.key === 'Home' ||
-                          event.key === 'End'
-                        ) {
-                          wikiMenu.refresh();
-                        }
-                      }}
-                      onClick={() => wikiMenu.refresh()}
-                      onBlur={() => wikiMenu.close()}
-                      onPaste={(event) => {
-                        const file = imageFromTransfer(
-                          event.clipboardData?.items,
-                        );
-                        if (file) {
-                          event.preventDefault();
-                          void quickInsertImage(file);
-                        }
-                      }}
-                      onDragOver={(event) => {
-                        if (event.dataTransfer?.types.includes('Files'))
-                          event.preventDefault();
-                      }}
-                      onDrop={(event) => {
-                        const file =
-                          event.dataTransfer?.files?.[0] &&
-                          event.dataTransfer.files[0].type.startsWith('image/')
-                            ? event.dataTransfer.files[0]
-                            : null;
-                        if (file) {
-                          event.preventDefault();
-                          void quickInsertImage(file);
-                        }
-                      }}
-                    />
-                    <div className="studio-status">
-                      <span>{wordCount} words</span>
-                      <span>
-                        {busyKey === 'upload-body' ? 'Uploading…' : ''}
-                      </span>
-                    </div>
-                    <WikiLinkAutocomplete
-                      open={wikiMenu.open}
-                      items={wikiMenu.items}
-                      activeIndex={wikiMenu.activeIndex}
-                      position={wikiMenu.position}
-                      onHover={wikiMenu.setActiveIndex}
-                      onChoose={wikiMenu.accept}
-                    />
-                  </div>
-                )}
-                {view !== 'write' && (
-                  <div className="studio-preview">
-                    <article className="studio-preview__page">
-                      {body.trim() ? (
-                        <div
-                          className="prose"
-                          // Markdown authored by the signed-in admin, rendered
-                          // for that same admin. No third-party input reaches it.
-                          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+              ) : (
+                <>
+                  <header className="studio-bar">
+                    <button
+                      type="button"
+                      className="studio-bar__toggle"
+                      aria-label={
+                        sidebarVisible ? 'Hide sidebar' : 'Show sidebar'
+                      }
+                      title="Toggle sidebar (⌘\\)"
+                      onClick={() =>
+                        patchSession({ sidebarCollapsed: sidebarVisible })
+                      }
+                    >
+                      <svg viewBox="0 0 20 20" aria-hidden="true">
+                        <rect
+                          x="2.75"
+                          y="3.75"
+                          width="14.5"
+                          height="12.5"
+                          rx="2"
                         />
-                      ) : (
-                        <p className="admin-empty">
-                          This page is still waiting for words.
-                        </p>
-                      )}
-                    </article>
+                        <path d="M7.75 3.75v12.5" />
+                      </svg>
+                    </button>
+                    <div className="studio-bar__title">
+                      <strong>{currentTitle}</strong>
+                      <code>{publishedUrl || openId}</code>
+                    </div>
+                    <SaveIndicator
+                      state={saveState}
+                      savedAt={savedAt}
+                      manual={!session.autosave}
+                      onSave={() => void saveNow()}
+                    />
+                    <button
+                      type="button"
+                      className="studio-bar__autosave"
+                      role="switch"
+                      aria-checked={session.autosave}
+                      title={
+                        session.autosave
+                          ? 'Autosave on — click to save manually with ⌘S'
+                          : 'Autosave off — save with ⌘S'
+                      }
+                      onClick={() => {
+                        const autosave = !session.autosave;
+                        autosaveRef.current = autosave;
+                        patchSession({ autosave });
+                        if (!autosave) {
+                          clearScheduledSave();
+                        } else if (
+                          documentVersionRef.current >
+                          persistedVersionRef.current
+                        ) {
+                          void saveNow();
+                        }
+                      }}
+                    >
+                      <span
+                        className="studio-bar__autosave-dot"
+                        aria-hidden="true"
+                      />
+                      <span className="studio-bar__autosave-label">
+                        Autosave
+                      </span>
+                    </button>
+                    {hasBody && (
+                      <div
+                        className="studio-view-switch"
+                        role="group"
+                        aria-label="Editor view"
+                      >
+                        {VIEW_MODES.map((item) => (
+                          <button
+                            type="button"
+                            key={item.id}
+                            className={view === item.id ? 'is-active' : ''}
+                            aria-pressed={view === item.id}
+                            onClick={() => patchSession({ view: item.id })}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {publishedUrl && (
+                      <a
+                        className="studio-bar__open"
+                        href={publishedUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Open published page"
+                        aria-label="Open published page"
+                      >
+                        <svg viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M8 4.75H5.5A1.75 1.75 0 0 0 3.75 6.5v8A1.75 1.75 0 0 0 5.5 16.25h8a1.75 1.75 0 0 0 1.75-1.75V12" />
+                          <path d="M11.5 3.75h4.75v4.75M16 4l-7 7" />
+                        </svg>
+                      </a>
+                    )}
+                  </header>
+
+                  <div className={`studio-panes is-${view}`}>
+                    {view !== 'preview' && (
+                      <div className="studio-write">
+                        <StudioToolbar
+                          commands={editorCommands}
+                          onInsertImage={() => setImageDialogOpen(true)}
+                        />
+                        <textarea
+                          ref={editorRef}
+                          className="studio-textarea"
+                          aria-label="Note body"
+                          placeholder="Write what you want to remember…"
+                          spellcheck
+                          value={body}
+                          onKeyDown={onEditorKeyDown}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            setBody(value);
+                            markDirty({ body: value });
+                            wikiMenu.refresh();
+                          }}
+                          onKeyUp={(event) => {
+                            // Caret moves that don't change text still change context.
+                            if (
+                              event.key.startsWith('Arrow') ||
+                              event.key === 'Home' ||
+                              event.key === 'End'
+                            ) {
+                              wikiMenu.refresh();
+                            }
+                          }}
+                          onClick={() => wikiMenu.refresh()}
+                          onBlur={() => wikiMenu.close()}
+                          onPaste={(event) => {
+                            const file = imageFromTransfer(
+                              event.clipboardData?.items,
+                            );
+                            if (file) {
+                              event.preventDefault();
+                              void quickInsertImage(file);
+                            }
+                          }}
+                          onDragOver={(event) => {
+                            if (event.dataTransfer?.types.includes('Files'))
+                              event.preventDefault();
+                          }}
+                          onDrop={(event) => {
+                            const file =
+                              event.dataTransfer?.files?.[0] &&
+                              event.dataTransfer.files[0].type.startsWith(
+                                'image/',
+                              )
+                                ? event.dataTransfer.files[0]
+                                : null;
+                            if (file) {
+                              event.preventDefault();
+                              void quickInsertImage(file);
+                            }
+                          }}
+                        />
+                        <div className="studio-status">
+                          <span>{wordCount} words</span>
+                          <span>
+                            {busyKey === 'upload-body' ? 'Uploading…' : ''}
+                          </span>
+                        </div>
+                        <WikiLinkAutocomplete
+                          open={wikiMenu.open}
+                          items={wikiMenu.items}
+                          activeIndex={wikiMenu.activeIndex}
+                          position={wikiMenu.position}
+                          onHover={wikiMenu.setActiveIndex}
+                          onChoose={wikiMenu.accept}
+                        />
+                      </div>
+                    )}
+                    {view !== 'write' && (
+                      <div className="studio-preview">
+                        <article className="studio-preview__page">
+                          {body.trim() ? (
+                            <div
+                              className="prose"
+                              // Markdown authored by the signed-in admin, rendered
+                              // for that same admin. No third-party input reaches it.
+                              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                            />
+                          ) : (
+                            <p className="admin-empty">
+                              This page is still waiting for words.
+                            </p>
+                          )}
+                        </article>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
+                </>
+              )}
+            </section>
+            {secondaryId && collection && secondaryId !== openId && (
+              <StudioSecondaryEditor
+                collection={collection}
+                entryId={secondaryId}
+                entries={entries}
+                wikiLinkHrefs={wikiLinkHrefs}
+                autosave={session.autosave}
+                onActivate={() => undefined}
+                onClose={() => setSecondaryId('')}
+                onRevision={(id, revision, title) =>
+                  setEntries((current) =>
+                    current.map((entry) =>
+                      entry.id === id ? { ...entry, revision, title } : entry,
+                    ),
+                  )
+                }
+                onError={setError}
+                onDirtyChange={handleSecondaryDirty}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {(error || notice) && (
