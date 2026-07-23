@@ -74,7 +74,7 @@ export function Guestbook() {
         <h2>Guestbook</h2>
         <p>
           i want to make this a better place. any feedback or ideas would be
-          greatly appreciated! :D
+          greatly appreciated!
         </p>
       </header>
 
