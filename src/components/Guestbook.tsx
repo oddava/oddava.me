@@ -72,7 +72,10 @@ export function Guestbook() {
     <section className="guestbook">
       <header className="guestbook__header">
         <h2>Guestbook</h2>
-        <p>i want to make this a better place. any feedback or ideas would be greatly appreciated! :D</p>
+        <p>
+          i want to make this a better place. any feedback or ideas would be
+          greatly appreciated! :D
+        </p>
       </header>
 
       <form className="guestbook__form" onSubmit={handleSubmit}>
