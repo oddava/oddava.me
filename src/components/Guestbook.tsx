@@ -71,8 +71,8 @@ export function Guestbook() {
   return (
     <section className="guestbook">
       <header className="guestbook__header">
-        <h2>guestbook</h2>
-        <p>if you made it this far, say hi.</p>
+        <h2>Guestbook</h2>
+        <p>i want to make this a better place. any feedback or ideas would be greatly appreciated! :D</p>
       </header>
 
       <form className="guestbook__form" onSubmit={handleSubmit}>
@@ -82,7 +82,7 @@ export function Guestbook() {
             type="text"
             value={name}
             onChange={(event) => setName(event.currentTarget.value)}
-            placeholder="anon"
+            placeholder="anon or preferebly twt username"
             maxLength={32}
             autoComplete="nickname"
           />
