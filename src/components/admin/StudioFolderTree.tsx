@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
+// `.sr-only` lives in the public site stylesheet, which AdminLayout does not
+// load — admin-side hidden text has to come from this component.
+import { VisuallyHidden } from './VisuallyHidden';
+import StudioSelect, { type StudioSelectOption } from './StudioSelect';
 
 export type StudioTreeItemRef =
   { kind: 'entry'; id: string } | { kind: 'folder'; id: string };
@@ -41,6 +45,8 @@ interface Props {
     folder: string,
     orderedItems: StudioTreeItemRef[],
   ) => Promise<boolean>;
+  onBulkMove: (items: StudioTreeItemRef[], folder: string) => Promise<boolean>;
+  onBulkDelete: (items: StudioTreeItemRef[]) => Promise<boolean>;
 }
 
 type FolderNode = {
@@ -74,6 +80,14 @@ type InlineMove = {
 type DropPosition = 'before' | 'inside' | 'after';
 
 const TREE_DRAG_TYPE = 'application/x-oddava-studio-item';
+// The root folder's real id is '', which an option list cannot round-trip.
+const ROOT_OPTION = '::root';
+
+const SORT_OPTIONS: StudioSelectOption[] = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'name', label: 'Name' },
+  { value: 'type', label: 'Folders first' },
+];
 
 function humanize(value: string): string {
   return value.replaceAll('-', ' ');
@@ -93,6 +107,13 @@ function nodeKey(node: TreeNode): string {
   return node.kind === 'folder'
     ? `folder:${node.folder.id}`
     : `entry:${node.entry.id}`;
+}
+
+/** The inverse of `nodeKey` — a selection stores keys, mutations take refs. */
+function keyToItem(key: string): StudioTreeItemRef {
+  return key.startsWith('folder:')
+    ? { kind: 'folder', id: key.slice('folder:'.length) }
+    : { kind: 'entry', id: key.slice('entry:'.length) };
 }
 
 function nodeLabel(node: TreeNode): string {
@@ -193,8 +214,13 @@ export default function StudioFolderTree({
   onMoveEntry,
   onMoveFolder,
   onDropItem,
+  onBulkMove,
+  onBulkDelete,
 }: Props) {
   const [menuKey, setMenuKey] = useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [anchorKey, setAnchorKey] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [creating, setCreating] = useState<InlineCreate | null>(null);
   const [renaming, setRenaming] = useState<InlineRename | null>(null);
   const [moving, setMoving] = useState<InlineMove | null>(null);
@@ -325,6 +351,121 @@ export default function StudioFolderTree({
     });
   }
 
+  // Rows in the order they appear on screen, so a shift-click can select the
+  // run between two of them the way a file manager does.
+  const visibleRows = useMemo(() => {
+    const rows: string[] = [];
+    const walk = (parent: string) => {
+      const children = childrenByFolder.get(parent) ?? [];
+      for (const node of children) {
+        if (normalizedQuery) {
+          const label =
+            `${nodeLabel(node)} ${node.kind === 'folder' ? node.folder.id : node.entry.id}`.toLowerCase();
+          const matches =
+            label.includes(normalizedQuery) ||
+            (node.kind === 'folder' && matchingFolders.has(node.folder.id));
+          if (!matches) continue;
+        }
+        rows.push(nodeKey(node));
+        if (
+          node.kind === 'folder' &&
+          (expandedFolders.has(node.folder.id) || normalizedQuery)
+        ) {
+          walk(node.folder.id);
+        }
+      }
+    };
+    if (expandedFolders.has('') || normalizedQuery) walk('');
+    return rows;
+  }, [childrenByFolder, expandedFolders, matchingFolders, normalizedQuery]);
+
+  // A deleted or renamed item must not linger in the selection.
+  useEffect(() => {
+    setSelectedKeys((current) => {
+      const live = current.filter((key) => {
+        const item = keyToItem(key);
+        return item.kind === 'folder'
+          ? folders.some((folder) => folder.id === item.id)
+          : entries.some((entry) => entry.id === item.id);
+      });
+      return live.length === current.length ? current : live;
+    });
+  }, [entries, folders]);
+
+  const selectedItems = selectedKeys.map(keyToItem);
+
+  function clearSelection() {
+    setSelectedKeys([]);
+    setAnchorKey(null);
+  }
+
+  function toggleSelection(key: string) {
+    setSelectedKeys((current) =>
+      current.includes(key)
+        ? current.filter((candidate) => candidate !== key)
+        : [...current, key],
+    );
+    setAnchorKey(key);
+  }
+
+  function selectRange(from: string, to: string) {
+    const start = visibleRows.indexOf(from);
+    const end = visibleRows.indexOf(to);
+    if (start < 0 || end < 0) {
+      setSelectedKeys([to]);
+      return;
+    }
+    const [low, high] = start <= end ? [start, end] : [end, start];
+    setSelectedKeys(visibleRows.slice(low, high + 1));
+  }
+
+  /**
+   * Returns true when the click was a selection gesture and the row should not
+   * also be opened.
+   */
+  function handleSelectionClick(event: MouseEvent, key: string): boolean {
+    if (event.metaKey || event.ctrlKey) {
+      toggleSelection(key);
+      return true;
+    }
+    if (event.shiftKey && anchorKey) {
+      selectRange(anchorKey, key);
+      return true;
+    }
+    clearSelection();
+    setAnchorKey(key);
+    return false;
+  }
+
+  /** Folders a bulk move can target — never one that is itself being moved. */
+  function moveDestinations(): StudioSelectOption[] {
+    const roots = selectedKeys
+      .filter((key) => key.startsWith('folder:'))
+      .map((key) => key.slice('folder:'.length));
+    return [
+      { value: ROOT_OPTION, label: 'Notes' },
+      ...folders
+        .filter(
+          (folder) =>
+            !roots.some(
+              (root) => folder.id === root || folder.id.startsWith(`${root}/`),
+            ),
+        )
+        .map((folder) => ({
+          value: folder.id,
+          label: humanize(folder.name),
+          depth: folder.depth + 1,
+        })),
+    ];
+  }
+
+  async function runBulk(action: () => Promise<boolean>) {
+    setBulkBusy(true);
+    const ok = await action();
+    setBulkBusy(false);
+    if (ok) clearSelection();
+  }
+
   function moveTreeFocus(current: HTMLElement, offset: number) {
     const targets = Array.from(
       treeRef.current?.querySelectorAll<HTMLElement>('[data-tree-target]') ??
@@ -350,6 +491,8 @@ export default function StudioFolderTree({
         event.preventDefault();
         onToggleFolder(node.folder.id);
       }
+    } else if (event.key === 'Escape' && selectedKeys.length > 0) {
+      clearSelection();
     }
   }
 
@@ -394,9 +537,24 @@ export default function StudioFolderTree({
   ) {
     const transfer = event.dataTransfer;
     if (!transfer) return;
+    // Dragging a row that is part of a multi-selection drags the whole
+    // selection; dragging anything else drops the selection first.
+    if (!selectedKeys.includes(nodeKeyFor(item))) clearSelection();
     setDragging(item);
     transfer.effectAllowed = 'move';
     transfer.setData(TREE_DRAG_TYPE, JSON.stringify(item));
+  }
+
+  function nodeKeyFor(item: StudioTreeItemRef): string {
+    return `${item.kind}:${item.id}`;
+  }
+
+  /** The selection to move when a drag started from inside it. */
+  function draggedSelection(
+    item: StudioTreeItemRef,
+  ): StudioTreeItemRef[] | null {
+    if (selectedKeys.length < 2) return null;
+    return selectedKeys.includes(nodeKeyFor(item)) ? selectedItems : null;
   }
 
   function dropPosition(
@@ -432,6 +590,13 @@ export default function StudioFolderTree({
       return;
     }
 
+    const batch = draggedSelection(dragged);
+    if (batch) {
+      setDropMarker(null);
+      await runBulk(() => onBulkMove(batch, destinationFolder));
+      return;
+    }
+
     const destinationItems = (childrenByFolder.get(destinationFolder) ?? [])
       .map(nodeRef)
       .filter((item) => !sameItem(item, dragged));
@@ -451,6 +616,12 @@ export default function StudioFolderTree({
     const dragged = readDraggedItem(event.dataTransfer) ?? dragging;
     if (!dragged) return;
     event.preventDefault();
+    const batch = draggedSelection(dragged);
+    if (batch) {
+      setDropMarker(null);
+      await runBulk(() => onBulkMove(batch, ''));
+      return;
+    }
     const destinationItems = (childrenByFolder.get('') ?? [])
       .map(nodeRef)
       .filter((item) => !sameItem(item, dragged));
@@ -583,15 +754,16 @@ export default function StudioFolderTree({
       : currentId === node.entry.id;
     const renameActive = renaming && sameItem(renaming.item, nodeRef(node));
     const marker = dropMarker?.key === key ? dropMarker.position : null;
+    const picked = selectedKeys.includes(key);
 
     return (
       <li key={key} className="studio-tree-item">
         <div
           className={`studio-tree-row ${active ? 'is-active' : ''} ${
-            marker ? `is-drop-${marker}` : ''
-          }`}
+            picked ? 'is-selected' : ''
+          } ${marker ? `is-drop-${marker}` : ''}`}
           role="treeitem"
-          aria-selected={active}
+          aria-selected={active || picked}
           aria-expanded={isFolder ? expanded || forceExpanded : undefined}
           draggable={sort === 'manual' && !renameActive && !busyKey}
           onDragStart={(event) => startDrag(event, nodeRef(node))}
@@ -667,7 +839,8 @@ export default function StudioFolderTree({
                 busyKey ===
                 `open-${isFolder ? node.document?.id : node.entry.id}`
               }
-              onClick={() => {
+              onClick={(event) => {
+                if (handleSelectionClick(event, key)) return;
                 if (isFolder) {
                   onSelectFolder(folderId);
                   if (node.document) onEditEntry(node.document);
@@ -783,9 +956,22 @@ export default function StudioFolderTree({
       <div className="studio-explorer__heading">
         <div>
           <strong>Files</strong>
-          <span>{entries.length}</span>
+          <span>
+            {normalizedQuery
+              ? `${visibleRows.length} found`
+              : String(entries.length)}
+          </span>
         </div>
         <div className="studio-explorer__actions">
+          <StudioSelect
+            className="studio-explorer__sort"
+            label="Sort files"
+            value={sort}
+            options={SORT_OPTIONS}
+            onChange={(next) =>
+              onSortChange(next as 'manual' | 'name' | 'type')
+            }
+          />
           <button
             type="button"
             className="studio-icon-button"
@@ -849,26 +1035,6 @@ export default function StudioFolderTree({
         >
           <FolderPlusIcon />
         </button>
-      </div>
-
-      <div className="studio-explorer__meta">
-        <span>{normalizedQuery ? 'Search results' : 'Knowledge base'}</span>
-        <label>
-          <span className="sr-only">Sort files</span>
-          <select
-            value={sort}
-            aria-label="Sort files"
-            onChange={(event) =>
-              onSortChange(
-                event.currentTarget.value as 'manual' | 'name' | 'type',
-              )
-            }
-          >
-            <option value="manual">Manual order</option>
-            <option value="name">Name</option>
-            <option value="type">Folders first</option>
-          </select>
-        </label>
       </div>
 
       <div
@@ -956,6 +1122,46 @@ export default function StudioFolderTree({
           <p className="admin-empty">This folder is empty.</p>
         )}
       </div>
+
+      {selectedItems.length > 0 && (
+        <div className="studio-bulk-bar" role="group" aria-label="Selection">
+          <strong>
+            {selectedItems.length} selected
+            <VisuallyHidden>
+              . Ctrl-click to add, shift-click for a range.
+            </VisuallyHidden>
+          </strong>
+          <StudioSelect
+            className="studio-bulk-bar__move"
+            label="Move selection to"
+            placeholder="Move to…"
+            value=""
+            disabled={bulkBusy}
+            align="start"
+            placement="up"
+            options={moveDestinations()}
+            onChange={(destination) =>
+              void runBulk(() =>
+                onBulkMove(
+                  selectedItems,
+                  destination === ROOT_OPTION ? '' : destination,
+                ),
+              )
+            }
+          />
+          <button
+            type="button"
+            className="is-danger"
+            disabled={bulkBusy}
+            onClick={() => void runBulk(() => onBulkDelete(selectedItems))}
+          >
+            Delete
+          </button>
+          <button type="button" disabled={bulkBusy} onClick={clearSelection}>
+            Clear
+          </button>
+        </div>
+      )}
     </>
   );
 }

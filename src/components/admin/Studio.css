@@ -202,8 +202,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  width: clamp(120px, 16vw, 210px);
+  gap: 10px;
+  width: clamp(104px, 12vw, 168px);
   min-width: 0;
   margin: 4px 6px;
   padding: 0 8px;
@@ -258,15 +258,41 @@
   display: none;
 }
 
+/* Tabs size to their label, never below a width that still reads as a name.
+   Past that the strip scrolls rather than shaving every tab down to 3 letters. */
 .studio-tab {
   position: relative;
   display: flex;
   align-items: stretch;
-  flex: 0 1 170px;
-  min-width: 92px;
-  max-width: 190px;
+  flex: 0 0 auto;
+  min-width: 138px;
+  max-width: 210px;
   border-right: 1px solid var(--admin-line);
   color: var(--admin-text-muted);
+}
+
+.studio-tab.is-dragging {
+  opacity: 0.4;
+}
+
+/* Both markers use ::before — ::after already carries the active underline. */
+.studio-tab.is-drop-before::before,
+.studio-tab.is-drop-after::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 2px;
+  background: var(--admin-accent);
+  content: '';
+}
+
+.studio-tab.is-drop-before::before {
+  left: -1px;
+}
+
+.studio-tab.is-drop-after::before {
+  right: -1px;
 }
 
 .studio-tab::after {
@@ -343,6 +369,36 @@
   background: var(--admin-text-secondary);
 }
 
+/* One dot per tab, coloured by what that file's editor is doing. */
+.studio-tab__dirty[data-state='dirty'] {
+  background: var(--admin-warning);
+}
+
+.studio-tab__dirty[data-state='saving'] {
+  background: var(--admin-accent);
+  animation: studio-tab-pulse 1s ease-in-out infinite;
+}
+
+.studio-tab__dirty[data-state='saved'] {
+  background: var(--admin-success);
+}
+
+.studio-tab__dirty[data-state='error'] {
+  background: var(--admin-danger);
+}
+
+@keyframes studio-tab-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-tab__dirty[data-state='saving'] {
+    animation: none;
+  }
+}
+
 .studio-tab__close {
   display: grid;
   width: 24px;
@@ -415,6 +471,8 @@
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 6px;
   min-height: 37px;
   padding: 4px 7px 4px 11px;
   border-bottom: 1px solid var(--admin-line);
@@ -424,6 +482,8 @@
   display: flex;
   align-items: baseline;
   gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .studio-explorer__heading strong {
@@ -439,6 +499,130 @@
 
 .studio-explorer__actions {
   display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+/* --- Themed dropdown (a native select paints its popup with OS chrome) --- */
+
+.studio-select {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.studio-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  height: 22px;
+  min-width: 0;
+  padding: 0 4px 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font: inherit;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+.studio-select__trigger:hover:not(:disabled),
+.studio-select.is-open .studio-select__trigger {
+  border-color: var(--color-rule);
+  background: var(--color-overlay-soft);
+  color: var(--color-text-primary);
+}
+
+.studio-select__trigger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.studio-select__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-select__caret {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.studio-select.is-open .studio-select__caret {
+  transform: rotate(180deg);
+}
+
+/* Flat: a hairline and the site's raised surface, no shadow, no elevation. */
+.studio-select__menu {
+  position: absolute;
+  top: calc(100% + 3px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 100%;
+  max-height: 260px;
+  padding: 3px;
+  overflow-y: auto;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  background: var(--color-surface-raised);
+}
+
+.studio-select__menu.is-start {
+  right: auto;
+  left: 0;
+}
+
+.studio-select__menu.is-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.studio-select__menu button {
+  padding: 5px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.68rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.studio-select__menu button:hover,
+.studio-select__menu button:focus-visible {
+  outline: none;
+  background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
+}
+
+.studio-select__menu button.is-selected {
+  color: var(--color-text-accent);
+}
+
+/* Sort lives in the heading rather than a row of its own. */
+.studio-explorer__sort {
+  width: 86px;
+}
+
+.studio-explorer__sort .studio-select__trigger {
+  color: var(--admin-text-disabled);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
 }
 
 .studio-explorer__close {
@@ -450,33 +634,7 @@
   align-items: center;
   flex-shrink: 0;
   gap: 6px;
-  padding: 10px;
-}
-
-.studio-explorer__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-  padding: 2px 9px 5px 11px;
-  border-bottom: 1px solid var(--admin-line);
-  color: var(--admin-text-disabled);
-  font: 0.56rem var(--font-mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.studio-explorer__meta select {
-  max-width: 105px;
-  padding: 2px 18px 2px 4px;
-  border: 0;
-  background: transparent;
-  color: var(--admin-text-muted);
-  font: 0.58rem var(--font-mono);
-  text-align: right;
-  outline: none;
-  cursor: pointer;
+  padding: 8px 9px;
 }
 
 .studio-entry-list {
@@ -537,6 +695,11 @@
 .studio-tree-row.is-active {
   border-color: var(--admin-line);
   background: var(--color-overlay-strong);
+}
+
+.studio-tree-row.is-selected {
+  border-color: color-mix(in srgb, var(--admin-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
 }
 
 .studio-tree-row.is-drop-inside {
@@ -680,6 +843,7 @@
   opacity: 1;
 }
 
+/* Same flat popup treatment as .studio-select__menu. */
 .studio-tree-menu {
   position: absolute;
   top: 24px;
@@ -687,37 +851,37 @@
   z-index: 30;
   display: grid;
   min-width: 132px;
-  padding: 4px;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: var(--radius-md);
-  background: var(--admin-surface-elevated);
-  box-shadow: 0 12px 30px color-mix(in srgb, #000 34%, transparent);
+  padding: 3px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  background: var(--color-surface-raised);
 }
 
 .studio-tree-menu button {
-  padding: 6px 8px;
+  padding: 5px 9px;
   border: 0;
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
   background: transparent;
   font: inherit;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-align: left;
   cursor: pointer;
 }
 
 .studio-tree-menu button:hover {
   background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
 }
 
 .studio-tree-menu button.is-danger {
-  color: var(--admin-danger);
+  color: var(--color-text-error);
 }
 
 .studio-tree-menu > span {
   height: 1px;
   margin: 3px 4px;
-  background: var(--admin-line);
+  background: var(--color-rule);
 }
 
 .studio-tree-row__rename input,
@@ -744,9 +908,9 @@
   gap: 5px;
   margin: 2px 0 4px 18px;
   padding: 6px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-md);
-  background: var(--admin-surface-elevated);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm-2);
+  background: var(--color-surface-raised);
 }
 
 .studio-tree-inline-move label {
@@ -769,6 +933,63 @@
   background: transparent;
   font-size: 0.65rem;
   cursor: pointer;
+}
+
+/* --- Bulk selection bar --- */
+
+.studio-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 9px;
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-surface-raised);
+}
+
+.studio-bulk-bar strong {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font: 0.58rem var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.studio-bulk-bar__move {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.studio-bulk-bar__move .studio-select__trigger {
+  border-color: var(--admin-line-strong);
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
+}
+
+.studio-bulk-bar button {
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+.studio-bulk-bar button:hover:not(:disabled) {
+  background: var(--color-overlay-strong);
+}
+
+.studio-bulk-bar button.is-danger {
+  color: var(--admin-danger);
+}
+
+.studio-bulk-bar :disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* --- Editor top bar --- */
@@ -1109,6 +1330,15 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+}
+
+/* A hairline between groups, so the row reads as five clusters not 17 icons. */
+.studio-toolbar__group + .studio-toolbar__group::before {
+  width: 1px;
+  height: 15px;
+  margin: 0 5px 0 1px;
+  background: var(--admin-line);
+  content: '';
 }
 
 .content-workspace .studio-tool {
@@ -1956,7 +2186,8 @@
   }
 
   .studio-tab {
-    flex-basis: 140px;
+    min-width: 124px;
+    max-width: 172px;
   }
 
   .studio-bar__title {

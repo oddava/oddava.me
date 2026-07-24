@@ -11,8 +11,7 @@ import type {
 } from '../../lib/contracts';
 import { renderNoteHtml } from '../../lib/garden/render';
 import { fetchContentEntry, updateContentEntry } from './api';
-
-type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
+import type { SaveState } from './studioSession';
 
 interface Props {
   collection: ContentCollectionMeta;
@@ -24,7 +23,8 @@ interface Props {
   onClose: () => void;
   onRevision: (id: string, revision: string, title: string) => void;
   onError: (message: string) => void;
-  onDirtyChange: (id: string, dirty: boolean) => void;
+  /** Mirrors this editor's save state so its tab can show it. */
+  onStateChange: (id: string, state: SaveState) => void;
 }
 
 function titleFromBody(body: string, fallback: string): string {
@@ -44,7 +44,7 @@ export default function StudioSecondaryEditor({
   onClose,
   onRevision,
   onError,
-  onDirtyChange,
+  onStateChange,
 }: Props) {
   const [body, setBody] = useState('');
   const [fields, setFields] = useState<Record<string, unknown>>({});
@@ -161,12 +161,9 @@ export default function StudioSecondaryEditor({
   }, [state]);
 
   useEffect(() => {
-    onDirtyChange(
-      entryId,
-      state === 'dirty' || state === 'saving' || state === 'error',
-    );
-    return () => onDirtyChange(entryId, false);
-  }, [entryId, onDirtyChange, state]);
+    onStateChange(entryId, state);
+    return () => onStateChange(entryId, 'idle');
+  }, [entryId, onStateChange, state]);
 
   return (
     <section
