@@ -78,20 +78,39 @@
 .admin-shell {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 48px 24px 64px;
+  padding: calc(48px + env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right)) 64px
+    max(24px, env(safe-area-inset-left));
 }
 
+/* The full-width shell is an app frame, not a document: it is exactly one
+   viewport tall and never scrolls — its panes do. --studio-vh is set from the
+   visual viewport on phones (see studioMobile.ts) so the keyboard shortens the
+   frame instead of pushing its bottom row off screen. */
 .admin-shell--full {
   max-width: none;
-  min-height: 100vh;
+  height: 100vh;
+  height: var(--studio-vh, 100dvh);
   padding: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* The app frame has nothing to scroll, so a downward swipe at the top of it
+   would otherwise reach the browser and pull-to-refresh the page — reloading
+   an editor mid-edit. Ignored where :has() is not understood. */
+.admin-page__body:has(.admin-shell--full) {
+  overscroll-behavior: none;
 }
 
 .admin-shell--full .admin-header {
   margin-bottom: 0;
   border-radius: 0;
+  min-height: calc(40px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-right: max(10px, env(safe-area-inset-right));
+  padding-left: max(6px, env(safe-area-inset-left));
 }
 
 .admin-header {
@@ -373,7 +392,9 @@
 
 @media (max-width: 720px) {
   .admin-shell {
-    padding: 24px 16px 48px;
+    padding: calc(24px + env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right)) 48px
+      max(16px, env(safe-area-inset-left));
   }
 
   .admin-login {
@@ -388,7 +409,9 @@
 
 @media (max-width: 480px) {
   .admin-shell {
-    padding: 16px 12px 32px;
+    padding: calc(16px + env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right)) 32px
+      max(12px, env(safe-area-inset-left));
   }
 
   .admin-login {

@@ -115,7 +115,12 @@ export default function StudioTabs({
   }
 
   return (
-    <div className="studio-workbench-nav">
+    // A strip that shows a single tab is a row of pixels a phone can't spare —
+    // on that layout it collapses, and the editor's own bar carries the
+    // explorer toggle. It stays put as soon as there is a second file.
+    <div
+      className={`studio-workbench-nav ${openIds.length > 1 ? '' : 'is-lone-file'}`}
+    >
       <div className="studio-nav-actions" aria-label="File navigation">
         <button
           type="button"

@@ -16,13 +16,20 @@ const {
 } = Astro.props;
 const pageTitle = `${title} | oddava admin`;
 const shellClass = fullWidth ? 'admin-shell admin-shell--full' : 'admin-shell';
+
+// `viewport-fit=cover` hands the notch and home-indicator insets to CSS
+// (`env(safe-area-inset-*)`); `interactive-widget=resizes-content` makes the
+// on-screen keyboard shrink the layout instead of sliding it out of view, so
+// the Files editor keeps its bottom bar above the keys.
+const viewport =
+  'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content';
 ---
 
 <!doctype html>
 <html lang="en" data-theme="dark" class="admin-page">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content={viewport} />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content={description} />
     <title>{pageTitle}</title>

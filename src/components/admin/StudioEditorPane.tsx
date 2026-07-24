@@ -15,6 +15,8 @@ interface Props {
   view: ViewMode;
   /** The collection stores a body — the view switch is pointless without one. */
   hasBody: boolean;
+  /** Phone layout: the mode switch and the word count move to a bottom dock. */
+  compact: boolean;
   sidebarVisible: boolean;
   autosave: boolean;
   saveState: SaveState;
@@ -56,6 +58,7 @@ export default function StudioEditorPane({
   wordCount,
   view,
   hasBody,
+  compact,
   sidebarVisible,
   autosave,
   saveState,
@@ -73,6 +76,24 @@ export default function StudioEditorPane({
   onKeyDown,
   onImageFile,
 }: Props) {
+  // One switch, two homes: the title bar on a desktop, the thumb-height dock
+  // at the bottom of the screen on a phone.
+  const viewSwitch = hasBody ? (
+    <div className="studio-view-switch" role="group" aria-label="Editor view">
+      {VIEW_MODES.map((item) => (
+        <button
+          type="button"
+          key={item.id}
+          className={view === item.id ? 'is-active' : ''}
+          aria-pressed={view === item.id}
+          onClick={() => onSetView(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <>
       <header className="studio-bar">
@@ -103,6 +124,8 @@ export default function StudioEditorPane({
           className="studio-bar__autosave"
           role="switch"
           aria-checked={autosave}
+          // The label beside the dot is hidden on a phone; the name is not.
+          aria-label="Autosave"
           title={
             autosave
               ? 'Autosave on — click to save manually with ⌘S'
@@ -113,25 +136,7 @@ export default function StudioEditorPane({
           <span className="studio-bar__autosave-dot" aria-hidden="true" />
           <span className="studio-bar__autosave-label">Autosave</span>
         </button>
-        {hasBody && (
-          <div
-            className="studio-view-switch"
-            role="group"
-            aria-label="Editor view"
-          >
-            {VIEW_MODES.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                className={view === item.id ? 'is-active' : ''}
-                aria-pressed={view === item.id}
-                onClick={() => onSetView(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {!compact && viewSwitch}
         {publishedUrl && (
           <a
             className="studio-bar__open"
@@ -229,6 +234,15 @@ export default function StudioEditorPane({
           </div>
         )}
       </div>
+
+      {compact && (
+        <footer className="studio-dock">
+          {viewSwitch}
+          <span className="studio-dock__meta">
+            {uploading ? 'Uploading…' : `${wordCount} words`}
+          </span>
+        </footer>
+      )}
     </>
   );
 }
