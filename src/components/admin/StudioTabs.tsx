@@ -1,18 +1,25 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { TargetedDragEvent } from 'preact';
 import type { ContentEntryListItem } from '../../lib/contracts';
+import type { SaveState } from './studioSession';
+
+const TAB_DRAG_TYPE = 'application/x-oddava-studio-tab';
 
 interface Props {
   entries: ContentEntryListItem[];
   openIds: string[];
   activeId: string;
   secondaryId: string;
-  dirtyIds: Set<string>;
+  /** Save state per open file — only files with a live editor appear here. */
+  states: Map<string, SaveState>;
   canGoBack: boolean;
   canGoForward: boolean;
   sidebarVisible: boolean;
   onActivate: (id: string) => void;
   onOpenToSide: (id: string) => void;
   onClose: (id: string) => void;
+  /** New tab order after a drag. The strip is the source of truth for it. */
+  onReorder: (ids: string[]) => void;
   onGoBack: () => void;
   onGoForward: () => void;
   onToggleSidebar: () => void;
@@ -35,18 +42,27 @@ function labelFor(entries: ContentEntryListItem[], id: string): string {
   );
 }
 
+const STATE_LABELS: Record<SaveState, string> = {
+  idle: '',
+  dirty: 'Unsaved changes',
+  saving: 'Saving',
+  saved: 'Saved',
+  error: 'Save failed',
+};
+
 export default function StudioTabs({
   entries,
   openIds,
   activeId,
   secondaryId,
-  dirtyIds,
+  states,
   canGoBack,
   canGoForward,
   sidebarVisible,
   onActivate,
   onOpenToSide,
   onClose,
+  onReorder,
   onGoBack,
   onGoForward,
   onToggleSidebar,
@@ -54,6 +70,10 @@ export default function StudioTabs({
   onToggleSplit,
 }: Props) {
   const stripRef = useRef<HTMLDivElement>(null);
+  const [dragId, setDragId] = useState('');
+  // Where the dragged tab would land: an index *between* tabs, so 0 is before
+  // the first and openIds.length is after the last.
+  const [dropAt, setDropAt] = useState(-1);
 
   useEffect(() => {
     stripRef.current
@@ -66,6 +86,32 @@ export default function StudioTabs({
       stripRef.current?.querySelectorAll<HTMLElement>('[role="tab"]');
     if (!tabs?.length) return;
     tabs[Math.min(Math.max(index, 0), tabs.length - 1)]?.focus();
+  }
+
+  function endDrag() {
+    setDragId('');
+    setDropAt(-1);
+  }
+
+  function dropDraggedTab(slot: number) {
+    const from = openIds.indexOf(dragId);
+    endDrag();
+    if (from < 0 || slot < 0) return;
+    // Removing the tab first shifts every slot after it down by one.
+    const target = slot > from ? slot - 1 : slot;
+    if (target === from) return;
+    const next = openIds.filter((id) => id !== dragId);
+    next.splice(Math.max(0, Math.min(target, next.length)), 0, dragId);
+    onReorder(next);
+  }
+
+  function overTab(event: TargetedDragEvent<HTMLDivElement>, index: number) {
+    if (!dragId) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const afterMidpoint = event.clientX > bounds.left + bounds.width / 2;
+    setDropAt(index + (afterMidpoint ? 1 : 0));
   }
 
   return (
@@ -142,16 +188,58 @@ export default function StudioTabs({
         ref={stripRef}
         role="tablist"
         aria-label="Open files"
+        onDragOver={(event) => {
+          // Empty space past the last tab means "move it to the end".
+          if (!dragId || event.target !== event.currentTarget) return;
+          event.preventDefault();
+          setDropAt(openIds.length);
+        }}
+        onDrop={(event) => {
+          if (!dragId || event.target !== event.currentTarget) return;
+          event.preventDefault();
+          dropDraggedTab(openIds.length);
+        }}
       >
         {openIds.map((id, index) => {
           const entry = entries.find((candidate) => candidate.id === id);
           const label = labelFor(entries, id);
           const selected = id === activeId;
           const toSide = id === secondaryId;
+          const state = states.get(id) ?? 'idle';
+          const dropBefore = dropAt === index;
+          const dropAfter =
+            dropAt === index + 1 && index === openIds.length - 1;
           return (
             <div
-              className={`studio-tab ${selected ? 'is-active' : ''} ${toSide ? 'is-secondary' : ''}`}
+              className={`studio-tab ${selected ? 'is-active' : ''} ${
+                toSide ? 'is-secondary' : ''
+              } ${id === dragId ? 'is-dragging' : ''} ${
+                dropBefore ? 'is-drop-before' : ''
+              } ${dropAfter ? 'is-drop-after' : ''}`}
               key={id}
+              data-state={state}
+              draggable
+              onDragStart={(event) => {
+                setDragId(id);
+                if (!event.dataTransfer) return;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData(TAB_DRAG_TYPE, id);
+              }}
+              onDragOver={(event) => overTab(event, index)}
+              onDrop={(event) => {
+                if (!dragId) return;
+                event.preventDefault();
+                event.stopPropagation();
+                dropDraggedTab(dropAt < 0 ? index : dropAt);
+              }}
+              onDragEnd={endDrag}
+              onAuxClick={(event) => {
+                // Middle-click closes, the way every editor does it.
+                if (event.button === 1) {
+                  event.preventDefault();
+                  onClose(id);
+                }
+              }}
             >
               <button
                 type="button"
@@ -187,10 +275,12 @@ export default function StudioTabs({
                   <FileIcon />
                 </span>
                 <span className="studio-tab__title">{label}</span>
-                {dirtyIds.has(id) && (
+                {state !== 'idle' && (
                   <span
                     className="studio-tab__dirty"
-                    aria-label="Unsaved changes"
+                    data-state={state}
+                    title={STATE_LABELS[state]}
+                    aria-label={STATE_LABELS[state]}
                   />
                 )}
               </button>
