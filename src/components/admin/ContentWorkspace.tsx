@@ -31,6 +31,12 @@ import { useStudioDocument } from './useStudioDocument';
 import { useStudioTabs } from './useStudioTabs';
 import { countWords, noteHref, titleFromBody } from './studioHelpers';
 import {
+  PHONE_QUERY,
+  useDrawerSwipe,
+  useMediaQuery,
+  useVisualViewportHeight,
+} from './studioMobile';
+import {
   DEFAULT_SESSION,
   SIDEBAR_BOUNDS,
   clamp,
@@ -65,7 +71,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [sessionRestored, setSessionRestored] = useState(false);
 
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const scrimRef = useRef<HTMLDivElement | null>(null);
   const { confirm, dialog } = useDialogConfirm();
+
+  // On a phone the sidebar is a drawer over the note rather than a column
+  // beside it, and the shell tracks the visual viewport so the format bar
+  // stays above the keyboard.
+  const phone = useMediaQuery(PHONE_QUERY);
+  useVisualViewportHeight(phone);
 
   const reportError = useCallback((message: string) => setError(message), []);
   const library = useContentLibrary(reportError);
@@ -168,6 +182,22 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const patchSession = useCallback((patch: Partial<StudioSession>) => {
     setSession((current) => ({ ...current, ...patch }));
   }, []);
+
+  const setSidebarCollapsed = useCallback(
+    (collapsed: boolean) => patchSession({ sidebarCollapsed: collapsed }),
+    [patchSession],
+  );
+
+  // Swipe in from the left edge for the file drawer, swipe it away to dismiss.
+  // Off while a dialog owns the screen, so its own gestures stay unambiguous.
+  useDrawerSwipe({
+    enabled: phone && !paletteOpen && !imageDialogOpen,
+    open: !session.sidebarCollapsed,
+    drawer: sidebarRef,
+    scrim: scrimRef,
+    onOpen: () => setSidebarCollapsed(false),
+    onClose: () => setSidebarCollapsed(true),
+  });
 
   const handleSecondaryState = useCallback(
     (_id: string, state: SaveState) => setSecondaryState(state),
@@ -287,6 +317,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   });
 
   function editEntry(entry: ContentEntryListItem) {
+    // Opening a file from the drawer closes it — on a phone the note is the
+    // screen, and the drawer was covering it.
     // If this entry is a folder's index page, make the folder itself active so
     // "New file/folder" targets inside it — the document lives in the parent,
     // so entry.folder would point one level too high.
@@ -297,9 +329,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     );
     setActiveFolder(folderNode ? folderNode.id : entry.folder);
     void openNote(entry.id, entry.folder);
-    if (window.matchMedia('(max-width: 720px)').matches) {
-      patchSession({ sidebarCollapsed: true });
-    }
+    if (window.matchMedia(PHONE_QUERY).matches) setSidebarCollapsed(true);
   }
 
   function openEntryToSide(entry: ContentEntryListItem) {
@@ -467,6 +497,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
       const mod = event.metaKey || event.ctrlKey;
+      if (event.key === 'Escape' && phone && !session.sidebarCollapsed) {
+        event.preventDefault();
+        setSidebarCollapsed(true);
+        return;
+      }
       if (mod && (event.key === 'k' || event.key === 'p')) {
         event.preventDefault();
         setPaletteOpen((open) => !open);
@@ -527,11 +562,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     session.sidebarCollapsed,
     openId,
     openIds,
+    phone,
     saveState,
     secondaryId,
     secondaryDirty,
     cycleView,
     patchSession,
+    setSidebarCollapsed,
     openNote,
   ]);
 
@@ -661,21 +698,36 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     tabStates.set(secondaryId, tabs.secondaryState);
   }
 
+  // As a drawer the sidebar stays mounted whether it is open or not, so it can
+  // slide out as well as in — and follow a finger between the two.
   return (
     <article
       className={`content-workspace studio ${fullWidth ? 'studio--full' : ''}`}
     >
       <div
-        className={`studio-grid ${sidebarVisible ? '' : 'studio-grid--collapsed'}`}
+        className={`studio-grid ${sidebarVisible ? '' : 'studio-grid--collapsed'} ${
+          phone ? 'studio-grid--drawer' : ''
+        }`}
         style={sidebarStyle}
       >
-        {sidebarVisible && (
-          <section className="studio-sidebar" aria-label="Files explorer">
-            <div
-              className="studio-sidebar__backdrop"
-              aria-hidden="true"
-              onClick={() => patchSession({ sidebarCollapsed: true })}
-            />
+        {phone && (
+          <div
+            className={`studio-scrim ${sidebarVisible ? 'is-open' : ''}`}
+            ref={scrimRef}
+            aria-hidden="true"
+            onClick={() => setSidebarCollapsed(true)}
+          />
+        )}
+        {(sidebarVisible || phone) && (
+          <section
+            className={`studio-sidebar ${phone ? 'studio-sidebar--drawer' : ''} ${
+              sidebarVisible ? 'is-open' : ''
+            }`}
+            ref={sidebarRef}
+            aria-label="Files explorer"
+            aria-hidden={phone && !sidebarVisible}
+            inert={phone && !sidebarVisible}
+          >
             {loading ? (
               <p className="admin-empty" role="status">
                 Indexing files…
@@ -694,7 +746,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onSortChange={(sort) => patchSession({ sort })}
                 onCollapseAll={() => setExpandedFolders(new Set(['']))}
                 onRefresh={() => void refreshTree()}
-                onRequestClose={() => patchSession({ sidebarCollapsed: true })}
+                onRequestClose={() => setSidebarCollapsed(true)}
                 onToggleFolder={mutations.toggleFolder}
                 onSelectFolder={setActiveFolder}
                 onEditEntry={editEntry}
@@ -791,6 +843,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                     Press <kbd>⌘</kbd>
                     <kbd>P</kbd> to go to a file, or pick one from the explorer.
                   </p>
+                  {!sidebarVisible && (
+                    <button
+                      type="button"
+                      className="studio-blank__action"
+                      onClick={() => setSidebarCollapsed(false)}
+                    >
+                      Browse files
+                    </button>
+                  )}
                 </div>
               ) : (
                 <StudioEditorPane
@@ -801,6 +862,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   wordCount={wordCount}
                   view={view}
                   hasBody={hasBody}
+                  compact={phone}
                   sidebarVisible={sidebarVisible}
                   autosave={session.autosave}
                   saveState={saveState}

@@ -128,32 +128,42 @@ export default function StudioCommandPalette({
       }}
     >
       <div className="studio-palette" role="dialog" aria-modal="true">
-        <input
-          ref={inputRef}
-          className="studio-palette__input"
-          placeholder="Go to a file or run a command…"
-          aria-label="Go to a file or run a command"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.currentTarget.value);
-            setActive(0);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              onClose();
-            } else if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              setActive((current) => Math.min(current + 1, rows.length - 1));
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              setActive((current) => Math.max(current - 1, 0));
-            } else if (event.key === 'Enter') {
-              event.preventDefault();
-              choose(rows[active]);
-            }
-          }}
-        />
+        <div className="studio-palette__search">
+          <input
+            ref={inputRef}
+            className="studio-palette__input"
+            placeholder="Go to a file or run a command…"
+            aria-label="Go to a file or run a command"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.currentTarget.value);
+              setActive(0);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose();
+              } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActive((current) => Math.min(current + 1, rows.length - 1));
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActive((current) => Math.max(current - 1, 0));
+              } else if (event.key === 'Enter') {
+                event.preventDefault();
+                choose(rows[active]);
+              }
+            }}
+          />
+          {/* The sheet fills a phone screen, leaving no backdrop to tap. */}
+          <button
+            type="button"
+            className="studio-palette__cancel"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
         <div className="studio-palette__list" ref={listRef} role="listbox">
           {rows.length === 0 ? (
             <p className="studio-palette__empty">No matches.</p>

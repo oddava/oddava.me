@@ -56,6 +56,15 @@
   outline-offset: 2px;
 }
 
+/* On a phone the two actions split the width and grow to a finger-sized
+   target, rather than sitting as a pair of small buttons in one corner. */
+@media (max-width: 480px) {
+  .confirm-dialog__actions button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
 @keyframes confirm-dialog-fade-in {
   from {
     opacity: 0;

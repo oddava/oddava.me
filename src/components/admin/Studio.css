@@ -9,6 +9,15 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* Touch: no grey flash on tap, no 300ms wait for a double-tap that this
+     workspace never uses. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.content-workspace button,
+.content-workspace a,
+.content-workspace summary {
+  touch-action: manipulation;
 }
 
 .content-workspace.admin-panel {
@@ -252,6 +261,9 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  /* A flick through the tabs must not turn into a page-level swipe. */
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .studio-tabs::-webkit-scrollbar {
@@ -646,6 +658,8 @@
   padding: 8px;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* --- Folder tree --- */
@@ -1319,6 +1333,8 @@
   background: var(--admin-surface);
   overflow-x: auto;
   scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .studio-toolbar::-webkit-scrollbar {
@@ -1432,6 +1448,8 @@
   tab-size: 2;
   resize: none;
   outline: none;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .studio-textarea::placeholder {
@@ -1459,6 +1477,8 @@
 
 .studio-preview {
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--admin-bg);
 }
 
@@ -1499,6 +1519,24 @@
   margin: 0;
   color: var(--admin-text-muted);
   font-size: 0.8rem;
+}
+
+/* The way back to the tree when the explorer is hidden — the only one a phone
+   has, where the shortcut in the hint above does not exist. */
+.content-workspace .studio-blank__action {
+  margin-top: 6px;
+  padding: 9px 18px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.content-workspace .studio-blank__action:hover {
+  border-color: var(--admin-accent);
 }
 
 .content-workspace kbd {
@@ -1573,16 +1611,39 @@
   box-shadow: 0 24px 60px color-mix(in srgb, #000 46%, transparent);
 }
 
-.studio-palette__input {
+.studio-palette__search {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.studio-palette__input {
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 15px 18px;
   border: 0;
-  border-bottom: 1px solid var(--admin-line);
   background: transparent;
   color: var(--admin-text-primary);
   font-family: inherit;
   font-size: 0.95rem;
   outline: none;
+}
+
+/* Only the phone sheet needs it: everywhere else the backdrop is tappable and
+   Escape is one key away. */
+.studio-palette__cancel {
+  display: none;
+  flex-shrink: 0;
+  margin-right: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  color: var(--admin-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
 }
 
 .studio-palette__input::placeholder {
@@ -2087,16 +2148,102 @@
   background: var(--admin-surface);
 }
 
-/* Mobile sidebar backdrop — rendered inside the sidebar and shown only when
-   the tree is displayed as a drawer on narrow screens. */
-.studio-sidebar__backdrop {
-  display: none;
+/* ---------------------------------------------------------------------------
+   Touch, then phones.
+
+   Two independent axes. The first is the input device: a finger has no hover
+   to reveal controls with, and needs a target it can actually hit — as true of
+   a 13" touchscreen as of a phone. The second is width, where the workspace
+   stops being three columns of chrome around a note and becomes one screen at
+   a time: the tree slides in over the note as a drawer, and the controls a
+   keyboard would otherwise reach move to the bottom edge, within a thumb's
+   reach and on top of the on-screen keyboard rather than behind it.
+--------------------------------------------------------------------------- */
+
+/* Without hover there is no "reveal on hover" — and these are the only handles
+   on closing a tab or opening a row's menu, so they are always on. */
+@media (hover: none) {
+  .studio-tab__close,
+  .studio-tree-row__actions {
+    opacity: 1;
+  }
+}
+
+/* 40px is about the smallest target a finger hits reliably. The dialogs render
+   through a portal on `document.body`, so their rules cannot be scoped under
+   `.content-workspace` the way the rest of the workspace is. */
+@media (pointer: coarse) {
+  .content-workspace .studio-icon-button,
+  .content-workspace .studio-tool,
+  .studio-imgdlg__close,
+  .studio-bar__toggle,
+  .studio-bar__open {
+    width: 40px;
+    height: 40px;
+  }
+
+  .content-workspace .studio-tool--wide {
+    width: auto;
+    padding: 0 12px;
+  }
+
+  .studio-tree-row {
+    min-height: 40px;
+  }
+
+  .studio-tree-row__toggle,
+  .studio-tree-row__actions,
+  .studio-tree-row__label,
+  .studio-tree-row__rename {
+    height: 38px;
+  }
+
+  .studio-tree-row__actions {
+    font-size: 0.7rem;
+  }
+
+  .studio-tree-menu button,
+  .studio-select__menu button {
+    padding: 10px 12px;
+    font-size: 0.78rem;
+  }
+
+  .studio-select__trigger {
+    height: 32px;
+  }
+
+  .studio-tab__close {
+    width: 34px;
+    flex-basis: 34px;
+  }
+
+  .content-workspace .studio-view-switch button,
+  .studio-group-bar__mode {
+    padding: 8px 12px;
+  }
+
+  .studio-palette__row,
+  .studio-wikimenu__row {
+    padding: 12px;
+  }
+
+  .studio-bulk-bar button,
+  .studio-tree-inline-move button {
+    height: 34px;
+    padding: 0 12px;
+  }
+
+  .studio-tree-row__rename input,
+  .studio-tree-inline-move select {
+    height: 32px;
+  }
 }
 
 @media (max-width: 900px) {
   .studio-grid {
     grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   }
+
   .studio-resizer {
     display: none;
   }
@@ -2112,142 +2259,276 @@
   }
 }
 
+/* The phone layout. The classes below are set by ContentWorkspace once it
+   knows it is on this layout; the drawer geometry itself is keyed on width
+   alone, so the first paint is already right. */
+.studio-grid--drawer {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The dim behind the drawer. A sibling of the drawer, not a child: a
+   transformed element is the containing block for its fixed descendants, so a
+   backdrop inside the drawer would slide away together with it. */
+.studio-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  background: color-mix(in srgb, #000 46%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.26s ease;
+}
+
+.studio-scrim.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mode switch and word count pinned to the bottom edge: reachable by thumb,
+   and pushed up by the keyboard rather than covered by it. */
+.studio-dock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 6px max(8px, env(safe-area-inset-right))
+    calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  border-top: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+}
+
+.studio-dock .studio-view-switch {
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.content-workspace .studio-dock .studio-view-switch button {
+  flex: 1 1 0;
+  padding: 9px 4px;
+  font-size: 0.78rem;
+}
+
+.studio-dock__meta {
+  flex: 0 0 auto;
+  color: var(--admin-text-muted);
+  font: 0.62rem var(--font-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 @media (max-width: 720px) {
   .studio-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
+
+  /* --- Files, as a drawer over the note --- */
 
   .studio-sidebar {
     position: fixed;
     top: 0;
-    left: 0;
     bottom: 0;
-    z-index: 40;
-    width: min(86vw, 320px);
+    left: 0;
+    z-index: 45;
+    width: min(84vw, 330px);
     max-width: none;
-    border-right: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    border-right: 1px solid var(--admin-line);
     border-radius: 0;
-    /* Same ground as the editor — the dimmed backdrop separates layers. */
-    background: var(--admin-bg);
+    background: var(--admin-surface);
+    box-shadow: 0 0 40px color-mix(in srgb, #000 45%, transparent);
+    transform: translate3d(-100%, 0, 0);
+    transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    overscroll-behavior: contain;
+    will-change: transform;
   }
 
-  .studio-sidebar__backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background: color-mix(in srgb, #000 40%, transparent);
+  .studio-sidebar.is-open {
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* While a finger is on it the drawer is positioned frame by frame. */
+  .studio-sidebar.is-dragging {
+    transition: none;
   }
 
   .studio-explorer__close {
     display: inline-grid !important;
   }
 
-  .studio-tree-row {
-    grid-template-columns: 18px minmax(0, 1fr) 34px;
-    min-height: 34px;
+  .studio-explorer__heading,
+  .studio-library__search {
+    padding-right: 10px;
+    padding-left: 12px;
   }
 
-  .studio-tree-row__toggle,
-  .studio-tree-row__actions {
-    height: 32px;
-  }
-
-  .studio-tree-row__actions {
-    opacity: 1;
-  }
-
-  .studio-tree-row__label,
-  .studio-tree-row__rename {
-    height: 32px;
+  .studio-library__search {
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 
   .studio-tree-menu {
     right: 6px;
+    min-width: 168px;
   }
 
-  .studio-bar {
+  .studio-bulk-bar {
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 6px 10px;
+    padding-bottom: calc(7px + env(safe-area-inset-bottom));
+  }
+
+  /* --- One file, one screen --- */
+
+  /* A strip carrying a single tab is a row of chrome for nothing: it hides,
+     and the note's own bar keeps the explorer toggle. */
+  .studio-workbench-nav.is-lone-file {
+    display: none;
   }
 
   .studio-workbench-nav {
-    height: 42px;
+    height: 40px;
   }
 
-  .studio-quick-open {
+  .studio-nav-actions,
+  .studio-quick-open,
+  .studio-split-action {
     display: none;
   }
 
-  .studio-nav-actions .studio-icon-button:nth-child(2),
-  .studio-nav-actions .studio-icon-button:nth-child(3) {
-    display: none;
+  .studio-workbench .studio-bar__toggle {
+    display: grid;
   }
 
   .studio-tab {
-    min-width: 124px;
-    max-width: 172px;
+    min-width: 116px;
+    max-width: 62vw;
+  }
+
+  /* One row that never wraps: toggle · title · save · autosave · open. */
+  .studio-bar {
+    gap: 2px;
+    min-height: 48px;
+    padding: 4px max(4px, env(safe-area-inset-right)) 4px
+      max(4px, env(safe-area-inset-left));
   }
 
   .studio-bar__title {
-    flex: 1 1 auto;
-    min-width: 0;
+    margin-right: auto;
+    padding: 0 4px;
   }
 
-  .studio-bar__autosave {
-    flex-shrink: 1;
-  }
-
-  .studio-view-switch {
-    flex-shrink: 1;
-  }
-
-  .studio-toolbar {
-    padding: 5px 8px;
-  }
-
-  .studio-textarea {
-    padding: 18px 14px;
+  .studio-bar__title strong {
     font-size: 0.9rem;
   }
 
-  .studio-status {
-    padding: 5px 10px;
-    font-size: 0.6rem;
+  /* The published path is a desktop nicety; the title carries the file here. */
+  .studio-bar__title code {
+    display: none;
   }
 
-  .studio-panes.is-split {
-    grid-template-columns: minmax(0, 1fr);
+  /* Save state stays as its dot — "Saved 4m ago" is three words wide on a
+     screen with none to spare. The manual Save button keeps its label. */
+  .studio-bar .studio-save:not(.studio-save--action) {
+    gap: 0;
+    font-size: 0;
   }
 
-  .studio-preview__page {
-    width: 100%;
-    padding: 20px 16px 48px;
+  .content-workspace .studio-save--action {
+    padding: 8px 14px;
+    font-size: 0.72rem;
   }
 
-  .studio-palette-overlay {
-    padding-top: 10vh;
+  .content-workspace .studio-bar__autosave {
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
   }
 
-  .studio-imgdlg-overlay {
-    padding: 12px;
-  }
-}
-
-@media (max-width: 480px) {
   .studio-bar__autosave-label {
     display: none;
   }
 
-  .content-workspace .studio-view-switch button {
-    padding: 4px 7px;
-    font-size: 0.65rem;
+  .studio-bar__autosave-dot {
+    width: 8px;
+    height: 8px;
   }
 
-  .studio-bar__toggle {
-    width: 34px;
-    height: 34px;
+  /* --- Writing --- */
+
+  /* The format bar moves under the text, where it lands on top of the
+     on-screen keyboard instead of a screenful above it. */
+  .studio-textarea {
+    order: 1;
+    padding: 16px max(16px, env(safe-area-inset-right)) 20px
+      max(16px, env(safe-area-inset-left));
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .studio-toolbar {
+    order: 2;
+    padding: 4px max(4px, env(safe-area-inset-right)) 4px
+      max(4px, env(safe-area-inset-left));
+    border-top: 1px solid var(--admin-line);
+    border-bottom: 0;
+  }
+
+  /* The word count lives in the dock now. */
+  .studio-status {
+    display: none;
+  }
+
+  .studio-panes.is-split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
+  .studio-preview__page {
+    width: 100%;
+    padding: 20px max(16px, env(safe-area-inset-right)) 48px
+      max(16px, env(safe-area-inset-left));
+  }
+
+  .studio-blank {
+    padding: 24px 20px;
+  }
+
+  /* A shortcut hint is noise on a device with no ⌘ key. */
+  .studio-blank__hint {
+    display: none;
+  }
+
+  /* --- Dialogs become sheets --- */
+
+  .studio-palette-overlay {
+    padding: 0;
+  }
+
+  .studio-palette {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    border: 0;
+    border-radius: 0;
+  }
+
+  .studio-palette__cancel {
+    display: block;
+  }
+
+  .studio-palette__input {
+    padding: 16px 18px;
+    font-size: 16px;
+  }
+
+  .studio-palette__row {
+    font-size: 0.88rem;
   }
 
   .studio-imgdlg-overlay {
@@ -2256,12 +2537,15 @@
 
   .studio-imgdlg {
     width: 100%;
-    max-height: 100vh;
+    height: 100%;
+    max-height: none;
+    padding-top: env(safe-area-inset-top);
+    border: 0;
     border-radius: 0;
   }
 
   .studio-imgdlg__body {
-    padding: 12px;
+    padding: 14px;
   }
 
   .studio-imgdlg__url {
@@ -2277,38 +2561,69 @@
     flex-wrap: wrap;
   }
 
-  .studio-imgdlg__segmented button,
-  .studio-imgdlg__presets button {
-    padding: 5px 9px;
-    font-size: 0.7rem;
-  }
-
   .studio-imgdlg__width {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
 
-  .studio-palette-overlay {
-    padding-top: 6vh;
+  .studio-imgdlg__foot {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
-  .studio-palette {
-    width: 96vw;
-    max-height: 72vh;
+  .studio-imgdlg__foot button {
+    flex: 1 1 auto;
+    min-height: 44px;
   }
 
-  .studio-palette__input {
-    padding: 12px 14px;
-  }
-
-  .studio-palette__row {
-    padding: 8px 10px;
+  /* iOS zooms the whole page when a focused field is under 16px. */
+  .content-workspace .admin-input,
+  .studio-tree-row__rename input,
+  .studio-imgdlg__field input[type='text'],
+  .studio-imgdlg__url input {
+    font-size: 16px;
   }
 
   .studio-toast {
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
     width: calc(100% - 24px);
     max-width: none;
+  }
+
+  .studio-wikimenu {
+    width: min(92vw, 320px);
+  }
+}
+
+@media (max-width: 480px) {
+  .studio-tab {
+    min-width: 104px;
+  }
+
+  .studio-explorer__sort {
+    width: 74px;
+  }
+
+  .content-workspace .studio-dock .studio-view-switch button {
+    padding: 9px 2px;
+    font-size: 0.72rem;
+  }
+
+  .studio-dock__meta {
+    font-size: 0.58rem;
+  }
+
+  .studio-imgdlg__segmented button,
+  .studio-imgdlg__presets button {
+    padding: 8px 11px;
+    font-size: 0.72rem;
+  }
+}
+
+/* The drawer and its scrim are the only motion here big enough to matter. */
+@media (prefers-reduced-motion: reduce) {
+  .studio-sidebar,
+  .studio-scrim {
+    transition: none;
   }
 }
