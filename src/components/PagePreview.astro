@@ -463,7 +463,7 @@ import '../styles/components/_page-preview.css';
         window.clearTimeout(intentTimer);
         return;
       }
-      schedule(link, isOpen ? WARM_INTENT_MS : COLD_INTENT_MS, false);
+      schedule(link, isOpen ? WARM_INTENT_MS : COLD_INTENT_MS);
     });
 
     document.addEventListener('pointerout', (event) => {
@@ -489,7 +489,7 @@ import '../styles/components/_page-preview.css';
       if (link === suppressedLink || link === activeLink) return;
       pointerX = null;
       pointerY = null;
-      schedule(link, 0, true);
+      schedule(link, 0);
     });
 
     document.addEventListener('focusout', (event) => {
