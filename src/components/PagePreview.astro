@@ -24,10 +24,7 @@ import '../styles/components/_page-preview.css';
         <p class="page-preview__title" data-page-preview-title></p>
         <p class="page-preview__excerpt" data-page-preview-excerpt></p>
       </div>
-      <p class="page-preview__meta">
-        <span class="page-preview__provenance" data-page-preview-meta></span>
-        <span class="page-preview__hint" data-page-preview-hint></span>
-      </p>
+      <p class="page-preview__meta" data-page-preview-meta></p>
     </div>
   </div>
 </aside>
@@ -57,20 +54,8 @@ import '../styles/components/_page-preview.css';
   const metaEl = preview?.querySelector<HTMLElement>(
     '[data-page-preview-meta]',
   );
-  const hintEl = preview?.querySelector<HTMLElement>(
-    '[data-page-preview-hint]',
-  );
 
-  if (
-    preview &&
-    frame &&
-    sheet &&
-    pathEl &&
-    titleEl &&
-    excerptEl &&
-    metaEl &&
-    hintEl
-  ) {
+  if (preview && frame && sheet && pathEl && titleEl && excerptEl && metaEl) {
     /** Nothing is open yet, so the reader still has to mean it. */
     const COLD_INTENT_MS = 130;
     /** A sheet is already open; scanning down a list should feel immediate. */
@@ -386,11 +371,7 @@ import '../styles/components/_page-preview.css';
       if (preview.matches(':popover-open')) preview.hidePopover();
     };
 
-    const show = async (
-      link: HTMLAnchorElement,
-      resolved: string,
-      keyboard: boolean,
-    ) => {
+    const show = async (link: HTMLAnchorElement, resolved: string) => {
       const wasOpen = isOpen;
       if (activeLink && activeLink !== link) {
         activeLink.classList.remove('page-preview-link');
@@ -398,7 +379,6 @@ import '../styles/components/_page-preview.css';
       }
       activeLink = link;
       link.classList.add('page-preview-link');
-      hintEl.textContent = keyboard ? 'enter ↵' : 'open ↗';
 
       const token = ++requestToken;
       const pathname = new URL(resolved).pathname;
@@ -439,17 +419,13 @@ import '../styles/components/_page-preview.css';
       settle();
     };
 
-    const schedule = (
-      link: HTMLAnchorElement,
-      delay: number,
-      keyboard: boolean,
-    ) => {
+    const schedule = (link: HTMLAnchorElement, delay: number) => {
       const resolved = previewPageUrl(link.href, window.location.href);
       if (!resolved) return;
       window.clearTimeout(intentTimer);
       window.clearTimeout(closeTimer);
       intentTimer = window.setTimeout(() => {
-        void show(link, resolved, keyboard);
+        void show(link, resolved);
       }, delay);
     };
 
