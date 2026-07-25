@@ -10,41 +10,127 @@ import '../styles/components/_page-preview.css';
   aria-live="polite"
   hidden
 >
-  <span class="page-preview__path" data-page-preview-path></span>
-  <strong class="page-preview__title" data-page-preview-title></strong>
-  <span class="page-preview__summary" data-page-preview-summary></span>
+  <div class="page-preview__frame">
+    <div class="page-preview__sheet">
+      <p class="page-preview__kicker">
+        <span class="page-preview__path" data-page-preview-path></span>
+      </p>
+      <div class="page-preview__skeleton" aria-hidden="true">
+        <span class="page-preview__bar page-preview__bar--title"></span>
+        <span class="page-preview__bar"></span>
+        <span class="page-preview__bar"></span>
+      </div>
+      <div class="page-preview__body">
+        <p class="page-preview__title" data-page-preview-title></p>
+        <p class="page-preview__excerpt" data-page-preview-excerpt></p>
+      </div>
+      <p class="page-preview__meta">
+        <span class="page-preview__provenance" data-page-preview-meta></span>
+        <span class="page-preview__hint" data-page-preview-hint></span>
+      </p>
+    </div>
+  </div>
 </aside>
 
 <script>
-  import { previewPageUrl } from '../lib/page-preview';
-
-  interface PagePreviewData {
-    path: string;
-    title: string;
-    summary: string;
-  }
+  import {
+    composePreviewContent,
+    formatPreviewPath,
+    previewPageUrl,
+    resolvePreviewPlacement,
+    type PreviewContent,
+    type PreviewRect,
+  } from '../lib/page-preview';
 
   const preview = document.querySelector<HTMLElement>('#page-preview');
-  const path = preview?.querySelector<HTMLElement>('[data-page-preview-path]');
-  const title = preview?.querySelector<HTMLElement>(
+  const frame = preview?.querySelector<HTMLElement>('.page-preview__frame');
+  const sheet = preview?.querySelector<HTMLElement>('.page-preview__sheet');
+  const pathEl = preview?.querySelector<HTMLElement>(
+    '[data-page-preview-path]',
+  );
+  const titleEl = preview?.querySelector<HTMLElement>(
     '[data-page-preview-title]',
   );
-  const summary = preview?.querySelector<HTMLElement>(
-    '[data-page-preview-summary]',
+  const excerptEl = preview?.querySelector<HTMLElement>(
+    '[data-page-preview-excerpt]',
+  );
+  const metaEl = preview?.querySelector<HTMLElement>(
+    '[data-page-preview-meta]',
+  );
+  const hintEl = preview?.querySelector<HTMLElement>(
+    '[data-page-preview-hint]',
   );
 
-  if (preview && path && title && summary) {
-    const HOVER_INTENT_MS = 140;
+  if (
+    preview &&
+    frame &&
+    sheet &&
+    pathEl &&
+    titleEl &&
+    excerptEl &&
+    metaEl &&
+    hintEl
+  ) {
+    /** Nothing is open yet, so the reader still has to mean it. */
+    const COLD_INTENT_MS = 130;
+    /** A sheet is already open; scanning down a list should feel immediate. */
+    const WARM_INTENT_MS = 45;
+    /** Leaving a link is not the same as leaving the links — cross the gap
+        between two neighbours and the sheet swaps instead of blinking shut. */
+    const CLOSE_GRACE_MS = 90;
+    /** Long enough to cover the translate and block-size transitions. */
+    const GLIDE_MS = 280;
     const MAX_CACHE_ENTRIES = 24;
+    const EDGE_MARGIN = 12;
+    /** How far the sheet's leading edge sits ahead of the attachment point. */
+    const PANEL_LEAD = 28;
+    /** A link needs this much of itself on screen to still be worth pointing at. */
+    const VISIBLE_SLACK = 8;
+
+    interface CacheEntry {
+      promise: Promise<PreviewContent | null>;
+      /** Set once resolved, so a revisit renders without a loading frame. */
+      settled?: PreviewContent | null;
+    }
+
+    const cssNumber = (
+      element: Element,
+      property: string,
+      fallback: number,
+    ) => {
+      const value = parseFloat(
+        getComputedStyle(element).getPropertyValue(property),
+      );
+      return Number.isFinite(value) ? value : fallback;
+    };
+
+    // The stylesheet owns these dimensions; read them once so the geometry and
+    // the leader line cannot drift apart.
+    const GAP = cssNumber(preview, '--preview-gap', 10);
+    const FRAME_BORDERS =
+      cssNumber(frame, 'border-top-width', 1) +
+      cssNumber(frame, 'border-bottom-width', 1);
+
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
     const previewsDisabled = window.matchMedia(
       '(max-width: 720px), (hover: none), (pointer: coarse)',
     );
-    const cache = new Map<string, Promise<PagePreviewData | null>>();
+    const cache = new Map<string, CacheEntry>();
+
     let activeLink: HTMLAnchorElement | null = null;
+    let hoveredLink: HTMLAnchorElement | null = null;
+    /** Dismissed with Escape; stays quiet until the reader leaves it. */
+    let suppressedLink: HTMLAnchorElement | null = null;
+    let describedLink: HTMLAnchorElement | null = null;
     let previousDescription: string | null = null;
+    let pointerX: number | null = null;
+    let pointerY: number | null = null;
     let intentTimer = 0;
+    let closeTimer = 0;
+    let glideTimer = 0;
+    let placementFrame = 0;
     let requestToken = 0;
+    let isOpen = false;
 
     const eligibleLink = (target: EventTarget | null) => {
       if (previewsDisabled.matches) return null;
@@ -61,46 +147,160 @@ import '../styles/components/_page-preview.css';
       return previewPageUrl(link.href, window.location.href) ? link : null;
     };
 
-    const closePreview = () => {
-      window.clearTimeout(intentTimer);
-      requestToken += 1;
+    /* --- Geometry ------------------------------------------------------- */
 
-      if (activeLink) {
-        activeLink.classList.remove('page-preview-link');
-        if (previousDescription === null) {
-          activeLink.removeAttribute('aria-describedby');
-        } else {
-          activeLink.setAttribute('aria-describedby', previousDescription);
+    /**
+     * The line box the reader is actually looking at. A link wrapped across
+     * two lines has a bounding rect that spans both and starts wherever the
+     * first line began — anchoring to it would put the sheet somewhere the
+     * pointer never was.
+     */
+    const anchorRect = (link: HTMLAnchorElement): PreviewRect | null => {
+      const rects = Array.from(link.getClientRects());
+      if (rects.length === 0) return null;
+      if (rects.length === 1 || pointerY === null) return rects[0]!;
+
+      let closest = rects[0]!;
+      let shortest = Infinity;
+      for (const rect of rects) {
+        const distance =
+          pointerY < rect.top
+            ? rect.top - pointerY
+            : pointerY > rect.bottom
+              ? pointerY - rect.bottom
+              : 0;
+        if (distance < shortest) {
+          closest = rect;
+          shortest = distance;
         }
       }
-
-      activeLink = null;
-      previousDescription = null;
-      if (preview.matches(':popover-open')) preview.hidePopover();
-      preview.hidden = true;
+      return closest;
     };
 
-    const openPreview = () => {
-      preview.hidden = false;
-      if (!preview.matches(':popover-open')) preview.showPopover();
+    /** Target height, read from the sheet so an in-flight height transition
+        on the frame cannot feed a stale number back into placement. */
+    const panelHeight = () => sheet.offsetHeight + FRAME_BORDERS;
+
+    const setVar = (name: string, value: string) => {
+      // CSSOM writes, not authored style attributes: `style-src` does not
+      // govern these, so the strict hashed CSP is untouched.
+      preview.style.setProperty(name, value);
     };
 
-    const renderLoading = (url: URL) => {
-      preview.classList.add('page-preview--loading');
-      path.textContent = url.pathname;
-      title.textContent = 'Loading page…';
-      summary.textContent = '';
+    const place = () => {
+      if (!activeLink) return;
+      const anchor = anchorRect(activeLink);
+      if (
+        !anchor ||
+        anchor.bottom < VISIBLE_SLACK ||
+        anchor.top > window.innerHeight - VISIBLE_SLACK
+      ) {
+        closePanel();
+        return;
+      }
+
+      const placement = resolvePreviewPlacement({
+        anchor,
+        pointerX,
+        panel: { width: preview.offsetWidth, height: panelHeight() },
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        margin: EDGE_MARGIN,
+        gap: GAP,
+        lead: PANEL_LEAD,
+      });
+
+      preview.dataset.placement = placement.side;
+      setVar('--preview-x', `${Math.round(placement.x)}px`);
+      setVar('--preview-y', `${Math.round(placement.y)}px`);
+      setVar('--preview-tether-x', `${Math.round(placement.tetherX)}px`);
     };
 
-    const renderPreview = (data: PagePreviewData) => {
-      preview.classList.remove('page-preview--loading');
-      path.textContent = data.path;
-      title.textContent = data.title;
-      summary.textContent = data.summary;
-      summary.hidden = !data.summary;
+    const syncHeight = () => {
+      setVar('--preview-block-size', `${sheet.offsetHeight}px`);
     };
 
-    const loadPreview = (url: string): Promise<PagePreviewData | null> => {
+    /** Ease the next placement and resize, then go back to tracking instantly
+        so scroll repositioning never trails the link it belongs to. */
+    const glide = () => {
+      preview.classList.add('page-preview--glide');
+      window.clearTimeout(glideTimer);
+      glideTimer = window.setTimeout(() => {
+        preview.classList.remove('page-preview--glide');
+      }, GLIDE_MS);
+    };
+
+    const settle = () => {
+      preview.classList.remove('page-preview--settling');
+      void preview.offsetWidth;
+      preview.classList.add('page-preview--settling');
+    };
+
+    preview.addEventListener('animationend', () => {
+      preview.classList.remove('page-preview--settling');
+    });
+
+    /* --- Content -------------------------------------------------------- */
+
+    const renderLoading = (pathname: string) => {
+      preview.dataset.state = 'loading';
+      pathEl.textContent = formatPreviewPath(pathname);
+      titleEl.textContent = '';
+      excerptEl.textContent = '';
+      excerptEl.hidden = true;
+      metaEl.textContent = '';
+    };
+
+    const renderContent = (content: PreviewContent) => {
+      preview.dataset.state = 'ready';
+      pathEl.textContent = content.path;
+      titleEl.textContent = content.title;
+      excerptEl.textContent = content.excerpt;
+      excerptEl.hidden = !content.excerpt;
+      metaEl.textContent = content.meta;
+    };
+
+    const renderUnavailable = (pathname: string) => {
+      preview.dataset.state = 'empty';
+      pathEl.textContent = formatPreviewPath(pathname);
+      titleEl.textContent = 'no preview for this page';
+      excerptEl.textContent = '';
+      excerptEl.hidden = true;
+    };
+
+    const firstParagraph = (root: ParentNode) => {
+      for (const paragraph of root.querySelectorAll('p')) {
+        const text = paragraph.textContent?.trim() ?? '';
+        // Short paragraphs on note pages are metadata ("updated 4 may"), not
+        // the opening the reader wants to see.
+        if (text.length >= 40) return text;
+      }
+      return null;
+    };
+
+    const countWords = (text: string) =>
+      text.trim().split(/\s+/).filter(Boolean).length;
+
+    const readPreview = (html: string, responseUrl: URL) => {
+      const parsed = new DOMParser().parseFromString(html, 'text/html');
+      const main = parsed.querySelector('main') ?? parsed.body;
+      // A note page puts its backlinks, related notes and local map inside
+      // <main> alongside the article. Read the document itself, so neither the
+      // opening line nor the reading time comes from the rail beside it.
+      const body = main?.querySelector('article') ?? main;
+      return composePreviewContent({
+        pathname: responseUrl.pathname,
+        heading: main?.querySelector('h1')?.textContent,
+        documentTitle: parsed.title,
+        description: parsed.querySelector<HTMLMetaElement>(
+          'meta[name=description]',
+        )?.content,
+        lead: body ? firstParagraph(body) : null,
+        updated: main?.querySelector('time[datetime]')?.textContent,
+        wordCount: countWords(body?.textContent ?? ''),
+      });
+    };
+
+    const loadPreview = (url: string): CacheEntry => {
       const cached = cache.get(url);
       if (cached) {
         // Refresh insertion order so frequently revisited pages survive the
@@ -110,114 +310,250 @@ import '../styles/components/_page-preview.css';
         return cached;
       }
 
-      const request = fetch(url, {
-        credentials: 'same-origin',
-        headers: { Accept: 'text/html' },
-      })
-        .then(async (response): Promise<PagePreviewData | null> => {
-          if (!response.ok) return null;
-          if (!response.headers.get('content-type')?.includes('text/html')) {
-            return null;
-          }
-          if (new URL(response.url).origin !== window.location.origin) {
-            return null;
-          }
-
-          const document = new DOMParser().parseFromString(
-            await response.text(),
-            'text/html',
-          );
-          const heading = document
-            .querySelector('main h1')
-            ?.textContent?.trim();
-          const documentTitle = document.title
-            .replace(/\s+\|\s+oddava(?:\.me)?$/i, '')
-            .trim();
-          const previewTitle = heading || documentTitle;
-          if (!previewTitle) return null;
-
-          const description =
-            document
-              .querySelector<HTMLMetaElement>('meta[name=description]')
-              ?.content.trim() ?? '';
-          const responseUrl = new URL(response.url);
-          return {
-            path: responseUrl.pathname,
-            title: previewTitle,
-            summary: description,
-          };
+      const entry: CacheEntry = {
+        promise: fetch(url, {
+          credentials: 'same-origin',
+          headers: { Accept: 'text/html' },
         })
-        .catch(() => null);
+          .then(async (response): Promise<PreviewContent | null> => {
+            if (!response.ok) return null;
+            if (!response.headers.get('content-type')?.includes('text/html')) {
+              return null;
+            }
+            const responseUrl = new URL(response.url);
+            if (responseUrl.origin !== window.location.origin) return null;
+            return readPreview(await response.text(), responseUrl);
+          })
+          .catch(() => null),
+      };
+      entry.promise.then((content) => {
+        entry.settled = content;
+      });
 
-      cache.set(url, request);
+      cache.set(url, entry);
       if (cache.size > MAX_CACHE_ENTRIES) {
         cache.delete(cache.keys().next().value!);
       }
-      return request;
+      return entry;
     };
 
-    const schedulePreview = (link: HTMLAnchorElement, delay: number) => {
+    /* --- Open / close --------------------------------------------------- */
+
+    const describe = (link: HTMLAnchorElement) => {
+      if (describedLink === link) return;
+      undescribe();
+      previousDescription = link.getAttribute('aria-describedby');
+      link.setAttribute(
+        'aria-describedby',
+        [previousDescription, preview.id].filter(Boolean).join(' '),
+      );
+      describedLink = link;
+    };
+
+    const undescribe = () => {
+      if (!describedLink) return;
+      if (previousDescription === null) {
+        describedLink.removeAttribute('aria-describedby');
+      } else {
+        describedLink.setAttribute('aria-describedby', previousDescription);
+      }
+      describedLink = null;
+      previousDescription = null;
+    };
+
+    const openPanel = () => {
+      if (isOpen) return;
+      // The attribute only guards the pre-script state; after the first open
+      // the popover's own closed state handles display — and leaving it off
+      // is what lets the exit transition run at all.
+      preview.hidden = false;
+      preview.classList.remove('page-preview--glide');
+      if (!preview.matches(':popover-open')) preview.showPopover();
+      isOpen = true;
+    };
+
+    const closePanel = () => {
       window.clearTimeout(intentTimer);
+      window.clearTimeout(closeTimer);
+      window.clearTimeout(glideTimer);
+      requestToken += 1;
+      activeLink?.classList.remove('page-preview-link');
+      undescribe();
+      activeLink = null;
+      isOpen = false;
+      preview.classList.remove('page-preview--glide');
+      preview.classList.remove('page-preview--settling');
+      if (preview.matches(':popover-open')) preview.hidePopover();
+    };
+
+    const show = async (
+      link: HTMLAnchorElement,
+      resolved: string,
+      keyboard: boolean,
+    ) => {
+      const wasOpen = isOpen;
+      if (activeLink && activeLink !== link) {
+        activeLink.classList.remove('page-preview-link');
+        undescribe();
+      }
+      activeLink = link;
+      link.classList.add('page-preview-link');
+      hintEl.textContent = keyboard ? 'enter ↵' : 'open ↗';
+
+      const token = ++requestToken;
+      const pathname = new URL(resolved).pathname;
+      const entry = loadPreview(resolved);
+
+      // The sheet has to be rendered before it can be measured, and the
+      // browser cannot paint between here and the end of this task — so it is
+      // shown, filled, sized, and placed without ever being seen misplaced.
+      openPanel();
+      if (wasOpen) glide();
+      // A page already in the cache skips the loading frame entirely: the
+      // sheet simply becomes the next document.
+      if (entry.settled !== undefined) {
+        if (entry.settled) renderContent(entry.settled);
+        else renderUnavailable(pathname);
+      } else {
+        renderLoading(pathname);
+      }
+      syncHeight();
+      place();
+      if (wasOpen) settle();
+      if (entry.settled !== undefined) {
+        if (entry.settled) describe(link);
+        return;
+      }
+
+      const content = await entry.promise;
+      if (token !== requestToken || activeLink !== link) return;
+      if (content) {
+        renderContent(content);
+        describe(link);
+      } else {
+        renderUnavailable(pathname);
+      }
+      glide();
+      syncHeight();
+      place();
+      settle();
+    };
+
+    const schedule = (
+      link: HTMLAnchorElement,
+      delay: number,
+      keyboard: boolean,
+    ) => {
       const resolved = previewPageUrl(link.href, window.location.href);
       if (!resolved) return;
-
-      intentTimer = window.setTimeout(async () => {
-        if (activeLink && activeLink !== link) closePreview();
-
-        activeLink = link;
-        previousDescription = link.getAttribute('aria-describedby');
-        link.classList.add('page-preview-link');
-        link.setAttribute(
-          'aria-describedby',
-          [previousDescription, preview.id].filter(Boolean).join(' '),
-        );
-
-        const token = ++requestToken;
-        renderLoading(new URL(resolved));
-        openPreview();
-
-        const data = await loadPreview(resolved);
-        if (token !== requestToken || activeLink !== link) return;
-        if (!data) {
-          closePreview();
-          return;
-        }
-        renderPreview(data);
+      window.clearTimeout(intentTimer);
+      window.clearTimeout(closeTimer);
+      intentTimer = window.setTimeout(() => {
+        void show(link, resolved, keyboard);
       }, delay);
     };
 
+    /* --- Events --------------------------------------------------------- */
+
     previewsDisabled.addEventListener('change', () => {
-      if (previewsDisabled.matches) closePreview();
+      if (previewsDisabled.matches) closePanel();
     });
+
+    document.addEventListener(
+      'pointermove',
+      (event) => {
+        // Bound to an active hover, so this is a pair of assignments while the
+        // pointer is over a previewable link and nothing at all otherwise.
+        if (!hoveredLink) return;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+      },
+      { passive: true },
+    );
 
     document.addEventListener('pointerover', (event) => {
       if (!finePointer.matches) return;
       const link = eligibleLink(event.target);
       if (!link || link.contains(event.relatedTarget as Node | null)) return;
-      schedulePreview(link, HOVER_INTENT_MS);
+
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      hoveredLink = link;
+      if (link === suppressedLink) return;
+      if (link === activeLink) {
+        // Re-entering the open sheet's own link cancels a pending close; the
+        // sheet stays exactly where the reader left it.
+        window.clearTimeout(closeTimer);
+        window.clearTimeout(intentTimer);
+        return;
+      }
+      schedule(link, isOpen ? WARM_INTENT_MS : COLD_INTENT_MS, false);
     });
 
     document.addEventListener('pointerout', (event) => {
       const link = eligibleLink(event.target);
       if (!link || link.contains(event.relatedTarget as Node | null)) return;
-      if (link === activeLink) closePreview();
-      else window.clearTimeout(intentTimer);
+      if (link === hoveredLink) hoveredLink = null;
+      if (link === suppressedLink) suppressedLink = null;
+      window.clearTimeout(intentTimer);
+      if (link !== activeLink) return;
+      window.clearTimeout(closeTimer);
+      closeTimer = window.setTimeout(closePanel, CLOSE_GRACE_MS);
     });
 
     document.addEventListener('focusin', (event) => {
       const link = eligibleLink(event.target);
-      if (link) schedulePreview(link, 0);
+      if (!link) {
+        if (activeLink && !hoveredLink) closePanel();
+        return;
+      }
+      // Only keyboard focus opens a preview; a click's focus would otherwise
+      // reopen the sheet the reader is already navigating away from.
+      if (!link.matches(':focus-visible')) return;
+      if (link === suppressedLink || link === activeLink) return;
+      pointerX = null;
+      pointerY = null;
+      schedule(link, 0, true);
     });
 
     document.addEventListener('focusout', (event) => {
       const link = eligibleLink(event.target);
-      if (link && !link.contains(event.relatedTarget as Node | null)) {
-        closePreview();
+      if (!link || link.contains(event.relatedTarget as Node | null)) return;
+      if (link === suppressedLink) suppressedLink = null;
+      if (link !== activeLink) {
+        window.clearTimeout(intentTimer);
+        return;
       }
+      if (hoveredLink === link) return;
+      closePanel();
     });
 
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && activeLink) closePreview();
+      if (event.key !== 'Escape' || !activeLink) return;
+      suppressedLink = activeLink;
+      closePanel();
     });
+
+    document.addEventListener(
+      'pointerdown',
+      () => {
+        if (activeLink) closePanel();
+      },
+      { passive: true },
+    );
+
+    const trackPlacement = () => {
+      if (!activeLink || placementFrame) return;
+      placementFrame = window.requestAnimationFrame(() => {
+        placementFrame = 0;
+        place();
+      });
+    };
+
+    window.addEventListener('scroll', trackPlacement, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener('resize', trackPlacement, { passive: true });
   }
 </script>
