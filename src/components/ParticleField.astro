@@ -1,0 +1,35 @@
+---
+import {
+  presetForPath,
+  resolvePreset,
+  type ParticlePresetName,
+} from '@lib/particles/presets';
+import '../styles/components/_particle-field.css';
+
+export interface Props {
+  /** Overrides the mood the route would choose for itself. */
+  preset?: ParticlePresetName;
+}
+
+const { preset } = Astro.props;
+// Routes get a sensible mood without asking for one: open pages carry a fuller
+// field, reading pages a quieter one that stays clear of the text column.
+const resolved = preset
+  ? resolvePreset(preset)
+  : presetForPath(Astro.url.pathname);
+---
+
+<div class="particle-field" data-preset={resolved.name} aria-hidden="true">
+  <canvas class="particle-field__canvas"></canvas>
+  <span class="particle-field__tone" data-tone="far"></span>
+  <span class="particle-field__tone" data-tone="near"></span>
+</div>
+
+<script>
+  import { mountParticleField } from '../lib/particles/mount';
+
+  const root = document.querySelector<HTMLElement>('.particle-field');
+  // Returns null when the device has no usable WebGL: the page then keeps its
+  // own surface colour and nothing else changes.
+  if (root) mountParticleField(root);
+</script>

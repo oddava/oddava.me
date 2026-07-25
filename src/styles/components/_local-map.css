@@ -1,0 +1,387 @@
+/* Bearings — the note's neighbourhood as a strip map rather than a graph.
+   One trunk line runs down the containment path; contents branch off it at 45°;
+   links are dashed spurs that either leave the trunk or arrive at it. Reading
+   the drawing top to bottom is reading the path down to where you stand.
+
+   Nothing here moves on its own. An opening sweep and a breathing locator both
+   existed and both were cut: this sits in the rail of a page meant for reading,
+   where ambient motion in the corner of the eye is a cost paid on every note for
+   an effect seen once. Motion is reserved for answering a pointer or a key. */
+
+.local-map {
+  --map-trunk: color-mix(in srgb, var(--color-brand) 32%, transparent);
+  --map-mark: var(--color-text-disabled);
+  --map-here: var(--color-text-interactive);
+  --map-lit: var(--color-text-interactive-hover);
+  /* One knob for the drawing's scale. The marker SVG is authored in a 26-unit
+     box and rendered at whatever this says, so the whole diagram — trunk, 45°
+     traces, arrowheads — resizes proportionally from here. Since the SVG also
+     sets the row's floor, this is what decides how tall the map can get. */
+  --map-gutter: 26px;
+  --map-trunk-x: calc(var(--map-gutter) * 9 / 26);
+  --map-row: 2.35rem;
+  --map-title: 0.9rem;
+  --map-path: 0.8rem;
+}
+
+.local-map__frame {
+  position: relative;
+  max-width: 26rem;
+  margin-top: 0.15rem;
+  isolation: isolate;
+}
+
+.local-map__stops {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.local-map__stop {
+  position: relative;
+  transition: opacity 240ms ease 70ms;
+}
+
+/* Two halves rather than one line: the split at the row's centre is where the
+   trunk can change character (solid through structure, frayed through links)
+   without any row needing to know what its neighbours are.
+
+   The layers behind each row are ordered explicitly, because the natural one is
+   wrong: a row's `::after` follows its link in document order and would draw the
+   trunk straight across the marker it is supposed to pass behind. */
+.local-map__stop::before,
+.local-map__stop::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: var(--map-trunk-x);
+  width: 1px;
+  height: 50%;
+  background: var(--map-trunk);
+  pointer-events: none;
+}
+
+.local-map__stop::before {
+  top: 0;
+}
+
+.local-map__stop::after {
+  top: 50%;
+}
+
+.local-map__stop:first-child::before,
+.local-map__stop:last-child::after {
+  display: none;
+}
+
+.local-map__frame--continues .local-map__stop:first-child::before {
+  display: block;
+}
+
+/* References sit on the same axis but are not part of the structure, so the
+   trunk frays rather than stops — the line carries on, thinner in meaning. */
+.local-map__stop--ref::before,
+.local-map__stop--ref::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--map-trunk) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+/* The path continues above the ancestors that fit; it fades in from nothing
+   rather than starting at a first stop that is not really the first. */
+.local-map__continues {
+  position: relative;
+  display: block;
+  height: 0.85rem;
+}
+
+.local-map__continues::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--map-trunk-x);
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--map-trunk));
+}
+
+.local-map__link {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--map-gutter) minmax(0, 1fr) auto;
+  gap: var(--map-gap, 0.5rem);
+  align-items: center;
+  min-height: var(--map-row);
+  padding-right: 0.4rem;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Behind the trunk, not over it: a row's wash would otherwise paint across the
+   one line the whole drawing hangs from. */
+.local-map__link::before {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-overlay-soft) 62%, transparent),
+    transparent 76%
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.local-map__stop--current .local-map__link::before,
+.local-map__link:hover::before,
+.local-map__link:focus-visible::before {
+  opacity: 1;
+}
+
+.local-map__link:focus-visible {
+  outline: 1px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Hovering one stop is a question about that stop, so the rest of the line
+   recedes without leaving. The delay lets a cursor cross on its way elsewhere
+   without setting the map flickering — the same restraint the landscape uses. */
+.local-map__stops:hover .local-map__stop:not(:hover):not(:focus-within),
+.local-map__stops:focus-within .local-map__stop:not(:hover):not(:focus-within) {
+  opacity: 0.4;
+}
+
+/* Marks */
+
+/* The width/height attributes are the no-CSS fallback; the viewBox is what makes
+   the drawing scale to `--map-gutter` without any coordinate being restated. */
+.local-map__mark {
+  display: block;
+  width: var(--map-gutter);
+  height: var(--map-gutter);
+  overflow: visible;
+}
+
+.local-map__trace {
+  fill: none;
+  stroke: var(--map-trunk);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 180ms ease;
+}
+
+.local-map__trace--ref {
+  stroke-dasharray: 2 2.4;
+}
+
+.local-map__arrow {
+  fill: none;
+  stroke: var(--map-mark);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    stroke 180ms ease,
+    transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.local-map__dot {
+  fill: var(--color-surface);
+  stroke: var(--map-mark);
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    fill 180ms ease,
+    stroke 180ms ease,
+    transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.local-map__dot--here {
+  fill: var(--map-here);
+  stroke: var(--map-lit);
+}
+
+.local-map__dot--more {
+  stroke-dasharray: 1.6 1.6;
+}
+
+.local-map__link:hover .local-map__dot,
+.local-map__link:focus-visible .local-map__dot {
+  fill: var(--map-lit);
+  stroke: var(--map-lit);
+  transform: scale(1.35);
+}
+
+.local-map__link:hover .local-map__arrow,
+.local-map__link:focus-visible .local-map__arrow {
+  stroke: var(--map-lit);
+  transform: scale(1.2);
+}
+
+.local-map__link:hover .local-map__trace,
+.local-map__link:focus-visible .local-map__trace {
+  stroke: color-mix(in srgb, var(--map-lit) 55%, transparent);
+}
+
+/* Type */
+
+.local-map__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--map-title);
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 180ms ease;
+}
+
+/* Ancestors are the breadcrumb stood on its end, so they keep its mono voice —
+   a path segment, not a destination. */
+.local-map__stop--ancestor .local-map__title {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--map-path);
+  letter-spacing: -0.01em;
+}
+
+.local-map__stop--current .local-map__title {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.local-map__stop--more .local-map__title {
+  color: var(--color-text-disabled);
+  font-family: var(--font-mono);
+  font-size: var(--map-path);
+}
+
+.local-map__link:hover .local-map__title,
+.local-map__link:focus-visible .local-map__title {
+  color: var(--color-text-primary);
+}
+
+.local-map__zoom {
+  color: var(--color-text-disabled);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition:
+    color 180ms ease,
+    opacity 180ms ease;
+}
+
+.local-map__link:hover .local-map__zoom,
+.local-map__link:focus-visible .local-map__zoom {
+  color: var(--map-lit);
+  opacity: 1;
+}
+
+/* The readout names what the drawing shows, so the geometry is learnable rather
+   than decorative. It holds its line height empty so the map never reflows. */
+.local-map__readout {
+  min-height: 1.15rem;
+  margin: 0.55rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-rule);
+  color: var(--color-text-disabled);
+  font: 0.65rem / 1.35 var(--font-mono);
+  letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
+}
+
+/* Light */
+
+/* A dash the length of a quarter of its path, sliding from the path's start to
+   its end. `pathLength="1"` normalises every trace to the same units, so one
+   keyframe drives a 4px spur and a full-height trunk segment alike. */
+.local-map__pulse {
+  fill: none;
+  stroke: var(--map-lit);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.26 1;
+  stroke-dashoffset: 1.26;
+  opacity: 0;
+}
+
+.local-map__link:hover .local-map__pulse,
+.local-map__link:focus-visible .local-map__pulse {
+  opacity: 0.95;
+  animation: local-map-pulse 1.1s linear infinite;
+}
+
+@keyframes local-map-pulse {
+  from {
+    stroke-dashoffset: 1.26;
+  }
+  to {
+    stroke-dashoffset: 0.26;
+  }
+}
+
+/* You are here: a static locator ring. It used to breathe on a 4.4s loop, which
+   is exactly the kind of movement a reading page should not have in its margin. */
+.local-map__ring {
+  fill: none;
+  stroke: var(--map-here);
+  stroke-width: 1;
+  opacity: 0.22;
+}
+
+/* In the rail the map is one of four sections in a 15rem column, so its type
+   steps down a notch; stacked under the article it is the only thing on its
+   line and needs a finger-sized row. The drawing keeps its full 26px scale in
+   both — the rail stretches to fit it rather than the map shrinking to fit the
+   rail (see `.note-context__inner` in `_garden.css`). */
+@media (min-width: 78rem) {
+  .note-context .local-map {
+    --map-row: 1.9rem;
+    --map-title: 0.8125rem;
+    --map-path: 0.75rem;
+  }
+
+  .note-context .local-map__frame {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .local-map__stop,
+  .local-map__link::before,
+  .local-map__trace,
+  .local-map__arrow,
+  .local-map__dot,
+  .local-map__title,
+  .local-map__zoom {
+    transition: none;
+  }
+
+  .local-map__link:hover .local-map__dot,
+  .local-map__link:focus-visible .local-map__dot,
+  .local-map__link:hover .local-map__arrow,
+  .local-map__link:focus-visible .local-map__arrow {
+    transform: none;
+  }
+
+  /* The pulse is the only cue that says which way a link points, so it stays —
+     as a lit spur rather than a travelling one. */
+  .local-map__link:hover .local-map__pulse,
+  .local-map__link:focus-visible .local-map__pulse {
+    opacity: 0.7;
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
