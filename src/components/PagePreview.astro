@@ -242,6 +242,9 @@ import '../styles/components/_page-preview.css';
       excerptEl.textContent = content.excerpt;
       excerptEl.hidden = !content.excerpt;
       metaEl.textContent = content.meta;
+      // A page with no date and too little text to time leaves no footer to
+      // rule off, so the rule goes too rather than closing an empty row.
+      metaEl.hidden = !content.meta;
     };
 
     const renderUnavailable = (pathname: string) => {
