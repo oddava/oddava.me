@@ -1,5 +1,6 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
+import { hasLocalMap } from '@lib/garden/local-map';
 import { renderNote } from '@lib/garden/render';
 import { bodyProvidesTitleHeading, formatNoteDate } from '@lib/garden/utils';
 import LocalNoteMap from './LocalNoteMap.astro';
@@ -155,10 +156,10 @@ const hasSupplementary = Astro.slots.has('default');
       <NoteBacklinks document={document} index={index} />
       <RelatedNotes document={document} index={index} />
       {
-        /* Folder notes only. On a leaf note the map has nothing to show that
-           the breadcrumb and link lists haven't already said — usually just a
-           parent and the note itself, which reads as decoration. */
-        document.childIds.length > 0 && (
+        /* Any note with a neighbourhood — see `hasLocalMap`, which the
+           landscape's "bearings" link asks too so it never points at a
+           missing anchor. */
+        hasLocalMap(document, index) && (
           <LocalNoteMap document={document} index={index} />
         )
       }

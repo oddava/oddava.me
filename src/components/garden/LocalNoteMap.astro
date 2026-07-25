@@ -1,398 +1,317 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
-import { deriveLocalMap, type LocalMapNeighbor } from '@lib/garden/local-map';
+import { deriveLocalMap, type LocalMapStop } from '@lib/garden/local-map';
 import { NOTES_GRAPH_PATH } from '@lib/site-routes';
+import '../../styles/components/_local-map.css';
 
 interface Props {
   document: GardenDocument;
   index: GardenIndex;
 }
 
-interface PositionedNeighbor extends LocalMapNeighbor {
-  x: number;
-  y: number;
-  label: string;
-  labelX: number;
-  labelY: number;
-  textAnchor: 'start' | 'middle' | 'end';
-}
-
 const { document, index } = Astro.props;
 const map = deriveLocalMap(document, index);
-const center = { x: 120, y: 96 };
-const markerId = 'local-note-map-arrow';
 
-const relationshipLabels: Record<LocalMapNeighbor['relationship'], string> = {
-  parent: 'parent folder',
-  child: 'inside this folder',
-  outbound: 'linked note',
-  backlink: 'links here',
-};
+const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.id)}`;
 
-const shorten = (value: string, limit: number) => {
-  const characters = [...value];
-  return characters.length <= limit
-    ? value
-    : `${characters.slice(0, limit - 1).join('')}…`;
-};
+/** One row of the strip map: a station on the trunk, or something hanging off it. */
+type StopKind =
+  'ancestor' | 'current' | 'child' | 'more' | 'outbound' | 'backlink';
 
-const positionsFor = (
-  relationship: LocalMapNeighbor['relationship'],
-  count: number,
-) => {
-  if (relationship === 'parent') return [{ x: 120, y: 22 }];
-  if (relationship === 'child') {
-    if (count === 1) return [{ x: 120, y: 171 }];
-    if (count === 2) {
-      return [
-        { x: 72, y: 171 },
-        { x: 168, y: 171 },
-      ];
-    }
-    return [
-      { x: 38, y: 171 },
-      { x: 120, y: 171 },
-      { x: 202, y: 171 },
-    ];
-  }
+interface Row {
+  kind: StopKind;
+  href: string;
+  title: string;
+  /** Spoken form — carries the relationship, which the drawing carries visually. */
+  label: string;
+  /** Written form for the readout, in the map's own shorthand. */
+  detail: string;
+}
 
-  const x = relationship === 'backlink' ? 28 : 212;
-  if (count === 1) return [{ x, y: 96 }];
-  return [
-    { x, y: 63 },
-    { x, y: 129 },
-  ];
-};
-
-const positioned: PositionedNeighbor[] = map
-  ? (['parent', 'child', 'outbound', 'backlink'] as const).flatMap(
-      (relationship) => {
-        const neighbors = map.neighbors.filter(
-          (neighbor) => neighbor.relationship === relationship,
-        );
-        const positions = positionsFor(relationship, neighbors.length);
-        const isStacked = relationship === 'parent' || relationship === 'child';
-        return neighbors.map((neighbor, positionIndex) => {
-          const position = positions[positionIndex]!;
-          const label = shorten(neighbor.document.title, isStacked ? 14 : 11);
-          if (relationship === 'backlink') {
-            return {
-              ...neighbor,
-              ...position,
-              label,
-              labelX: position.x + 13,
-              labelY: position.y + 3,
-              textAnchor: 'start' as const,
-            };
-          }
-          if (relationship === 'outbound') {
-            return {
-              ...neighbor,
-              ...position,
-              label,
-              labelX: position.x - 13,
-              labelY: position.y + 3,
-              textAnchor: 'end' as const,
-            };
-          }
-          return {
-            ...neighbor,
-            ...position,
-            label,
-            labelX: position.x,
-            labelY: relationship === 'parent' ? 42 : 191,
-            textAnchor: 'middle' as const,
-          };
-        });
-      },
-    )
-  : [];
-
-const currentLabel = shorten(document.title, 22);
-
-// The frame is cropped to what is actually drawn. The slots below are fixed
-// (parent above, children below, references either side), so a note with only
-// a parent used to render two dots stranded in a half-empty 240×196 box.
-const CHAR_WIDTH = 4.5; // JetBrains Mono advance at the 7.5px label size
-const LABEL_ASCENT = 6;
-const LABEL_DESCENT = 2;
-const PADDING = 5;
-
-let minX = Infinity;
-let minY = Infinity;
-let maxX = -Infinity;
-let maxY = -Infinity;
-
-const cover = (x1: number, y1: number, x2: number, y2: number) => {
-  minX = Math.min(minX, x1);
-  minY = Math.min(minY, y1);
-  maxX = Math.max(maxX, x2);
-  maxY = Math.max(maxY, y2);
-};
-
-// Bounds use the focus-ring radius, not the dot, so a focused node is never
-// clipped by the edge of the frame.
-const coverLabel = (
-  text: string,
-  x: number,
-  y: number,
-  anchor: PositionedNeighbor['textAnchor'],
-) => {
-  const width = text.length * CHAR_WIDTH;
-  const left =
-    anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
-  cover(left, y - LABEL_ASCENT, left + width, y + LABEL_DESCENT);
-};
+const rows: Row[] = [];
 
 if (map) {
-  cover(center.x - 14, center.y - 14, center.x + 14, center.y + 14);
-  coverLabel(currentLabel, center.x, center.y + 22, 'middle');
-  for (const neighbor of positioned) {
-    cover(neighbor.x - 11, neighbor.y - 11, neighbor.x + 11, neighbor.y + 11);
-    coverLabel(
-      neighbor.label,
-      neighbor.labelX,
-      neighbor.labelY,
-      neighbor.textAnchor,
-    );
+  for (const stop of map.ancestors) {
+    const where =
+      stop.distance === 1 ? 'parent folder' : `${stop.distance} levels up`;
+    rows.push({
+      kind: 'ancestor',
+      href: stop.document.href,
+      title: stop.document.title,
+      label: `${where}: ${stop.document.title}`,
+      detail: `↑ ${where}`,
+    });
+  }
+
+  rows.push({
+    kind: 'current',
+    href: landscapeHref,
+    title: document.title,
+    label: `Open the full notes map, focused on ${document.title}`,
+    detail: '↗ open the full map',
+  });
+
+  const childRow = (stop: LocalMapStop): Row => ({
+    kind: 'child',
+    href: stop.document.href,
+    title: stop.document.title,
+    label: `inside this folder: ${stop.document.title}`,
+    detail: '↳ inside this folder',
+  });
+  rows.push(...map.children.map(childRow));
+
+  const hiddenChildren = map.totals.children - map.children.length;
+  if (hiddenChildren > 0) {
+    rows.push({
+      kind: 'more',
+      href: landscapeHref,
+      title: `+${hiddenChildren} more inside`,
+      label: `See ${hiddenChildren} more notes inside ${document.title} on the full map`,
+      detail: '↗ the rest are on the full map',
+    });
+  }
+
+  for (const stop of map.references) {
+    const outbound = stop.relationship === 'outbound';
+    rows.push({
+      kind: outbound ? 'outbound' : 'backlink',
+      href: stop.document.href,
+      title: stop.document.title,
+      label: outbound
+        ? `linked from this note: ${stop.document.title}`
+        : `links back to this note: ${stop.document.title}`,
+      detail: outbound ? '→ linked from here' : '← links back here',
+    });
   }
 }
 
-const viewWidth = maxX - minX + PADDING * 2;
-const viewHeight = maxY - minY + PADDING * 2;
-const viewBox = `${minX - PADDING} ${minY - PADDING} ${viewWidth} ${viewHeight}`;
+// The readout's resting state is the census the drawing can only imply once a
+// lane overflows, so it counts everything reachable rather than everything drawn.
+const census = map
+  ? [
+      map.totals.children > 0 ? `${map.totals.children} inside` : null,
+      map.totals.outbound > 0 ? `${map.totals.outbound} out` : null,
+      map.totals.backlinks > 0 ? `${map.totals.backlinks} in` : null,
+    ].filter((part): part is string => part !== null)
+  : [];
+const readout = census.length > 0 ? census.join(' · ') : 'you are here';
 
-// Intrinsic size travels as width/height attributes rather than an inline
-// style, which the strict CSP would drop. 1.25× keeps a sparse map from
-// reading as tiny without magnifying a dense one into the article.
-const renderScale = 1.25;
-const renderWidth = Math.round(viewWidth * renderScale);
-const renderHeight = Math.round(viewHeight * renderScale);
+// Drawing coordinates, in the 26×26 box each row reserves for its marker. The
+// trunk sits at x=9 in both the SVG and the CSS rule that continues it between
+// rows, so the two must move together. Traces leave the trunk at 45°, which is
+// what keeps a map of five notes looking drafted rather than sketched.
+const TRACE: Partial<Record<StopKind, string>> = {
+  child: 'M9 8.6 L13.4 13 H16',
+  more: 'M9 8.6 L13.4 13 H16',
+  outbound: 'M9 8.6 L13.4 13 H16.6',
+  backlink: 'M21 8.6 L16.6 13 H13.6',
+};
 
-const landscapeDestination = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.id)}`;
+// Light travels the way meaning does: out along a branch, up the trunk toward a
+// parent, inward from off-map for a backlink. Each path is drawn in that
+// direction, so one keyframe animates all of them.
+const PULSE: Record<StopKind, string> = {
+  ancestor: 'M9 26 V0',
+  current: 'M9 26 V0',
+  child: 'M9 8.6 L13.4 13 H19',
+  more: 'M9 8.6 L13.4 13 H19',
+  outbound: 'M9 8.6 L13.4 13 H20',
+  backlink: 'M21 8.6 L16.6 13 H10.9',
+};
 ---
 
 {
   map && (
     <section
       id="local-map"
-      class="local-note-map note-context__section"
+      class="local-map note-context__section"
       aria-labelledby="local-map-heading"
-      data-local-note-map
+      data-local-map
     >
       <h2 id="local-map-heading" class="note-context__label">
-        Local map
+        Bearings
       </h2>
 
-      <div class="local-note-map__canvas">
-        <svg
-          class="local-note-map__graphic"
-          viewBox={viewBox}
-          width={renderWidth}
-          height={renderHeight}
-          role="group"
-          aria-labelledby="local-map-heading local-map-description"
-        >
-          <desc id="local-map-description">
-            An interactive map centered on {document.title}. Select a node to
-            open it; the center opens the whole notes map.
-          </desc>
-          <defs>
-            <marker
-              id={markerId}
-              viewBox="0 0 6 6"
-              refX="5"
-              refY="3"
-              markerWidth="5"
-              markerHeight="5"
-              orient="auto-start-reverse"
-            >
-              <path d="M0 0 6 3 0 6Z" />
-            </marker>
-          </defs>
+      <div
+        class:list={[
+          'local-map__frame',
+          map.ancestorsTruncated && 'local-map__frame--continues',
+        ]}
+      >
+        {map.ancestorsTruncated && (
+          <span class="local-map__continues" aria-hidden="true" />
+        )}
 
-          {positioned.map((neighbor) => {
-            const isIncoming =
-              neighbor.relationship === 'parent' ||
-              neighbor.relationship === 'backlink';
-            const isReference =
-              neighbor.relationship === 'backlink' ||
-              neighbor.relationship === 'outbound';
-            return (
-              <line
-                class:list={[
-                  'local-note-map__edge',
-                  isReference && 'local-note-map__edge--reference',
-                ]}
-                data-map-edge
-                data-node-id={neighbor.document.id}
-                x1={isIncoming ? neighbor.x : center.x}
-                y1={isIncoming ? neighbor.y : center.y}
-                x2={isIncoming ? center.x : neighbor.x}
-                y2={isIncoming ? center.y : neighbor.y}
-                marker-end={`url(#${markerId})`}
-              />
-            );
-          })}
-
-          <a
-            class="local-note-map__node-link local-note-map__node-link--current"
-            href={landscapeDestination}
-            aria-label={`Open the whole notes map focused on ${document.title}`}
-            data-map-node
-            data-node-id={document.id}
-          >
-            <title>Open the whole notes map focused on {document.title}</title>
-            <circle
-              class="local-note-map__hit-area"
-              cx={center.x}
-              cy={center.y}
-              r="24"
-            />
-            <circle
-              class="local-note-map__focus-ring"
-              cx={center.x}
-              cy={center.y}
-              r="14"
-            />
-            <circle
-              class="local-note-map__node local-note-map__node--current"
-              cx={center.x}
-              cy={center.y}
-              r="7"
-            />
-            <text
-              class="local-note-map__text local-note-map__text--current"
-              x={center.x}
-              y={center.y + 22}
-              text-anchor="middle"
+        <ol class="local-map__stops" role="list">
+          {rows.map((row) => (
+            <li
+              class:list={[
+                'local-map__stop',
+                `local-map__stop--${row.kind}`,
+                (row.kind === 'outbound' || row.kind === 'backlink') &&
+                  'local-map__stop--ref',
+              ]}
             >
-              {currentLabel}
-            </text>
-          </a>
-
-          {positioned.map((neighbor) => (
-            <a
-              class={`local-note-map__node-link local-note-map__node-link--${neighbor.relationship}`}
-              href={neighbor.document.href}
-              aria-label={`${relationshipLabels[neighbor.relationship]}: ${neighbor.document.title}`}
-              data-map-node
-              data-node-id={neighbor.document.id}
-            >
-              <title>
-                {relationshipLabels[neighbor.relationship]}:{' '}
-                {neighbor.document.title}
-              </title>
-              <circle
-                class="local-note-map__hit-area"
-                cx={neighbor.x}
-                cy={neighbor.y}
-                r="18"
-              />
-              <circle
-                class="local-note-map__focus-ring"
-                cx={neighbor.x}
-                cy={neighbor.y}
-                r="11"
-              />
-              <circle
-                class="local-note-map__node"
-                cx={neighbor.x}
-                cy={neighbor.y}
-                r="5"
-              />
-              <text
-                class="local-note-map__text"
-                x={neighbor.labelX}
-                y={neighbor.labelY}
-                text-anchor={neighbor.textAnchor}
+              <a
+                class="local-map__link"
+                href={row.href}
+                aria-label={row.label}
+                data-local-map-stop
+                data-detail={row.detail}
+                data-page-preview-ignore
               >
-                {neighbor.label}
-              </text>
-            </a>
+                <svg
+                  class="local-map__mark"
+                  viewBox="0 0 26 26"
+                  width="26"
+                  height="26"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  {TRACE[row.kind] && (
+                    <path
+                      class:list={[
+                        'local-map__trace',
+                        row.kind !== 'child' &&
+                          row.kind !== 'more' &&
+                          'local-map__trace--ref',
+                      ]}
+                      d={TRACE[row.kind]}
+                    />
+                  )}
+
+                  {row.kind === 'outbound' && (
+                    <path
+                      class="local-map__arrow"
+                      d="M17 10.3 L19.9 13 L17 15.7"
+                    />
+                  )}
+                  {row.kind === 'backlink' && (
+                    <path
+                      class="local-map__arrow"
+                      d="M13.6 10.3 L10.7 13 L13.6 15.7"
+                    />
+                  )}
+
+                  {row.kind === 'current' && (
+                    <circle class="local-map__ring" cx="9" cy="13" r="6.6" />
+                  )}
+                  {row.kind === 'current' && (
+                    <circle
+                      class="local-map__dot local-map__dot--here"
+                      cx="9"
+                      cy="13"
+                      r="3.4"
+                    />
+                  )}
+                  {row.kind === 'ancestor' && (
+                    <circle class="local-map__dot" cx="9" cy="13" r="2.4" />
+                  )}
+                  {(row.kind === 'child' || row.kind === 'more') && (
+                    <circle
+                      class:list={[
+                        'local-map__dot',
+                        row.kind === 'more' && 'local-map__dot--more',
+                      ]}
+                      cx="19"
+                      cy="13"
+                      r="2.4"
+                    />
+                  )}
+
+                  <path
+                    class="local-map__pulse"
+                    d={PULSE[row.kind]}
+                    pathLength="1"
+                  />
+                </svg>
+
+                <span class="local-map__title">{row.title}</span>
+
+                {row.kind === 'current' && (
+                  <span class="local-map__zoom" aria-hidden="true">
+                    ↗
+                  </span>
+                )}
+              </a>
+            </li>
           ))}
-        </svg>
+        </ol>
       </div>
+
+      <p class="local-map__readout" data-local-map-readout aria-hidden="true">
+        {readout}
+      </p>
     </section>
   )
 }
 
 <script>
-  const localMaps = document.querySelectorAll<HTMLElement>(
-    '[data-local-note-map]',
-  );
+  // Everything visual — dimming, the travelling pulse, the hover states — is CSS.
+  // Script covers only what CSS cannot see: which stop is under the pointer, so
+  // the readout can name the relationship the drawing is showing. Nothing here
+  // animates on its own; the map moves only in answer to a pointer or a key.
+  const maps = document.querySelectorAll<HTMLElement>('[data-local-map]');
 
-  for (const localMap of localMaps) {
-    const nodes = Array.from(
-      localMap.querySelectorAll<SVGAElement>('[data-map-node]'),
+  for (const map of maps) {
+    const readout = map.querySelector<HTMLElement>('[data-local-map-readout]');
+    const stops = Array.from(
+      map.querySelectorAll<HTMLAnchorElement>('[data-local-map-stop]'),
     );
-    const edges = Array.from(
-      localMap.querySelectorAll<SVGLineElement>('[data-map-edge]'),
-    );
-    const currentNode = nodes[0];
+    if (!readout || stops.length === 0) continue;
 
-    if (!currentNode) continue;
+    const census = (readout.textContent ?? '').trim();
+    const stillMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-    const highlightNode = (node: SVGAElement) => {
-      const nodeId = node.dataset.nodeId ?? '';
-      const isCurrent = node === currentNode;
-
-      for (const candidate of nodes) {
-        const staysVisible =
-          isCurrent || candidate === node || candidate === currentNode;
-        candidate.classList.toggle('is-active', candidate === node);
-        candidate.classList.toggle('is-muted', !staysVisible);
-      }
-
-      for (const edge of edges) {
-        const isActive = !isCurrent && edge.dataset.nodeId === nodeId;
-        edge.classList.toggle('is-active', isActive);
-        edge.classList.toggle('is-muted', !isCurrent && !isActive);
+    const write = (text: string) => {
+      if (readout.textContent === text) return;
+      readout.textContent = text;
+      // A swap this small reads as a glitch without a beat of movement; the Web
+      // Animations API keeps it off the CSP-blocked inline-style path.
+      if (!stillMotion.matches) {
+        readout.animate(
+          [
+            { opacity: 0.25, transform: 'translateY(2px)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 220, easing: 'cubic-bezier(0.2, 0.75, 0.25, 1)' },
+        );
       }
     };
 
-    nodes.forEach((node, nodeIndex) => {
-      node.addEventListener('pointerenter', () => highlightNode(node));
-      node.addEventListener('focus', () => highlightNode(node));
-      node.addEventListener('keydown', (event) => {
-        const previousKeys = ['ArrowUp', 'ArrowLeft'];
-        const nextKeys = ['ArrowDown', 'ArrowRight'];
-        let nextIndex: number | null = null;
+    const describe = (stop: HTMLAnchorElement | null) =>
+      write(stop?.dataset.detail ?? census);
 
-        if (previousKeys.includes(event.key)) {
-          nextIndex = (nodeIndex - 1 + nodes.length) % nodes.length;
-        } else if (nextKeys.includes(event.key)) {
-          nextIndex = (nodeIndex + 1) % nodes.length;
-        } else if (event.key === 'Home' || event.key === 'Escape') {
-          nextIndex = 0;
-        } else if (event.key === 'End') {
-          nextIndex = nodes.length - 1;
-        }
-
-        if (nextIndex === null) return;
-        event.preventDefault();
-        nodes[nextIndex]?.focus();
-      });
-    });
-
-    localMap.addEventListener('pointerleave', () => {
-      const focused =
-        document.activeElement?.closest<SVGAElement>('[data-map-node]');
-      highlightNode(
-        focused && localMap.contains(focused) ? focused : currentNode,
+    const restore = () => {
+      const focused = document.activeElement?.closest<HTMLAnchorElement>(
+        '[data-local-map-stop]',
       );
-    });
+      describe(focused && map.contains(focused) ? focused : null);
+    };
 
-    localMap.addEventListener('focusout', () => {
-      window.requestAnimationFrame(() => {
-        const focused =
-          document.activeElement?.closest<SVGAElement>('[data-map-node]');
-        if (!focused || !localMap.contains(focused)) {
-          highlightNode(currentNode);
+    stops.forEach((stop, stopIndex) => {
+      stop.addEventListener('pointerenter', () => describe(stop));
+      stop.addEventListener('focus', () => describe(stop));
+      stop.addEventListener('keydown', (event) => {
+        let nextIndex: number | null = null;
+        if (event.key === 'ArrowUp') nextIndex = stopIndex - 1;
+        else if (event.key === 'ArrowDown') nextIndex = stopIndex + 1;
+        else if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = stops.length - 1;
+
+        // Wrapping would let a held arrow key cycle forever; the map is a short
+        // line, and running off its end should hand the page back.
+        if (nextIndex === null || nextIndex < 0 || nextIndex >= stops.length) {
+          return;
         }
+        event.preventDefault();
+        stops[nextIndex]?.focus();
       });
     });
 
-    highlightNode(currentNode);
+    map.addEventListener('pointerleave', restore);
+    map.addEventListener('focusout', () => {
+      window.requestAnimationFrame(restore);
+    });
   }
 </script>

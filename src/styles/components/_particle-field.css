@@ -1,0 +1,64 @@
+/* ===================================================
+   Drift field — suspended graphite dust over the
+   drafting ground.
+
+   Decoration that must never cost legibility: it sits
+   behind everything and takes no pointer events.
+   =================================================== */
+
+.particle-field {
+  position: fixed;
+  inset: 0;
+  /* Behind every sibling, still above the body background the browser
+     propagates to the viewport. */
+  z-index: -1;
+  pointer-events: none;
+  /* The field can never affect the page's layout or invalidate its paint. */
+  contain: layout paint style;
+}
+
+.particle-field__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Revealed on the first drawn frame, so the field arrives with the page
+     instead of blinking on after it. */
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+.particle-field[data-state='live'] .particle-field__canvas,
+.particle-field[data-state='still'] .particle-field__canvas {
+  opacity: 1;
+}
+
+/* Tone probes. The shader reads its palette from the computed colour of these,
+   so the field's colours live with the rest of the design tokens rather than in
+   GLSL — retinting --color-brand retints the background too. */
+.particle-field__tone {
+  display: none;
+}
+
+.particle-field__tone[data-tone='far'] {
+  /* Far specks are graphite first, brand second: the haze should read as paper
+     grain, not as a coloured wash. */
+  color: color-mix(in srgb, var(--color-text-muted) 74%, var(--color-brand));
+}
+
+.particle-field__tone[data-tone='near'] {
+  color: var(--color-brand-strong);
+}
+
+/* Forced colours replace the palette wholesale, so a tinted haze has nothing to
+   contribute and can only interfere.
+
+   Deliberately NOT keyed to prefers-reduced-transparency: Windows reports that
+   whenever "Transparency effects" is off, which is a common performance setting
+   rather than a legibility request — and the field is behind the content, never
+   a translucent layer over it. Hiding the background there hid it for most
+   Windows visitors. */
+@media (forced-colors: active) {
+  .particle-field {
+    display: none;
+  }
+}

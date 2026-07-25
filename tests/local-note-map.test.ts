@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GardenDocument, GardenIndex } from '../src/lib/garden';
-import { deriveLocalMap } from '../src/lib/garden/local-map';
+import { deriveLocalMap, hasLocalMap } from '../src/lib/garden/local-map';
 
 function note(
   id: string,
@@ -35,51 +35,88 @@ function garden(documents: GardenDocument[]): GardenIndex {
   };
 }
 
+const ids = (stops: { document: GardenDocument }[]) =>
+  stops.map((stop) => stop.document.id);
+
 describe('deriveLocalMap', () => {
-  it('keeps relationship priority, deduplicates nodes, and caps neighbors at eight', () => {
+  it('walks the containment path root-ward first and flags where it continues', () => {
+    const index = garden([
+      note('index', { childIds: ['a'] }),
+      note('a', { parentId: 'index', childIds: ['b'] }),
+      note('b', { parentId: 'a', childIds: ['c'] }),
+      note('c', { parentId: 'b', childIds: ['d'] }),
+      note('d', { parentId: 'c' }),
+    ]);
+
+    const shallow = deriveLocalMap(index.byId.get('b')!, index);
+    expect(ids(shallow!.ancestors)).toEqual(['index', 'a']);
+    expect(shallow?.ancestorsTruncated).toBe(false);
+
+    const deep = deriveLocalMap(index.byId.get('d')!, index);
+    expect(ids(deep!.ancestors)).toEqual(['b', 'c']);
+    expect(deep?.ancestorsTruncated).toBe(true);
+  });
+
+  it('separates the lanes so contents cannot crowd out links', () => {
     const current = note('current', {
       parentId: 'parent',
-      childIds: ['child-1', 'child-2', 'child-3', 'child-4'],
+      childIds: Array.from({ length: 10 }, (_, slot) => `child-${slot}`),
       outbound: [
-        { target: 'child-1', resolvedId: 'child-1' },
-        { target: 'outbound-1', resolvedId: 'outbound-1' },
-        { target: 'outbound-2', resolvedId: 'outbound-2' },
+        { target: 'out-1', resolvedId: 'out-1' },
+        { target: 'out-2', resolvedId: 'out-2' },
       ],
-      backlinks: ['outbound-1', 'backlink-1', 'backlink-2'],
+      backlinks: ['back-1'],
     });
-    const documents = [
+    const index = garden([
       note('index'),
       current,
-      ...[
-        'parent',
-        'child-1',
-        'child-2',
-        'child-3',
-        'child-4',
-        'outbound-1',
-        'outbound-2',
-        'backlink-1',
-        'backlink-2',
-      ].map((id) => note(id)),
-    ];
-
-    const map = deriveLocalMap(current, garden(documents));
-
-    expect(
-      map?.neighbors.map((neighbor) => [
-        neighbor.document.id,
-        neighbor.relationship,
-      ]),
-    ).toEqual([
-      ['parent', 'parent'],
-      ['child-1', 'child'],
-      ['child-2', 'child'],
-      ['child-3', 'child'],
-      ['outbound-1', 'outbound'],
-      ['outbound-2', 'outbound'],
-      ['backlink-1', 'backlink'],
-      ['backlink-2', 'backlink'],
+      note('parent'),
+      ...Array.from({ length: 10 }, (_, slot) => note(`child-${slot}`)),
+      note('out-1'),
+      note('out-2'),
+      note('back-1'),
     ]);
+
+    const map = deriveLocalMap(current, index)!;
+
+    expect(map.children).toHaveLength(8);
+    expect(ids(map.references)).toEqual(['out-1', 'out-2', 'back-1']);
+    expect(map.references.map((stop) => stop.relationship)).toEqual([
+      'outbound',
+      'outbound',
+      'backlink',
+    ]);
+    // Totals count what exists, not what fits — the readout reports the whole
+    // neighbourhood while the drawing shows as much of it as it can.
+    expect(map.totals).toEqual({ children: 10, outbound: 2, backlinks: 1 });
+  });
+
+  it('draws every note once, with structure claiming it before links do', () => {
+    const current = note('current', {
+      parentId: 'parent',
+      childIds: ['child'],
+      outbound: [
+        { target: 'child', resolvedId: 'child' },
+        { target: 'parent', resolvedId: 'parent' },
+        { target: 'friend', resolvedId: 'friend' },
+        { target: 'friend again', resolvedId: 'friend' },
+      ],
+      backlinks: ['friend', 'parent'],
+    });
+    const index = garden([
+      note('index'),
+      current,
+      note('parent'),
+      note('child'),
+      note('friend'),
+    ]);
+
+    const map = deriveLocalMap(current, index)!;
+
+    expect(ids(map.ancestors)).toEqual(['parent']);
+    expect(ids(map.children)).toEqual(['child']);
+    expect(ids(map.references)).toEqual(['friend']);
+    expect(map.totals).toEqual({ children: 1, outbound: 1, backlinks: 0 });
   });
 
   it('is stable for the same input', () => {
@@ -102,17 +139,29 @@ describe('deriveLocalMap', () => {
 
   it('keeps a single useful path and suppresses only isolated notes', () => {
     const current = note('current', {
-      outbound: [
-        { target: 'only', resolvedId: 'only' },
-        { target: 'only again', resolvedId: 'only' },
-      ],
-      backlinks: ['only'],
+      outbound: [{ target: 'only', resolvedId: 'only' }],
     });
     const index = garden([note('index'), current, note('only')]);
 
-    expect(deriveLocalMap(current, index)?.neighbors).toEqual([
-      { document: index.byId.get('only'), relationship: 'outbound' },
-    ]);
+    expect(ids(deriveLocalMap(current, index)!.references)).toEqual(['only']);
     expect(deriveLocalMap(note('alone'), garden([note('alone')]))).toBeNull();
+  });
+});
+
+describe('hasLocalMap', () => {
+  it('agrees with deriveLocalMap, so the landscape never links to a missing anchor', () => {
+    const index = garden([
+      note('index', { childIds: ['folder'] }),
+      note('folder', { parentId: 'index', childIds: ['leaf'] }),
+      note('leaf', { parentId: 'folder' }),
+      note('castaway'),
+    ]);
+
+    expect(hasLocalMap(index.byId.get('folder')!, index)).toBe(true);
+    // A leaf sits on a path, which is a neighbourhood worth drawing.
+    expect(hasLocalMap(index.byId.get('leaf')!, index)).toBe(true);
+    // A note with no parent and nothing linking either way has none.
+    expect(hasLocalMap(index.byId.get('castaway')!, index)).toBe(false);
+    expect(deriveLocalMap(index.byId.get('castaway')!, index)).toBeNull();
   });
 });

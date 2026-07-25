@@ -56,6 +56,49 @@ The Studio and public note page share the same Markdown renderer and prose
 stylesheet. Preview output is therefore representative of the published page,
 not a separate approximation.
 
+### The drift field
+
+`src/lib/particles` is the ambient background: a field of suspended graphite
+dust and drafting ticks, mounted once by `components/ParticleField.astro` from
+`layouts/Base.astro`. It is a client-only concern with no server dependencies.
+
+Its shape follows from one decision: every mote's path is **analytic**, derived
+in the vertex shader from a seed and the clock. There is no simulation state, so
+there is no per-frame CPU work and no buffer traffic — one program, one static
+buffer sized to the preset's ceiling, one `POINTS` draw call. Quality changes are
+therefore a shorter draw call and nothing else, which is why `field.ts`
+interleaves the depth strata: any prefix of the buffer is still a balanced field.
+
+The parts divide by what they know:
+
+- `presets.ts` — the composition seam. A route names a mood (`hero`, `ambient`,
+  `quiet`) and the mood owns density, motion, and how strongly the field thins
+  out over the reading column. Pages never tune numbers.
+- `field.ts`, `quality.ts`, `palette.ts` — pure functions, covered by
+  `tests/particles.test.ts`: field generation, the device-signal and adaptive
+  frame-clock tiering, and colour parsing.
+- `shaders.ts`, `renderer.ts` — GL state and GLSL, and nothing about the page.
+- `mount.ts` — the only stateful part: clock, pointer, viewport, context loss.
+
+Two constraints are load-bearing. The palette is read from the computed `color`
+of hidden probe elements styled in `_particle-field.css`, so retinting
+`--color-brand` retints the background as the site's decoration rule requires —
+the shader must not hold a second palette. And every failure path returns null:
+no usable WebGL, a failed compile, or a driver whose maximum point size is too
+small leaves the page with its own surface colour and nothing else changed.
+
+Accessibility is a rendering mode, not a suppression: `prefers-reduced-motion`
+resolves to the `still` tier, which draws a single frame and never starts a loop.
+Forced colours remove the field in CSS, because they replace the palette
+wholesale.
+
+`prefers-reduced-transparency` deliberately does **not** remove it, and
+`tests/particles.test.ts` pins that. Windows reports the query whenever
+"Transparency effects" is off — a common performance setting rather than a
+legibility request — so keying `display: none` to it hid the background for most
+Windows visitors. The field is behind the content; it is never a translucent
+layer over it.
+
 ## Server domains
 
 ### Admin
