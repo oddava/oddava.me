@@ -145,91 +145,16 @@
 
 /* Document reader */
 
-/* Wayfinding opens the reading column. It used to live in the rail, but the
-   rail follows the article below 78rem — so on a phone "where am I" only
-   arrived after the whole note. Location has to precede the thing it locates. */
-
-.garden-document__header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 1.1rem;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 0 1.5rem;
-  color: var(--color-text-muted);
-  font: 0.72rem / 1.4 var(--font-mono);
-}
-
-/* Path trail: notes › folder › page[ › ]. Quiet mono text; trailing › only
-   when the current page has nested notes (Explorer-style folder cue). */
-.garden-breadcrumbs {
-  min-width: 0;
-}
-
-.garden-breadcrumbs__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.15rem 0.1rem;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.garden-breadcrumbs__item {
-  display: inline-flex;
-  gap: 0.15rem;
-  align-items: center;
-  min-width: 0;
-}
-
-.garden-breadcrumbs__crumb {
-  display: inline;
-  max-width: min(18rem, 100%);
-  overflow: hidden;
-  color: inherit;
-  font: inherit;
-  letter-spacing: 0.01em;
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-a.garden-breadcrumbs__crumb:hover,
-a.garden-breadcrumbs__crumb:focus-visible {
-  color: inherit;
-  text-decoration: none;
-  outline: none;
-}
-
-a.garden-breadcrumbs__crumb:focus-visible {
-  border-radius: 2px;
-  box-shadow: 0 0 0 2px var(--color-focus-ring);
-}
-
-.garden-breadcrumbs [aria-current='page'] {
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-.garden-breadcrumbs__separator {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  color: var(--color-text-secondary);
-  font-size: 1.15em;
-  font-weight: 500;
-  line-height: 1;
-  user-select: none;
-}
-
+/* Opens the reading column in its top-right corner, where the old header put
+   it. It used to sit opposite a breadcrumb trail; the trail is gone — the
+   rail's bearings map says where you are, and says it as a drawing rather than
+   twice in words — so the date keeps the corner and the title starts clean. */
 .garden-document__tended {
-  margin: 0;
+  margin: 0 0 1.15rem;
   color: var(--color-text-disabled);
-  font: inherit;
+  font: 0.72rem / 1.4 var(--font-mono);
   letter-spacing: 0.02em;
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -289,74 +214,6 @@ a.garden-breadcrumbs__crumb:focus-visible {
 
 /* The rendered body's own styles live in `_note-prose.css` — shared with the
    Studio preview so the two can't drift. */
-
-/* Only the global-map nav on /notes uses this now — the folder listing was
-   removed in favour of the bearings map, which draws the same children. */
-.note-contents {
-  margin-top: 0;
-}
-
-.note-contents__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.note-content__link {
-  display: grid;
-  grid-template-columns: 1.1rem minmax(0, 1fr);
-  gap: 0.65rem;
-  align-items: center;
-  margin: 0 -0.55rem;
-  padding: 0.55rem;
-  border-radius: var(--radius-md);
-  color: inherit;
-  text-decoration: none;
-  transition: background-color 180ms ease;
-}
-
-.note-content__link:hover,
-.note-content__link:focus-visible {
-  color: inherit;
-  background: color-mix(in srgb, var(--color-overlay-soft) 62%, transparent);
-}
-
-.note-content__icon {
-  display: grid;
-  place-items: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  color: var(--color-text-disabled);
-  transition: color 180ms ease;
-}
-
-.note-content__icon svg {
-  width: 100%;
-  height: 100%;
-  stroke: currentColor;
-  stroke-width: 1.35;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.note-content__link:hover .note-content__icon,
-.note-content__link:focus-visible .note-content__icon {
-  color: var(--color-text-muted);
-}
-
-.note-content__title {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  font-size: 0.96rem;
-  font-weight: 500;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* Connections: backlinks and tag affinity ("Related"). Both
    sit below the body/contents, set apart by a hairline rule, and share one
@@ -523,26 +380,14 @@ a.garden-breadcrumbs__crumb:focus-visible {
   margin-bottom: 0.65rem;
 }
 
-.note-context__supplementary {
-  margin-top: 1.4rem;
-  padding-top: 1.15rem;
-  border-top: 1px solid var(--color-rule);
-}
-
 /* Dividers separate sections, so the first one must not carry a leading rule.
    Which section comes first varies — the TOC when a note has headings, the
-   supplementary slot on /notes, folder contents otherwise — so this guards
-   whatever lands there rather than any one section. */
+   backlinks or the bearings map otherwise — so this guards whatever lands
+   there rather than any one section. */
 .note-context__inner > :first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
-}
-
-.note-context__supplementary + .note-context__section {
-  margin-top: 1.4rem;
-  padding-top: 1.15rem;
-  border-top: 1px solid var(--color-rule);
 }
 
 /* Bearings is a picture of the links listed above it, so it reads as their
@@ -617,16 +462,9 @@ a.garden-breadcrumbs__crumb:focus-visible {
 
   /* Rail type steps down one notch from the article, no further: the previous
      0.54–0.74rem range put four different sizes below 12px in one column. */
-  .note-context .note-content__title,
   .note-context .note-link__title {
     font-size: 0.875rem;
     line-height: 1.4;
-  }
-
-  .note-context .note-content__link {
-    gap: 0.55rem;
-    margin: 0 -0.4rem;
-    padding: 0.4rem;
   }
 
   .note-context .note-link__anchor {

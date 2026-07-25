@@ -21,20 +21,6 @@ const rendered = document.body.trim()
 const tocHeadings = rendered.headings.length >= 2 ? rendered.headings : [];
 
 const isRoot = document.id === index.root.id;
-// Like Explorer: a trailing › only when this page is a folder with contents.
-const hasNestedContents = document.childIds.length > 0;
-
-// Breadcrumb trail: the folders between the notes root and this page.
-const ancestors: GardenDocument[] = [];
-if (!isRoot) {
-  let cursor = document.parentId
-    ? index.byId.get(document.parentId)
-    : undefined;
-  while (cursor && cursor.id !== index.root.id) {
-    ancestors.unshift(cursor);
-    cursor = cursor.parentId ? index.byId.get(cursor.parentId) : undefined;
-  }
-}
 
 // A note whose body opens with its own `# h1` supplies the page title itself;
 // otherwise the shell provides it, so every note page has exactly one h1.
@@ -49,67 +35,21 @@ if (!showShellTitle) {
   }
 }
 const isStub = !rendered.html && document.childIds.length === 0;
-const hasSupplementary = Astro.slots.has('default');
 ---
 
 <div class="garden-document-layout">
   <article class="garden-document">
     {
+      /* Sits at the top right of the reading column, where the old header kept
+         it — the breadcrumb that used to share that line is gone, so the date
+         holds the corner alone. */
       !isRoot && (
-        <header class="garden-document__header">
-          <nav class="garden-breadcrumbs" aria-label="breadcrumb">
-            <ol class="garden-breadcrumbs__list">
-              <li class="garden-breadcrumbs__item">
-                <a
-                  class="garden-breadcrumbs__crumb"
-                  href="/notes"
-                  data-page-preview-ignore
-                >
-                  notes
-                </a>
-              </li>
-              {ancestors.map((ancestor) => (
-                <li class="garden-breadcrumbs__item">
-                  <span
-                    class="garden-breadcrumbs__separator"
-                    aria-hidden="true"
-                  >
-                    ›
-                  </span>
-                  <a
-                    class="garden-breadcrumbs__crumb"
-                    href={ancestor.href}
-                    data-page-preview-ignore
-                  >
-                    {ancestor.title}
-                  </a>
-                </li>
-              ))}
-              <li class="garden-breadcrumbs__item">
-                <span class="garden-breadcrumbs__separator" aria-hidden="true">
-                  ›
-                </span>
-                <span class="garden-breadcrumbs__crumb" aria-current="page">
-                  {document.title}
-                </span>
-                {hasNestedContents && (
-                  <span
-                    class="garden-breadcrumbs__separator"
-                    aria-hidden="true"
-                  >
-                    ›
-                  </span>
-                )}
-              </li>
-            </ol>
-          </nav>
-          <p class="garden-document__tended">
-            updated{' '}
-            <time datetime={document.updated}>
-              {formatNoteDate(document.updated)}
-            </time>
-          </p>
-        </header>
+        <p class="garden-document__tended">
+          updated{' '}
+          <time datetime={document.updated}>
+            {formatNoteDate(document.updated)}
+          </time>
+        </p>
       )
     }
     {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
@@ -146,13 +86,6 @@ const hasSupplementary = Astro.slots.has('default');
   <aside class="note-context" aria-label={`Context for ${document.title}`}>
     <div class="note-context__inner">
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
-      {
-        hasSupplementary && (
-          <div class="note-context__supplementary">
-            <slot />
-          </div>
-        )
-      }
       <NoteBacklinks document={document} index={index} />
       <RelatedNotes document={document} index={index} />
       {

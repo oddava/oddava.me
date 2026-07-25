@@ -3,7 +3,6 @@ import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { deriveNoteSocialImage } from '@lib/garden/utils';
-import { NOTES_GRAPH_PATH } from '@lib/site-routes';
 import '../../styles/components/_garden.css';
 
 const garden = await getGardenIndexOrUnavailable();
@@ -24,30 +23,6 @@ const description =
   wide
 >
   <div class="garden-page">
-    <GardenDocumentPage document={index.root} index={index}>
-      <!-- Global navigation lives in the context rail. -->
-      <nav class="note-contents" aria-label="Notes views">
-        <ul class="note-contents__list">
-          <li class="note-content">
-            <a
-              href={NOTES_GRAPH_PATH}
-              class="note-content__link"
-              data-page-preview-ignore
-            >
-              <span class="note-content__icon" aria-hidden="true">
-                <svg viewBox="0 0 20 20" fill="none">
-                  <circle cx="5" cy="6" r="2"></circle>
-                  <circle cx="15" cy="5" r="2"></circle>
-                  <circle cx="10.5" cy="14.5" r="2"></circle>
-                  <path d="M6.7 7.1 9 13M13.2 6.2 11.7 13M6.9 5.7 13.1 5.1"
-                  ></path>
-                </svg>
-              </span>
-              <span class="note-content__title">global map</span>
-            </a>
-          </li>
-        </ul>
-      </nav>
-    </GardenDocumentPage>
+    <GardenDocumentPage document={index.root} index={index} />
   </div>
 </Base>

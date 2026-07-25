@@ -1,51 +1,213 @@
-/* One reusable preview follows any same-origin page link. The bottom-corner
-   placement is the safe fallback; browsers with CSS anchor positioning attach
-   it directly to the active link without script-authored inline styles, which
-   keeps the site's strict style CSP intact.
+/* ===================================================
+   PAGE PREVIEW — a miniature document, not a tooltip.
 
-   Visual language matches the rest of the site: solid raised surface, thin
-   rule border, no shadow or glass. Meta path uses the same mono label voice
-   as section headings elsewhere. */
+   One reusable sheet follows any same-origin page link: a mono breadcrumb
+   header rule, the destination's title, its opening lines, and a footer of
+   provenance. The visual language is the site's own — solid raised surface,
+   hairline rules, drafting-paper brand tint — plus a leader line drawn from
+   the hovered words to the sheet, the way a callout is tied to a drawing.
+
+   Placement is script-driven through the custom properties below rather than
+   CSS anchor positioning: the sheet attaches to the *line box* under the
+   cursor, flips sides on the viewport edge, and glides between links, none of
+   which `position-area` can express. Writes go through CSSOM
+   (`style.setProperty`), which `style-src` does not govern — no inline style
+   attribute is ever authored, so the strict hashed CSP stays intact.
+   =================================================== */
+
 .page-preview {
+  /* Distance between the hovered line box and the sheet. The script reads
+     this back so the geometry and the leader line agree. */
+  --preview-gap: 10px;
+  --preview-tether-x: 1.25rem;
+  --preview-enter-y: -4px;
+
   position: fixed;
-  inset: auto var(--page-padding) var(--page-padding) auto;
+  /* The popover UA sheet sets `inset: 0`, which would stretch a sized box
+     across the viewport; pin the start edges and free the end ones. */
+  inset: 0 auto auto 0;
   z-index: 1000;
-  display: grid;
-  gap: 0.35rem;
-  width: min(22rem, calc(100vw - 2 * var(--page-padding)));
+  inline-size: min(23rem, calc(100vw - 2 * var(--page-padding)));
   margin: 0;
-  padding: 0.75rem 0.9rem 0.8rem;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: none;
   color: var(--color-text-primary);
+  opacity: 0;
+  translate: var(--preview-x, 0px) var(--preview-y, 0px);
+  /* Never a hover target of its own: the pointer stays with the link, so
+     crossing the sheet can never fight the hover that opened it. */
   pointer-events: none;
+  transition:
+    opacity 110ms cubic-bezier(0.3, 0, 0.35, 1),
+    display 200ms allow-discrete,
+    overlay 200ms allow-discrete;
 }
 
 .page-preview[hidden] {
   display: none;
 }
 
+.page-preview:popover-open {
+  opacity: 1;
+}
+
+@starting-style {
+  .page-preview:popover-open {
+    opacity: 0;
+  }
+}
+
+/* Only added while the sheet moves between links or resizes around freshly
+   arrived content. Scroll repositioning stays instant — a sheet easing after
+   a scrolling link would read as lag, not polish. */
+.page-preview--glide {
+  transition:
+    opacity 110ms cubic-bezier(0.3, 0, 0.35, 1),
+    translate 260ms cubic-bezier(0.2, 0.72, 0.25, 1),
+    display 200ms allow-discrete,
+    overlay 200ms allow-discrete;
+}
+
+/* --- Leader line --- */
+
+.page-preview::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(-1 * var(--preview-gap));
+  inset-inline-start: var(--preview-tether-x);
+  inline-size: 1px;
+  block-size: var(--preview-gap);
+  background: linear-gradient(to bottom, transparent, var(--color-rule-strong));
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 150ms cubic-bezier(0.2, 0.72, 0.25, 1);
+}
+
+.page-preview:popover-open::before {
+  transform: scaleY(1);
+  /* Drawn after the sheet has settled, so the connection reads as a
+     consequence of the sheet arriving rather than a second moving part. */
+  transition-delay: 70ms;
+}
+
+.page-preview[data-placement='above'] {
+  --preview-enter-y: 4px;
+}
+
+.page-preview[data-placement='above']::before {
+  inset-block-start: auto;
+  inset-block-end: calc(-1 * var(--preview-gap));
+  background: linear-gradient(to top, transparent, var(--color-rule-strong));
+  transform-origin: bottom;
+}
+
+/* --- Sheet --- */
+
+.page-preview__frame {
+  /* Content-box so the measured sheet height maps straight onto block-size
+     without the script having to compensate for the hairline border. */
+  box-sizing: content-box;
+  block-size: var(--preview-block-size, auto);
+  overflow: clip;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  /* A lifted page, not a glass card: one hairline of light along the top
+     edge and a shadow soft enough to read as separation from the prose. */
+  box-shadow:
+    inset 0 1px 0 var(--color-overlay-strong),
+    0 0.75rem 2rem -1rem rgb(0 0 0 / 55%);
+  transform: translateY(var(--preview-enter-y));
+  transition: transform 180ms cubic-bezier(0.2, 0.72, 0.25, 1);
+}
+
+.page-preview:popover-open .page-preview__frame {
+  transform: none;
+}
+
+.page-preview--glide .page-preview__frame {
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.72, 0.25, 1),
+    block-size 240ms cubic-bezier(0.2, 0.72, 0.25, 1);
+}
+
+.page-preview__sheet {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem 0.6rem;
+}
+
+/* Re-run whenever the sheet's contents change under an already-open panel, so
+   a swap between links resolves rather than snapping. */
+.page-preview--settling .page-preview__sheet {
+  animation: page-preview-settle 200ms cubic-bezier(0.2, 0.72, 0.25, 1) both;
+}
+
+@keyframes page-preview-settle {
+  from {
+    opacity: 0.3;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Header --- */
+
+.page-preview__kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+  margin: 0;
+  color: var(--color-text-muted);
+  font: 500 var(--text-2xs) / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+
 .page-preview__path {
   overflow: hidden;
-  color: var(--color-text-muted);
-  font: 500 var(--text-2xs) var(--font-mono);
-  letter-spacing: 0.06em;
   text-overflow: ellipsis;
-  text-transform: lowercase;
   white-space: nowrap;
 }
 
-.page-preview__title {
-  font-size: var(--text-base);
-  font-weight: 600;
-  line-height: var(--leading-tight);
-  letter-spacing: -0.02em;
+/* The rule that turns a breadcrumb into a document header. */
+.page-preview__kicker::after {
+  content: '';
+  flex: 1 1 auto;
+  block-size: 1px;
+  background: linear-gradient(to right, var(--color-rule-strong), transparent);
 }
 
-.page-preview__summary {
+/* --- Body --- */
+
+.page-preview__body {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.page-preview__title {
   display: -webkit-box;
   overflow: hidden;
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.015em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.page-preview__excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
   line-height: 1.55;
@@ -53,24 +215,107 @@
   -webkit-line-clamp: 3;
 }
 
-.page-preview--loading .page-preview__title {
-  color: var(--color-text-muted);
-  font-weight: 500;
+.page-preview__excerpt[hidden] {
+  display: none;
 }
 
-@supports (anchor-name: --page-preview-anchor) {
-  .page-preview-link {
-    anchor-name: --page-preview-anchor;
+/* --- Footer --- */
+
+.page-preview__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--color-rule);
+  color: var(--color-text-disabled);
+  font: 500 var(--text-2xs) / 1.2 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+.page-preview__provenance {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-preview__hint {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* --- States --- */
+
+.page-preview__skeleton {
+  display: grid;
+  gap: 0.45rem;
+  padding-block: 0.1rem 0.15rem;
+}
+
+.page-preview__bar {
+  block-size: 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-overlay-strong);
+  animation: page-preview-breathe 1.9s ease-in-out infinite;
+}
+
+.page-preview__bar--title {
+  block-size: 0.85rem;
+  inline-size: 58%;
+  background: color-mix(in srgb, var(--color-brand) 20%, transparent);
+}
+
+.page-preview__bar:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.page-preview__bar:nth-child(3) {
+  inline-size: 76%;
+  animation-delay: 240ms;
+}
+
+/* A slow breath rather than a shimmer sweep: the panel reads as waiting,
+   not as advertising that it is waiting. */
+@keyframes page-preview-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
   }
 
-  .page-preview {
-    position: fixed;
-    position-anchor: --page-preview-anchor;
-    position-area: block-end span-inline-end;
-    inset: auto;
-    margin-block-start: 0.5rem;
-    position-try-fallbacks: flip-block, flip-inline;
+  50% {
+    opacity: 0.9;
   }
+}
+
+.page-preview:not([data-state='loading']) .page-preview__skeleton,
+.page-preview[data-state='loading'] .page-preview__body,
+.page-preview:not([data-state='ready']) .page-preview__meta {
+  display: none;
+}
+
+.page-preview[data-state='empty'] .page-preview__title {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* --- Source link --- */
+
+/* The link keeps a quiet mark of its own while its sheet is open, so the pair
+   reads as one gesture. */
+.page-preview-link {
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-accent) 45%,
+    transparent
+  );
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
 }
 
 @media (max-width: 720px), (hover: none), (pointer: coarse) {
