@@ -23,10 +23,20 @@ export interface ParticlePreset {
   readonly intensity: number;
   /** Radius of the pointer disturbance, in CSS pixels. */
   readonly pointerRadius: number;
-  /** Displacement at the centre of the disturbance, in CSS pixels. */
-  readonly pointerPush: number;
-  /** Extra reach a press adds. 0 disables the press bloom entirely. */
-  readonly pulse: number;
+  /** Acceleration per unit of cursor velocity — the strength of the wake dust is
+   *  dragged along in. Dimensionless (s⁻¹ against px/s). */
+  readonly wake: number;
+  /** Radial acceleration at full drive, in CSS px/s²: the cursor's bow wave. */
+  readonly bowWave: number;
+  /** Tangential acceleration at full drive, in CSS px/s²: the curl shed at the
+   *  flanks of a sweep, which is most of what reads as fluid. */
+  readonly swirl: number;
+  /** Natural frequency of the restoring spring, in Hz. Lower is looser and
+   *  slower to recover; this is the main knob for how heavy the air feels. */
+  readonly springHz: number;
+  /** Soft bound on displacement, in CSS pixels. The drive fades out as a mote
+   *  approaches it, so the bound is never reached abruptly. */
+  readonly maxOffset: number;
   /** 0–1: how strongly motes thin out over the reading column. */
   readonly clearColumn: number;
   /** Fraction of motes drawn as drafting ticks rather than dust. */
@@ -43,9 +53,12 @@ const PRESETS: Record<ParticlePresetName, ParticlePreset> = {
     speed: 1,
     lift: 0.0045,
     intensity: 1,
-    pointerRadius: 210,
-    pointerPush: 26,
-    pulse: 1,
+    pointerRadius: 230,
+    wake: 0.85,
+    bowWave: 300,
+    swirl: 240,
+    springHz: 1.1,
+    maxOffset: 26,
     clearColumn: 0.25,
     tickRatio: 0.1,
   },
@@ -58,9 +71,12 @@ const PRESETS: Record<ParticlePresetName, ParticlePreset> = {
     speed: 0.85,
     lift: 0.0035,
     intensity: 0.9,
-    pointerRadius: 190,
-    pointerPush: 20,
-    pulse: 0.7,
+    pointerRadius: 210,
+    wake: 0.72,
+    bowWave: 250,
+    swirl: 200,
+    springHz: 1.15,
+    maxOffset: 22,
     clearColumn: 0.5,
     tickRatio: 0.08,
   },
@@ -73,9 +89,12 @@ const PRESETS: Record<ParticlePresetName, ParticlePreset> = {
     speed: 0.7,
     lift: 0.0028,
     intensity: 0.78,
-    pointerRadius: 170,
-    pointerPush: 14,
-    pulse: 0,
+    pointerRadius: 190,
+    wake: 0.48,
+    bowWave: 155,
+    swirl: 130,
+    springHz: 1.25,
+    maxOffset: 15,
     clearColumn: 0.85,
     tickRatio: 0.06,
   },

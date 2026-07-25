@@ -1,7 +1,28 @@
-import { createMoteField, moteBudget } from './field';
+import { FLOATS_PER_MOTE, createMoteField, moteBudget } from './field';
+import {
+  FLOATS_PER_QUAD,
+  MAX_STEPS_PER_FRAME,
+  STEP_SECONDS,
+  aimPointer,
+  createMotionState,
+  createPointer,
+  motionParams,
+  releasePointer,
+  restMotion,
+  sampleQuads,
+  stepMotion,
+  stepPointer,
+  type MotionParams,
+  type MotionState,
+  type PointerState,
+} from './motion';
 import { readPalette } from './palette';
 import { resolvePreset, type ParticlePreset } from './presets';
-import { createRenderer, type ParticleRenderer } from './renderer';
+import {
+  createRenderer,
+  traitsFromField,
+  type ParticleRenderer,
+} from './renderer';
 import {
   TIERS,
   createQualityMonitor,
@@ -12,10 +33,13 @@ import {
 } from './quality';
 
 /**
- * The controller is the only stateful part of the system: it owns the clock, the
- * pointer, the viewport, and the quality decision, and it feeds the renderer one
- * frame at a time. Everything it consults — presets, field generation, quality,
- * palette — is a pure function it can be tested without.
+ * The controller owns the clock and the wiring: it collects raw input, advances
+ * the simulation in fixed steps, and hands the renderer one interpolated frame.
+ *
+ * Timing is the whole job. Raw pointer events only move a target; frame time only
+ * feeds an accumulator. Everything the eye sees is a function of the fixed-step
+ * simulation and a sub-step blend factor, so the same second of wall-clock looks
+ * the same at 60Hz, at 144Hz, and across a dropped frame.
  */
 
 export interface ParticleFieldHandle {
@@ -37,21 +61,14 @@ const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 /** A still field is still a composition, so it is sampled at a point where the
  *  wander has developed rather than at the seeded lattice. */
 const STILL_TIME = 12;
-/** Longest frame the clock will accept, so a stall never jumps the field. */
-const MAX_FRAME_SECONDS = 0.05;
-/** Time constant for the pointer disturbance healing over. */
-const POINTER_DECAY_SECONDS = 0.75;
-const POINTER_FOLLOW = 8;
-const SCROLL_FOLLOW = 12;
+/** Longest frame the clock will accept. Equal to MAX_STEPS_PER_FRAME steps, so a
+ *  stall is absorbed by the same bound from both directions. */
+const MAX_FRAME_SECONDS = STEP_SECONDS * MAX_STEPS_PER_FRAME;
+/** Scroll parallax follows the page on its own spring, in rad/s. */
+const SCROLL_OMEGA = 12;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
-}
-
-/** Frame-rate independent exponential approach: the fraction of the remaining
- *  distance to close this frame. Cannot overshoot, so it never springs. */
-function approach(seconds: number, rate: number): number {
-  return 1 - Math.exp(-seconds * rate);
 }
 
 export function mountParticleField(
@@ -75,10 +92,13 @@ export function mountParticleField(
   const finePointer = window.matchMedia(FINE_POINTER);
   const hints = navigator as DeviceHints;
 
-  // The buffer is allocated once at the preset's ceiling; every later quality
-  // change is a shorter draw call over the same field.
+  // Allocated once at the preset's ceiling; every later quality change is a
+  // shorter draw call over the same field.
   const field = createMoteField(preset.maxCount, preset);
-  renderer.upload(field);
+  const quads = new Float32Array(preset.maxCount * FLOATS_PER_QUAD);
+  const motion: MotionState = createMotionState(preset.maxCount);
+  const pointer: PointerState = createPointer();
+  renderer.uploadTraits(traitsFromField(field, FLOATS_PER_MOTE));
 
   let monitor: QualityMonitor = createQualityMonitor(
     initialTier({
@@ -96,20 +116,16 @@ export function mountParticleField(
   let cssHeight = 0;
   let pixelRatio = 1;
   let count = 0;
-  let columnHalfWidth = 0;
+  let params: MotionParams = motionParams(preset, { width: 1, height: 1 }, 0);
 
-  let elapsed = 0;
+  // The simulation clock: an integer number of fixed steps, plus whatever time
+  // has not yet been consumed. Nothing else measures time.
+  let simTime = 0;
+  let accumulator = 0;
   let lastFrame = 0;
   let lastDraw = 0;
   let frame: number | null = null;
   let painted = false;
-
-  let pointerX = 0;
-  let pointerY = 0;
-  let pointerTargetX = 0;
-  let pointerTargetY = 0;
-  let pointerEnergy = 0;
-  let pointerSeen = false;
 
   let scroll = 0;
   let scrollTarget = 0;
@@ -131,39 +147,50 @@ export function mountParticleField(
     cssWidth = Math.max(rect.width || window.innerWidth, 1);
     cssHeight = Math.max(rect.height || window.innerHeight, 1);
     pixelRatio = clamp(window.devicePixelRatio || 1, 1, tier.dprCap);
-    columnHalfWidth = measureColumn();
     count = moteBudget(
       { width: cssWidth, height: cssHeight },
       preset,
       tier.countScale,
     );
-    renderer?.resize(cssWidth * pixelRatio, cssHeight * pixelRatio);
+    params = motionParams(
+      { ...preset, intensity: preset.intensity * tier.intensityScale },
+      { width: cssWidth, height: cssHeight },
+      measureColumn(),
+    );
+    renderer?.resize(cssWidth * pixelRatio, cssHeight * pixelRatio, pixelRatio);
   }
 
-  function drawFrame(): void {
+  function drawFrame(blend: number): void {
     if (!renderer) return;
-    renderer.draw({
-      time: tier.animated ? elapsed : STILL_TIME,
+    const animated = tier.animated;
+    sampleQuads(
+      quads,
+      field,
+      motion,
+      params,
+      animated ? simTime - (1 - blend) * STEP_SECONDS : STILL_TIME,
+      animated ? blend : 1,
+      animated ? scroll : 0,
       count,
-      intensity: preset.intensity * tier.intensityScale,
-      speed: preset.speed,
-      lift: preset.lift,
-      sizeScale: pixelRatio,
-      pointerX: pointerX * pixelRatio,
-      pointerY: pointerY * pixelRatio,
-      pointerEnergy: pointerSeen ? pointerEnergy : 0,
-      pointerRadius: preset.pointerRadius * pixelRatio,
-      pointerPush: preset.pointerPush * pixelRatio,
-      scroll,
-      columnHalfWidth: columnHalfWidth * pixelRatio,
-      columnStrength: preset.clearColumn,
-    });
+    );
+    renderer.uploadQuads(quads);
+    renderer.draw(count);
     if (!painted) {
       painted = true;
       // Fade in once there is something to see, so the field arrives with the
       // page instead of blinking on after it.
-      root.dataset.state = tier.animated ? 'live' : 'still';
+      root.dataset.state = animated ? 'live' : 'still';
     }
+  }
+
+  function advance(seconds: number): void {
+    stepPointer(pointer, params, seconds);
+    stepMotion(motion, field, params, pointer, simTime, scroll, count, seconds);
+    // Parallax rides its own critically damped spring, evaluated on the same
+    // fixed step, so scrolling can never introduce a per-frame ripple.
+    const scrollBlend = 1 - Math.exp(-seconds * SCROLL_OMEGA);
+    scroll += (scrollTarget - scroll) * scrollBlend;
+    simTime += seconds;
   }
 
   function tick(now: number): void {
@@ -181,19 +208,21 @@ export function mountParticleField(
     }
     monitor = observed;
 
-    const seconds = clamp(rawDelta / 1000, 0, MAX_FRAME_SECONDS);
-    elapsed += seconds;
-    pointerEnergy *= Math.exp(-seconds / POINTER_DECAY_SECONDS);
-    const follow = approach(seconds, POINTER_FOLLOW);
-    pointerX += (pointerTargetX - pointerX) * follow;
-    pointerY += (pointerTargetY - pointerY) * follow;
-    scroll += (scrollTarget - scroll) * approach(seconds, SCROLL_FOLLOW);
+    accumulator += clamp(rawDelta / 1000, 0, MAX_FRAME_SECONDS);
+    let steps = 0;
+    while (accumulator >= STEP_SECONDS && steps < MAX_STEPS_PER_FRAME) {
+      advance(STEP_SECONDS);
+      accumulator -= STEP_SECONDS;
+      steps += 1;
+    }
 
-    if (tier.frameIntervalMs > 0 && now - lastDraw < tier.frameIntervalMs - 1) {
+    if (tier.frameIntervalMs > 0 && now - lastDraw < tier.frameIntervalMs) {
       return;
     }
     lastDraw = now;
-    drawFrame();
+    // The blend is where the remaining time goes: the frame is rendered between
+    // the last two simulated states rather than at whichever one landed nearest.
+    drawFrame(accumulator / STEP_SECONDS);
   }
 
   function stopLoop(): void {
@@ -204,53 +233,44 @@ export function mountParticleField(
   function startLoop(): void {
     if (frame !== null || !renderer) return;
     if (!tier.animated) {
-      drawFrame();
+      drawFrame(1);
       return;
     }
     lastFrame = performance.now();
     lastDraw = 0;
+    accumulator = 0;
+    // Whatever the cursor did while the field was paused is not a gesture.
+    releasePointer(pointer);
     frame = requestAnimationFrame(tick);
   }
 
   function applyTier(next: QualityTier): void {
     tier = next;
     if (!next.pointer) {
-      pointerEnergy = 0;
-      pointerSeen = false;
+      releasePointer(pointer);
+      restMotion(motion);
     }
     applySize();
     stopLoop();
     if (next.animated) startLoop();
-    else drawFrame();
+    else drawFrame(1);
   }
 
   function onPointerMove(event: PointerEvent): void {
     if (!tier.pointer || !finePointer.matches) return;
-    const travel = pointerSeen
-      ? Math.hypot(
-          event.clientX - pointerTargetX,
-          event.clientY - pointerTargetY,
-        )
-      : 0;
-    if (!pointerSeen) {
-      // Arrive where the pointer already is: the first move must not drag a
-      // disturbance across the whole field from the origin.
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      pointerSeen = true;
-    }
-    pointerTargetX = event.clientX;
-    pointerTargetY = event.clientY;
-    // Energy tracks movement, then decays, so a parked cursor leaves no
-    // permanent dent in the field — the air settles back.
-    pointerEnergy = Math.min(1, pointerEnergy + travel / 260);
+    // Raw events only move the target. The proxy the field responds to is
+    // integrated on the fixed step, so pointer-event rate cannot affect motion.
+    aimPointer(pointer, event.clientX, event.clientY, params);
   }
 
-  function onPointerDown(event: PointerEvent): void {
-    if (!tier.pointer || preset.pulse <= 0 || event.pointerType !== 'mouse') {
-      return;
-    }
-    pointerEnergy = Math.min(1.6, pointerEnergy + preset.pulse * 0.55);
+  function onPointerLeave(event: PointerEvent): void {
+    if (event.relatedTarget === null) releasePointer(pointer);
+  }
+
+  /** Leaving and returning is not a gesture, so the next sighting starts clean
+   *  instead of arriving as a flick from wherever the cursor was last seen. */
+  function onBlur(): void {
+    releasePointer(pointer);
   }
 
   function onScroll(): void {
@@ -275,6 +295,7 @@ export function mountParticleField(
             saveData: hints.connection?.saveData === true,
           }),
     );
+    restMotion(motion);
     applyTier(TIERS[monitor.tier]);
   }
 
@@ -295,7 +316,8 @@ export function mountParticleField(
     }
     // The field is deterministic, so the reader gets the same scene back rather
     // than a freshly dealt one.
-    renderer.upload(field);
+    renderer.uploadTraits(traitsFromField(field, FLOATS_PER_MOTE));
+    restMotion(motion);
     applySize();
     startLoop();
   }
@@ -304,15 +326,17 @@ export function mountParticleField(
     applySize();
     // A resize while paused would otherwise leave a stale frame stretched across
     // the new backing store.
-    if (!tier.animated || frame === null) drawFrame();
+    if (!tier.animated || frame === null) drawFrame(1);
   });
 
   applySize();
   onScroll();
+  scroll = scrollTarget;
   resizeObserver.observe(canvas);
   window.addEventListener('pointermove', onPointerMove, { passive: true });
-  window.addEventListener('pointerdown', onPointerDown, { passive: true });
+  document.addEventListener('pointerleave', onPointerLeave);
   window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('blur', onBlur);
   document.addEventListener('visibilitychange', onVisibility);
   reducedMotion.addEventListener('change', onReducedMotionChange);
   canvas.addEventListener('webglcontextlost', onContextLost);
@@ -324,8 +348,9 @@ export function mountParticleField(
       stopLoop();
       resizeObserver.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('blur', onBlur);
       document.removeEventListener('visibilitychange', onVisibility);
       reducedMotion.removeEventListener('change', onReducedMotionChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);

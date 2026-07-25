@@ -62,23 +62,47 @@ not a separate approximation.
 dust and drafting ticks, mounted once by `components/ParticleField.astro` from
 `layouts/Base.astro`. It is a client-only concern with no server dependencies.
 
-Its shape follows from one decision: every mote's path is **analytic**, derived
-in the vertex shader from a seed and the clock. There is no simulation state, so
-there is no per-frame CPU work and no buffer traffic — one program, one static
-buffer sized to the preset's ceiling, one `POINTS` draw call. Quality changes are
-therefore a shorter draw call and nothing else, which is why `field.ts`
-interleaves the depth strata: any prefix of the buffer is still a balanced field.
+Its shape follows from one decision: the field is a **physical system**, not an
+animation. Motes hang on damped springs; the only thing that pushes them is the
+_velocity_ of a smoothed proxy for the cursor. A parked cursor therefore exerts
+nothing and the field returns to exact equilibrium, a moving one drags dust along
+in its wake, and everything accelerates and recovers instead of being placed.
+
+Three consequences to preserve:
+
+- **The simulation runs on a fixed 120Hz step, and rendering interpolates between
+  the last two states.** Forces depend on positions, so the same wall-clock second
+  must produce the same trajectory at 60Hz, 144Hz, and across dropped frames —
+  `tests/particle-motion.test.ts` asserts that bit-for-bit, including under a
+  jittering frame clock. Catch-up is bounded to six steps, so a stall makes the
+  field run slightly late rather than sprint.
+- **Raw pointer events only move a target.** Nothing reads the cursor directly,
+  which is what makes the motion independent of pointer-event rate — a 1000Hz
+  mouse and a 125Hz mouse produce the same field.
+- **The motion lives on the CPU** (`motion.ts`), and the shaders are a pure
+  rasteriser. An earlier version derived positions analytically in the vertex
+  shader for zero per-frame CPU cost, but that only works for motion that depends
+  on nothing: forces need positions, and duplicating the model in GLSL would mean
+  two implementations that could disagree. At a few hundred motes the trade is
+  cheap — measured at ~90µs for a busy frame and ~37µs idle at 340 motes, well
+  under 1% of a 60Hz budget — and it buys a model that is testable without a GPU.
 
 The parts divide by what they know:
 
 - `presets.ts` — the composition seam. A route names a mood (`hero`, `ambient`,
-  `quiet`) and the mood owns density, motion, and how strongly the field thins
-  out over the reading column. Pages never tune numbers.
-- `field.ts`, `quality.ts`, `palette.ts` — pure functions, covered by
-  `tests/particles.test.ts`: field generation, the device-signal and adaptive
-  frame-clock tiering, and colour parsing.
-- `shaders.ts`, `renderer.ts` — GL state and GLSL, and nothing about the page.
-- `mount.ts` — the only stateful part: clock, pointer, viewport, context loss.
+  `quiet`) and the mood owns density, the physical constants, and how strongly the
+  field thins out over the reading column. Pages never tune numbers.
+- `motion.ts` — the whole motion model: cursor proxy, forces, integration, and the
+  per-frame vertex sampling. Pure functions over typed arrays.
+- `field.ts`, `quality.ts`, `palette.ts` — pure functions too: field generation,
+  the device-signal and adaptive frame-clock tiering, and colour parsing.
+- `shaders.ts`, `renderer.ts` — GL state and GLSL, and nothing about motion, time,
+  or the page. One static trait buffer, one dynamic vertex buffer, one draw call.
+- `mount.ts` — the only stateful part: clock, input, viewport, context loss.
+
+Quality changes remain a shorter draw call and nothing else, which is why
+`field.ts` interleaves the depth strata: any prefix of the buffer is still a
+balanced field.
 
 Two constraints are load-bearing. The palette is read from the computed `color`
 of hidden probe elements styled in `_particle-field.css`, so retinting
