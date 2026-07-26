@@ -1,6 +1,10 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
-import { deriveLocalMap, type LocalMapStop } from '@lib/garden/local-map';
+import {
+  deriveLocalMap,
+  summarizeLocalMap,
+  type LocalMapStop,
+} from '@lib/garden/local-map';
 import { NOTES_GRAPH_PATH } from '@lib/site-routes';
 import '../../styles/components/_local-map.css';
 
@@ -85,16 +89,7 @@ if (map) {
   }
 }
 
-// The readout's resting state is the census the drawing can only imply once a
-// lane overflows, so it counts everything reachable rather than everything drawn.
-const census = map
-  ? [
-      map.totals.children > 0 ? `${map.totals.children} inside` : null,
-      map.totals.outbound > 0 ? `${map.totals.outbound} out` : null,
-      map.totals.backlinks > 0 ? `${map.totals.backlinks} in` : null,
-    ].filter((part): part is string => part !== null)
-  : [];
-const readout = census.length > 0 ? census.join(' · ') : 'you are here';
+const readout = map ? summarizeLocalMap(map) : '';
 
 // Drawing coordinates, in the 26×26 box each row reserves for its marker. The
 // trunk sits at x=9 in both the SVG and the CSS rule that continues it between

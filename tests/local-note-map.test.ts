@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { GardenDocument, GardenIndex } from '../src/lib/garden';
-import { deriveLocalMap, hasLocalMap } from '../src/lib/garden/local-map';
+import {
+  deriveLocalMap,
+  hasLocalMap,
+  summarizeLocalMap,
+} from '../src/lib/garden/local-map';
 
 function note(
   id: string,
@@ -145,6 +149,59 @@ describe('deriveLocalMap', () => {
 
     expect(ids(deriveLocalMap(current, index)!.references)).toEqual(['only']);
     expect(deriveLocalMap(note('alone'), garden([note('alone')]))).toBeNull();
+  });
+});
+
+describe('summarizeLocalMap', () => {
+  it('leaves out a lane whose single row is already drawn', () => {
+    const current = note('current', {
+      parentId: 'index',
+      childIds: ['child'],
+      backlinks: ['index'],
+    });
+    const index = garden([
+      note('index', { childIds: ['current'] }),
+      current,
+      note('child'),
+    ]);
+
+    // One child, drawn a row below the count — and the lone backlink is the
+    // parent, which the trunk already claimed.
+    expect(summarizeLocalMap(deriveLocalMap(current, index)!)).toBe(
+      'you are here',
+    );
+  });
+
+  it('counts a lane once it holds a shape worth naming', () => {
+    const current = note('current', { childIds: ['a', 'b', 'c'] });
+    const index = garden([
+      note('index'),
+      current,
+      note('a'),
+      note('b'),
+      note('c'),
+    ]);
+
+    expect(summarizeLocalMap(deriveLocalMap(current, index)!)).toBe('3 inside');
+  });
+
+  it('always counts a clipped lane, which the drawing cannot show', () => {
+    const current = note('current', {
+      childIds: Array.from({ length: 12 }, (_, slot) => `child-${slot}`),
+      outbound: [{ target: 'out', resolvedId: 'out' }],
+    });
+    const index = garden([
+      note('index'),
+      current,
+      ...Array.from({ length: 12 }, (_, slot) => note(`child-${slot}`)),
+      note('out'),
+    ]);
+    const map = deriveLocalMap(current, index)!;
+
+    expect(map.children).toHaveLength(8);
+    // Twelve inside reports because eight are drawn; the single outbound link
+    // is fully drawn, so it stays quiet.
+    expect(summarizeLocalMap(map)).toBe('12 inside');
   });
 });
 
