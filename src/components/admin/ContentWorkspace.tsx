@@ -27,6 +27,7 @@ import { makeEditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import { useContentLibrary } from './useContentLibrary';
 import { useContentMutations } from './useContentMutations';
+import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
 import { useStudioTabs } from './useStudioTabs';
 import { countWords, noteHref, titleFromBody } from './studioHelpers';
@@ -99,6 +100,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     rememberHistory,
   } = tabs;
 
+  // A save can change a note's title, folder or date, and with it the social
+  // card the note's page points at. Redrawing trails the save rather than
+  // blocking it.
+  const syncSocialCards = useSocialCardSync(Boolean(collection));
+
   const onEntrySaved = useCallback(
     (id: string, revision: string, title: string) => {
       setEntries((items) =>
@@ -106,8 +112,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           entry.id === id ? { ...entry, title, revision } : entry,
         ),
       );
+      syncSocialCards();
     },
-    [setEntries],
+    [setEntries, syncSocialCards],
   );
 
   const doc = useStudioDocument({
