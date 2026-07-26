@@ -271,8 +271,8 @@ import '../styles/components/_page-preview.css';
     const readPreview = (html: string, responseUrl: URL) => {
       const parsed = new DOMParser().parseFromString(html, 'text/html');
       const main = parsed.querySelector('main') ?? parsed.body;
-      // A note page puts its backlinks, related notes and local map inside
-      // <main> alongside the article. Read the document itself, so neither the
+      // A note page puts its related notes and local map inside <main>
+      // alongside the article. Read the document itself, so neither the
       // opening line nor the reading time comes from the rail beside it.
       const body = main?.querySelector('article') ?? main;
       return composePreviewContent({
