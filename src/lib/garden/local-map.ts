@@ -41,7 +41,12 @@ export interface LocalMapModel {
 const MAX_ANCESTORS = 2;
 const MAX_CHILDREN = 8;
 const MAX_OUTBOUND = 3;
-const MAX_BACKLINKS = 3;
+// Inbound gets twice the room outbound does, because the map is the only place
+// it appears: a note's outbound links are in its prose, where you meet them
+// while reading, but nothing in the body can tell you who points back. The
+// standalone Backlinks section that used to carry this was a strict subset of
+// this lane, drawn a few rows above it under a second heading.
+const MAX_BACKLINKS = 6;
 
 /**
  * Whether a note has bearings to draw — anything at all in its neighbourhood.
