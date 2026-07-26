@@ -26,15 +26,65 @@ import '../styles/components/_home.css';
       <a href="https://dt.uz/" target="_blank" rel="noopener">DT</a>.
     </p>
 
+    {
+      /* Three plotted destinations rather than three buttons — see
+         `_home.css`. The `__plot` span is the drawing (rule, tick, station
+         dot); it carries no text, so it is hidden from the reading order. */
+    }
     <nav class="home-hero__cta" aria-label="primary">
       <a href="/notes" class="home-cta">
-        <LinkIcon name="pen" /> notes
+        <span class="home-cta__face">
+          <LinkIcon name="pen" class="home-cta__glyph" />
+          <span class="home-cta__label">notes</span>
+        </span>
+        <span class="home-cta__plot" aria-hidden="true">
+          <svg
+            class="home-cta__mark"
+            viewBox="0 0 14 14"
+            width="14"
+            height="14"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <circle class="home-cta__dot" cx="7" cy="7" r="2.6"></circle>
+          </svg>
+        </span>
       </a>
       <a href="/about" class="home-cta">
-        <LinkIcon name="user" /> about
+        <span class="home-cta__face">
+          <LinkIcon name="user" class="home-cta__glyph" />
+          <span class="home-cta__label">about</span>
+        </span>
+        <span class="home-cta__plot" aria-hidden="true">
+          <svg
+            class="home-cta__mark"
+            viewBox="0 0 14 14"
+            width="14"
+            height="14"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <circle class="home-cta__dot" cx="7" cy="7" r="2.6"></circle>
+          </svg>
+        </span>
       </a>
       <a href="/links" class="home-cta">
-        <LinkIcon name="link" /> links
+        <span class="home-cta__face">
+          <LinkIcon name="link" class="home-cta__glyph" />
+          <span class="home-cta__label">links</span>
+        </span>
+        <span class="home-cta__plot" aria-hidden="true">
+          <svg
+            class="home-cta__mark"
+            viewBox="0 0 14 14"
+            width="14"
+            height="14"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <circle class="home-cta__dot" cx="7" cy="7" r="2.6"></circle>
+          </svg>
+        </span>
       </a>
     </nav>
   </section>
