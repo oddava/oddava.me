@@ -20,7 +20,18 @@ const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.i
 
 /** One row of the strip map: a station on the trunk, or something hanging off it. */
 type StopKind =
-  'ancestor' | 'current' | 'child' | 'more' | 'outbound' | 'backlink';
+  | 'ancestor'
+  | 'current'
+  | 'child'
+  | 'more'
+  | 'outbound'
+  | 'backlink'
+  | 'more-ref';
+
+/** Spurs rather than structure: the trunk frays through them. */
+const REF_KINDS = new Set<StopKind>(['outbound', 'backlink', 'more-ref']);
+/** Overflow rows: a dashed dot and the readout's mono voice, not a title. */
+const MORE_KINDS = new Set<StopKind>(['more', 'more-ref']);
 
 interface Row {
   kind: StopKind;
@@ -87,6 +98,20 @@ if (map) {
       detail: outbound ? '→ linked from here' : '← links back here',
     });
   }
+
+  // The lane is now the whole inbound story, so a clipped one has to say so —
+  // dropping the overflow silently is how a backlink becomes unreachable.
+  const hiddenReferences =
+    map.totals.outbound + map.totals.backlinks - map.references.length;
+  if (hiddenReferences > 0) {
+    rows.push({
+      kind: 'more-ref',
+      href: landscapeHref,
+      title: `+${hiddenReferences} more linked`,
+      label: `See ${hiddenReferences} more notes linked to ${document.title} on the full map`,
+      detail: '↗ the rest are on the full map',
+    });
+  }
 }
 
 const readout = map ? summarizeLocalMap(map) : '';
@@ -100,6 +125,7 @@ const TRACE: Partial<Record<StopKind, string>> = {
   more: 'M9 8.6 L13.4 13 H16',
   outbound: 'M9 8.6 L13.4 13 H16.6',
   backlink: 'M21 8.6 L16.6 13 H13.6',
+  'more-ref': 'M9 8.6 L13.4 13 H16',
 };
 
 // Light travels the way meaning does: out along a branch, up the trunk toward a
@@ -112,6 +138,7 @@ const PULSE: Record<StopKind, string> = {
   more: 'M9 8.6 L13.4 13 H19',
   outbound: 'M9 8.6 L13.4 13 H20',
   backlink: 'M21 8.6 L16.6 13 H10.9',
+  'more-ref': 'M9 8.6 L13.4 13 H19',
 };
 ---
 
@@ -143,8 +170,8 @@ const PULSE: Record<StopKind, string> = {
               class:list={[
                 'local-map__stop',
                 `local-map__stop--${row.kind}`,
-                (row.kind === 'outbound' || row.kind === 'backlink') &&
-                  'local-map__stop--ref',
+                REF_KINDS.has(row.kind) && 'local-map__stop--ref',
+                MORE_KINDS.has(row.kind) && 'local-map__stop--more',
               ]}
             >
               <a
@@ -167,9 +194,7 @@ const PULSE: Record<StopKind, string> = {
                     <path
                       class:list={[
                         'local-map__trace',
-                        row.kind !== 'child' &&
-                          row.kind !== 'more' &&
-                          'local-map__trace--ref',
+                        REF_KINDS.has(row.kind) && 'local-map__trace--ref',
                       ]}
                       d={TRACE[row.kind]}
                     />
@@ -202,11 +227,11 @@ const PULSE: Record<StopKind, string> = {
                   {row.kind === 'ancestor' && (
                     <circle class="local-map__dot" cx="9" cy="13" r="2.4" />
                   )}
-                  {(row.kind === 'child' || row.kind === 'more') && (
+                  {(row.kind === 'child' || MORE_KINDS.has(row.kind)) && (
                     <circle
                       class:list={[
                         'local-map__dot',
-                        row.kind === 'more' && 'local-map__dot--more',
+                        MORE_KINDS.has(row.kind) && 'local-map__dot--more',
                       ]}
                       cx="19"
                       cy="13"

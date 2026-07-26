@@ -95,6 +95,31 @@ describe('deriveLocalMap', () => {
     expect(map.totals).toEqual({ children: 10, outbound: 2, backlinks: 1 });
   });
 
+  it('gives inbound links more room than outbound, being their only home', () => {
+    const current = note('current', {
+      outbound: Array.from({ length: 5 }, (_, slot) => ({
+        target: `out-${slot}`,
+        resolvedId: `out-${slot}`,
+      })),
+      backlinks: Array.from({ length: 8 }, (_, slot) => `back-${slot}`),
+    });
+    const index = garden([
+      note('index'),
+      current,
+      ...Array.from({ length: 5 }, (_, slot) => note(`out-${slot}`)),
+      ...Array.from({ length: 8 }, (_, slot) => note(`back-${slot}`)),
+    ]);
+
+    const map = deriveLocalMap(current, index)!;
+    const drawn = (relationship: string) =>
+      map.references.filter((stop) => stop.relationship === relationship);
+
+    expect(drawn('outbound')).toHaveLength(3);
+    expect(drawn('backlink')).toHaveLength(6);
+    expect(map.totals.outbound).toBe(5);
+    expect(map.totals.backlinks).toBe(8);
+  });
+
   it('draws every note once, with structure claiming it before links do', () => {
     const current = note('current', {
       parentId: 'parent',

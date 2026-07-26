@@ -4,7 +4,6 @@ import { hasLocalMap } from '@lib/garden/local-map';
 import { renderNote } from '@lib/garden/render';
 import { bodyProvidesTitleHeading, formatNoteDate } from '@lib/garden/utils';
 import LocalNoteMap from './LocalNoteMap.astro';
-import NoteBacklinks from './NoteBacklinks.astro';
 import NoteTableOfContents from './NoteTableOfContents.astro';
 import RelatedNotes from './RelatedNotes.astro';
 import '../../styles/components/_note-prose.css';
@@ -86,12 +85,18 @@ const isStub = !rendered.html && document.childIds.length === 0;
   <aside class="note-context" aria-label={`Context for ${document.title}`}>
     <div class="note-context__inner">
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
-      <NoteBacklinks document={document} index={index} />
       <RelatedNotes document={document} index={index} />
       {
         /* Any note with a neighbourhood — see `hasLocalMap`, which the
            landscape's "bearings" link asks too so it never points at a
-           missing anchor. */
+           missing anchor.
+
+           Inbound links live here and nowhere else. A standalone Backlinks
+           section above this one listed the same notes the reference lane
+           draws — including the parent, which the trunk had already claimed,
+           so a folder's own name appeared twice in the rail a few rows apart.
+           `Related` does not collide the same way: `getRelatedNotes` already
+           excludes the parent, children, and everything linked either way. */
         hasLocalMap(document, index) && (
           <LocalNoteMap document={document} index={index} />
         )
