@@ -12,6 +12,8 @@ import type {
   IntegrationResponse,
   IntegrationsResponse,
   OverviewResponse,
+  SocialCardStatus,
+  SocialCardsResponse,
 } from '../../lib/contracts';
 
 const ADMIN_REQUEST_TIMEOUT_MS = 15_000;
@@ -411,6 +413,27 @@ export function reorderContentEntries(
       body: JSON.stringify({ folder, ids }),
     },
   );
+}
+
+export function fetchSocialCards(): Promise<SocialCardsResponse> {
+  return readContentJson<SocialCardsResponse>('/api/admin/social-cards', {
+    cache: 'no-store',
+  });
+}
+
+export function uploadSocialCard(
+  card: SocialCardStatus,
+  image: Blob,
+): Promise<{ card: { path: string; fingerprint: string } }> {
+  const formData = new FormData();
+  formData.set('path', card.path);
+  formData.set('fingerprint', card.fingerprint);
+  formData.set('file', image, `${card.path.replaceAll('/', '-')}.png`);
+
+  return readContentJson('/api/admin/social-cards', {
+    method: 'POST',
+    body: formData,
+  });
 }
 
 export function uploadContentMedia(

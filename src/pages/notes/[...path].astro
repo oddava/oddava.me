@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import { getGardenIndexOrUnavailable, noteIdFromSourceId } from '@lib/garden';
+import { noteSocialCardImage } from '@lib/garden/og-card';
 import { deriveNoteSocialImage } from '@lib/garden/utils';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
 import '../../styles/components/_garden.css';
@@ -25,15 +26,18 @@ if (!document) {
   return Astro.rewrite('/404');
 }
 
-const socialImage = deriveNoteSocialImage(document.body);
+// An image the author put in the note beats a generated card; a note without
+// one gets a card of its own rather than the site-wide default.
+const socialImage =
+  deriveNoteSocialImage(document.body) ?? noteSocialCardImage(document);
 const description = document.summary || NOTE_FALLBACK_DESCRIPTION;
 ---
 
 <Base
   title={document.title}
   {description}
-  image={socialImage?.src}
-  imageAlt={socialImage?.alt}
+  image={socialImage.src}
+  imageAlt={socialImage.alt}
   type="article"
   modifiedTime={document.updated}
   wide

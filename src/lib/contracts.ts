@@ -179,3 +179,22 @@ export interface ContentMediaResponse {
   media: { url: string; path: string };
   result: ContentWriteResult;
 }
+
+/**
+ * One note's social card: the text to draw, the fingerprint of exactly that
+ * text, and whether the store already holds a card for it. Studio draws the
+ * missing ones — it never derives the text itself, so a card and the route
+ * that serves it can only ever agree.
+ */
+export interface SocialCardStatus {
+  path: string;
+  title: string;
+  folder: string;
+  date: string;
+  fingerprint: string;
+  stored: boolean;
+}
+
+export interface SocialCardsResponse {
+  cards: SocialCardStatus[];
+}

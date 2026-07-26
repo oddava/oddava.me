@@ -184,6 +184,20 @@ const ADMIN_ROUTES: {
     sameOrigin: true,
     params: { collection: 'notes' },
   },
+  {
+    file: 'social-cards.ts',
+    module: '../src/pages/api/admin/social-cards',
+    method: 'GET',
+    auth: true,
+    sameOrigin: false,
+  },
+  {
+    file: 'social-cards.ts',
+    module: '../src/pages/api/admin/social-cards',
+    method: 'POST',
+    auth: true,
+    sameOrigin: true,
+  },
   // The guestbook moderation API is an admin route that lives outside
   // src/pages/api/admin (its URL is /api/guestbook/admin). It is the most
   // destructive route in the repo — POST {action:'clear', all:true} wipes the
