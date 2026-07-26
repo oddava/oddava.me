@@ -60,6 +60,34 @@ export function hasLocalMap(
   return deriveLocalMap(document, index) !== null;
 }
 
+/**
+ * The readout's resting line: the census the drawing can only imply.
+ *
+ * A lane reports its total when the number says something the rows do not.
+ * `1 inside` never does — it sits directly above the single child row it
+ * counts, so it is a line to read for no information. Two or more is a shape
+ * worth naming before you scan for it, and a clipped lane is the one case the
+ * drawing genuinely cannot express.
+ */
+export function summarizeLocalMap(map: LocalMapModel): string {
+  const drawn = (relationship: 'outbound' | 'backlink') =>
+    map.references.filter((stop) => stop.relationship === relationship).length;
+
+  const census = [
+    lane(map.totals.children, map.children.length, 'inside'),
+    lane(map.totals.outbound, drawn('outbound'), 'out'),
+    lane(map.totals.backlinks, drawn('backlink'), 'in'),
+  ].filter((part): part is string => part !== null);
+
+  return census.length > 0 ? census.join(' · ') : 'you are here';
+}
+
+function lane(total: number, shown: number, label: string): string | null {
+  if (total === 0) return null;
+  if (total === 1 && shown >= total) return null;
+  return `${total} ${label}`;
+}
+
 export function deriveLocalMap(
   document: GardenDocument,
   index: GardenIndex,
