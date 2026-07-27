@@ -696,8 +696,11 @@
 .studio-tree-row {
   position: relative;
   display: grid;
+  /* The last column is the ••• button; the padding keeps it off the row's edge
+     rather than shaving the button's own hit area down to make room. */
   grid-template-columns: 18px minmax(0, 1fr) 24px;
   align-items: center;
+  padding-right: 5px;
   min-height: 28px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm-2);
@@ -1222,19 +1225,40 @@
   }
 }
 
-/* Save indicator, when it doubles as the manual Save button. */
+/* Save indicator, when it doubles as the manual Save button. It wears the same
+   chip as the autosave switch it sits beside — a filled accent block was the
+   one loud thing in a bar of quiet controls — and carries the accent in its
+   text and dot instead. */
 .content-workspace .studio-save--action {
-  padding: 4px 11px;
-  border: 1px solid var(--admin-accent);
-  border-radius: var(--radius-sm-2);
-  background: var(--admin-accent);
-  color: var(--color-text-on-accent);
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--admin-accent) 42%, transparent);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--admin-accent);
+  font-family: inherit;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: normal;
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.content-workspace .studio-save--action:hover {
+  border-color: var(--admin-accent);
+  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
 }
 
 .content-workspace .studio-save--action[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--admin-danger) 50%, transparent);
+  color: var(--admin-danger);
+}
+
+.content-workspace .studio-save--action[data-tone='error']:hover {
   border-color: var(--admin-danger);
-  background: var(--admin-danger);
+  background: color-mix(in srgb, var(--admin-danger) 12%, transparent);
 }
 
 .content-workspace .studio-save--action .studio-save__dot {
@@ -2452,7 +2476,8 @@
   }
 
   .content-workspace .studio-save--action {
-    padding: 8px 14px;
+    height: 40px;
+    padding: 0 14px;
     font-size: 0.72rem;
   }
 
