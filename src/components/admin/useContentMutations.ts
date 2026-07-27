@@ -18,9 +18,16 @@ import {
 } from './api';
 import { gardenSlug } from '../../lib/garden/utils';
 import { remapFolderPath } from './studioHelpers';
-import type { StudioTreeItemRef } from './StudioFolderTree';
+import type { StudioTreeItemRef } from './studioDragItems';
+import type { TabPlacement } from './studioTabStrip';
 import type { StudioDocument } from './useStudioDocument';
 import type { StudioTabs } from './useStudioTabs';
+
+/** How an opened note lands in the tab strip. See `studioTabStrip`. */
+interface OpenOptions {
+  placement?: TabPlacement;
+  index?: number;
+}
 
 interface ConfirmOptions {
   title: string;
@@ -43,7 +50,11 @@ interface Deps {
   setError: (message: string | null) => void;
   setNotice: (message: string | null) => void;
   confirm: (options: ConfirmOptions) => Promise<boolean>;
-  openNote: (id: string, folderHint?: string) => Promise<void>;
+  openNote: (
+    id: string,
+    folderHint?: string,
+    options?: OpenOptions,
+  ) => Promise<void>;
 }
 
 export interface ContentMutations {
@@ -51,7 +62,10 @@ export interface ContentMutations {
   toggleFolder: (id: string) => void;
   createEntryInFolder: (folder: string, name: string) => Promise<boolean>;
   createFolderInParent: (parent: string, name: string) => Promise<boolean>;
-  openFolderPage: (folder: ContentFolder) => Promise<boolean>;
+  openFolderPage: (
+    folder: ContentFolder,
+    options?: OpenOptions,
+  ) => Promise<boolean>;
   renameEntryInline: (
     entry: ContentEntryListItem,
     name: string,
@@ -159,7 +173,9 @@ export function useContentMutations({
       setActiveFolder(folder);
       setExpandedFolders((current) => new Set(current).add(folder));
       await refreshTree();
-      await openNote(id, folder);
+      // A file you just made is one you meant to open: it gets its own tab
+      // rather than the one browsing hands round.
+      await openNote(id, folder, { placement: 'permanent' });
       return true;
     } catch (caught) {
       setError(
@@ -195,7 +211,7 @@ export function useContentMutations({
       });
       await refreshTree();
       // The server creates a folder page; open it so the folder has a home.
-      await openNote(folderName, parent);
+      await openNote(folderName, parent, { placement: 'permanent' });
       return true;
     } catch (caught) {
       setError(
@@ -209,7 +225,10 @@ export function useContentMutations({
     }
   }
 
-  async function openFolderPage(folder: ContentFolder): Promise<boolean> {
+  async function openFolderPage(
+    folder: ContentFolder,
+    options: OpenOptions = {},
+  ): Promise<boolean> {
     if (!collection) return false;
     const parent = folder.parentId ?? '';
     setBusyKey(`folder-page-${folder.id}`);
@@ -224,7 +243,7 @@ export function useContentMutations({
         });
         await refreshTree();
       }
-      await openNote(folder.name, parent);
+      await openNote(folder.name, parent, options);
       return true;
     } catch (caught) {
       setError(
