@@ -43,6 +43,9 @@ importers:
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.2
+      preact-render-to-string:
+        specifier: 6.7.0
+        version: 6.7.0(preact@10.29.7)
       prettier:
         specifier: ^3.9.5
         version: 3.9.5

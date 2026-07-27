@@ -31,7 +31,12 @@ import { useContentMutations } from './useContentMutations';
 import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
 import { useStudioTabs } from './useStudioTabs';
-import { countWords, noteHref, titleFromBody } from './studioHelpers';
+import {
+  contentRequestError,
+  countWords,
+  noteHref,
+  titleFromBody,
+} from './studioHelpers';
 import {
   PHONE_QUERY,
   useDrawerSwipe,
@@ -201,6 +206,32 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const patchSession = useCallback((patch: Partial<StudioSession>) => {
     setSession((current) => ({ ...current, ...patch }));
   }, []);
+
+  // Expanding a branch, a level, or a folder a drag is hovering are all the
+  // same move: several paths change state together, so one toggle at a time
+  // would mean several renders and, for a spring-load, a toggle that undoes
+  // itself when the folder was already open.
+  const setFolderExpansion = useCallback((ids: string[], expanded: boolean) => {
+    setExpandedFolders((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (expanded) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // The explorer's refresh button. `refreshTree` rejects when the store is
+  // unreachable, and an unhandled rejection is a button that silently does
+  // nothing.
+  const refreshFiles = useCallback(async () => {
+    try {
+      await refreshTree();
+    } catch (caught) {
+      setError(contentRequestError(caught, 'Could not refresh Files.'));
+    }
+  }, [refreshTree]);
 
   const setSidebarCollapsed = useCallback(
     (collapsed: boolean) => patchSession({ sidebarCollapsed: collapsed }),
@@ -828,8 +859,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onQueryChange={setQuery}
                 onSortChange={(sort) => patchSession({ sort })}
                 onCollapseAll={() => setExpandedFolders(new Set(['']))}
-                onRefresh={() => void refreshTree()}
+                onSetFolderExpansion={setFolderExpansion}
+                onRefresh={refreshFiles}
                 onRequestClose={() => setSidebarCollapsed(true)}
+                onNotice={setNotice}
                 onToggleFolder={mutations.toggleFolder}
                 onSelectFolder={setActiveFolder}
                 onEditEntry={editEntry}
