@@ -653,6 +653,54 @@
   padding: 8px 9px;
 }
 
+/* The field owns the clear button: it belongs to the query, not to the row of
+   actions beside it, and it only exists while there is a query to clear. */
+.studio-search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.studio-search input[type='search']::-webkit-search-cancel-button {
+  display: none;
+}
+
+.studio-search:has(.studio-search__clear) .admin-input {
+  padding-right: 28px;
+}
+
+.studio-search__clear {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transform: translateY(-50%);
+  color: var(--admin-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.studio-search__clear:hover,
+.studio-search__clear:focus-visible {
+  color: var(--admin-text-primary);
+  background: var(--color-overlay-strong);
+}
+
+.studio-search__clear svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
 .studio-entry-list {
   display: grid;
   align-content: start;
@@ -693,6 +741,10 @@
   position: relative;
 }
 
+/* The row itself is the tree item: it carries the role, the tab stop and every
+   gesture. The chevron and the label are spans inside it rather than buttons of
+   their own, so a keyboard walks rows — not three controls per row — and a
+   screen reader hears "treeitem" where the focus actually lands. */
 .studio-tree-row {
   position: relative;
   display: grid;
@@ -704,18 +756,37 @@
   min-height: 28px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm-2);
+  cursor: default;
   transition:
     border-color 0.15s ease,
-    background 0.15s ease;
+    background 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .studio-tree-row:hover {
   background: var(--admin-surface-elevated);
 }
 
+.studio-tree-row:focus-visible {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--admin-accent) 45%, transparent);
+}
+
 .studio-tree-row.is-active {
   border-color: var(--admin-line);
   background: var(--color-overlay-strong);
+}
+
+/* What is moving is dimmed, so the row under the cursor is the only one that
+   looks like it is about to change. */
+.studio-tree-row.is-dragged {
+  opacity: 0.4;
+}
+
+.studio-tree-row.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .studio-tree-row.is-selected {
@@ -761,13 +832,15 @@
   cursor: pointer;
 }
 
-.studio-tree-row__toggle span {
+.studio-tree-row__chevron {
+  display: block;
   font-size: 0.9rem;
+  line-height: 1;
   transform: rotate(0deg);
   transition: transform 0.12s ease;
 }
 
-.studio-tree-row__toggle[aria-expanded='true'] span {
+.studio-tree-row__chevron.is-open {
   transform: rotate(90deg);
 }
 
@@ -792,18 +865,26 @@
   text-align: left;
 }
 
-.studio-tree-row__label {
-  cursor: default;
+/* Both live in the ••• column: the count is what the row says at rest, the
+   menu handle is what it offers once you reach for it. */
+.studio-tree-row__count,
+.studio-tree-row__actions {
+  grid-row: 1;
+  grid-column: 3;
 }
 
-.studio-tree-row__label:disabled {
-  opacity: 0.5;
+.studio-tree-row__count {
+  justify-self: center;
+  color: var(--admin-text-disabled);
+  font: 0.55rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.12s ease;
 }
 
-.studio-tree-row__label > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.studio-tree-row:hover .studio-tree-row__count,
+.studio-tree-row:focus-visible .studio-tree-row__count,
+.studio-tree-row.is-menu-open .studio-tree-row__count {
+  opacity: 0;
 }
 
 .studio-tree-row__text {
@@ -823,6 +904,13 @@
 .studio-tree-row__text small {
   color: var(--admin-text-disabled);
   font: 0.54rem var(--font-mono);
+}
+
+/* What the query matched, so a long result list can be read at a glance. */
+.studio-tree-row__text mark {
+  border-radius: 2px;
+  color: var(--color-text-accent);
+  background: color-mix(in srgb, var(--admin-accent) 22%, transparent);
 }
 
 .studio-tree-row__icon {
@@ -859,6 +947,7 @@
 }
 
 .studio-tree-row:hover .studio-tree-row__actions,
+.studio-tree-row:focus-visible .studio-tree-row__actions,
 .studio-tree-row__actions:focus-visible,
 .studio-tree-row__actions[aria-expanded='true'] {
   opacity: 1;
@@ -891,6 +980,10 @@
 }
 
 .studio-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   padding: 5px 9px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -900,6 +993,12 @@
   font-size: 0.68rem;
   text-align: left;
   cursor: pointer;
+}
+
+/* The shortcut that does the same thing, so the menu teaches its way out. */
+.studio-menu__hint {
+  color: var(--admin-text-disabled);
+  font: 0.6rem var(--font-mono);
 }
 
 .studio-menu button:hover,
@@ -918,8 +1017,7 @@
   background: var(--color-rule);
 }
 
-.studio-tree-row__rename input,
-.studio-tree-inline-move select {
+.studio-tree-row__rename input {
   min-width: 0;
   height: 22px;
   padding: 1px 5px;
@@ -938,7 +1036,7 @@
 
 .studio-tree-inline-move {
   display: flex;
-  align-items: end;
+  align-items: center;
   gap: 5px;
   margin: 2px 0 4px 18px;
   padding: 6px;
@@ -947,16 +1045,15 @@
   background: var(--color-surface-raised);
 }
 
-.studio-tree-inline-move label {
-  display: grid;
+.studio-tree-inline-move__select {
   flex: 1 1 auto;
-  gap: 3px;
   min-width: 0;
 }
 
-.studio-tree-inline-move label > span {
-  color: var(--admin-text-muted);
-  font: 0.58rem var(--font-mono);
+.studio-tree-inline-move__select .studio-select__trigger {
+  border-color: var(--admin-line-strong);
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
 }
 
 .studio-tree-inline-move button {
@@ -967,6 +1064,74 @@
   background: transparent;
   font-size: 0.65rem;
   cursor: pointer;
+}
+
+/* --- Nothing to show --- */
+
+.studio-tree-empty {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 14px 10px;
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+}
+
+.studio-tree-empty p {
+  margin: 0;
+}
+
+.studio-tree-empty button {
+  padding: 4px 9px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.studio-tree-empty button:hover {
+  background: var(--color-overlay-strong);
+}
+
+/* The cursor's own label while several files move at once. Positioned off
+   screen because `setDragImage` only needs it rendered, not seen. */
+.studio-drag-ghost {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  padding: 5px 9px;
+  border: 1px solid var(--admin-accent);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-primary);
+  background: var(--color-surface-raised);
+  font: 0.68rem var(--font-mono);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.content-workspace .studio-icon-button.is-spinning svg {
+  animation: studio-spin 0.8s linear infinite;
+}
+
+@keyframes studio-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-tree-row,
+  .studio-tree-row__chevron,
+  .studio-tree-row__count {
+    transition: none;
+  }
+
+  .content-workspace .studio-icon-button.is-spinning svg {
+    animation: none;
+  }
 }
 
 /* --- Bulk selection bar --- */
@@ -2207,6 +2372,12 @@
   .studio-tab__close,
   .studio-tree-row__actions {
     opacity: 1;
+  }
+
+  /* The count and the ••• handle share one cell, trading places on hover. With
+     the handle always on there is no trade — and no room for both. */
+  .studio-tree-row__count {
+    display: none;
   }
 }
 
