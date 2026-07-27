@@ -1,3 +1,4 @@
+import { useRef } from 'preact/hooks';
 import type { Dispatch, StateUpdater } from 'preact/hooks';
 import type {
   ContentCollectionMeta,
@@ -112,6 +113,11 @@ export function useContentMutations({
   confirm,
   openNote,
 }: Deps): ContentMutations {
+  // Opening a folder that has no page yet creates one. Double-clicking such a
+  // folder fires the handler twice, and the second create would come back as a
+  // conflict on a slug the first one is still writing.
+  const openingFolderPages = useRef(new Set<string>());
+
   function toggleFolder(id: string) {
     setExpandedFolders((current) => {
       const next = new Set(current);
@@ -230,7 +236,9 @@ export function useContentMutations({
     options: OpenOptions = {},
   ): Promise<boolean> {
     if (!collection) return false;
+    if (openingFolderPages.current.has(folder.id)) return false;
     const parent = folder.parentId ?? '';
+    openingFolderPages.current.add(folder.id);
     setBusyKey(`folder-page-${folder.id}`);
     setError(null);
     try {
@@ -253,6 +261,7 @@ export function useContentMutations({
       );
       return false;
     } finally {
+      openingFolderPages.current.delete(folder.id);
       setBusyKey(null);
     }
   }
