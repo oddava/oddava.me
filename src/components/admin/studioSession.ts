@@ -4,7 +4,6 @@
 
 export type ViewMode = 'write' | 'split' | 'preview';
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
-export type SortMode = 'manual' | 'name' | 'type';
 
 export const STATE_STORAGE_KEY = 'oddava.studio.session';
 export const SIDEBAR_BOUNDS = { min: 190, max: 420 } as const;
@@ -19,10 +18,8 @@ export interface StudioSession {
   openIds: string[];
   /** The tab that browsing reuses; '' when every open tab is a deliberate one. */
   previewId: string;
-  secondaryId: string;
   expandedFolders: string[];
   autosave: boolean;
-  sort: SortMode;
 }
 
 export const DEFAULT_SESSION: StudioSession = {
@@ -32,10 +29,8 @@ export const DEFAULT_SESSION: StudioSession = {
   lastOpenId: '',
   openIds: [],
   previewId: '',
-  secondaryId: '',
   expandedFolders: [''],
   autosave: true,
-  sort: 'manual',
 };
 
 export const VIEW_MODES: { id: ViewMode; label: string }[] = [
@@ -71,15 +66,10 @@ export function readSession(): StudioSession {
             .slice(-MAX_OPEN_TABS)
         : [],
       previewId: typeof parsed.previewId === 'string' ? parsed.previewId : '',
-      secondaryId:
-        typeof parsed.secondaryId === 'string' ? parsed.secondaryId : '',
       expandedFolders: Array.isArray(parsed.expandedFolders)
         ? parsed.expandedFolders.filter((id) => typeof id === 'string')
         : DEFAULT_SESSION.expandedFolders,
       autosave: parsed.autosave !== false,
-      sort: ['manual', 'name', 'type'].includes(parsed.sort ?? '')
-        ? (parsed.sort as SortMode)
-        : 'manual',
     };
   } catch {
     return DEFAULT_SESSION;

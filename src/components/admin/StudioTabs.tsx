@@ -17,14 +17,12 @@ interface Props {
   activeId: string;
   /** The tab browsing reuses. Its tooltip says so; the strip looks the same. */
   previewId: string;
-  secondaryId: string;
   /** Save state per open file — only files with a live editor appear here. */
   states: Map<string, SaveState>;
   canGoBack: boolean;
   canGoForward: boolean;
   sidebarVisible: boolean;
   onActivate: (id: string) => void;
-  onOpenToSide: (id: string) => void;
   /** Stop the preview tab being reused, so this file stays open. */
   onKeepOpen: (id: string) => void;
   onClose: (id: string) => void;
@@ -38,7 +36,6 @@ interface Props {
   onGoForward: () => void;
   onToggleSidebar: () => void;
   onQuickOpen: () => void;
-  onToggleSplit: () => void;
 }
 
 function FileIcon() {
@@ -69,13 +66,11 @@ export default function StudioTabs({
   openIds,
   activeId,
   previewId,
-  secondaryId,
   states,
   canGoBack,
   canGoForward,
   sidebarVisible,
   onActivate,
-  onOpenToSide,
   onKeepOpen,
   onClose,
   onCloseOthers,
@@ -86,7 +81,6 @@ export default function StudioTabs({
   onGoForward,
   onToggleSidebar,
   onQuickOpen,
-  onToggleSplit,
 }: Props) {
   const stripRef = useRef<HTMLDivElement>(null);
   const menu = useStudioMenu<string>();
@@ -220,22 +214,6 @@ export default function StudioTabs({
         <kbd>Ctrl P</kbd>
       </button>
 
-      <button
-        type="button"
-        className={`studio-icon-button studio-split-action ${secondaryId ? 'is-active' : ''}`}
-        aria-label={secondaryId ? 'Close second editor' : 'Split editor'}
-        aria-pressed={Boolean(secondaryId)}
-        title={
-          secondaryId ? 'Close second editor' : 'Split editor (Ctrl+Alt+\\)'
-        }
-        onClick={onToggleSplit}
-      >
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" />
-          <path d="M10 3.75v12.5" />
-        </svg>
-      </button>
-
       <div
         className="studio-tabs"
         ref={stripRef}
@@ -270,7 +248,6 @@ export default function StudioTabs({
           const entry = entries.find((candidate) => candidate.id === id);
           const label = labelFor(entries, id);
           const selected = id === activeId;
-          const toSide = id === secondaryId;
           const preview = id === previewId;
           const state = states.get(id) ?? 'idle';
           const dropBefore = dropAt === index;
@@ -279,12 +256,12 @@ export default function StudioTabs({
           return (
             <div
               className={`studio-tab ${selected ? 'is-active' : ''} ${
-                toSide ? 'is-secondary' : ''
-              } ${preview ? 'is-preview' : ''} ${
-                id === dragId ? 'is-dragging' : ''
-              } ${dropBefore ? 'is-drop-before' : ''} ${
-                dropAfter ? 'is-drop-after' : ''
-              } ${menu.key === id ? 'is-menu-open' : ''}`}
+                preview ? 'is-preview' : ''
+              } ${id === dragId ? 'is-dragging' : ''} ${
+                dropBefore ? 'is-drop-before' : ''
+              } ${dropAfter ? 'is-drop-after' : ''} ${
+                menu.key === id ? 'is-menu-open' : ''
+              }`}
               key={id}
               data-state={state}
               draggable
@@ -323,16 +300,11 @@ export default function StudioTabs({
                 aria-selected={selected}
                 tabIndex={selected || (!activeId && index === 0) ? 0 : -1}
                 title={`${entry?.path ?? id}${
-                  toSide ? ' — open in second editor' : ''
-                }${
                   preview
                     ? ' — preview tab, reused by the next file you open'
                     : ''
                 }`}
-                onClick={(event) => {
-                  if (event.shiftKey) onOpenToSide(id);
-                  else onActivate(id);
-                }}
+                onClick={() => onActivate(id)}
                 onDblClick={() => onKeepOpen(id)}
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowLeft') {
@@ -394,16 +366,6 @@ export default function StudioTabs({
                     Keep open
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    menu.close();
-                    onOpenToSide(id);
-                  }}
-                >
-                  Open to the side
-                </button>
-                <span />
                 <button
                   type="button"
                   onClick={() => {

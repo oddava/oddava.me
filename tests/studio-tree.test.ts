@@ -56,7 +56,6 @@ describe('buildTree', () => {
     const tree = buildTree(
       [folder('recipes')],
       [entry('recipes'), entry('bread', 'recipes')],
-      'manual',
     );
 
     expect(labelsIn(tree.children, '')).toEqual(['recipes']);
@@ -68,14 +67,14 @@ describe('buildTree', () => {
   });
 
   it('keeps the collection index out of the rows but hands it back', () => {
-    const tree = buildTree([], [entry('index'), entry('hello')], 'manual');
+    const tree = buildTree([], [entry('index'), entry('hello')]);
 
     expect(labelsIn(tree.children, '')).toEqual(['hello']);
     expect(tree.rootDocument?.id).toBe('index');
     expect(tree.itemCount).toBe(1);
   });
 
-  it('sorts by frontmatter order, then name, in manual mode', () => {
+  it('orders by frontmatter order, then by name', () => {
     const tree = buildTree(
       [],
       [
@@ -83,24 +82,18 @@ describe('buildTree', () => {
         entry('a', '', { order: 1 }),
         entry('b', '', { order: 1 }),
       ],
-      'manual',
     );
 
     expect(labelsIn(tree.children, '')).toEqual(['a', 'b', 'c']);
   });
 
-  it('puts folders first only in type mode', () => {
-    const folders = [folder('zed')];
-    const entries = [entry('alpha'), entry('zed', 'zed')];
+  it('leaves a folder among its siblings rather than above them', () => {
+    const tree = buildTree(
+      [folder('zed')],
+      [entry('alpha'), entry('zed', 'zed')],
+    );
 
-    expect(labelsIn(buildTree(folders, entries, 'type').children, '')).toEqual([
-      'zed',
-      'alpha',
-    ]);
-    expect(labelsIn(buildTree(folders, entries, 'name').children, '')).toEqual([
-      'alpha',
-      'zed',
-    ]);
+    expect(labelsIn(tree.children, '')).toEqual(['alpha', 'zed']);
   });
 });
 
@@ -109,7 +102,6 @@ describe('nodeSearchText', () => {
     const tree = buildTree(
       [],
       [entry('my-note', 'work', { title: 'Quarterly review' })],
-      'manual',
     );
     const node = tree.children.get('work')?.[0];
 
@@ -126,7 +118,7 @@ describe('filterTree', () => {
     entry('roadmap', 'work/2024', { title: 'Roadmap' }),
     entry('errands', '', { title: 'Errands' }),
   ];
-  const source = buildTree(folders, entries, 'manual').children;
+  const source = buildTree(folders, entries).children;
 
   it('returns the tree untouched for an empty query', () => {
     expect(filterTree(source, '  ')).toBe(source);
@@ -153,7 +145,6 @@ describe('filterTree', () => {
     const titled = buildTree(
       [],
       [entry('n1', '', { title: 'Sourdough starter' })],
-      'manual',
     ).children;
 
     expect(labelsIn(filterTree(titled, 'sourdough'), '')).toEqual(['n1']);
@@ -174,7 +165,6 @@ describe('flattenRows', () => {
   const source = buildTree(
     [folder('work'), folder('work/2024')],
     [entry('roadmap', 'work/2024'), entry('errands')],
-    'name',
   ).children;
 
   it('shows nothing while the root itself is collapsed', () => {
@@ -235,7 +225,7 @@ describe('flattenRows', () => {
 
 describe('keys', () => {
   it('round-trips a folder id that contains the separator-adjacent slashes', () => {
-    const tree = buildTree([folder('a/b')], [], 'manual');
+    const tree = buildTree([folder('a/b')], []);
     const node = tree.children.get('a')?.[0];
 
     const key = nodeKey(node!);

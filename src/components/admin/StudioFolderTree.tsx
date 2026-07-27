@@ -18,7 +18,6 @@ import {
   writeDraggedItem,
   type StudioTreeItemRef,
 } from './studioDragItems';
-import type { SortMode } from './studioSession';
 import type { TabPlacement } from './studioTabStrip';
 import {
   ancestorPaths,
@@ -56,9 +55,7 @@ interface Props {
   activeFolder: string;
   expandedFolders: Set<string>;
   busyKey: string | null;
-  sort: SortMode;
   onQueryChange: (query: string) => void;
-  onSortChange: (sort: SortMode) => void;
   onCollapseAll: () => void;
   /** Expand or collapse a whole set at once — a branch, a level, a spring-load. */
   onSetFolderExpansion: (ids: string[], expanded: boolean) => void;
@@ -68,7 +65,6 @@ interface Props {
   onToggleFolder: (id: string) => void;
   onSelectFolder: (id: string) => void;
   onEditEntry: (entry: ContentEntryListItem, options?: OpenOptions) => void;
-  onOpenToSide: (entry: ContentEntryListItem) => void;
   onOpenFolder: (
     folder: ContentFolder,
     options?: OpenOptions,
@@ -108,12 +104,6 @@ type InlineRename = {
 
 type DropPosition = 'before' | 'inside' | 'after';
 
-const SORT_OPTIONS = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'name', label: 'Name' },
-  { value: 'type', label: 'Folders first' },
-];
-
 /** How long a drag has to rest on a closed folder before it opens. */
 const SPRING_DELAY_MS = 550;
 /** How close to an edge a drag scrolls the tree, and by how much per event. */
@@ -130,9 +120,7 @@ export default function StudioFolderTree({
   activeFolder,
   expandedFolders,
   busyKey,
-  sort,
   onQueryChange,
-  onSortChange,
   onCollapseAll,
   onSetFolderExpansion,
   onRefresh,
@@ -141,7 +129,6 @@ export default function StudioFolderTree({
   onToggleFolder,
   onSelectFolder,
   onEditEntry,
-  onOpenToSide,
   onOpenFolder,
   onCreateEntry,
   onCreateFolder,
@@ -179,10 +166,7 @@ export default function StudioFolderTree({
 
   // --- The tree on screen ---------------------------------------------------
 
-  const tree = useMemo(
-    () => buildTree(folders, entries, sort),
-    [entries, folders, sort],
-  );
+  const tree = useMemo(() => buildTree(folders, entries), [entries, folders]);
   const searching = query.trim().length > 0;
   // One filtered tree feeds both the markup and the row list, so what a search
   // shows and what the arrow keys walk cannot come apart.
@@ -608,12 +592,12 @@ export default function StudioFolderTree({
   // --- Drag and drop --------------------------------------------------------
 
   /**
-   * Rows drag in every sort mode — that is how a file reaches the tab strip —
-   * but a drop *between* two rows means nothing when the order on screen comes
-   * from a name or from a search. Dropping *into* a folder always means the
-   * same thing, so that stays on.
+   * Rows drag while a search is on — that is how a file reaches the tab strip —
+   * but a drop *between* two rows means nothing when the order on screen came
+   * from the query. Dropping *into* a folder always means the same thing, so
+   * that stays on.
    */
-  const canReorder = sort === 'manual' && !searching;
+  const canReorder = !searching;
 
   function cancelSpring() {
     if (!springRef.current) return;
@@ -812,7 +796,7 @@ export default function StudioFolderTree({
 
   function renderMenu(node: TreeNode) {
     const key = nodeKey(node);
-    // A folder can only go to the side once it has a page to show there.
+    // Only a row with a page of its own has a link to copy.
     const page = node.kind === 'entry' ? node.entry : node.document;
     const folderForNew =
       node.kind === 'folder' ? node.folder.id : node.entry.folder;
@@ -832,17 +816,6 @@ export default function StudioFolderTree({
         >
           Open in new tab
         </button>
-        {page && (
-          <button
-            type="button"
-            onClick={() => {
-              menu.close();
-              onOpenToSide(page);
-            }}
-          >
-            Open to the side
-          </button>
-        )}
         <span />
         <button
           type="button"
@@ -935,15 +908,6 @@ export default function StudioFolderTree({
           }}
         >
           Open in new tab
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            menu.close();
-            onOpenToSide(page);
-          }}
-        >
-          Open to the side
         </button>
         <span />
       </>
@@ -1266,13 +1230,6 @@ export default function StudioFolderTree({
           </span>
         </div>
         <div className="studio-explorer__actions">
-          <StudioSelect
-            className="studio-explorer__sort"
-            label="Sort files"
-            value={sort}
-            options={SORT_OPTIONS}
-            onChange={(next) => onSortChange(next as SortMode)}
-          />
           <button
             type="button"
             className="studio-icon-button"

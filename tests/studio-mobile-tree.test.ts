@@ -92,7 +92,7 @@ describe('searchNodes', () => {
     entry('sourdough', 'recipes/bread', { title: 'Bread, slowly' }),
     entry('pasta', 'recipes'),
   ];
-  const tree = buildTree(folders, entries, 'name');
+  const tree = buildTree(folders, entries);
 
   function labelsFor(query: string): string[] {
     return searchNodes(tree.children, query).map((node) =>
@@ -126,7 +126,7 @@ describe('searchNodes', () => {
 });
 
 describe('reorderSiblings', () => {
-  // Manual order is the stored `order`, not the order they arrived in.
+  // The tree's order is the stored `order`, not the order they arrived in.
   const tree = buildTree(
     [],
     [
@@ -134,7 +134,6 @@ describe('reorderSiblings', () => {
       entry('two', '', { order: 2 }),
       entry('three', '', { order: 3 }),
     ],
-    'manual',
   );
   const siblings = tree.children.get('') ?? [];
 

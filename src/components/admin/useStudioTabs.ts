@@ -1,6 +1,4 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { SaveState } from './studioSession';
 import {
   EMPTY_STRIP,
   closeInStrip,
@@ -16,19 +14,13 @@ export interface StudioTabs {
   openIds: string[];
   /** The tab browsing reuses, so clicking through files stacks nothing up. */
   previewId: string;
-  secondaryId: string;
-  setSecondaryId: Dispatch<StateUpdater<string>>;
-  secondaryState: SaveState;
-  setSecondaryState: Dispatch<StateUpdater<SaveState>>;
-  /** The second editor holds edits the store does not have yet. */
-  secondaryDirty: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
   /** Put `id` in the strip: reusing the preview tab, or claiming one for good. */
   addTab: (id: string, options?: OpenInStripOptions) => void;
   /** Promote the preview tab so browsing stops reusing it. */
   pinTab: (id: string) => void;
-  /** Drop `id` from the strip, and from the second editor if it sat there. */
+  /** Drop `id` from the strip. */
   forgetTab: (id: string) => void;
   /** Keep only these tabs — "close others" and "close all". */
   retainTabs: (keepIds: string[]) => void;
@@ -36,7 +28,7 @@ export interface StudioTabs {
   reorderTabs: (ids: string[]) => void;
   /** Hand the strip back its saved state, minus anything that no longer exists. */
   restoreTabs: (strip: TabStrip) => void;
-  /** Follow a rename through the strip, the second editor and history. */
+  /** Follow a rename through the strip and through history. */
   renameTab: (from: string, to: string) => void;
   rememberHistory: (id: string) => void;
   /**
@@ -49,22 +41,15 @@ export interface StudioTabs {
   ) => string | null;
 }
 
-/** The open-file strip, the second editor slot, and back/forward history. */
+/** The open-file strip and back/forward history. */
 export function useStudioTabs(): StudioTabs {
   const [strip, setStrip] = useState<TabStrip>(EMPTY_STRIP);
-  const [secondaryId, setSecondaryId] = useState('');
-  const [secondaryState, setSecondaryState] = useState<SaveState>('idle');
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const [historyVersion, setHistoryVersion] = useState(0);
-  // Read inside state updaters, which must not close over a stale render.
-  const secondaryRef = useRef('');
-  secondaryRef.current = secondaryId;
 
   const addTab = useCallback((id: string, options: OpenInStripOptions = {}) => {
-    setStrip((current) =>
-      openInStrip(current, id, { ...options, keepId: secondaryRef.current }),
-    );
+    setStrip((current) => openInStrip(current, id, options));
   }, []);
 
   const pinTab = useCallback((id: string) => {
@@ -75,12 +60,10 @@ export function useStudioTabs(): StudioTabs {
 
   const forgetTab = useCallback((id: string) => {
     setStrip((current) => closeInStrip(current, id));
-    setSecondaryId((current) => (current === id ? '' : current));
   }, []);
 
   const retainTabs = useCallback((keepIds: string[]) => {
     setStrip((current) => retainInStrip(current, keepIds));
-    setSecondaryId((current) => (keepIds.includes(current) ? current : ''));
   }, []);
 
   const reorderTabs = useCallback((ids: string[]) => {
@@ -93,7 +76,6 @@ export function useStudioTabs(): StudioTabs {
 
   const renameTab = useCallback((from: string, to: string) => {
     setStrip((current) => renameInStrip(current, from, to));
-    setSecondaryId((current) => (current === from ? to : current));
     historyRef.current = historyRef.current.map((id) =>
       id === from ? to : id,
     );
@@ -127,14 +109,6 @@ export function useStudioTabs(): StudioTabs {
   return {
     openIds: strip.openIds,
     previewId: strip.previewId,
-    secondaryId,
-    setSecondaryId,
-    secondaryState,
-    setSecondaryState,
-    secondaryDirty:
-      secondaryState === 'dirty' ||
-      secondaryState === 'saving' ||
-      secondaryState === 'error',
     canGoBack: historyIndexRef.current > 0,
     canGoForward:
       historyIndexRef.current >= 0 &&

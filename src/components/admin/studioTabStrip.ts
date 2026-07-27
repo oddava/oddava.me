@@ -21,8 +21,6 @@ export interface OpenInStripOptions {
   placement?: TabPlacement;
   /** Where a dropped tab lands. Appended when absent. */
   index?: number;
-  /** The second editor's file — never swapped out from under it. */
-  keepId?: string;
 }
 
 export const EMPTY_STRIP: TabStrip = { openIds: [], previewId: '' };
@@ -51,7 +49,7 @@ export function openInStrip(
   id: string,
   options: OpenInStripOptions = {},
 ): TabStrip {
-  const { placement = 'preview', index, keepId } = options;
+  const { placement = 'preview', index } = options;
   const isOpen = strip.openIds.includes(id);
 
   if (placement === 'permanent') {
@@ -66,10 +64,7 @@ export function openInStrip(
   // clicking a permanent tab must not quietly turn it back into the preview.
   if (isOpen) return strip;
 
-  const slot =
-    strip.previewId && strip.previewId !== keepId
-      ? strip.openIds.indexOf(strip.previewId)
-      : -1;
+  const slot = strip.previewId ? strip.openIds.indexOf(strip.previewId) : -1;
   if (slot < 0) {
     return { openIds: insertTab(strip.openIds, id, index), previewId: id };
   }
