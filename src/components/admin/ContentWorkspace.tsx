@@ -21,7 +21,6 @@ import StudioCommandPalette, {
 } from './StudioCommandPalette';
 import StudioImageDialog from './StudioImageDialog';
 import StudioTabs from './StudioTabs';
-import StudioSecondaryEditor from './StudioSecondaryEditor';
 import StudioEditorPane from './StudioEditorPane';
 import type { TabPlacement } from './studioTabStrip';
 import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
@@ -96,18 +95,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const tabs = useStudioTabs();
   // The setters and commands below keep a stable identity across renders; the
   // hook objects themselves do not, so effects depend on these instead.
-  const {
-    openIds,
-    previewId,
-    secondaryId,
-    secondaryDirty,
-    setSecondaryId,
-    setSecondaryState,
-    addTab,
-    pinTab,
-    restoreTabs,
-    rememberHistory,
-  } = tabs;
+  const { openIds, previewId, addTab, pinTab, restoreTabs, rememberHistory } =
+    tabs;
 
   // A save can change a note's title, folder or date, and with it the social
   // card the note's page points at. Redrawing trails the save rather than
@@ -177,9 +166,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     const stored = readSession();
     setSession(stored);
     restoreTabs({ openIds: stored.openIds, previewId: stored.previewId });
-    setSecondaryId(stored.secondaryId);
     setExpandedFolders(new Set(stored.expandedFolders));
-  }, [restoreTabs, setSecondaryId]);
+  }, [restoreTabs]);
 
   useEffect(() => {
     if (!sessionRestored) return;
@@ -189,20 +177,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         lastOpenId: openId,
         openIds,
         previewId,
-        secondaryId,
         expandedFolders: [...expandedFolders],
       });
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [
-    session,
-    sessionRestored,
-    openId,
-    openIds,
-    previewId,
-    secondaryId,
-    expandedFolders,
-  ]);
+  }, [session, sessionRestored, openId, openIds, previewId, expandedFolders]);
 
   const patchSession = useCallback((patch: Partial<StudioSession>) => {
     setSession((current) => ({ ...current, ...patch }));
@@ -249,15 +228,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     onOpen: () => setSidebarCollapsed(false),
     onClose: () => setSidebarCollapsed(true),
   });
-
-  const handleSecondaryState = useCallback(
-    (_id: string, state: SaveState) => setSecondaryState(state),
-    [setSecondaryState],
-  );
-
-  useEffect(() => {
-    if (!secondaryId) setSecondaryState('idle');
-  }, [secondaryId, setSecondaryState]);
 
   // --- Opening notes -------------------------------------------------------
 
@@ -346,20 +316,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       ),
       previewId: stored.previewId,
     });
-    setSecondaryId(
-      stored.secondaryId &&
-        stored.secondaryId !== stored.lastOpenId &&
-        entries.some((entry) => entry.id === stored.secondaryId)
-        ? stored.secondaryId
-        : '',
-    );
     const target = stored.lastOpenId;
     if (target && entries.some((entry) => entry.id === target)) {
       void openNote(target).finally(() => setSessionRestored(true));
     } else {
       setSessionRestored(true);
     }
-  }, [collection, entries, openNote, restoreTabs, setSecondaryId]);
+  }, [collection, entries, openNote, restoreTabs]);
 
   useEffect(() => {
     if (!loading && (!collection || entries.length === 0)) {
@@ -415,17 +378,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     void mutations.openFolderPage(folder, { placement: 'permanent', index });
   }
 
-  function openEntryToSide(entry: ContentEntryListItem) {
-    if (secondaryDirty && secondaryId && secondaryId !== entry.id) {
-      setNotice('Save the second editor before replacing it.');
-      return;
-    }
-    // The second editor's file is never the reusable one — browsing must not
-    // pull the tab out from under a pane that is showing it.
-    addTab(entry.id, { placement: 'permanent' });
-    setSecondaryId(entry.id === openId ? '' : entry.id);
-  }
-
   function goThroughHistory(direction: -1 | 1) {
     const id = tabs.stepHistory(direction, (candidate) =>
       entries.some((entry) => entry.id === candidate),
@@ -436,10 +388,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   async function closeTab(id: string) {
     const position = openIds.indexOf(id);
     if (position < 0) return;
-    if (id === secondaryId && secondaryDirty) {
-      setNotice('Save the second editor before closing its file.');
-      return;
-    }
     if (id === openId && doc.hasUnsavedWork && !(await saveNow())) {
       return;
     }
@@ -457,12 +405,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   /** The way out of a workspace that has filled up: keep one file, drop the rest. */
   async function closeOtherTabs(keepId: string) {
     if (!openIds.includes(keepId)) return;
-    // The second editor either closes with the rest or hands its file to the
-    // primary one. Either way its edits belong in the store first.
-    if (secondaryId && secondaryDirty) {
-      setNotice('Save the second editor before closing its file.');
-      return;
-    }
     if (doc.docRef.current?.id !== keepId) {
       await openNote(keepId);
       // A save that refused to go through leaves the old note open — and its
@@ -470,41 +412,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       if (doc.docRef.current?.id !== keepId) return;
     }
     tabs.retainTabs([keepId]);
-    // One tab left is one editor: never a split whose pane has no tab of its own.
-    setSecondaryId('');
   }
 
   async function closeAllTabs() {
-    if (secondaryDirty && secondaryId) {
-      setNotice('Save the second editor before closing its file.');
-      return;
-    }
     if (doc.hasUnsavedWork && !(await saveNow())) return;
     const current = doc.docRef.current?.id;
     tabs.retainTabs([]);
     if (current) closeIfOpen(current);
-  }
-
-  function toggleSecondEditor() {
-    if (secondaryId) {
-      if (secondaryDirty) {
-        setNotice('Save the second editor before closing the split.');
-        return;
-      }
-      setSecondaryId('');
-      return;
-    }
-    const candidate =
-      [...openIds].reverse().find((id) => id !== openId) ??
-      entries.find((entry) => entry.id !== openId)?.id ??
-      '';
-    if (candidate) {
-      if (view === 'split') patchSession({ view: 'write' });
-      addTab(candidate, { placement: 'permanent' });
-      setSecondaryId(candidate);
-    } else {
-      setNotice('Open another file before splitting the editor.');
-    }
   }
 
   // --- Editor helpers ------------------------------------------------------
@@ -623,11 +537,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         return;
       }
       if (mod && event.key === '\\') {
-        if (event.altKey) {
-          event.preventDefault();
-          toggleSecondEditor();
-          return;
-        }
         event.preventDefault();
         patchSession({ sidebarCollapsed: !session.sidebarCollapsed });
         return;
@@ -679,8 +588,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     openIds,
     phone,
     saveState,
-    secondaryId,
-    secondaryDirty,
     cycleView,
     patchSession,
     setSidebarCollapsed,
@@ -805,13 +712,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       : ({
           '--studio-sidebar-w': `${session.sidebar}px`,
         } satisfies CSSProperties);
-  // One indicator per tab: the primary editor's own state, plus whatever the
-  // second editor is doing to its file.
+  // One indicator per tab — only the file the editor has open has a state.
   const tabStates = new Map<string, SaveState>();
   if (openId) tabStates.set(openId, saveState);
-  if (secondaryId && secondaryId !== openId) {
-    tabStates.set(secondaryId, tabs.secondaryState);
-  }
 
   // As a drawer the sidebar stays mounted whether it is open or not, so it can
   // slide out as well as in — and follow a finger between the two.
@@ -859,9 +762,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 currentId={openId}
                 activeFolder={activeFolder}
                 busyKey={busyKey}
-                sort={session.sort}
                 onQueryChange={setQuery}
-                onSortChange={(sort) => patchSession({ sort })}
                 onRefresh={refreshFiles}
                 onRequestClose={() => setSidebarCollapsed(true)}
                 onNotice={setNotice}
@@ -891,9 +792,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 activeFolder={activeFolder}
                 expandedFolders={expandedFolders}
                 busyKey={busyKey}
-                sort={session.sort}
                 onQueryChange={setQuery}
-                onSortChange={(sort) => patchSession({ sort })}
                 onCollapseAll={() => setExpandedFolders(new Set(['']))}
                 onSetFolderExpansion={setFolderExpansion}
                 onRefresh={refreshFiles}
@@ -902,7 +801,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onToggleFolder={mutations.toggleFolder}
                 onSelectFolder={setActiveFolder}
                 onEditEntry={editEntry}
-                onOpenToSide={openEntryToSide}
                 onOpenFolder={mutations.openFolderPage}
                 onCreateEntry={mutations.createEntryInFolder}
                 onCreateFolder={mutations.createFolderInParent}
@@ -957,23 +855,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             openIds={openIds}
             activeId={openId}
             previewId={previewId}
-            secondaryId={secondaryId}
             states={tabStates}
             canGoBack={tabs.canGoBack}
             canGoForward={tabs.canGoForward}
             sidebarVisible={sidebarVisible}
-            onActivate={(id) => {
-              if (id === secondaryId && secondaryDirty) {
-                setNotice('Save the second editor before moving this file.');
-                return;
-              }
-              if (id === secondaryId) tabs.setSecondaryId('');
-              void openNote(id);
-            }}
-            onOpenToSide={(id) => {
-              const entry = entries.find((candidate) => candidate.id === id);
-              if (entry) openEntryToSide(entry);
-            }}
+            onActivate={(id) => void openNote(id)}
             onKeepOpen={pinTab}
             onClose={(id) => void closeTab(id)}
             onCloseOthers={(id) => void closeOtherTabs(id)}
@@ -986,11 +872,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
               patchSession({ sidebarCollapsed: sidebarVisible })
             }
             onQuickOpen={() => setPaletteOpen(true)}
-            onToggleSplit={toggleSecondEditor}
           />
-          <div
-            className={`studio-editor-groups ${secondaryId ? 'has-secondary' : ''}`}
-          >
+          <div className="studio-editor-groups">
             <section
               className="studio-editor studio-editor--primary"
               aria-label="Primary editor"
@@ -1055,26 +938,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 />
               )}
             </section>
-            {secondaryId && collection && secondaryId !== openId && (
-              <StudioSecondaryEditor
-                collection={collection}
-                entryId={secondaryId}
-                entries={entries}
-                wikiLinkHrefs={wikiLinkHrefs}
-                autosave={session.autosave}
-                onActivate={() => undefined}
-                onClose={() => tabs.setSecondaryId('')}
-                onRevision={(id, revision, title) =>
-                  setEntries((current) =>
-                    current.map((entry) =>
-                      entry.id === id ? { ...entry, revision, title } : entry,
-                    ),
-                  )
-                }
-                onError={setError}
-                onStateChange={handleSecondaryState}
-              />
-            )}
           </div>
         </div>
       </div>

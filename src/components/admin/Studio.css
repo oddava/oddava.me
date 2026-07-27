@@ -162,14 +162,6 @@
   overflow: hidden;
 }
 
-.studio-editor-groups.has-secondary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.studio-editor--secondary {
-  border-left: 1px solid var(--admin-line);
-}
-
 /* --- Workbench navigation and open files --- */
 
 .studio-workbench-nav {
@@ -191,8 +183,7 @@
   border-right: 1px solid var(--admin-line);
 }
 
-.studio-workbench-nav .studio-icon-button svg,
-.studio-group-bar .studio-icon-button svg {
+.studio-workbench-nav .studio-icon-button svg {
   width: 17px;
   height: 17px;
   fill: none;
@@ -242,16 +233,6 @@
   color: var(--admin-text-disabled);
   font-size: 0.58rem;
   white-space: nowrap;
-}
-
-.studio-split-action {
-  align-self: center;
-  margin-right: 4px;
-}
-
-.studio-split-action.is-active {
-  background: var(--color-overlay-strong);
-  color: var(--admin-text-primary);
 }
 
 .studio-tabs {
@@ -324,10 +305,6 @@
 
 .studio-tab.is-active::after {
   background: var(--admin-accent);
-}
-
-.studio-tab.is-secondary::after {
-  background: var(--admin-text-secondary);
 }
 
 .studio-tab.is-menu-open {
@@ -628,17 +605,6 @@
 
 .studio-select__menu button.is-selected {
   color: var(--color-text-accent);
-}
-
-/* Sort lives in the heading rather than a row of its own. */
-.studio-explorer__sort {
-  width: 86px;
-}
-
-.studio-explorer__sort .studio-select__trigger {
-  color: var(--admin-text-disabled);
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
 }
 
 .studio-explorer__close {
@@ -1197,60 +1163,6 @@
   display: none;
 }
 
-.studio-group-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  min-height: 46px;
-  padding: 8px 10px 8px 12px;
-  border-bottom: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-}
-
-.studio-group-bar__path {
-  overflow: hidden;
-  flex: 1 1 auto;
-  color: var(--admin-text-muted);
-  font: 0.62rem var(--font-mono);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.studio-group-bar__state {
-  color: var(--admin-text-muted);
-  font: 0.6rem var(--font-mono);
-  white-space: nowrap;
-}
-
-.studio-group-bar__state[data-tone='dirty'] {
-  color: var(--admin-text-secondary);
-}
-
-.studio-group-bar__state[data-tone='saving'] {
-  color: var(--admin-accent);
-}
-
-.studio-group-bar__state[data-tone='error'] {
-  color: var(--admin-danger);
-}
-
-.studio-group-bar__mode {
-  padding: 4px 8px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-sm-2);
-  background: transparent;
-  color: var(--admin-text-muted);
-  font: inherit;
-  font-size: 0.65rem;
-  cursor: pointer;
-}
-
-.studio-group-bar__mode:hover {
-  border-color: var(--admin-line-strong);
-  color: var(--admin-text-primary);
-}
-
 .studio-bar {
   display: flex;
   align-items: center;
@@ -1670,10 +1582,6 @@
 
 .studio-textarea::placeholder {
   color: var(--admin-text-disabled);
-}
-
-.studio-textarea--secondary {
-  min-height: 0;
 }
 
 .studio-status {
@@ -2439,8 +2347,7 @@
     flex-basis: 34px;
   }
 
-  .content-workspace .studio-view-switch button,
-  .studio-group-bar__mode {
+  .content-workspace .studio-view-switch button {
     padding: 8px 12px;
   }
 
@@ -2468,16 +2375,6 @@
 
   .studio-resizer {
     display: none;
-  }
-
-  .studio-editor-groups.has-secondary {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-  }
-
-  .studio-editor--secondary {
-    border-top: 1px solid var(--admin-line);
-    border-left: 0;
   }
 }
 
@@ -2646,8 +2543,7 @@
   }
 
   .studio-nav-actions,
-  .studio-quick-open,
-  .studio-split-action {
+  .studio-quick-open {
     display: none;
   }
 
@@ -2869,10 +2765,6 @@
 @media (max-width: 480px) {
   .studio-tab {
     min-width: 104px;
-  }
-
-  .studio-explorer__sort {
-    width: 74px;
   }
 
   .content-workspace .studio-dock .studio-view-switch button {
@@ -3478,14 +3370,6 @@
   height: 1px;
   margin: 6px 12px;
   background: var(--color-rule);
-}
-
-.studio-sheet__label {
-  margin: 10px 12px 2px;
-  color: var(--admin-text-muted);
-  font-size: 0.66rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 
 .studio-sheet__hint {

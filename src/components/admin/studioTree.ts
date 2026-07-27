@@ -8,7 +8,6 @@
 
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 import type { StudioTreeItemRef } from './studioDragItems';
-import type { SortMode } from './studioSession';
 
 export interface FolderNode {
   kind: 'folder';
@@ -125,11 +124,14 @@ export interface BuiltTree {
  * Fold the flat entry and folder lists into one tree. A folder whose parent
  * holds a same-named entry adopts that entry as its page, and the entry stops
  * being a row of its own — one folder, one row, whether or not it has a page.
+ *
+ * Siblings come out in the order the store keeps them: the stored `order` a
+ * drag writes, and the name as the tie-break for anything that has never been
+ * dragged.
  */
 export function buildTree(
   folders: ContentFolder[],
   entries: ContentEntryListItem[],
-  sort: SortMode,
 ): BuiltTree {
   const documents = new Map<string, ContentEntryListItem>();
   const consumedPaths = new Set<string>();
@@ -171,16 +173,11 @@ export function buildTree(
   let itemCount = 0;
   for (const siblings of children.values()) {
     itemCount += siblings.length;
-    siblings.sort((left, right) => {
-      if (sort === 'name')
-        return nodeLabel(left).localeCompare(nodeLabel(right));
-      if (sort === 'type' && left.kind !== right.kind)
-        return left.kind === 'folder' ? -1 : 1;
-      return (
+    siblings.sort(
+      (left, right) =>
         nodeOrder(left) - nodeOrder(right) ||
-        nodeLabel(left).localeCompare(nodeLabel(right))
-      );
-    });
+        nodeLabel(left).localeCompare(nodeLabel(right)),
+    );
   }
 
   return {

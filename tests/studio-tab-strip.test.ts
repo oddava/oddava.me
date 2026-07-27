@@ -58,13 +58,6 @@ describe('opening files in the tab strip', () => {
     expect(current.openIds).toEqual(['alpha', 'delta', 'beta', 'gamma']);
   });
 
-  it('never reuses the tab the second editor is showing', () => {
-    const current = openInStrip(strip(['alpha', 'beta'], 'beta'), 'gamma', {
-      keepId: 'beta',
-    });
-    expect(current).toEqual(strip(['alpha', 'beta', 'gamma'], 'gamma'));
-  });
-
   it('trims the oldest tabs rather than the one just opened', () => {
     const full = Array.from(
       { length: MAX_OPEN_TABS },

@@ -114,10 +114,10 @@ export function searchNodes(children: TreeChildren, query: string): TreeNode[] {
 /**
  * The sibling order after nudging the row at `index` by `offset`.
  *
- * Manual order is set by dragging on the desktop, and HTML5 drag events never
- * fire for a finger — so without this, the one sort mode the user chose is the
- * one they cannot change from a phone. Returns null when the move would run off
- * either end, which is what disables the menu item.
+ * Order is set by dragging on the desktop, and HTML5 drag events never fire for
+ * a finger — so without this, the order of the tree is the one thing a phone
+ * cannot change. Returns null when the move would run off either end, which is
+ * what disables the menu item.
  */
 export function reorderSiblings(
   siblings: TreeNode[],

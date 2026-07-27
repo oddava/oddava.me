@@ -12,7 +12,6 @@ import { FileIcon, FolderIcon } from './studioFileIcons';
 import StudioSheet from './StudioSheet';
 import { useLongPress } from './useLongPress';
 import type { StudioTreeItemRef } from './studioDragItems';
-import type { SortMode } from './studioSession';
 import {
   buildTree,
   folderOptions,
@@ -49,12 +48,6 @@ import {
 // naming a destination instead of dragging to one. Nothing the tree can do is
 // missing here; the way in is just the one a thumb has.
 
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'name', label: 'Name' },
-  { value: 'type', label: 'Folders first' },
-];
-
 type SheetState =
   | { kind: 'row'; item: StudioTreeItemRef }
   | { kind: 'folder' }
@@ -73,9 +66,7 @@ interface Props {
   currentId: string;
   activeFolder: string;
   busyKey: string | null;
-  sort: SortMode;
   onQueryChange: (query: string) => void;
-  onSortChange: (sort: SortMode) => void;
   onRefresh: () => Promise<void>;
   onRequestClose: () => void;
   onNotice: (message: string) => void;
@@ -111,9 +102,7 @@ export default function StudioMobileFiles({
   currentId,
   activeFolder,
   busyKey,
-  sort,
   onQueryChange,
-  onSortChange,
   onRefresh,
   onRequestClose,
   onNotice,
@@ -147,10 +136,7 @@ export default function StudioMobileFiles({
 
   // --- What is on screen ----------------------------------------------------
 
-  const tree = useMemo(
-    () => buildTree(folders, entries, sort),
-    [entries, folders, sort],
-  );
+  const tree = useMemo(() => buildTree(folders, entries), [entries, folders]);
   const searching = query.trim().length > 0;
   const siblings = useMemo(
     () => tree.children.get(folderId) ?? [],
@@ -470,9 +456,9 @@ export default function StudioMobileFiles({
     const index = siblings.findIndex(
       (candidate) => nodeKey(candidate) === nodeKey(node),
     );
-    // Manual order only means anything where the rows are in it: not in a
-    // search, and not for a row that is not in the folder being shown.
-    const ordered = sort === 'manual' && !searching && index >= 0;
+    // Reordering only means anything where the rows are in that order: not in
+    // a search, and not for a row that is not in the folder being shown.
+    const ordered = !searching && index >= 0;
     const up = ordered ? reorderSiblings(siblings, index, -1) : null;
     const down = ordered ? reorderSiblings(siblings, index, 1) : null;
     const page = isFolder ? node.document : node.entry;
@@ -603,19 +589,6 @@ export default function StudioMobileFiles({
         >
           Select items
         </button>
-        <span />
-        <p className="studio-sheet__label">Sort by</p>
-        {SORT_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={sort === option.value ? 'is-on' : ''}
-            aria-pressed={sort === option.value}
-            onClick={() => act(() => onSortChange(option.value))}
-          >
-            {option.label}
-          </button>
-        ))}
         <span />
         <button
           type="button"
