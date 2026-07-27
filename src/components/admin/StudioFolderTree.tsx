@@ -883,9 +883,15 @@ export default function StudioFolderTree({
                 if (handleSelectionClick(event, key)) return;
                 openNode(node);
               }}
-              // The same promotion every editor does: a double-click means you
-              // are staying, so the file stops sharing the preview tab.
-              onDblClick={() => openNode(node, { placement: 'permanent' })}
+              // A folder wraps and unwraps, the way it does in a file manager.
+              // A file has nothing to unwrap, so the same gesture means what it
+              // means in an editor: you are staying, and the tab stops being
+              // the one browsing hands round.
+              onDblClick={() =>
+                isFolder
+                  ? onToggleFolder(folderId)
+                  : openNode(node, { placement: 'permanent' })
+              }
               onKeyDown={(event) => onTreeKeyDown(event, node)}
             >
               <span className="studio-tree-row__icon">
@@ -1122,11 +1128,7 @@ export default function StudioFolderTree({
               onSelectFolder('');
               if (rootDocument) onEditEntry(rootDocument);
             }}
-            onDblClick={() => {
-              if (rootDocument) {
-                onEditEntry(rootDocument, { placement: 'permanent' });
-              }
-            }}
+            onDblClick={() => onToggleFolder('')}
           >
             <span className="studio-tree-row__icon">
               <FolderIcon open={rootExpanded} />
