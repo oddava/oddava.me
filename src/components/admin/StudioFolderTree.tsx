@@ -4,6 +4,12 @@ import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 // `.sr-only` lives in the public site stylesheet, which AdminLayout does not
 // load — admin-side hidden text has to come from this component.
 import { VisuallyHidden } from './VisuallyHidden';
+import {
+  FileIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  PlusIcon,
+} from './studioFileIcons';
 import StudioSelect from './StudioSelect';
 import StudioContextMenu from './StudioContextMenu';
 import { MENU_TRIGGER_PROPS, useStudioMenu } from './useStudioMenu';
@@ -115,45 +121,6 @@ const AUTOSCROLL_EDGE = 34;
 const AUTOSCROLL_STEP = 12;
 /** A pause this long starts a new type-ahead word. */
 const TYPEAHEAD_RESET_MS = 900;
-
-function FileIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M5 2.75h6l4 4v10.5H5V2.75Z" />
-      <path d="M11 2.75v4h4" />
-    </svg>
-  );
-}
-
-function FolderIcon({ open = false }: { open?: boolean }) {
-  return open ? (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M2.75 6.25V5.5c0-.97.78-1.75 1.75-1.75h3l1.5 1.5h6.5c.97 0 1.75.78 1.75 1.75v1" />
-      <path d="M3 7.75h14l-1.2 7.08a1.75 1.75 0 0 1-1.73 1.47H5.93a1.75 1.75 0 0 1-1.73-1.47L3 7.75Z" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M2.75 5.5c0-.97.78-1.75 1.75-1.75h3l1.5 1.5h6.5c.97 0 1.75.78 1.75 1.75v7c0 1.24-1.01 2.25-2.25 2.25H5A2.25 2.25 0 0 1 2.75 14V5.5Z" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M10 4.5v11M4.5 10h11" />
-    </svg>
-  );
-}
-
-function FolderPlusIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M2.75 5.5c0-.97.78-1.75 1.75-1.75h3l1.5 1.5h6.5c.97 0 1.75.78 1.75 1.75v7c0 1.24-1.01 2.25-2.25 2.25H5A2.25 2.25 0 0 1 2.75 14V5.5Z" />
-      <path d="M10 8v5M7.5 10.5h5" />
-    </svg>
-  );
-}
 
 export default function StudioFolderTree({
   folders,

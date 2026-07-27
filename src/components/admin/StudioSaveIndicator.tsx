@@ -8,6 +8,19 @@ interface Props {
   onSave: () => void;
 }
 
+/**
+ * "Saved" says itself, so the tone-coloured dot the other states use would be
+ * saying it twice — and on a phone, where there is no room for the words, a
+ * lone green dot is all that is left and it says nothing at all.
+ */
+function SavedIcon() {
+  return (
+    <svg className="studio-save__check" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="m5 10.5 3.5 3.5L15 6.5" />
+    </svg>
+  );
+}
+
 export default function StudioSaveIndicator({
   state,
   savedAt,
@@ -63,7 +76,11 @@ export default function StudioSaveIndicator({
   if (!label) return <span className="studio-save" data-tone="idle" />;
   return (
     <span className="studio-save" data-tone={tone}>
-      <span className="studio-save__dot" aria-hidden="true" />
+      {tone === 'saved' ? (
+        <SavedIcon />
+      ) : (
+        <span className="studio-save__dot" aria-hidden="true" />
+      )}
       {label}
     </span>
   );
