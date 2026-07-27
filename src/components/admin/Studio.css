@@ -330,6 +330,10 @@
   background: var(--admin-text-secondary);
 }
 
+.studio-tab.is-menu-open {
+  background: var(--admin-surface-elevated);
+}
+
 .studio-tab__label {
   display: flex;
   align-items: center;
@@ -857,21 +861,33 @@
   opacity: 1;
 }
 
-/* Same flat popup treatment as .studio-select__menu. */
-.studio-tree-menu {
-  position: absolute;
-  top: 24px;
-  right: 2px;
-  z-index: 30;
+/* A right-click leaves no cursor behind, so the row it acted on says so. */
+.studio-tree-row.is-menu-open {
+  border-color: var(--admin-line);
+  background: var(--admin-surface-elevated);
+}
+
+.studio-tree-row.is-menu-open .studio-tree-row__actions {
+  opacity: 1;
+}
+
+/* Same flat popup treatment as .studio-select__menu. Rendered through a portal
+   on `document.body`: the tree scrolls, the tab strip clips its overflow, and
+   on a phone the drawer is transformed — anchored inside any of them the menu
+   would be cut off or would drift away from what it points at. */
+.studio-menu {
+  position: fixed;
+  z-index: 1200;
   display: grid;
-  min-width: 132px;
+  min-width: 148px;
   padding: 3px;
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-sm-2);
   background: var(--color-surface-raised);
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 34%, transparent);
 }
 
-.studio-tree-menu button {
+.studio-menu button {
   padding: 5px 9px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -883,16 +899,17 @@
   cursor: pointer;
 }
 
-.studio-tree-menu button:hover {
+.studio-menu button:hover,
+.studio-menu button:focus-visible {
   background: var(--color-overlay-strong);
   color: var(--color-text-primary);
 }
 
-.studio-tree-menu button.is-danger {
+.studio-menu button.is-danger {
   color: var(--color-text-error);
 }
 
-.studio-tree-menu > span {
+.studio-menu > span {
   height: 1px;
   margin: 3px 4px;
   background: var(--color-rule);
@@ -2202,7 +2219,7 @@
     font-size: 0.7rem;
   }
 
-  .studio-tree-menu button,
+  .studio-menu button,
   .studio-select__menu button {
     padding: 10px 12px;
     font-size: 0.78rem;
@@ -2369,9 +2386,8 @@
     padding-bottom: 10px;
   }
 
-  .studio-tree-menu {
-    right: 6px;
-    min-width: 168px;
+  .studio-menu {
+    min-width: 176px;
   }
 
   .studio-bulk-bar {

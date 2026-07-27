@@ -22,6 +22,7 @@ import StudioImageDialog from './StudioImageDialog';
 import StudioTabs from './StudioTabs';
 import StudioSecondaryEditor from './StudioSecondaryEditor';
 import StudioEditorPane from './StudioEditorPane';
+import type { TabPlacement } from './studioTabStrip';
 import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
 import { makeEditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
@@ -91,12 +92,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // hook objects themselves do not, so effects depend on these instead.
   const {
     openIds,
+    previewId,
     secondaryId,
     secondaryDirty,
-    setOpenIds,
     setSecondaryId,
     setSecondaryState,
     addTab,
+    pinTab,
+    restoreTabs,
     rememberHistory,
   } = tabs;
 
@@ -167,10 +170,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   useEffect(() => {
     const stored = readSession();
     setSession(stored);
-    setOpenIds(stored.openIds);
+    restoreTabs({ openIds: stored.openIds, previewId: stored.previewId });
     setSecondaryId(stored.secondaryId);
     setExpandedFolders(new Set(stored.expandedFolders));
-  }, [setOpenIds, setSecondaryId]);
+  }, [restoreTabs, setSecondaryId]);
 
   useEffect(() => {
     if (!sessionRestored) return;
@@ -179,12 +182,21 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         ...session,
         lastOpenId: openId,
         openIds,
+        previewId,
         secondaryId,
         expandedFolders: [...expandedFolders],
       });
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [session, sessionRestored, openId, openIds, secondaryId, expandedFolders]);
+  }, [
+    session,
+    sessionRestored,
+    openId,
+    openIds,
+    previewId,
+    secondaryId,
+    expandedFolders,
+  ]);
 
   const patchSession = useCallback((patch: Partial<StudioSession>) => {
     setSession((current) => ({ ...current, ...patch }));
@@ -221,12 +233,20 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     async (
       id: string,
       folderHint?: string,
-      options: { remember?: boolean; focus?: boolean } = {},
+      options: {
+        remember?: boolean;
+        focus?: boolean;
+        /** Browsing reuses one tab; 'permanent' claims a tab of its own. */
+        placement?: TabPlacement;
+        index?: number;
+      } = {},
     ) => {
       if (!collection || !id) return;
-      addTab(id);
-      if (options.remember !== false) rememberHistory(id);
+      const placement = options.placement ?? 'preview';
       if (id === openId) {
+        // Already in the editor: an explicit gesture still pins its tab.
+        addTab(id, { placement, index: options.index });
+        if (options.remember !== false) rememberHistory(id);
         if (options.focus !== false)
           requestAnimationFrame(() => editorRef.current?.focus());
         return;
@@ -243,6 +263,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       setError(null);
       try {
         const folder = await openDocument(id, folderHint);
+        // The strip follows the editor, never leads it: a preview tab that took
+        // this file's place before a failed load would leave the note that is
+        // still open with no tab at all.
+        addTab(id, { placement, index: options.index });
+        if (options.remember !== false) rememberHistory(id);
         // Note: activeFolder is set by the caller (editEntry / the tree), not
         // here — a folder's document lives in its *parent*, so using `folder`
         // would point new files at the parent instead of the folder you opened.
@@ -283,9 +308,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     if (restoredRef.current || !collection || entries.length === 0) return;
     restoredRef.current = true;
     const stored = readSession();
-    setOpenIds(
-      stored.openIds.filter((id) => entries.some((entry) => entry.id === id)),
-    );
+    restoreTabs({
+      openIds: stored.openIds.filter((id) =>
+        entries.some((entry) => entry.id === id),
+      ),
+      previewId: stored.previewId,
+    });
     setSecondaryId(
       stored.secondaryId &&
         stored.secondaryId !== stored.lastOpenId &&
@@ -299,7 +327,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     } else {
       setSessionRestored(true);
     }
-  }, [collection, entries, openNote, setOpenIds, setSecondaryId]);
+  }, [collection, entries, openNote, restoreTabs, setSecondaryId]);
 
   useEffect(() => {
     if (!loading && (!collection || entries.length === 0)) {
@@ -323,7 +351,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     openNote,
   });
 
-  function editEntry(entry: ContentEntryListItem) {
+  function editEntry(
+    entry: ContentEntryListItem,
+    options: { placement?: TabPlacement; index?: number } = {},
+  ) {
     // Opening a file from the drawer closes it — on a phone the note is the
     // screen, and the drawer was covering it.
     // If this entry is a folder's index page, make the folder itself active so
@@ -335,8 +366,21 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         (candidate.parentId ?? '') === entry.folder,
     );
     setActiveFolder(folderNode ? folderNode.id : entry.folder);
-    void openNote(entry.id, entry.folder);
+    void openNote(entry.id, entry.folder, options);
     if (window.matchMedia(PHONE_QUERY).matches) setSidebarCollapsed(true);
+  }
+
+  /** A file or folder dragged out of the explorer and dropped on the strip. */
+  function openDroppedItem(item: StudioTreeItemRef, index: number) {
+    if (item.kind === 'entry') {
+      const entry = entries.find((candidate) => candidate.id === item.id);
+      if (entry) editEntry(entry, { placement: 'permanent', index });
+      return;
+    }
+    const folder = folders.find((candidate) => candidate.id === item.id);
+    if (!folder) return;
+    setActiveFolder(folder.id);
+    void mutations.openFolderPage(folder, { placement: 'permanent', index });
   }
 
   function openEntryToSide(entry: ContentEntryListItem) {
@@ -344,7 +388,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       setNotice('Save the second editor before replacing it.');
       return;
     }
-    addTab(entry.id);
+    // The second editor's file is never the reusable one — browsing must not
+    // pull the tab out from under a pane that is showing it.
+    addTab(entry.id, { placement: 'permanent' });
     setSecondaryId(entry.id === openId ? '' : entry.id);
   }
 
@@ -366,8 +412,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       return;
     }
     const remaining = openIds.filter((candidate) => candidate !== id);
-    setOpenIds(remaining);
-    if (secondaryId === id) setSecondaryId('');
+    tabs.forgetTab(id);
     if (id !== openId) return;
     const nextId = remaining[Math.min(position, remaining.length - 1)];
     if (nextId) {
@@ -375,6 +420,37 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     } else {
       closeIfOpen(id);
     }
+  }
+
+  /** The way out of a workspace that has filled up: keep one file, drop the rest. */
+  async function closeOtherTabs(keepId: string) {
+    if (!openIds.includes(keepId)) return;
+    // The second editor either closes with the rest or hands its file to the
+    // primary one. Either way its edits belong in the store first.
+    if (secondaryId && secondaryDirty) {
+      setNotice('Save the second editor before closing its file.');
+      return;
+    }
+    if (doc.docRef.current?.id !== keepId) {
+      await openNote(keepId);
+      // A save that refused to go through leaves the old note open — and its
+      // tab has to stay with it.
+      if (doc.docRef.current?.id !== keepId) return;
+    }
+    tabs.retainTabs([keepId]);
+    // One tab left is one editor: never a split whose pane has no tab of its own.
+    setSecondaryId('');
+  }
+
+  async function closeAllTabs() {
+    if (secondaryDirty && secondaryId) {
+      setNotice('Save the second editor before closing its file.');
+      return;
+    }
+    if (doc.hasUnsavedWork && !(await saveNow())) return;
+    const current = doc.docRef.current?.id;
+    tabs.retainTabs([]);
+    if (current) closeIfOpen(current);
   }
 
   function toggleSecondEditor() {
@@ -392,7 +468,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       '';
     if (candidate) {
       if (view === 'split') patchSession({ view: 'write' });
-      addTab(candidate);
+      addTab(candidate, { placement: 'permanent' });
       setSecondaryId(candidate);
     } else {
       setNotice('Open another file before splitting the editor.');
@@ -757,6 +833,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onToggleFolder={mutations.toggleFolder}
                 onSelectFolder={setActiveFolder}
                 onEditEntry={editEntry}
+                onOpenToSide={openEntryToSide}
                 onOpenFolder={mutations.openFolderPage}
                 onCreateEntry={mutations.createEntryInFolder}
                 onCreateFolder={mutations.createFolderInParent}
@@ -807,6 +884,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             entries={entries}
             openIds={openIds}
             activeId={openId}
+            previewId={previewId}
             secondaryId={secondaryId}
             states={tabStates}
             canGoBack={tabs.canGoBack}
@@ -824,8 +902,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
               const entry = entries.find((candidate) => candidate.id === id);
               if (entry) openEntryToSide(entry);
             }}
+            onKeepOpen={pinTab}
             onClose={(id) => void closeTab(id)}
-            onReorder={setOpenIds}
+            onCloseOthers={(id) => void closeOtherTabs(id)}
+            onCloseAll={() => void closeAllTabs()}
+            onDropTreeItem={openDroppedItem}
+            onReorder={tabs.reorderTabs}
             onGoBack={() => goThroughHistory(-1)}
             onGoForward={() => goThroughHistory(1)}
             onToggleSidebar={() =>

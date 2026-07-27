@@ -17,6 +17,8 @@ export interface StudioSession {
   view: ViewMode;
   lastOpenId: string;
   openIds: string[];
+  /** The tab that browsing reuses; '' when every open tab is a deliberate one. */
+  previewId: string;
   secondaryId: string;
   expandedFolders: string[];
   autosave: boolean;
@@ -29,6 +31,7 @@ export const DEFAULT_SESSION: StudioSession = {
   view: 'write',
   lastOpenId: '',
   openIds: [],
+  previewId: '',
   secondaryId: '',
   expandedFolders: [''],
   autosave: true,
@@ -67,6 +70,7 @@ export function readSession(): StudioSession {
             .filter((id) => typeof id === 'string')
             .slice(-MAX_OPEN_TABS)
         : [],
+      previewId: typeof parsed.previewId === 'string' ? parsed.previewId : '',
       secondaryId:
         typeof parsed.secondaryId === 'string' ? parsed.secondaryId : '',
       expandedFolders: Array.isArray(parsed.expandedFolders)

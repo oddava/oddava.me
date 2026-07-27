@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import type { ContentEntryListItem } from '../../lib/contracts';
 import type { SaveState } from './studioSession';
-
-const TAB_DRAG_TYPE = 'application/x-oddava-studio-tab';
+import StudioContextMenu from './StudioContextMenu';
+import { useStudioMenu } from './useStudioMenu';
+import {
+  TAB_DRAG_TYPE,
+  isTreeItemDrag,
+  readDraggedItem,
+  type StudioTreeItemRef,
+} from './studioDragItems';
 
 interface Props {
   entries: ContentEntryListItem[];
   openIds: string[];
   activeId: string;
+  /** The tab browsing reuses. Its tooltip says so; the strip looks the same. */
+  previewId: string;
   secondaryId: string;
   /** Save state per open file — only files with a live editor appear here. */
   states: Map<string, SaveState>;
@@ -17,7 +25,13 @@ interface Props {
   sidebarVisible: boolean;
   onActivate: (id: string) => void;
   onOpenToSide: (id: string) => void;
+  /** Stop the preview tab being reused, so this file stays open. */
+  onKeepOpen: (id: string) => void;
   onClose: (id: string) => void;
+  onCloseOthers: (id: string) => void;
+  onCloseAll: () => void;
+  /** A file or folder dragged out of the explorer, dropped at `index`. */
+  onDropTreeItem: (item: StudioTreeItemRef, index: number) => void;
   /** New tab order after a drag. The strip is the source of truth for it. */
   onReorder: (ids: string[]) => void;
   onGoBack: () => void;
@@ -54,6 +68,7 @@ export default function StudioTabs({
   entries,
   openIds,
   activeId,
+  previewId,
   secondaryId,
   states,
   canGoBack,
@@ -61,7 +76,11 @@ export default function StudioTabs({
   sidebarVisible,
   onActivate,
   onOpenToSide,
+  onKeepOpen,
   onClose,
+  onCloseOthers,
+  onCloseAll,
+  onDropTreeItem,
   onReorder,
   onGoBack,
   onGoForward,
@@ -70,6 +89,7 @@ export default function StudioTabs({
   onToggleSplit,
 }: Props) {
   const stripRef = useRef<HTMLDivElement>(null);
+  const menu = useStudioMenu<string>();
   const [dragId, setDragId] = useState('');
   // Where the dragged tab would land: an index *between* tabs, so 0 is before
   // the first and openIds.length is after the last.
@@ -105,13 +125,41 @@ export default function StudioTabs({
     onReorder(next);
   }
 
+  /**
+   * A drop lands one of two payloads: a tab being reordered, or a file dragged
+   * out of the explorer to be opened here. Mid-drag only the type list is
+   * readable, so hover feedback keys on that.
+   */
+  function dragKind(dataTransfer: DataTransfer | null): 'tab' | 'item' | null {
+    if (isTreeItemDrag(dataTransfer)) return 'item';
+    return dragId ? 'tab' : null;
+  }
+
   function overTab(event: TargetedDragEvent<HTMLDivElement>, index: number) {
-    if (!dragId) return;
+    const kind = dragKind(event.dataTransfer);
+    if (!kind) return;
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = kind === 'item' ? 'copy' : 'move';
+    }
     const bounds = event.currentTarget.getBoundingClientRect();
     const afterMidpoint = event.clientX > bounds.left + bounds.width / 2;
     setDropAt(index + (afterMidpoint ? 1 : 0));
+  }
+
+  /** True when the drop was an explorer item and has been handled. */
+  function dropTreeItem(
+    event: TargetedDragEvent<HTMLDivElement>,
+    fallbackSlot: number,
+  ): boolean {
+    const item = readDraggedItem(event.dataTransfer);
+    if (!item) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    const slot = dropAt < 0 ? fallbackSlot : dropAt;
+    setDropAt(-1);
+    onDropTreeItem(item, slot);
+    return true;
   }
 
   return (
@@ -194,13 +242,26 @@ export default function StudioTabs({
         role="tablist"
         aria-label="Open files"
         onDragOver={(event) => {
-          // Empty space past the last tab means "move it to the end".
-          if (!dragId || event.target !== event.currentTarget) return;
+          // Empty space past the last tab means "put it at the end".
+          const kind = dragKind(event.dataTransfer);
+          if (!kind || event.target !== event.currentTarget) return;
           event.preventDefault();
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = kind === 'item' ? 'copy' : 'move';
+          }
           setDropAt(openIds.length);
         }}
+        onDragLeave={(event) => {
+          // A drag that started in the explorer ends its dragend over there, so
+          // the strip clears its own marker when the cursor leaves.
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+            setDropAt(-1);
+          }
+        }}
         onDrop={(event) => {
-          if (!dragId || event.target !== event.currentTarget) return;
+          if (event.target !== event.currentTarget) return;
+          if (dropTreeItem(event, openIds.length)) return;
+          if (!dragId) return;
           event.preventDefault();
           dropDraggedTab(openIds.length);
         }}
@@ -210,6 +271,7 @@ export default function StudioTabs({
           const label = labelFor(entries, id);
           const selected = id === activeId;
           const toSide = id === secondaryId;
+          const preview = id === previewId;
           const state = states.get(id) ?? 'idle';
           const dropBefore = dropAt === index;
           const dropAfter =
@@ -218,26 +280,34 @@ export default function StudioTabs({
             <div
               className={`studio-tab ${selected ? 'is-active' : ''} ${
                 toSide ? 'is-secondary' : ''
-              } ${id === dragId ? 'is-dragging' : ''} ${
-                dropBefore ? 'is-drop-before' : ''
-              } ${dropAfter ? 'is-drop-after' : ''}`}
+              } ${preview ? 'is-preview' : ''} ${
+                id === dragId ? 'is-dragging' : ''
+              } ${dropBefore ? 'is-drop-before' : ''} ${
+                dropAfter ? 'is-drop-after' : ''
+              } ${menu.key === id ? 'is-menu-open' : ''}`}
               key={id}
               data-state={state}
               draggable
               onDragStart={(event) => {
                 setDragId(id);
+                menu.close();
                 if (!event.dataTransfer) return;
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData(TAB_DRAG_TYPE, id);
               }}
               onDragOver={(event) => overTab(event, index)}
               onDrop={(event) => {
+                if (dropTreeItem(event, index)) return;
                 if (!dragId) return;
                 event.preventDefault();
                 event.stopPropagation();
                 dropDraggedTab(dropAt < 0 ? index : dropAt);
               }}
               onDragEnd={endDrag}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                menu.openAtEvent(id, event);
+              }}
               onAuxClick={(event) => {
                 // Middle-click closes, the way every editor does it.
                 if (event.button === 1) {
@@ -252,11 +322,18 @@ export default function StudioTabs({
                 role="tab"
                 aria-selected={selected}
                 tabIndex={selected || (!activeId && index === 0) ? 0 : -1}
-                title={`${entry?.path ?? id}${toSide ? ' — open in second editor' : ''}`}
+                title={`${entry?.path ?? id}${
+                  toSide ? ' — open in second editor' : ''
+                }${
+                  preview
+                    ? ' — preview tab, reused by the next file you open'
+                    : ''
+                }`}
                 onClick={(event) => {
                   if (event.shiftKey) onOpenToSide(id);
                   else onActivate(id);
                 }}
+                onDblClick={() => onKeepOpen(id)}
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowLeft') {
                     event.preventDefault();
@@ -300,6 +377,63 @@ export default function StudioTabs({
                   <path d="m6 6 8 8M14 6l-8 8" />
                 </svg>
               </button>
+              <StudioContextMenu
+                open={menu.key === id}
+                label={`Actions for ${label}`}
+                menuRef={menu.ref}
+                position={menu.position}
+              >
+                {preview && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      menu.close();
+                      onKeepOpen(id);
+                    }}
+                  >
+                    Keep open
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    menu.close();
+                    onOpenToSide(id);
+                  }}
+                >
+                  Open to the side
+                </button>
+                <span />
+                <button
+                  type="button"
+                  onClick={() => {
+                    menu.close();
+                    onClose(id);
+                  }}
+                >
+                  Close
+                </button>
+                {openIds.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      menu.close();
+                      onCloseOthers(id);
+                    }}
+                  >
+                    Close others
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    menu.close();
+                    onCloseAll();
+                  }}
+                >
+                  Close all
+                </button>
+              </StudioContextMenu>
             </div>
           );
         })}

@@ -5,9 +5,20 @@ import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 // load — admin-side hidden text has to come from this component.
 import { VisuallyHidden } from './VisuallyHidden';
 import StudioSelect, { type StudioSelectOption } from './StudioSelect';
+import StudioContextMenu from './StudioContextMenu';
+import { MENU_TRIGGER_PROPS, useStudioMenu } from './useStudioMenu';
+import {
+  readDraggedItem,
+  writeDraggedItem,
+  type StudioTreeItemRef,
+} from './studioDragItems';
+import type { TabPlacement } from './studioTabStrip';
 
-export type StudioTreeItemRef =
-  { kind: 'entry'; id: string } | { kind: 'folder'; id: string };
+export type { StudioTreeItemRef };
+
+interface OpenOptions {
+  placement?: TabPlacement;
+}
 
 interface Props {
   folders: ContentFolder[];
@@ -25,8 +36,12 @@ interface Props {
   onRequestClose: () => void;
   onToggleFolder: (id: string) => void;
   onSelectFolder: (id: string) => void;
-  onEditEntry: (entry: ContentEntryListItem) => void;
-  onOpenFolder: (folder: ContentFolder) => Promise<boolean>;
+  onEditEntry: (entry: ContentEntryListItem, options?: OpenOptions) => void;
+  onOpenToSide: (entry: ContentEntryListItem) => void;
+  onOpenFolder: (
+    folder: ContentFolder,
+    options?: OpenOptions,
+  ) => Promise<boolean>;
   onCreateEntry: (folder: string, name: string) => Promise<boolean>;
   onCreateFolder: (parent: string, name: string) => Promise<boolean>;
   onRenameEntry: (
@@ -79,7 +94,6 @@ type InlineMove = {
 
 type DropPosition = 'before' | 'inside' | 'after';
 
-const TREE_DRAG_TYPE = 'application/x-oddava-studio-item';
 // The root folder's real id is '', which an option list cannot round-trip.
 const ROOT_OPTION = '::root';
 
@@ -166,25 +180,6 @@ function FolderPlusIcon() {
   );
 }
 
-function readDraggedItem(
-  dataTransfer: DataTransfer | null,
-): StudioTreeItemRef | null {
-  const raw = dataTransfer?.getData(TREE_DRAG_TYPE);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as StudioTreeItemRef;
-    if (
-      (parsed.kind === 'entry' || parsed.kind === 'folder') &&
-      typeof parsed.id === 'string'
-    ) {
-      return parsed;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 export default function StudioFolderTree({
   folders,
   entries,
@@ -202,6 +197,7 @@ export default function StudioFolderTree({
   onToggleFolder,
   onSelectFolder,
   onEditEntry,
+  onOpenToSide,
   onOpenFolder,
   onCreateEntry,
   onCreateFolder,
@@ -217,7 +213,7 @@ export default function StudioFolderTree({
   onBulkMove,
   onBulkDelete,
 }: Props) {
-  const [menuKey, setMenuKey] = useState<string | null>(null);
+  const menu = useStudioMenu<string>();
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [anchorKey, setAnchorKey] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -232,25 +228,6 @@ export default function StudioFolderTree({
   const [inlineBusy, setInlineBusy] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
-
-  // Close the row context menu when the click lands anywhere outside it, so it
-  // never gets stuck open. Clicks on the ••• trigger are ignored here — its own
-  // toggle handler opens and closes it.
-  useEffect(() => {
-    if (!menuKey) return;
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.closest('.studio-tree-menu') ||
-        target?.closest('.studio-tree-row__actions')
-      ) {
-        return;
-      }
-      setMenuKey(null);
-    }
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [menuKey]);
 
   const { childrenByFolder, rootDocument } = useMemo(() => {
     const documents = new Map<string, ContentEntryListItem>();
@@ -491,8 +468,9 @@ export default function StudioFolderTree({
         event.preventDefault();
         onToggleFolder(node.folder.id);
       }
-    } else if (event.key === 'Escape' && selectedKeys.length > 0) {
-      clearSelection();
+    } else if (event.key === 'Escape' && menu.key === null) {
+      // Escape puts an open menu away first; only then does it drop a selection.
+      if (selectedKeys.length > 0) clearSelection();
     }
   }
 
@@ -505,7 +483,7 @@ export default function StudioFolderTree({
     setCreating({ kind, parent: safeParent, value: '' });
     setRenaming(null);
     setMoving(null);
-    setMenuKey(null);
+    menu.close();
     requestAnimationFrame(() => inlineInputRef.current?.focus());
   }
 
@@ -535,14 +513,13 @@ export default function StudioFolderTree({
     event: TargetedDragEvent<HTMLElement>,
     item: StudioTreeItemRef,
   ) {
-    const transfer = event.dataTransfer;
-    if (!transfer) return;
+    if (!event.dataTransfer) return;
     // Dragging a row that is part of a multi-selection drags the whole
     // selection; dragging anything else drops the selection first.
     if (!selectedKeys.includes(nodeKeyFor(item))) clearSelection();
     setDragging(item);
-    transfer.effectAllowed = 'move';
-    transfer.setData(TREE_DRAG_TYPE, JSON.stringify(item));
+    menu.close();
+    writeDraggedItem(event.dataTransfer, item);
   }
 
   function nodeKeyFor(item: StudioTreeItemRef): string {
@@ -567,11 +544,19 @@ export default function StudioFolderTree({
     return ratio < 0.5 ? 'before' : 'after';
   }
 
+  /**
+   * Rows drag in every sort mode — that is how a file reaches the tab strip —
+   * but the tree itself only accepts what it can express: a drop between two
+   * rows means nothing when the order on screen comes from a name.
+   */
+  const treeAcceptsDrops = sort === 'manual';
+
   async function dropOnNode(
     event: TargetedDragEvent<HTMLElement>,
     target: TreeNode,
     parent: string,
   ) {
+    if (!treeAcceptsDrops) return;
     const dragged = readDraggedItem(event.dataTransfer) ?? dragging;
     if (!dragged || sameItem(dragged, nodeRef(target))) return;
     event.preventDefault();
@@ -613,6 +598,7 @@ export default function StudioFolderTree({
   }
 
   async function dropInsideRoot(event: TargetedDragEvent<HTMLElement>) {
+    if (!treeAcceptsDrops) return;
     const dragged = readDraggedItem(event.dataTransfer) ?? dragging;
     if (!dragged) return;
     event.preventDefault();
@@ -630,11 +616,50 @@ export default function StudioFolderTree({
     await onDropItem(dragged, '', destinationItems);
   }
 
+  /** A folder opens through its own page; files are their own document. */
+  function openNode(node: TreeNode, options?: OpenOptions) {
+    if (node.kind === 'entry') {
+      onSelectFolder(node.entry.folder);
+      onEditEntry(node.entry, options);
+      return;
+    }
+    onSelectFolder(node.folder.id);
+    if (node.document) onEditEntry(node.document, options);
+    else void onOpenFolder(node.folder, options);
+  }
+
   function renderMenu(node: TreeNode) {
     const key = nodeKey(node);
-    if (menuKey !== key) return null;
+    // A folder can only go to the side once it has a page to show there.
+    const page = node.kind === 'entry' ? node.entry : node.document;
     return (
-      <div className="studio-tree-menu" role="menu">
+      <StudioContextMenu
+        open={menu.key === key}
+        label={`Actions for ${nodeLabel(node)}`}
+        menuRef={menu.ref}
+        position={menu.position}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            menu.close();
+            openNode(node, { placement: 'permanent' });
+          }}
+        >
+          Open in new tab
+        </button>
+        {page && (
+          <button
+            type="button"
+            onClick={() => {
+              menu.close();
+              onOpenToSide(page);
+            }}
+          >
+            Open to the side
+          </button>
+        )}
+        <span />
         {node.kind === 'folder' && (
           <>
             <button
@@ -656,7 +681,7 @@ export default function StudioFolderTree({
           type="button"
           onClick={() => {
             setRenaming({ item: nodeRef(node), value: nodeLabel(node) });
-            setMenuKey(null);
+            menu.close();
             requestAnimationFrame(() => inlineInputRef.current?.select());
           }}
         >
@@ -665,7 +690,7 @@ export default function StudioFolderTree({
         <button
           type="button"
           onClick={() => {
-            setMenuKey(null);
+            menu.close();
             void (node.kind === 'entry'
               ? onDuplicateEntry(node.entry)
               : onDuplicateFolder(node.folder));
@@ -677,7 +702,7 @@ export default function StudioFolderTree({
           type="button"
           onClick={() => {
             setMoving({ item: nodeRef(node) });
-            setMenuKey(null);
+            menu.close();
           }}
         >
           Move to…
@@ -687,7 +712,7 @@ export default function StudioFolderTree({
           type="button"
           className="is-danger"
           onClick={() => {
-            setMenuKey(null);
+            menu.close();
             void (node.kind === 'entry'
               ? onDeleteEntry(node.entry)
               : onDeleteFolder(node.folder));
@@ -695,7 +720,7 @@ export default function StudioFolderTree({
         >
           Delete
         </button>
-      </div>
+      </StudioContextMenu>
     );
   }
 
@@ -761,11 +786,21 @@ export default function StudioFolderTree({
         <div
           className={`studio-tree-row ${active ? 'is-active' : ''} ${
             picked ? 'is-selected' : ''
-          } ${marker ? `is-drop-${marker}` : ''}`}
+          } ${menu.key === key ? 'is-menu-open' : ''} ${
+            marker ? `is-drop-${marker}` : ''
+          }`}
           role="treeitem"
           aria-selected={active || picked}
           aria-expanded={isFolder ? expanded || forceExpanded : undefined}
-          draggable={sort === 'manual' && !renameActive && !busyKey}
+          draggable={!renameActive && !busyKey}
+          onContextMenu={(event) => {
+            if (renameActive) return;
+            event.preventDefault();
+            // Right-clicking outside the selection acts on that row alone, the
+            // way a file manager does.
+            if (!selectedKeys.includes(key)) clearSelection();
+            menu.openAtEvent(key, event);
+          }}
           onDragStart={(event) => startDrag(event, nodeRef(node))}
           onDragEnd={() => {
             setDragging(null);
@@ -773,7 +808,12 @@ export default function StudioFolderTree({
           }}
           onDragOver={(event) => {
             const dragged = dragging;
-            if (!dragged || sameItem(dragged, nodeRef(node))) return;
+            if (
+              !treeAcceptsDrops ||
+              !dragged ||
+              sameItem(dragged, nodeRef(node))
+            )
+              return;
             event.preventDefault();
             if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
             setDropMarker({
@@ -841,15 +881,11 @@ export default function StudioFolderTree({
               }
               onClick={(event) => {
                 if (handleSelectionClick(event, key)) return;
-                if (isFolder) {
-                  onSelectFolder(folderId);
-                  if (node.document) onEditEntry(node.document);
-                  else void onOpenFolder(node.folder);
-                } else {
-                  onSelectFolder(node.entry.folder);
-                  onEditEntry(node.entry);
-                }
+                openNode(node);
               }}
+              // The same promotion every editor does: a double-click means you
+              // are staying, so the file stops sharing the preview tab.
+              onDblClick={() => openNode(node, { placement: 'permanent' })}
               onKeyDown={(event) => onTreeKeyDown(event, node)}
             >
               <span className="studio-tree-row__icon">
@@ -875,10 +911,11 @@ export default function StudioFolderTree({
             className="studio-tree-row__actions"
             aria-label={`File actions for ${nodeLabel(node)}`}
             aria-haspopup="menu"
-            aria-expanded={menuKey === key}
+            aria-expanded={menu.key === key}
+            {...MENU_TRIGGER_PROPS}
             onClick={(event) => {
               event.stopPropagation();
-              setMenuKey((current) => (current === key ? null : key));
+              menu.toggleUnder(key, event.currentTarget);
             }}
           >
             <span aria-hidden="true">•••</span>
@@ -1048,12 +1085,18 @@ export default function StudioFolderTree({
             activeFolder === '' && currentId === rootDocument?.id
               ? 'is-active'
               : ''
-          } ${dropMarker?.key === 'root' ? 'is-drop-inside' : ''}`}
+          } ${menu.key === 'root' ? 'is-menu-open' : ''} ${
+            dropMarker?.key === 'root' ? 'is-drop-inside' : ''
+          }`}
           role="treeitem"
           aria-selected={activeFolder === '' && currentId === rootDocument?.id}
           aria-expanded={rootExpanded}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            menu.openAtEvent('root', event);
+          }}
           onDragOver={(event) => {
-            if (!dragging) return;
+            if (!treeAcceptsDrops || !dragging) return;
             event.preventDefault();
             if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
             setDropMarker({ key: 'root', position: 'inside' });
@@ -1079,6 +1122,11 @@ export default function StudioFolderTree({
               onSelectFolder('');
               if (rootDocument) onEditEntry(rootDocument);
             }}
+            onDblClick={() => {
+              if (rootDocument) {
+                onEditEntry(rootDocument, { placement: 'permanent' });
+              }
+            }}
           >
             <span className="studio-tree-row__icon">
               <FolderIcon open={rootExpanded} />
@@ -1090,23 +1138,49 @@ export default function StudioFolderTree({
             className="studio-tree-row__actions"
             aria-label="Notes folder actions"
             aria-haspopup="menu"
-            aria-expanded={menuKey === 'root'}
-            onClick={() =>
-              setMenuKey((current) => (current === 'root' ? null : 'root'))
-            }
+            aria-expanded={menu.key === 'root'}
+            {...MENU_TRIGGER_PROPS}
+            onClick={(event) => menu.toggleUnder('root', event.currentTarget)}
           >
             <span aria-hidden="true">•••</span>
           </button>
-          {menuKey === 'root' && (
-            <div className="studio-tree-menu" role="menu">
-              <button type="button" onClick={() => beginCreate('entry', '')}>
-                New file
-              </button>
-              <button type="button" onClick={() => beginCreate('folder', '')}>
-                New folder
-              </button>
-            </div>
-          )}
+          <StudioContextMenu
+            open={menu.key === 'root'}
+            label="Actions for Notes"
+            menuRef={menu.ref}
+            position={menu.position}
+          >
+            {rootDocument && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    menu.close();
+                    onSelectFolder('');
+                    onEditEntry(rootDocument, { placement: 'permanent' });
+                  }}
+                >
+                  Open in new tab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    menu.close();
+                    onOpenToSide(rootDocument);
+                  }}
+                >
+                  Open to the side
+                </button>
+                <span />
+              </>
+            )}
+            <button type="button" onClick={() => beginCreate('entry', '')}>
+              New file
+            </button>
+            <button type="button" onClick={() => beginCreate('folder', '')}>
+              New folder
+            </button>
+          </StudioContextMenu>
         </div>
 
         {rootExpanded && (
