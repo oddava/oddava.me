@@ -1360,6 +1360,16 @@
   background: currentColor;
 }
 
+.studio-save__check {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .studio-save[data-tone='saving'] {
   color: var(--admin-accent);
 }
@@ -2528,6 +2538,36 @@
   white-space: nowrap;
 }
 
+.content-workspace .studio-dock__files {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-secondary, var(--admin-text-muted));
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.content-workspace .studio-dock__files svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.content-workspace .studio-dock__files:active {
+  background: var(--color-overlay-strong);
+}
+
 @media (max-width: 720px) {
   .studio-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -2541,7 +2581,10 @@
     bottom: 0;
     left: 0;
     z-index: 45;
-    width: min(84vw, 330px);
+    /* Wider than it was: with the listing flat there is no indentation to pay
+       for, and file names get the room instead. The sliver of note left
+       showing is the tap target that puts the drawer away again. */
+    width: min(88vw, 380px);
     max-width: none;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -2639,11 +2682,27 @@
     display: none;
   }
 
-  /* Save state stays as its dot — "Saved 4m ago" is three words wide on a
-     screen with none to spare. The manual Save button keeps its label. */
-  .studio-bar .studio-save:not(.studio-save--action) {
+  /* Save state loses its words — "Saved 4m ago" is three of them on a screen
+     with none to spare — but keeps a control-sized slot. Tapping Save turns a
+     40px button into this, and a 6px dot floating where the button was reads
+     as a stray mark rather than an answer. `:not(:empty)` leaves the idle
+     state costing nothing, since it has nothing to show. */
+  .studio-bar .studio-save:not(.studio-save--action):not(:empty) {
+    justify-content: center;
+    width: 40px;
+    height: 40px;
     gap: 0;
     font-size: 0;
+  }
+
+  .studio-bar .studio-save:not(.studio-save--action) .studio-save__dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .studio-bar .studio-save:not(.studio-save--action) .studio-save__check {
+    width: 18px;
+    height: 18px;
   }
 
   .content-workspace .studio-save--action {
@@ -2836,6 +2895,649 @@
 @media (prefers-reduced-motion: reduce) {
   .studio-sidebar,
   .studio-scrim {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The phone file manager
+
+   A different surface over the same operations, not the tree at a smaller
+   size. One folder fills the drawer, so a row is the full width instead of
+   the full width minus its depth; the breadcrumb says in words what
+   indentation used to say in pixels; and every control is a 44px target that
+   does not depend on hover to appear. Rendered by StudioMobileFiles, which
+   ContentWorkspace swaps in for the tree below the drawer breakpoint — these
+   rules are not media-scoped because nothing else ever draws them.
+--------------------------------------------------------------------------- */
+
+.studio-mfiles {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.studio-mfiles svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Title bar --- */
+
+.studio-mfiles__bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.studio-mfiles__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  color: var(--admin-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.studio-mfiles__icon,
+.studio-mfiles__word {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-muted);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.studio-mfiles__icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.studio-mfiles__word {
+  color: var(--admin-accent);
+  font-size: 0.8rem;
+}
+
+.studio-mfiles__icon:active,
+.studio-mfiles__word:active {
+  background: var(--color-overlay-strong);
+}
+
+.studio-mfiles__word[disabled] {
+  color: var(--admin-text-disabled);
+}
+
+/* --- Breadcrumb --- */
+
+/* Scrolls sideways rather than wrapping: a path that grows a second line
+   would shove the list down every time you went one folder deeper. */
+.studio-mfiles__crumbs {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.studio-mfiles__crumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.studio-mfiles__crumbs button {
+  padding: 4px 2px;
+  border: 0;
+  color: var(--admin-accent);
+  background: transparent;
+  font: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.studio-mfiles__crumbs button::after {
+  margin-left: 6px;
+  color: var(--admin-text-disabled);
+  content: '›';
+}
+
+.studio-mfiles__crumbs span {
+  padding: 4px 2px;
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+}
+
+/* --- Search --- */
+
+.studio-mfiles__search {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 10px 12px;
+}
+
+.studio-mfiles__search input {
+  min-height: 44px;
+  padding-right: 40px;
+  /* Under 16px iOS zooms the whole page when the field takes focus. */
+  font-size: 16px;
+}
+
+.studio-mfiles__search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.studio-mfiles__clear {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  color: var(--admin-text-muted);
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.studio-mfiles__count-line {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 14px 6px;
+  color: var(--admin-text-muted);
+  font: 0.7rem var(--font-mono);
+}
+
+/* --- The listing --- */
+
+.studio-mfiles__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Room for the create button to float over the end of the list. */
+  margin: 0;
+  padding: 0 0 92px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-mfiles__item {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--admin-line) 55%, transparent);
+}
+
+.studio-mfiles__item.is-active {
+  box-shadow: inset 3px 0 0 var(--admin-accent);
+}
+
+.studio-mfiles__item.is-picked {
+  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
+}
+
+.studio-mfiles__item.is-busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.studio-mfiles__open {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  /* 56px: comfortably above the 44px floor, and tall enough for two lines. */
+  min-height: 56px;
+  padding: 8px 2px 8px 14px;
+  border: 0;
+  color: var(--admin-text-primary);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* A press-and-hold here opens the action sheet; without this it would also
+     start a text selection and raise iOS's own callout on top of it. */
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* No hover to fall back on, so the press itself has to answer. */
+.studio-mfiles__open:active {
+  background: var(--color-overlay-strong);
+}
+
+.studio-mfiles__mark {
+  display: grid;
+  flex: 0 0 22px;
+  place-items: center;
+  height: 22px;
+  color: var(--admin-text-muted);
+}
+
+.studio-mfiles__check {
+  width: 21px;
+  height: 21px;
+  border: 2px solid var(--color-rule-strong);
+  border-radius: 50%;
+}
+
+.studio-mfiles__check.is-on {
+  position: relative;
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+}
+
+.studio-mfiles__check.is-on::after {
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--color-text-on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  content: '';
+}
+
+.studio-mfiles__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.studio-mfiles__name {
+  overflow: hidden;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.studio-mfiles__item.is-active .studio-mfiles__name {
+  color: var(--admin-accent);
+  font-weight: 600;
+}
+
+.studio-mfiles__name mark {
+  color: inherit;
+  background: color-mix(in srgb, var(--admin-accent) 28%, transparent);
+}
+
+.studio-mfiles__text small {
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.studio-mfiles__count {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--admin-text-muted);
+  background: var(--color-overlay-strong);
+  font: 0.66rem var(--font-mono);
+}
+
+.studio-mfiles__chevron {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  color: var(--admin-text-disabled);
+  font-size: 1.15rem;
+}
+
+.studio-mfiles__more {
+  flex: 0 0 46px;
+  border: 0;
+  color: var(--admin-text-muted);
+  background: transparent;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.studio-mfiles__more:active {
+  background: var(--color-overlay-strong);
+}
+
+.studio-mfiles__empty {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  justify-items: center;
+  gap: 12px;
+  min-height: 0;
+  padding: 40px 20px;
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.studio-mfiles__empty p {
+  margin: 0;
+}
+
+.studio-mfiles__empty button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* --- Create, and the selection action bar that replaces it --- */
+
+.studio-mfiles__fab {
+  position: absolute;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-on-accent);
+  background: var(--admin-accent);
+  box-shadow: 0 6px 20px color-mix(in srgb, #000 40%, transparent);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.studio-mfiles__fab:active {
+  transform: scale(0.93);
+}
+
+.studio-mfiles__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 10px max(12px, env(safe-area-inset-left))
+    calc(10px + env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-right));
+  border-top: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+}
+
+.studio-mfiles__actions button {
+  flex: 1 1 0;
+  min-height: 46px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.studio-mfiles__actions button.is-danger {
+  color: var(--color-text-error);
+}
+
+.studio-mfiles__actions button[disabled] {
+  opacity: 0.45;
+}
+
+/* ---------------------------------------------------------------------------
+   Bottom sheets
+
+   What the pointer-anchored popup menu becomes for a thumb. Portalled onto
+   `document.body`, so none of this can be scoped under .content-workspace.
+--------------------------------------------------------------------------- */
+
+.studio-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.studio-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #000 52%, transparent);
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 0.22s ease;
+}
+
+.studio-sheet-layer.is-open .studio-sheet__scrim {
+  opacity: 1;
+}
+
+.studio-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 82dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+  border: 1px solid var(--color-rule-strong);
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+  outline: none;
+  background: var(--color-surface-raised);
+  box-shadow: 0 -12px 40px color-mix(in srgb, #000 45%, transparent);
+  transform: translate3d(0, 100%, 0);
+  pointer-events: auto;
+  transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.studio-sheet-layer.is-open .studio-sheet {
+  transform: translate3d(0, 0, 0);
+}
+
+/* While a finger is on the grip the sheet is positioned frame by frame. */
+.studio-sheet.is-dragging {
+  transition: none;
+}
+
+.studio-sheet svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Only this drags the sheet away — a flick anywhere else scrolls the list of
+   actions, which on a long menu is what the flick was for. */
+.studio-sheet__grip {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 10px 0 6px;
+  touch-action: none;
+}
+
+.studio-sheet__grip span {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-rule-strong);
+}
+
+.studio-sheet__head {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 0 18px 10px;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.studio-sheet__head strong {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.studio-sheet__head span {
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.studio-sheet__body {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 6px 8px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-sheet__body button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  color: var(--color-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-sheet__body button:active {
+  background: var(--color-overlay-strong);
+}
+
+.studio-sheet__body button[disabled] {
+  opacity: 0.45;
+}
+
+.studio-sheet__body button.is-danger {
+  color: var(--color-text-error);
+}
+
+.studio-sheet__body button.is-on {
+  color: var(--admin-accent);
+}
+
+.studio-sheet__body button.is-on::after {
+  margin-left: auto;
+  content: '✓';
+}
+
+.studio-sheet__body > span {
+  height: 1px;
+  margin: 6px 12px;
+  background: var(--color-rule);
+}
+
+.studio-sheet__label {
+  margin: 10px 12px 2px;
+  color: var(--admin-text-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.studio-sheet__hint {
+  margin-left: auto;
+  color: var(--admin-text-muted);
+  font-size: 0.68rem;
+}
+
+.studio-sheet__form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.studio-sheet__form input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  color: var(--color-text-primary);
+  background: var(--admin-bg);
+  font: inherit;
+  font-size: 16px;
+}
+
+.studio-sheet__form input:focus-visible {
+  border-color: var(--admin-accent);
+  outline: none;
+}
+
+.studio-sheet .studio-sheet__submit {
+  flex: 0 0 auto;
+  justify-content: center;
+  width: auto;
+  min-height: 48px;
+  padding: 0 20px;
+  color: var(--color-text-on-accent);
+  background: var(--admin-accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.studio-sheet .studio-sheet__submit[disabled] {
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-sheet,
+  .studio-sheet__scrim,
+  .studio-mfiles__fab {
     transition: none;
   }
 }

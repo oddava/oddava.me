@@ -26,6 +26,8 @@ interface Props {
   commands: EditorCommands;
   wikiMenu: ReturnType<typeof useWikiLinkAutocomplete>;
   onToggleSidebar: () => void;
+  /** The dock's way back to Files. Phone layout only. */
+  onOpenFiles: () => void;
   onSetView: (view: ViewMode) => void;
   onToggleAutosave: () => void;
   onSave: () => void;
@@ -68,6 +70,7 @@ export default function StudioEditorPane({
   commands,
   wikiMenu,
   onToggleSidebar,
+  onOpenFiles,
   onSetView,
   onToggleAutosave,
   onSave,
@@ -237,6 +240,19 @@ export default function StudioEditorPane({
 
       {compact && (
         <footer className="studio-dock">
+          {/* Navigation belongs at the bottom of a phone, not in the top-left
+              corner — the one place a thumb cannot reach. The title bar keeps
+              its toggle for anyone already up there. */}
+          <button
+            type="button"
+            className="studio-dock__files"
+            onClick={onOpenFiles}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M2.75 5.5c0-.97.78-1.75 1.75-1.75h3l1.5 1.5h6.5c.97 0 1.75.78 1.75 1.75v7c0 1.24-1.01 2.25-2.25 2.25H5A2.25 2.25 0 0 1 2.75 14V5.5Z" />
+            </svg>
+            Files
+          </button>
           {viewSwitch}
           <span className="studio-dock__meta">
             {uploading ? 'Uploading…' : `${wordCount} words`}

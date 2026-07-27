@@ -15,6 +15,7 @@ import { buildWikiLinkHrefLookup, gardenSlug } from '../../lib/garden/utils';
 import { uploadContentMedia } from './api';
 import type { ContentEntryListItem } from '../../lib/contracts';
 import StudioFolderTree, { type StudioTreeItemRef } from './StudioFolderTree';
+import StudioMobileFiles from './StudioMobileFiles';
 import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
@@ -846,6 +847,41 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
               <p className="admin-empty" role="status">
                 Indexing files…
               </p>
+            ) : phone ? (
+              // A phone gets its own file manager rather than the tree at a
+              // smaller size: one folder at a time, press-and-hold for
+              // actions, and an explicit selection mode standing in for the
+              // modifier keys and the drag gestures a finger does not have.
+              <StudioMobileFiles
+                folders={folders}
+                entries={entries}
+                query={query}
+                currentId={openId}
+                activeFolder={activeFolder}
+                busyKey={busyKey}
+                sort={session.sort}
+                onQueryChange={setQuery}
+                onSortChange={(sort) => patchSession({ sort })}
+                onRefresh={refreshFiles}
+                onRequestClose={() => setSidebarCollapsed(true)}
+                onNotice={setNotice}
+                onSelectFolder={setActiveFolder}
+                onEditEntry={editEntry}
+                onOpenFolder={mutations.openFolderPage}
+                onCreateEntry={mutations.createEntryInFolder}
+                onCreateFolder={mutations.createFolderInParent}
+                onRenameEntry={mutations.renameEntryInline}
+                onRenameFolder={mutations.renameFolderInline}
+                onDuplicateEntry={mutations.duplicateEntryInline}
+                onDuplicateFolder={mutations.duplicateFolderInline}
+                onDeleteEntry={mutations.removeEntry}
+                onDeleteFolder={mutations.removeFolder}
+                onMoveEntry={mutations.moveEntryToFolder}
+                onMoveFolder={mutations.moveFolderToParent}
+                onReorder={mutations.dropTreeItem}
+                onBulkMove={mutations.bulkMove}
+                onBulkDelete={mutations.bulkDelete}
+              />
             ) : (
               <StudioFolderTree
                 folders={folders}
@@ -883,32 +919,35 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onBulkDelete={mutations.bulkDelete}
               />
             )}
-            <div
-              className="studio-resizer"
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize sidebar"
-              tabIndex={0}
-              onPointerDown={startResize}
-              onKeyDown={(event) => {
-                if (event.key === 'ArrowLeft')
-                  patchSession({
-                    sidebar: clamp(
-                      session.sidebar - 16,
-                      SIDEBAR_BOUNDS.min,
-                      SIDEBAR_BOUNDS.max,
-                    ),
-                  });
-                if (event.key === 'ArrowRight')
-                  patchSession({
-                    sidebar: clamp(
-                      session.sidebar + 16,
-                      SIDEBAR_BOUNDS.min,
-                      SIDEBAR_BOUNDS.max,
-                    ),
-                  });
-              }}
-            />
+            {/* A drawer has no edge to drag: it is as wide as it is. */}
+            {!phone && (
+              <div
+                className="studio-resizer"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize sidebar"
+                tabIndex={0}
+                onPointerDown={startResize}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowLeft')
+                    patchSession({
+                      sidebar: clamp(
+                        session.sidebar - 16,
+                        SIDEBAR_BOUNDS.min,
+                        SIDEBAR_BOUNDS.max,
+                      ),
+                    });
+                  if (event.key === 'ArrowRight')
+                    patchSession({
+                      sidebar: clamp(
+                        session.sidebar + 16,
+                        SIDEBAR_BOUNDS.min,
+                        SIDEBAR_BOUNDS.max,
+                      ),
+                    });
+                }}
+              />
+            )}
           </section>
         )}
 
@@ -996,6 +1035,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   onToggleSidebar={() =>
                     patchSession({ sidebarCollapsed: sidebarVisible })
                   }
+                  onOpenFiles={() => setSidebarCollapsed(false)}
                   onSetView={(next) => patchSession({ view: next })}
                   onToggleAutosave={() => {
                     const autosave = !session.autosave;
