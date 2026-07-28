@@ -1425,106 +1425,623 @@
   color: var(--admin-text-primary);
 }
 
-/* --- Panes --- */
+/* --- The writing surface --- */
 
-.studio-panes {
-  display: grid;
-  flex: 1 1 auto;
-  min-height: 0;
-}
+/* One column, one job. The permanent split view is gone: Visual already shows
+   rendered Markdown, so a second pane repeating it cost half the width to say
+   the same thing twice. Preview is a mode now, not a neighbour. */
 
-.studio-panes.is-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-
-.studio-write,
-.studio-preview {
+.studio-surface {
+  position: relative;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  flex: 1 1 auto;
   min-height: 0;
+  /* The reading measure, shared by every mode so a line does not change length
+     when the mode does. */
+  --studio-measure: 44rem;
 }
 
-.studio-panes.is-split .studio-preview {
-  border-left: 1px solid var(--admin-line);
+.studio-surface.is-focused {
+  --studio-measure: 40rem;
 }
 
-/* --- Formatting toolbar --- */
+/* Focus mode dims the chrome rather than removing it — the save state is the
+   one thing a writer must never have to go looking for, so it comes back on
+   hover and whenever anything inside it has keyboard focus. */
+.studio-editor:has(.studio-surface.is-focused)
+  :is(.studio-bar, .studio-status) {
+  opacity: 0.32;
+  transition: opacity 0.22s ease;
+}
 
-.studio-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  padding: 5px max(10px, calc((100% - 44rem) / 2 - 16px));
-  border-bottom: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-  overflow-x: auto;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
+.studio-editor:has(.studio-surface.is-focused)
+  :is(.studio-bar, .studio-status):is(:hover, :focus-within) {
+  opacity: 1;
+}
+
+/* --- Visual mode --- */
+
+.studio-vsurface-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
-.studio-toolbar::-webkit-scrollbar {
-  display: none;
+.studio-vsurface {
+  width: min(100%, var(--studio-measure));
+  margin: 0 auto;
+  padding: 40px 24px 0;
 }
 
-.studio-toolbar__group {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
+.studio-vblock {
+  position: relative;
+  border-radius: var(--radius-sm-2);
+  outline: none;
+  scroll-margin-block: 80px;
 }
 
-/* A hairline between groups, so the row reads as five clusters not 17 icons. */
-.studio-toolbar__group + .studio-toolbar__group::before {
-  width: 1px;
-  height: 15px;
-  margin: 0 5px 0 1px;
-  background: var(--admin-line);
+.studio-vblock + .studio-vblock {
+  margin-top: 0.35rem;
+}
+
+/* Headings and the heavier blocks earn the space above them that they have on
+   the page. Graduated by depth, the way `.prose` does it: a document whose
+   sections all sit the same distance apart reads as one long list, and the
+   rhythm is most of what tells you where you are in a note. */
+.studio-vblock + .studio-vblock--code,
+.studio-vblock + .studio-vblock--table,
+.studio-vblock + .studio-vblock--image,
+.studio-vblock + .studio-vblock--divider,
+.studio-vblock + .studio-vblock--heading[data-depth='3'],
+.studio-vblock + .studio-vblock--heading:not([data-depth]) {
+  margin-top: 1.3rem;
+}
+
+.studio-vblock + .studio-vblock--heading[data-depth='2'] {
+  margin-top: 1.9rem;
+}
+
+.studio-vblock + .studio-vblock--heading[data-depth='1'] {
+  margin-top: 2.3rem;
+}
+
+/* Hovering a block is not selecting it. The tint marks the target the gutter
+   buttons belong to and nothing more, so it stays under the threshold where a
+   reader would read it as state. */
+.studio-vblock:hover:not(.studio-vblock--editing) {
+  background: color-mix(in srgb, var(--admin-surface) 42%, transparent);
+}
+
+.studio-vblock {
+  transition: background 0.14s ease;
+}
+
+/* Outlined rather than shadowed: an inset ring lands on the words themselves
+   at the sizes a heading is set in. */
+.studio-vblock:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.studio-vblock.is-dragging {
+  opacity: 0.35;
+}
+
+/* Where the block will land. Drawn on the block below the gap, so the line
+   sits exactly where the text will, with a cap on the left so it reads as an
+   insertion point rather than a border. */
+.studio-vblock.is-drop-before::after,
+.studio-vsurface__tail.is-drop-into::before {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--admin-accent);
+  box-shadow: -4px 0 0 0 var(--admin-accent);
   content: '';
 }
 
-.content-workspace .studio-tool {
+.studio-vsurface__tail {
+  position: relative;
+}
+
+.studio-vsurface__tail.is-drop-into::before {
+  top: 6px;
+}
+
+/* The rendered block is the real thing: the same renderer and the same
+   `.prose` stylesheet the published note loads.
+
+   Block spacing, though, belongs to the editor. Each block renders as its own
+   `.prose` root, so prose's between-element margins would only ever apply on
+   one side of each gap. The surface sets an even rhythm instead, and Preview
+   mode — one render of the whole note — keeps the published spacing exact. */
+.studio-vblock__rendered {
+  padding: 2px 0;
+  cursor: text;
+}
+
+.studio-vblock__rendered
+  > :is(p, ul, ol, blockquote, pre, hr, table, figure, h1, h2, h3, h4, h5, h6) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.studio-vblock__rendered :is(ul, ol) {
+  padding-left: 1.4em;
+}
+
+.studio-vblock__rendered li {
+  margin-bottom: 0.15em;
+}
+
+/* Checkboxes are live here, unlike on the page: ticking one is an edit, and
+   the lightest one the editor has. */
+.studio-vblock__rendered input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  margin-right: 0.35em;
+  accent-color: var(--admin-accent);
+  vertical-align: -2px;
+  cursor: pointer;
+}
+
+/* The anchor a heading carries on the published page is navigation, not
+   content — in an editor it is a stray `#` beside every heading. */
+.studio-vblock__rendered .anchor {
+  display: none;
+}
+
+.studio-vblock__rendered hr {
+  margin: 0.6em 0;
+}
+
+/* --- Block gutter --- */
+
+.studio-vblock__gutter {
+  position: absolute;
+  top: 1px;
+  right: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.studio-vblock:hover .studio-vblock__gutter,
+.studio-vblock:focus-within .studio-vblock__gutter {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.content-workspace :is(.studio-vblock__add, .studio-vblock__handle) {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
+  width: 20px;
+  height: 22px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm-2);
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--admin-text-muted);
+  color: var(--admin-text-disabled);
   cursor: pointer;
   transition:
-    background 0.13s ease,
-    color 0.13s ease;
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
-.content-workspace .studio-tool--wide {
-  width: auto;
-  padding: 0 8px;
-}
-
-.content-workspace .studio-tool:hover {
+.content-workspace :is(.studio-vblock__add, .studio-vblock__handle):hover {
   background: var(--admin-surface-elevated);
   color: var(--admin-text-primary);
 }
 
-.content-workspace .studio-tool:active {
-  transform: translateY(0.5px);
+.content-workspace .studio-vblock__handle {
+  cursor: grab;
 }
 
-.content-workspace .studio-tool:disabled {
-  opacity: 0.4;
-  cursor: default;
+.content-workspace .studio-vblock__handle:active {
+  cursor: grabbing;
+}
+
+.studio-vblock__add svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.studio-vblock__handle svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+/* --- The block being edited --- */
+
+/* Opening a block reveals its Markdown and changes nothing else: no rail, no
+   tint, no box. The caret already says where you are, and a marker that
+   appears beside the text you are reading is one more thing moving on screen
+   at the exact moment you wanted to concentrate.
+
+   The wrapper carries the block's own type and depth classes, so the spacing
+   above it is the spacing the rendered block had. Without that, clicking a
+   heading pulled it two rem up the page and dropped it back on blur. */
+.studio-vblock--editing {
+  position: relative;
+}
+
+/* Everything the writing surface animates is an entrance a few frames long —
+   there to say "this appeared here", never to carry meaning of its own. Asked
+   for less motion, they are simply the end state. */
+@media (prefers-reduced-motion: reduce) {
+  .studio-vblock,
+  .studio-vblock__gutter,
+  .content-workspace :is(.studio-vblock__add, .studio-vblock__handle),
+  .studio-inline-tool {
+    transition: none;
+  }
+
+  .studio-slashmenu,
+  .studio-inline-toolbar,
+  .studio-wikimenu {
+    animation: none;
+  }
+}
+
+/* The caret's own colour on the words it has picked out, so a selection made
+   to format reads as part of the editor rather than the operating system. */
+.studio-vblock__input::selection,
+.studio-textarea::selection {
+  background: color-mix(in srgb, var(--admin-accent) 28%, transparent);
+}
+
+.studio-vblock__input {
+  display: block;
+  width: 100%;
+  /* One line of *this* block's type. A flat 1.85em is one line of body text —
+     close to twice the height of an h1's line — so a heading's box grew the
+     moment it opened. `lh` is that same measure taken from the line-height
+     already set below, whatever the block turns out to be. */
+  min-height: 1.85em;
+  min-height: 1lh;
+  padding: 2px 0;
+  border: 0;
   background: transparent;
+  /* The exact colour `.prose` gives body text, not the panel's own — clicking
+     a paragraph should not make it brighter. */
+  color: color-mix(in srgb, var(--color-text-primary) 94%, transparent);
+  caret-color: var(--admin-accent);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.6vw, 1.08rem);
+  line-height: 1.85;
+  /* The same two rules `.prose p` wraps by.
+     `text-wrap: pretty` pulls words down to avoid a short last line, so a
+     rendered paragraph does not use its full width — in a 650px column it
+     often stops 70-odd pixels short. A textarea without it fills the column
+     edge to edge, so every line broke somewhere else the moment the block
+     opened, and the text spread out into space it had not been using. Same
+     glyphs, but the block visibly changed shape under the pointer that had
+     just clicked it. */
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  tab-size: 2;
+  resize: none;
+  overflow: hidden;
+  outline: none;
 }
 
-.studio-tool svg {
-  width: 18px;
-  height: 18px;
+/* Typography follows the block, so revealing the source does not reflow the
+   note under the caret.
+
+   Every value below is the one `.prose` sets for the same heading, read from
+   the same token where it uses one. It was close but not equal — 1.2 against
+   prose's 1.3 line-height, one letter-spacing for every level against prose's
+   three — and "close" is what you see as the line shifting under the caret. */
+.studio-vblock__input--heading {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.studio-vblock__input--heading[data-depth='1'] {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.studio-vblock__input--heading[data-depth='2'] {
+  font-size: clamp(1.4rem, 3vw, 1.7rem);
+  letter-spacing: -0.035em;
+}
+
+.studio-vblock__input--heading[data-depth='3'] {
+  font-size: var(--text-lg);
+  letter-spacing: -0.025em;
+}
+
+/* Beyond h3 `.prose` stops setting a size, so the browser's own — which
+   shrinks below body text — is what renders. Match it rather than opening the
+   block at a size the note never uses. */
+.studio-vblock__input--heading[data-depth='4'] {
+  font-size: 1em;
+}
+
+.studio-vblock__input--heading[data-depth='5'] {
+  font-size: 0.83em;
+}
+
+.studio-vblock__input--heading[data-depth='6'] {
+  font-size: 0.67em;
+}
+
+/* The indent a block is rendered with is part of where it sits on the page.
+   Dropping it on click slid the words left and back again, which reads as the
+   text jumping away from the pointer that just clicked it. The quote keeps its
+   rule for the same reason: it is the block's own, not the editor's. */
+.studio-vblock__input--quote {
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* A list marker is written out in the source (`- `), so it takes up part of
+   the indent itself; the padding makes up the rest. */
+.studio-vblock__input--list,
+.studio-vblock__input--task {
+  padding-left: 0.45em;
+}
+
+.studio-vblock__input--code,
+.studio-vblock__input--table,
+.studio-vblock__input--html {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-surface);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* --- Empty note, and the space past the last block --- */
+
+.content-workspace .studio-vsurface__placeholder {
+  display: block;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-disabled);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.6vw, 1.08rem);
+  line-height: 1.85;
+  text-align: left;
+  cursor: text;
+}
+
+/* Clicking past the end starts a new block, the way the rest of a page of
+   paper does. Tall enough to be an easy target, and to let the last line of a
+   long note scroll up to somewhere comfortable to write. */
+.studio-vsurface__tail {
+  min-height: 45vh;
+  cursor: text;
+}
+
+.studio-vsurface__uploading {
+  position: sticky;
+  bottom: 12px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-secondary);
+  font-size: 0.72rem;
+}
+
+/* --- Markdown mode --- */
+
+.studio-source {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.studio-textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 40px max(24px, calc((100% - var(--studio-measure)) / 2));
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-primary);
+  caret-color: var(--admin-accent);
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
+  line-height: 1.78;
+  tab-size: 2;
+  resize: none;
+  outline: none;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-textarea::placeholder {
+  color: var(--admin-text-disabled);
+}
+
+/* --- Slash menu --- */
+
+.studio-slashmenu {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  width: 248px;
+  max-height: 330px;
+  padding: 4px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 14px 38px color-mix(in srgb, #000 36%, transparent);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: studio-pop 0.11s ease-out;
+}
+
+@keyframes studio-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* The group a run of rows belongs to. Only drawn while the whole menu is
+   showing: once a query narrows it, the ranking is the order that matters. */
+.studio-slashmenu__group {
+  margin: 6px 9px 2px;
+  color: var(--admin-text-disabled);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-slashmenu__group:first-child {
+  margin-top: 2px;
+}
+
+.studio-slashmenu__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-slashmenu__row.is-active {
+  background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
+}
+
+/* The Markdown the row writes, as its icon. Two jobs in one glyph: it tells
+   the rows apart at a glance, and it teaches the shorthand that makes the
+   menu unnecessary. */
+.studio-slashmenu__glyph {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  color: var(--admin-text-muted);
+  font: 0.62rem var(--font-mono);
+  letter-spacing: -0.04em;
+}
+
+.studio-slashmenu__row.is-active .studio-slashmenu__glyph {
+  border-color: color-mix(in srgb, var(--admin-accent) 45%, transparent);
+  color: var(--admin-accent);
+}
+
+.studio-slashmenu__title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* --- Selection toolbar --- */
+
+/* The formatting controls, only while there is something to format. */
+.studio-inline-toolbar {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 34%, transparent);
+  animation: studio-pop 0.1s ease-out;
+}
+
+.studio-inline-tool {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.studio-inline-tool:hover {
+  background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
+}
+
+.studio-inline-tool svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Docked: a full-width bar on the bottom edge, above the on-screen keyboard.
+   `--studio-vh` is the visual viewport height the workspace tracks, so the bar
+   rides the keyboard instead of hiding behind it. */
+.studio-inline-toolbar.is-docked {
+  top: var(--studio-vh, 100dvh);
+  right: 0;
+  bottom: auto;
+  left: 0;
+  transform: translateY(-100%);
+  justify-content: space-around;
+  padding: 6px max(6px, env(safe-area-inset-right))
+    max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  border: 0;
+  border-top: 1px solid var(--admin-line);
+  border-radius: 0;
+  background: var(--admin-surface);
+  box-shadow: 0 -6px 20px color-mix(in srgb, #000 22%, transparent);
+  animation: none;
+}
+
+.studio-inline-toolbar__divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--color-rule);
 }
 
 .studio-tool-glyph {
@@ -1546,48 +2063,35 @@
   text-decoration: line-through;
 }
 
-.studio-tool-glyph--h {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.studio-tool-divider {
+/* Named for a screen reader, out of the way of everyone else. */
+.studio-visually-hidden {
+  position: absolute;
   width: 1px;
-  height: 18px;
-  flex-shrink: 0;
-  margin: 0 3px;
-  background: var(--admin-line);
-}
-
-/* --- Writing surface --- */
-
-.studio-textarea {
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 0;
-  padding: 32px max(28px, calc((100% - 44rem) / 2));
+  height: 1px;
+  margin: -1px;
+  padding: 0;
   border: 0;
-  background: transparent;
-  color: var(--admin-text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.94rem;
-  line-height: 1.78;
-  tab-size: 2;
-  resize: none;
-  outline: none;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.studio-textarea::placeholder {
+/* The heading above a group of menu items. */
+.studio-menu__label {
+  margin: 4px 9px 2px;
   color: var(--admin-text-disabled);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
+
+/* --- Status line --- */
 
 .studio-status {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
   padding: 6px 14px;
   border-top: 1px solid var(--admin-line);
@@ -1597,21 +2101,116 @@
   letter-spacing: 0.04em;
 }
 
+.studio-status__spacer {
+  flex: 1 1 auto;
+}
+
+.studio-status__hint,
+.studio-status__busy {
+  color: var(--admin-text-disabled);
+}
+
+.studio-status__hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+  font: inherit;
+}
+
 /* --- Preview --- */
 
 .studio-preview {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   background: var(--admin-bg);
 }
 
-/* Mirrors `.garden-document` on the public page, so the body is measured
-   against the same column width it will have once published. */
+/* Mirrors `garden-document-layout`: the reading column, and the contents rail
+   beside it when the note has enough headings to earn one. */
+.studio-preview__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 64rem);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (min-width: 1180px) {
+  .studio-preview__layout:has(.studio-preview__toc) {
+    grid-template-columns: minmax(0, 1fr) 13rem;
+    gap: 40px;
+  }
+}
+
 .studio-preview__page {
   width: min(100%, 44rem);
   margin: 0 auto;
-  padding: 32px 28px 64px;
+  padding: 40px 0 25vh;
+}
+
+.studio-preview__title {
+  margin: 0 0 0.6em;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.studio-preview__stub {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.studio-preview__toc {
+  position: sticky;
+  top: 40px;
+  align-self: start;
+  margin-top: 40px;
+  padding-left: 16px;
+  border-left: 1px solid var(--admin-line);
+}
+
+.studio-preview__toc-title {
+  margin: 0 0 8px;
+  color: var(--admin-text-disabled);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.studio-preview__toc ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-preview__toc li[data-depth='3'] {
+  padding-left: 10px;
+}
+
+.studio-preview__toc li[data-depth='4'] {
+  padding-left: 20px;
+}
+
+.studio-preview__toc a {
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.studio-preview__toc a:hover {
+  color: var(--admin-text-primary);
 }
 
 /* The rendered Markdown inside `.prose` is styled by
@@ -2304,7 +2903,7 @@
    `.content-workspace` the way the rest of the workspace is. */
 @media (pointer: coarse) {
   .content-workspace .studio-icon-button,
-  .content-workspace .studio-tool,
+  .studio-inline-tool,
   .studio-imgdlg__close,
   .studio-bar__toggle,
   .studio-bar__open {
@@ -2312,9 +2911,20 @@
     height: 40px;
   }
 
-  .content-workspace .studio-tool--wide {
-    width: auto;
-    padding: 0 12px;
+  /* No hover on a touch screen, so the gutter is always there — and big
+     enough to hit. */
+  .studio-vblock__gutter {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .content-workspace :is(.studio-vblock__add, .studio-vblock__handle) {
+    width: 26px;
+    height: 30px;
+  }
+
+  .studio-slashmenu__row {
+    padding: 11px 10px;
   }
 
   .studio-tree-row {
@@ -2625,22 +3235,28 @@
 
   /* --- Writing --- */
 
-  /* The format bar moves under the text, where it lands on top of the
-     on-screen keyboard instead of a screenful above it. */
+  /* 16px is the threshold under which iOS zooms the page on focus — which
+     leaves the caret somewhere other than where the writer left it. */
   .studio-textarea {
-    order: 1;
     padding: 16px max(16px, env(safe-area-inset-right)) 20px
       max(16px, env(safe-area-inset-left));
     font-size: 16px;
     line-height: 1.7;
   }
 
-  .studio-toolbar {
-    order: 2;
-    padding: 4px max(4px, env(safe-area-inset-right)) 4px
-      max(4px, env(safe-area-inset-left));
-    border-top: 1px solid var(--admin-line);
-    border-bottom: 0;
+  .studio-vsurface {
+    padding: 20px max(20px, env(safe-area-inset-right)) 0
+      max(20px, env(safe-area-inset-left));
+  }
+
+  .studio-vblock__input {
+    font-size: 16px;
+  }
+
+  /* The keyboard takes the bottom half of the screen; the run-off below the
+     last block does not need to take the rest. */
+  .studio-vsurface__tail {
+    min-height: 20vh;
   }
 
   /* The word count lives in the dock now. */
@@ -2648,9 +3264,8 @@
     display: none;
   }
 
-  .studio-panes.is-split {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+  .studio-preview__layout {
+    padding: 0;
   }
 
   .studio-preview__page {

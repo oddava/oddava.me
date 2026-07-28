@@ -2,11 +2,12 @@
    Rendered note body — `.prose`
 
    The single definition of how Markdown rendered by
-   `lib/garden/render.ts` looks. Loaded by both surfaces that
-   show a note body:
+   `lib/garden/render.ts` looks. Loaded by every surface that
+   shows a note body:
      - the public page (GardenDocumentPage.astro)
-     - the Studio preview pane (ContentWorkspace.tsx)
-   so the preview is the page, not a look-alike.
+     - Studio's Preview mode and its Visual editor
+       (ContentWorkspace.tsx loads it for both)
+   so the editor is the page, not a look-alike.
 
    Self-contained on purpose: it does not lean on the site
    reset or base typography, because the admin shell doesn't

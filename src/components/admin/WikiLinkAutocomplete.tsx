@@ -11,6 +11,13 @@ interface Props {
   onChoose: (index: number) => void;
 }
 
+/** The textarea points `aria-controls` here, so both names live in one place. */
+export const WIKI_MENU_ID = 'studio-wikimenu';
+
+export function wikiOptionId(index: number): string {
+  return `studio-wiki-option-${index}`;
+}
+
 export default function WikiLinkAutocomplete({
   open,
   items,
@@ -33,6 +40,7 @@ export default function WikiLinkAutocomplete({
   return createPortal(
     <div
       ref={listRef}
+      id={WIKI_MENU_ID}
       className="studio-wikimenu"
       role="listbox"
       aria-label="Link to a note"
@@ -42,6 +50,7 @@ export default function WikiLinkAutocomplete({
         <button
           type="button"
           key={`${item.folder}/${item.id}`}
+          id={wikiOptionId(index)}
           data-index={index}
           role="option"
           aria-selected={index === activeIndex}
