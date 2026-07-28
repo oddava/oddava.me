@@ -78,6 +78,31 @@ export function diffRun(before: string, after: string): EditRun | null {
 }
 
 /**
+ * Where an offset in `before` lands once `after` has replaced it.
+ *
+ * Between a pointer going down on a block and the click that follows, the blur
+ * it caused can rewrite the document — an emptied block is taken out, a table
+ * is lined up — and every offset after that edit moves. Mapping the offset
+ * through the run is what lets a click land on the text it was aimed at rather
+ * than on whatever slid under the pointer.
+ */
+export function remapOffset(
+  before: string,
+  after: string,
+  offset: number,
+): number {
+  const run = diffRun(before, after);
+  if (!run) return offset;
+  if (offset <= run.start) return offset;
+  if (offset >= run.start + run.removed) {
+    return offset + run.inserted - run.removed;
+  }
+  // Inside the span that was replaced: there is no counterpart, so the nearest
+  // honest answer is as far into the replacement as it sat into the original.
+  return run.start + Math.min(run.inserted, offset - run.start);
+}
+
+/**
  * Whether `next` carries on the run `previous` started — typing forward from
  * where the last character landed, or backspacing into what was just typed.
  *

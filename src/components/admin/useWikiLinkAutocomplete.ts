@@ -95,18 +95,28 @@ export function useWikiLinkAutocomplete(
     tokenRef.current = { start: match.index, end: caret };
     const coords = caretCoordinates(el, match.index);
     const rect = el.getBoundingClientRect();
-    setState((current) => ({
-      open: true,
-      items,
-      activeIndex:
+    const position = {
+      top: rect.top + coords.top - el.scrollTop + coords.height,
+      left: rect.left + coords.left - el.scrollLeft,
+    };
+    setState((current) => {
+      const activeIndex =
         current.open && current.activeIndex < items.length
           ? current.activeIndex
-          : 0,
-      position: {
-        top: rect.top + coords.top - el.scrollTop + coords.height,
-        left: rect.left + coords.left - el.scrollLeft,
-      },
-    }));
+          : 0;
+      // Refresh runs on every keystroke, every caret move and every scroll
+      // frame while the popover is up. A new state object for an unchanged
+      // answer re-renders the whole workspace each time; this is the same
+      // answer far more often than not.
+      const unchanged =
+        current.open &&
+        current.activeIndex === activeIndex &&
+        current.position?.top === position.top &&
+        current.position?.left === position.left &&
+        current.items.length === items.length &&
+        current.items.every((item, index) => item.id === items[index]?.id);
+      return unchanged ? current : { open: true, items, activeIndex, position };
+    });
   }, [getEditor, suggestions, close]);
 
   const accept = useCallback(

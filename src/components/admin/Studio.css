@@ -12,6 +12,23 @@
   /* Touch: no grey flash on tap, no 300ms wait for a double-tap that this
      workspace never uses. */
   -webkit-tap-highlight-color: transparent;
+
+  /* One motion vocabulary for the whole workspace.
+
+     Three durations and two curves, because a surface where every transition
+     was timed by hand reads as a set of parts rather than one thing. `--ease`
+     decelerates hard: it is for anything *arriving* — a menu, a drop marker, a
+     handle — which should land rather than drift. `--ease-soft` is symmetrical,
+     for a property changing between two states that are both at rest.
+
+     Nothing here is long enough to wait for. The ceiling is a fifth of a
+     second, which is the point at which motion stops reading as response and
+     starts reading as animation. */
+  --studio-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --studio-ease-soft: cubic-bezier(0.32, 0.08, 0.24, 1);
+  --studio-fast: 90ms;
+  --studio-base: 140ms;
+  --studio-slow: 200ms;
 }
 
 .content-workspace button,
@@ -943,6 +960,7 @@
   border-radius: var(--radius-sm-2);
   background: var(--color-surface-raised);
   box-shadow: 0 12px 32px color-mix(in srgb, #000 34%, transparent);
+  animation: studio-pop var(--studio-base) var(--studio-ease);
 }
 
 .studio-menu button {
@@ -959,6 +977,9 @@
   font-size: 0.68rem;
   text-align: left;
   cursor: pointer;
+  transition:
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft);
 }
 
 /* The shortcut that does the same thing, so the menu teaches its way out. */
@@ -1187,8 +1208,8 @@
   color: var(--admin-text-muted);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--studio-base) var(--studio-ease-soft),
+    color var(--studio-base) var(--studio-ease-soft);
 }
 
 .studio-bar__toggle:hover {
@@ -1241,8 +1262,8 @@
   border-radius: var(--radius-sm-2);
   color: var(--admin-text-muted);
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--studio-base) var(--studio-ease-soft),
+    color var(--studio-base) var(--studio-ease-soft);
 }
 
 .studio-bar__open:hover {
@@ -1252,6 +1273,10 @@
 
 /* --- Save indicator --- */
 
+/* The one part of the chrome a writer watches. It moves through grey, accent
+   and green as a save goes round, and switching those hard makes a background
+   task read as an alert — the colour eases so the state is there when you look
+   for it without ever having asked for your attention. */
 .studio-save {
   display: inline-flex;
   align-items: center;
@@ -1263,6 +1288,7 @@
   font-size: 0.62rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  transition: color var(--studio-slow) var(--studio-ease-soft);
 }
 
 .studio-save__dot {
@@ -1272,6 +1298,9 @@
   background: currentColor;
 }
 
+/* The dot gives way to a tick the moment a save lands. The mark is the only
+   thing here that should announce itself, so it draws itself in rather than
+   swapping for the dot between one frame and the next. */
 .studio-save__check {
   width: 12px;
   height: 12px;
@@ -1280,6 +1309,7 @@
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
+  animation: studio-pop var(--studio-slow) var(--studio-ease);
 }
 
 .studio-save[data-tone='saving'] {
@@ -1328,9 +1358,9 @@
   letter-spacing: normal;
   cursor: pointer;
   transition:
-    color 0.15s ease,
-    border-color 0.15s ease,
-    background 0.15s ease;
+    color var(--studio-base) var(--studio-ease-soft),
+    border-color var(--studio-base) var(--studio-ease-soft),
+    background var(--studio-base) var(--studio-ease-soft);
 }
 
 .content-workspace .studio-save--action:hover {
@@ -1367,8 +1397,8 @@
   font-weight: 500;
   cursor: pointer;
   transition:
-    color 0.15s ease,
-    border-color 0.15s ease;
+    color var(--studio-base) var(--studio-ease-soft),
+    border-color var(--studio-base) var(--studio-ease-soft);
 }
 
 .content-workspace .studio-bar__autosave:hover {
@@ -1385,7 +1415,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--admin-text-disabled);
-  transition: background 0.15s ease;
+  transition: background var(--studio-base) var(--studio-ease-soft);
 }
 
 .studio-bar__autosave[aria-checked='true'] .studio-bar__autosave-dot {
@@ -1412,8 +1442,8 @@
   font-weight: 500;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--studio-base) var(--studio-ease-soft),
+    color var(--studio-base) var(--studio-ease-soft);
 }
 
 .content-workspace .studio-view-switch button:hover {
@@ -1452,7 +1482,7 @@
 .studio-editor:has(.studio-surface.is-focused)
   :is(.studio-bar, .studio-status) {
   opacity: 0.32;
-  transition: opacity 0.22s ease;
+  transition: opacity var(--studio-slow) var(--studio-ease-soft);
 }
 
 .studio-editor:has(.studio-surface.is-focused)
@@ -1468,6 +1498,12 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  /* Deliberately *not* `scroll-behavior: smooth`. The browser scrolls this
+     pane itself to keep the caret in view as a block grows under it, and
+     easing that turns fast typing at the bottom edge into a rubber band. The
+     one scroll that should glide — stepping to a block that is off screen —
+     asks for it at the call site instead. `scroll-margin-block` on the blocks
+     keeps whatever is scrolled to off the very edge of the frame. */
 }
 
 .studio-vsurface {
@@ -1478,9 +1514,33 @@
 
 .studio-vblock {
   position: relative;
-  border-radius: var(--radius-sm-2);
   outline: none;
   scroll-margin-block: 80px;
+}
+
+/* The block's feedback layer: the hover tint and the focus ring, both drawn
+   here rather than on the block itself.
+
+   Two reasons. It is inset *outward* — a highlight that stops at the exact
+   edge of the words looks like a clipping error, and the 10px of air on either
+   side is what makes it read as a surface the text sits on. And it is a single
+   element fading its opacity, so hover and focus cost one compositor property
+   between them instead of animating a background colour on every row the
+   pointer crosses. */
+.studio-vblock::before {
+  position: absolute;
+  inset: -3px -10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--admin-surface) 55%, transparent);
+  opacity: 0;
+  /* Quick to arrive, slower to leave: sweeping the pointer down a note should
+     not strobe, and the trailing fade is what turns a row of flashes into one
+     continuous highlight following the cursor. */
+  transition:
+    opacity var(--studio-slow) var(--studio-ease-soft),
+    box-shadow var(--studio-fast) var(--studio-ease);
+  pointer-events: none;
+  content: '';
 }
 
 .studio-vblock + .studio-vblock {
@@ -1490,13 +1550,20 @@
 /* Headings and the heavier blocks earn the space above them that they have on
    the page. Graduated by depth, the way `.prose` does it: a document whose
    sections all sit the same distance apart reads as one long list, and the
-   rhythm is most of what tells you where you are in a note. */
+   rhythm is most of what tells you where you are in a note.
+
+   Depth 3 and below share one step. `:not([data-depth])` used to stand in for
+   the deeper headings and matched nothing at all — every heading carries its
+   depth — so an h4 opened a section with no more air above it than a second
+   paragraph would have had. */
 .studio-vblock + .studio-vblock--code,
 .studio-vblock + .studio-vblock--table,
 .studio-vblock + .studio-vblock--image,
 .studio-vblock + .studio-vblock--divider,
 .studio-vblock + .studio-vblock--heading[data-depth='3'],
-.studio-vblock + .studio-vblock--heading:not([data-depth]) {
+.studio-vblock + .studio-vblock--heading[data-depth='4'],
+.studio-vblock + .studio-vblock--heading[data-depth='5'],
+.studio-vblock + .studio-vblock--heading[data-depth='6'] {
   margin-top: 1.3rem;
 }
 
@@ -1511,39 +1578,75 @@
 /* Hovering a block is not selecting it. The tint marks the target the gutter
    buttons belong to and nothing more, so it stays under the threshold where a
    reader would read it as state. */
-.studio-vblock:hover:not(.studio-vblock--editing) {
-  background: color-mix(in srgb, var(--admin-surface) 42%, transparent);
+.studio-vblock:hover:not(.studio-vblock--editing)::before {
+  opacity: 1;
+  transition-duration: var(--studio-fast);
 }
 
-.studio-vblock {
-  transition: background 0.14s ease;
-}
-
-/* Outlined rather than shadowed: an inset ring lands on the words themselves
-   at the sizes a heading is set in. */
+/* The ring is drawn on the same layer as the tint so the two share a geometry.
+   The outline stays, transparent: forced-colours mode paints it back in, and
+   it is the only part of this that survives when box-shadow is dropped. */
 .studio-vblock:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 3px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 
+.studio-vblock:focus-visible::before {
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+  transition-duration: var(--studio-fast);
+}
+
+/* The block being carried. It stays legible — you are meant to see where it
+   came from — and shrinks a little, which reads as "lifted off the page". */
 .studio-vblock.is-dragging {
-  opacity: 0.35;
+  opacity: 0.28;
+  transform: scale(0.985);
+  transition:
+    opacity var(--studio-base) var(--studio-ease),
+    transform var(--studio-base) var(--studio-ease);
+}
+
+/* While a block is in the air the note stops answering the pointer: a tint
+   following the cursor over rows it is not going to land on is noise, and the
+   drop marker is the only thing that should be moving. */
+.studio-vsurface.is-reordering .studio-vblock::before {
+  opacity: 0;
+}
+
+.studio-vsurface.is-reordering .studio-vblock__rendered {
+  cursor: grabbing;
 }
 
 /* Where the block will land. Drawn on the block below the gap, so the line
    sits exactly where the text will, with a cap on the left so it reads as an
-   insertion point rather than a border. */
+   insertion point rather than a border.
+
+   It grows out from that cap rather than appearing whole. The marker moves
+   between blocks as fast as the pointer does, and a line that simply blinks
+   from one gap to the next gives no sense of having followed anything. */
 .studio-vblock.is-drop-before::after,
 .studio-vsurface__tail.is-drop-into::before {
   position: absolute;
   top: -4px;
-  right: 0;
-  left: 0;
+  right: -10px;
+  left: -10px;
   height: 2px;
   border-radius: 2px;
   background: var(--admin-accent);
-  box-shadow: -4px 0 0 0 var(--admin-accent);
+  box-shadow:
+    -4px 0 0 0 var(--admin-accent),
+    0 0 12px color-mix(in srgb, var(--admin-accent) 45%, transparent);
+  transform-origin: left center;
+  animation: studio-drop-marker var(--studio-base) var(--studio-ease);
   content: '';
+}
+
+@keyframes studio-drop-marker {
+  from {
+    opacity: 0;
+    transform: scaleX(0.55);
+  }
 }
 
 .studio-vsurface__tail {
@@ -1562,6 +1665,10 @@
    one side of each gap. The surface sets an even rhythm instead, and Preview
    mode — one render of the whole note — keeps the published spacing exact. */
 .studio-vblock__rendered {
+  /* Above the block's tint, which is the reason that tint needs no negative
+     z-index — one would put it behind the pane instead. The gutter is already
+     absolutely positioned, so it paints above the tint without help. */
+  position: relative;
   padding: 2px 0;
   cursor: text;
 }
@@ -1603,6 +1710,10 @@
 
 /* --- Block gutter --- */
 
+/* The handles sit outside the measure and slide the last two pixels into
+   place, so they read as arriving beside the block rather than materialising
+   on top of it. Out is slower than in, for the same reason the tint's is:
+   a pointer crossing six blocks should leave one trail, not six flashes. */
 .studio-vblock__gutter {
   position: absolute;
   top: 1px;
@@ -1612,14 +1723,25 @@
   gap: 1px;
   padding-right: 4px;
   opacity: 0;
-  transition: opacity 0.12s ease;
+  transform: translateX(-3px);
+  transition:
+    opacity var(--studio-slow) var(--studio-ease-soft),
+    transform var(--studio-slow) var(--studio-ease-soft);
   pointer-events: none;
 }
 
 .studio-vblock:hover .studio-vblock__gutter,
 .studio-vblock:focus-within .studio-vblock__gutter {
   opacity: 1;
+  transform: none;
+  transition-duration: var(--studio-fast);
   pointer-events: auto;
+}
+
+/* A block in the air has no handles to offer, including the one being held. */
+.studio-vsurface.is-reordering .studio-vblock__gutter {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .content-workspace :is(.studio-vblock__add, .studio-vblock__handle) {
@@ -1634,13 +1756,20 @@
   color: var(--admin-text-disabled);
   cursor: pointer;
   transition:
-    background 0.12s ease,
-    color 0.12s ease;
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft),
+    transform var(--studio-fast) var(--studio-ease-soft);
 }
 
 .content-workspace :is(.studio-vblock__add, .studio-vblock__handle):hover {
   background: var(--admin-surface-elevated);
   color: var(--admin-text-primary);
+}
+
+/* A press that gives under the finger. The only thing on this surface that
+   moves on `:active`, because it is the only thing you push rather than aim. */
+.content-workspace :is(.studio-vblock__add, .studio-vblock__handle):active {
+  transform: scale(0.9);
 }
 
 .content-workspace .studio-vblock__handle {
@@ -1649,6 +1778,7 @@
 
 .content-workspace .studio-vblock__handle:active {
   cursor: grabbing;
+  transform: none;
 }
 
 .studio-vblock__add svg {
@@ -1682,25 +1812,68 @@
 
 /* Everything the writing surface animates is an entrance a few frames long —
    there to say "this appeared here", never to carry meaning of its own. Asked
-   for less motion, they are simply the end state. */
+   for less motion, they are simply the end state.
+
+   The states themselves are untouched: the tint still tints, the ring still
+   rings, the drop marker still marks. Only the travel between them goes. */
 @media (prefers-reduced-motion: reduce) {
-  .studio-vblock,
+  .content-workspace {
+    --studio-fast: 1ms;
+    --studio-base: 1ms;
+    --studio-slow: 1ms;
+  }
+
+  .studio-vblock::before,
+  .studio-vblock.is-dragging,
   .studio-vblock__gutter,
   .content-workspace :is(.studio-vblock__add, .studio-vblock__handle),
+  .content-workspace .studio-vsurface__placeholder,
+  .studio-slashmenu__row,
+  .studio-wikimenu__row,
+  .studio-menu button,
+  .studio-inline-toolbar,
   .studio-inline-tool {
+    transition: none;
+  }
+
+  .studio-vblock__gutter {
+    transform: none;
+  }
+
+  .content-workspace :is(.studio-vblock__add, .studio-vblock__handle):active,
+  .studio-inline-tool:active {
+    transform: none;
+  }
+
+  .studio-vblock.is-dragging {
+    transform: none;
+  }
+
+  .studio-save {
     transition: none;
   }
 
   .studio-slashmenu,
   .studio-inline-toolbar,
-  .studio-wikimenu {
+  .studio-wikimenu,
+  .studio-menu,
+  .studio-save__check,
+  .studio-vsurface__uploading,
+  .studio-vblock.is-drop-before::after,
+  .studio-vsurface__tail.is-drop-into::before {
     animation: none;
   }
 }
 
 /* The caret's own colour on the words it has picked out, so a selection made
-   to format reads as part of the editor rather than the operating system. */
+   to format reads as part of the editor rather than the operating system.
+   The rendered blocks are included: a selection dragged across them is copied
+   as Markdown by the surface, and it would otherwise change colour halfway
+   through — system blue over the rendered text, the accent inside the block
+   that happens to be open. */
 .studio-vblock__input::selection,
+.studio-vblock__rendered ::selection,
+.studio-vblock__rendered::selection,
 .studio-textarea::selection {
   background: color-mix(in srgb, var(--admin-accent) 28%, transparent);
 }
@@ -1738,6 +1911,10 @@
   resize: none;
   overflow: hidden;
   outline: none;
+  /* The block being written in is scrolled to by the caret, not by the reader.
+     Landing it flush against the top or the bottom of the pane leaves nothing
+     to read ahead into; this is the same air the rendered blocks keep. */
+  scroll-margin-block: 80px;
 }
 
 /* Typography follows the block, so revealing the source does not reflow the
@@ -1833,6 +2010,13 @@
   line-height: 1.85;
   text-align: left;
   cursor: text;
+  transition: color var(--studio-base) var(--studio-ease-soft);
+}
+
+/* The one invitation in an empty note. It comes up a shade on approach —
+   enough to say the whole line is the target, not just the words. */
+.content-workspace .studio-vsurface__placeholder:hover {
+  color: var(--admin-text-muted);
 }
 
 /* Clicking past the end starts a new block, the way the rest of a page of
@@ -1843,16 +2027,29 @@
   cursor: text;
 }
 
+/* Rises into the bottom of the pane rather than appearing in it. An upload is
+   the one thing here that takes longer than a frame, and the only status the
+   surface ever shows — it should read as having come from somewhere. */
 .studio-vsurface__uploading {
   position: sticky;
   bottom: 12px;
   width: fit-content;
   margin: 0 auto;
   padding: 5px 12px;
+  border: 1px solid var(--admin-line);
   border-radius: var(--radius-pill);
   background: var(--admin-surface-elevated);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 24%, transparent);
   color: var(--admin-text-secondary);
   font-size: 0.72rem;
+  animation: studio-rise var(--studio-slow) var(--studio-ease);
+}
+
+@keyframes studio-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 
 /* --- Markdown mode --- */
@@ -1902,13 +2099,18 @@
   box-shadow: 0 14px 38px color-mix(in srgb, #000 36%, transparent);
   overflow-y: auto;
   overscroll-behavior: contain;
-  animation: studio-pop 0.11s ease-out;
+  animation: studio-pop var(--studio-base) var(--studio-ease);
 }
 
+/* Every popover in the editor arrives the same way: from just under where it
+   is going, at nine-tenths of the way to full size. The scale is small enough
+   that it reads as depth rather than as a zoom, and it is the one gesture that
+   ties the slash menu, the note picker and the formatting bar together as
+   three faces of the same thing. */
 @keyframes studio-pop {
   from {
     opacity: 0;
-    transform: translateY(-3px);
+    transform: translateY(-4px) scale(0.97);
   }
 }
 
@@ -1940,6 +2142,12 @@
   font-size: 0.78rem;
   text-align: left;
   cursor: pointer;
+  /* Short enough that arrowing down the list still feels like the highlight is
+     under the key, long enough that dragging the pointer across it does not
+     flicker. Below about 80ms the eye reads it as instant either way. */
+  transition:
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft);
 }
 
 .studio-slashmenu__row.is-active {
@@ -1949,7 +2157,8 @@
 
 /* The Markdown the row writes, as its icon. Two jobs in one glyph: it tells
    the rows apart at a glance, and it teaches the shorthand that makes the
-   menu unnecessary. */
+   menu unnecessary. It takes on the accent with its row, on the row's timing,
+   so the highlight moves as one thing rather than as a box and a badge. */
 .studio-slashmenu__glyph {
   display: grid;
   flex: 0 0 auto;
@@ -1961,6 +2170,9 @@
   color: var(--admin-text-muted);
   font: 0.62rem var(--font-mono);
   letter-spacing: -0.04em;
+  transition:
+    border-color var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft);
 }
 
 .studio-slashmenu__row.is-active .studio-slashmenu__glyph {
@@ -1988,7 +2200,14 @@
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
   box-shadow: 0 10px 28px color-mix(in srgb, #000 34%, transparent);
-  animation: studio-pop 0.1s ease-out;
+  animation: studio-pop var(--studio-base) var(--studio-ease);
+  /* Extending a selection keeps the same bar on screen and moves it. Gliding
+     to the new anchor is what says it is following the words rather than being
+     torn down and rebuilt at each one — and because the element persists, the
+     entrance animation above still owns the first appearance. */
+  transition:
+    top var(--studio-base) var(--studio-ease),
+    left var(--studio-base) var(--studio-ease);
 }
 
 .studio-inline-tool {
@@ -2003,13 +2222,18 @@
   color: var(--admin-text-secondary);
   cursor: pointer;
   transition:
-    background 0.12s ease,
-    color 0.12s ease;
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft),
+    transform var(--studio-fast) var(--studio-ease-soft);
 }
 
 .studio-inline-tool:hover {
   background: var(--color-overlay-strong);
   color: var(--color-text-primary);
+}
+
+.studio-inline-tool:active {
+  transform: scale(0.92);
 }
 
 .studio-inline-tool svg {
@@ -2035,6 +2259,10 @@
   background: var(--admin-surface);
   box-shadow: 0 -6px 20px color-mix(in srgb, #000 22%, transparent);
   animation: none;
+  /* Pinned to the viewport, not to a selection: it must ride the keyboard's
+     own animation exactly, and easing it again would leave it trailing the
+     edge it is supposed to be sitting on. */
+  transition: none;
 }
 
 .studio-inline-toolbar__divider {
@@ -2462,6 +2690,7 @@
   border-radius: var(--radius-md);
   background: var(--admin-surface-elevated);
   box-shadow: 0 16px 40px color-mix(in srgb, #000 42%, transparent);
+  animation: studio-pop var(--studio-base) var(--studio-ease);
 }
 
 .studio-wikimenu__row {
@@ -2478,6 +2707,7 @@
   font-size: 0.82rem;
   text-align: left;
   cursor: pointer;
+  transition: background var(--studio-fast) var(--studio-ease-soft);
 }
 
 .studio-wikimenu__row.is-active {
@@ -2912,9 +3142,10 @@
   }
 
   /* No hover on a touch screen, so the gutter is always there — and big
-     enough to hit. */
+     enough to hit. Its resting offset goes with the reveal it belonged to. */
   .studio-vblock__gutter {
     opacity: 1;
+    transform: none;
     pointer-events: auto;
   }
 

@@ -128,13 +128,22 @@ export function parseBlocks(markdown: string): StudioBlock[] {
     if (HTML_OPEN.test(line)) {
       const container = HTML_CONTAINER.exec(line);
       let last = index;
+      let closed = false;
       if (container) {
         const closer = new RegExp(`</${container[1]}\\s*>\\s*$`, 'i');
         for (let scan = index; scan < lines.length; scan += 1) {
-          last = scan;
-          if (closer.test(lines[scan]!)) break;
+          if (closer.test(lines[scan]!)) {
+            last = scan;
+            closed = true;
+            break;
+          }
         }
-      } else {
+      }
+      // No closing tag anywhere below — which is what every keystroke of
+      // `<div` looks like while it is still being typed. Ending at the first
+      // blank line keeps the rest of the note in blocks of its own; running to
+      // the end of the file would collapse the whole document into this one.
+      if (!closed) {
         while (last + 1 < lines.length && !isBlank(lines[last + 1]!)) last += 1;
       }
       push(
@@ -252,6 +261,42 @@ export function blockAtOffset(
     if (block.end < offset) best = block;
   }
   return best ?? blocks[0] ?? null;
+}
+
+/**
+ * Every block an open range covers, as a first and last index, or null.
+ *
+ * Usually one block. But what sits in the open editor is *source*, and source
+ * re-parses as it is typed: add a newline and a `- ` to a paragraph and the
+ * range now spans a paragraph and a list. The editor stands in for all of
+ * them, so the caller has to take all of them out of the rendered column —
+ * replacing only the first leaves the rest on screen underneath, mirroring
+ * every keystroke back at the writer.
+ *
+ * A collapsed range is a slot that was opened and not yet written in. It sits
+ * between blocks, so no block contains it and the answer is honestly "none"
+ * rather than the block that happens to end there.
+ */
+export function activeBlockSpan(
+  blocks: StudioBlock[],
+  range: BlockRange | null,
+): { first: number; last: number } | null {
+  if (!range) return null;
+  if (range.start === range.end) {
+    const at = blocks.findIndex(
+      (block) => block.start <= range.start && range.start <= block.end,
+    );
+    return at === -1 ? null : { first: at, last: at };
+  }
+  let first = -1;
+  let last = -1;
+  blocks.forEach((block, index) => {
+    if (block.end > range.start && block.start < range.end) {
+      if (first === -1) first = index;
+      last = index;
+    }
+  });
+  return first === -1 ? null : { first, last };
 }
 
 /** Replace `[start, end)` of `doc`. The only way the visual editor writes. */
@@ -634,6 +679,9 @@ export function turnBlockInto(raw: string, target: TurnTarget): string {
     if (/^\s*```/.test(raw)) return raw;
     return '```\n' + raw + '\n```';
   }
+  // A divider has no content to carry over, and it is one line however many
+  // the block had — mapping it per line would leave a stack of rules.
+  if (target.type === 'divider') return '---';
   const source = /^\s*```/.test(raw)
     ? raw.replace(/^\s*```[^\n]*\n?/, '').replace(/\n?\s*```\s*$/, '')
     : raw;
@@ -655,8 +703,6 @@ export function turnBlockInto(raw: string, target: TurnTarget): string {
           return `${indent}- [ ] ${text}`;
         case 'quote':
           return `${indent}> ${text}`;
-        case 'divider':
-          return '---';
         default:
           return `${indent}${text}`;
       }
