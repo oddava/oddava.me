@@ -56,6 +56,7 @@ import {
   blockLabel,
   continueBlockOnEnter,
   deleteBlock,
+  deleteBlocks,
   enableTaskCheckboxes,
   findSlashToken,
   formatTableBlock,
@@ -106,6 +107,17 @@ const BLOCK_HINT_ID = 'studio-block-hint';
 const TOOLBAR_SIZE = { width: 212, height: 36 };
 /** Rendered blocks held by content. Bounded, oldest out first. */
 const RENDER_CACHE_LIMIT = 400;
+/** One frozen empty set, so "nothing selected" is always the same value. */
+const NO_SELECTION: ReadonlySet<number> = new Set<number>();
+
+/** Every index between two ends, whichever way round they were given. */
+function indexRange(from: number, to: number): ReadonlySet<number> {
+  const first = Math.min(from, to);
+  const last = Math.max(from, to);
+  const range = new Set<number>();
+  for (let index = first; index <= last; index += 1) range.add(index);
+  return range;
+}
 
 interface Point {
   top: number;
@@ -270,6 +282,8 @@ interface BlockRowProps {
   html: string;
   dropBefore: boolean;
   dragging: boolean;
+  /** Part of a group picked out to act on together. */
+  picked: boolean;
   tabbable: boolean;
   menuOpen: boolean;
   actions: BlockActions;
@@ -283,6 +297,7 @@ const BlockRow = memo(function BlockRow({
   html,
   dropBefore,
   dragging,
+  picked,
   tabbable,
   menuOpen,
   actions,
@@ -291,7 +306,7 @@ const BlockRow = memo(function BlockRow({
     <div
       className={`studio-vblock studio-vblock--${type}${
         dropBefore ? ' is-drop-before' : ''
-      }${dragging ? ' is-dragging' : ''}`}
+      }${dragging ? ' is-dragging' : ''}${picked ? ' is-picked' : ''}`}
       data-block={index}
       data-depth={depth || undefined}
       tabIndex={tabbable ? 0 : -1}
@@ -409,6 +424,13 @@ export default function StudioVisualEditor({
   // Bumped whenever a caret is queued, so placing it twice in the same block is
   // still two distinct effects rather than one the dependency check skips.
   const [caretNonce, setCaretNonce] = useState(0);
+  // Blocks picked out as a group, to act on together. Held as indices because
+  // that is what the rendered column is keyed by, and the selection only ever
+  // exists while nothing is being edited — an edit clears it, so the indices
+  // cannot go stale underneath it.
+  const [selected, setSelected] = useState<ReadonlySet<number>>(NO_SELECTION);
+  // Where a shift-extended selection is anchored: the end that stays put.
+  const selectionAnchorRef = useRef<number | null>(null);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
@@ -515,10 +537,51 @@ export default function StudioVisualEditor({
     wikiMenu.close();
   }, [closeSlash, wikiMenu]);
 
+  /**
+   * Let go of the group.
+   *
+   * Called wherever the document is about to change shape under it — an edit,
+   * an undo, a different note — because the selection is a list of positions
+   * in the column, and positions do not survive the column being rebuilt.
+   */
+  const clearSelection = useCallback(() => {
+    selectionAnchorRef.current = null;
+    setSelected((current) => (current.size === 0 ? current : NO_SELECTION));
+  }, []);
+
+  /** The block the keyboard is on, if it is on one at all. */
+  const focusedBlockIndex = useCallback((): number | null => {
+    const surface = surfaceRef.current;
+    const active = surface?.ownerDocument.activeElement as HTMLElement | null;
+    const row = active?.closest?.<HTMLElement>('[data-block]');
+    if (!row || !surface?.contains(row)) return null;
+    const index = Number(row.dataset.block);
+    return Number.isInteger(index) ? index : null;
+  }, []);
+
+  /** Pick out a run of blocks, anchored where the run began. */
+  const selectTo = useCallback((index: number, from?: number) => {
+    const anchor = from ?? selectionAnchorRef.current ?? index;
+    selectionAnchorRef.current = anchor;
+    setSelected(indexRange(anchor, index));
+  }, []);
+
+  /** Add a block to the group, or take it back out. */
+  const toggleSelected = useCallback((index: number) => {
+    selectionAnchorRef.current = index;
+    setSelected((current) => {
+      const next = new Set(current);
+      if (!next.delete(index)) next.add(index);
+      return next;
+    });
+  }, []);
+
   /** Put the caret in a block, revealing its Markdown. */
   const activate = useCallback(
     (range: BlockRange, source: string, caret?: number, caretEnd?: number) => {
       const text = source.slice(range.start, range.end);
+      // Opening a block is choosing that one, so the group goes.
+      clearSelection();
       setActive(range);
       setDraft(text);
       const at = Math.max(0, Math.min(caret ?? text.length, text.length));
@@ -528,7 +591,7 @@ export default function StudioVisualEditor({
       };
       setCaretNonce((nonce) => nonce + 1);
     },
-    [],
+    [clearSelection],
   );
 
   const deactivate = useCallback(() => {
@@ -558,11 +621,12 @@ export default function StudioVisualEditor({
     pointerRef.current = null;
     plainPasteRef.current = false;
     stopEdgeScroll();
+    clearSelection();
     setDragFrom(null);
     setDropAt(null);
     setTabStop(0);
     deactivate();
-  }, [deactivate, stopEdgeScroll]);
+  }, [clearSelection, deactivate, stopEdgeScroll]);
   // Held in a ref so the effect below depends on the arriving document and
   // nothing else: keyed on `resetSurface` itself it would rebuild — and wipe
   // the open block — every time one of the callbacks it closes over changed.
@@ -849,13 +913,20 @@ export default function StudioVisualEditor({
    */
   const focusBlock = useCallback((index: number) => {
     requestAnimationFrame(() => {
+      const surface = surfaceRef.current;
       const count = blocksRef.current.length;
-      if (count === 0) return;
+      if (count === 0) {
+        // Nothing left to stand on — the note is empty. The placeholder is
+        // the only thing there, and leaving the keyboard on the page instead
+        // would strand the writer with no way back in and no way to undo.
+        surface
+          ?.querySelector<HTMLElement>('.studio-vsurface__placeholder')
+          ?.focus();
+        return;
+      }
       const target = Math.max(0, Math.min(index, count - 1));
       setTabStop(target);
-      surfaceRef.current
-        ?.querySelector<HTMLElement>(`[data-block="${target}"]`)
-        ?.focus();
+      surface?.querySelector<HTMLElement>(`[data-block="${target}"]`)?.focus();
     });
   }, []);
 
@@ -870,6 +941,27 @@ export default function StudioVisualEditor({
       if (options.refocus) focusBlock(index);
     },
     [blocks, body, deactivate, emit, focusBlock],
+  );
+
+  /**
+   * Delete every block in the group, as one action.
+   *
+   * One splice sequence against one snapshot, so it takes one undo to get the
+   * whole lot back — deleting six blocks and having to press ⌘Z six times is
+   * the kind of thing that makes people stop trusting a selection.
+   */
+  const applyDeleteSelection = useCallback(
+    (indices: readonly number[]) => {
+      const result = deleteBlocks(body, blocks, indices);
+      if (!result) return;
+      const landing = Math.min(...indices);
+      deactivate();
+      clearSelection();
+      emit(result.doc, { atomic: true });
+      // Onto whatever closed up into the gap, so the keyboard stays in the note.
+      focusBlock(landing);
+    },
+    [blocks, body, clearSelection, deactivate, emit, focusBlock],
   );
 
   const applyDuplicate = useCallback(
@@ -937,8 +1029,10 @@ export default function StudioVisualEditor({
           : redo(historyRef.current, present);
       if (!step) return false;
 
-      // The menus hang off a caret in a document that is about to be replaced.
+      // The menus hang off a caret, and the group is a list of positions, in a
+      // document that is about to be replaced.
       closePopovers();
+      clearSelection();
       historyRef.current = step.history;
       rememberEmission(step.entry.doc);
       bodyRef.current = step.entry.doc;
@@ -960,7 +1054,15 @@ export default function StudioVisualEditor({
       }
       return true;
     },
-    [activate, active, closePopovers, deactivate, onChange, rememberEmission],
+    [
+      activate,
+      active,
+      clearSelection,
+      closePopovers,
+      deactivate,
+      onChange,
+      rememberEmission,
+    ],
   );
 
   // --- Leaving a block ------------------------------------------------------
@@ -1298,6 +1400,24 @@ export default function StudioVisualEditor({
       travel(intent);
       return;
     }
+    const mod = event.metaKey || event.ctrlKey;
+
+    // Everything the group answers to, before the single-block handling below.
+    if (mod && event.key.toLowerCase() === 'a') {
+      // The whole note, rather than the whole page: the caret is in the
+      // document, so this is the document it means.
+      event.preventDefault();
+      event.stopPropagation();
+      selectionAnchorRef.current = 0;
+      setSelected(indexRange(0, blocksRef.current.length - 1));
+      return;
+    }
+    if (event.key === 'Escape' && selected.size > 0) {
+      event.preventDefault();
+      clearSelection();
+      return;
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       activate({ start: block.start, end: block.end }, body);
@@ -1315,6 +1435,11 @@ export default function StudioVisualEditor({
       );
       if (neighbour) {
         event.preventDefault();
+        // Shift takes the neighbour with you; on its own the group is left
+        // behind, the way an arrow key drops a text selection.
+        if (event.shiftKey)
+          selectTo(index + step, selectionAnchorRef.current ?? index);
+        else clearSelection();
         setTabStop(index + step);
         neighbour.focus();
       }
@@ -1344,7 +1469,8 @@ export default function StudioVisualEditor({
     }
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
-      applyDelete(index, { refocus: true });
+      if (selected.size > 0) applyDeleteSelection([...selected]);
+      else applyDelete(index, { refocus: true });
     }
   }
 
@@ -1360,6 +1486,15 @@ export default function StudioVisualEditor({
    * therefore read whatever slid into the cursor's place.
    */
   function onBlockPointerDown(index: number, event: BlockMouseEvent) {
+    // A modified press picks blocks, not text. The browser would otherwise
+    // start or extend a text selection under it, which then swallows the click
+    // — and leaves a half-highlighted paragraph behind either way.
+    if (
+      (event.shiftKey || event.metaKey || event.ctrlKey) &&
+      !(event.target as HTMLElement).closest('a[href]')
+    ) {
+      event.preventDefault();
+    }
     const block = blocksRef.current[index];
     const host = event.currentTarget.querySelector<HTMLElement>(
       '.studio-vblock__rendered',
@@ -1398,6 +1533,35 @@ export default function StudioVisualEditor({
   function onBlockClick(index: number, event: BlockMouseEvent) {
     const pointer = pointerRef.current;
     pointerRef.current = null;
+    const modifier = event.metaKey || event.ctrlKey;
+    const onLink = Boolean((event.target as HTMLElement).closest('a[href]'));
+
+    // Picking out blocks to act on together. Ahead of everything else because
+    // the press it belongs to already stopped the browser making a text
+    // selection, so there is nothing else this gesture could mean — except on
+    // a link, where the modifier is how you follow it.
+    if (!onLink && (event.shiftKey || modifier)) {
+      event.preventDefault();
+      const at = resolveIndex(index);
+      if (event.shiftKey) {
+        // From wherever the run was anchored, or from where the keyboard
+        // already was. Failing both, from the block just pressed: a first
+        // shift-click into a note nobody has touched means "this one", not
+        // "everything from the top of the document down to here".
+        selectTo(at, selectionAnchorRef.current ?? focusedBlockIndex() ?? at);
+      } else {
+        toggleSelected(at);
+      }
+      setTabStop(at);
+      // The press was stopped from moving focus, to keep the browser from
+      // making a text selection out of it — so the keyboard is put on the
+      // block by hand. Without this the group cannot be deleted without first
+      // clicking something else.
+      event.currentTarget.focus();
+      return;
+    }
+    // Anywhere else, a plain press puts the caret down and the group goes.
+    clearSelection();
 
     // Leave a deliberate selection alone so it can still be copied. Checked
     // first: a drag that selects text never lands on a checkbox or a link, and
@@ -1965,6 +2129,7 @@ export default function StudioVisualEditor({
         html={htmlFor(block.raw)}
         dropBefore={dropAt === index}
         dragging={dragFrom === index}
+        picked={selected.has(index)}
         tabbable={index === tabStopIndex}
         menuOpen={menu.key === index}
         actions={actions}
@@ -1984,13 +2149,33 @@ export default function StudioVisualEditor({
   return (
     <div className="studio-vsurface-scroll" ref={scrollerRef}>
       <p id={BLOCK_HINT_ID} className="studio-visually-hidden">
-        Press Enter to edit, Alt with the arrow keys to move it, Delete to
-        remove it.
+        Press Enter to edit, Alt with the arrow keys to move it, Shift with them
+        to pick out several, and Delete to remove what is picked.
+      </p>
+      {/* No listbox semantics: a block holds links, checkboxes and buttons,
+          none of which belong inside an option. The count is announced
+          instead, which is the part a screen reader cannot see. */}
+      <p className="studio-visually-hidden" role="status">
+        {selected.size > 0
+          ? `${selected.size} ${selected.size === 1 ? 'block' : 'blocks'} selected`
+          : ''}
       </p>
       <div
         className={`studio-vsurface ${dragFrom !== null ? 'is-reordering' : ''}`}
         ref={surfaceRef}
         onCopy={onSurfaceCopy}
+        // Undo belongs to the document, so it answers from anywhere in it —
+        // including the empty placeholder left after the last block is
+        // deleted, where there is no block to have taken the keystroke. The
+        // block and the textarea both stop history keys they have handled, so
+        // this only ever sees the ones nothing else claimed.
+        onKeyDown={(event) => {
+          const intent = historyIntent(event);
+          if (!intent) return;
+          event.preventDefault();
+          event.stopPropagation();
+          travel(intent);
+        }}
         onDragOver={(event) => {
           if (dragFrom === null && !acceptsDrag(event.dataTransfer)) return;
           event.preventDefault();

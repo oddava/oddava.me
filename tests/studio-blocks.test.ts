@@ -4,6 +4,7 @@ import {
   blockAtOffset,
   continueBlockOnEnter,
   deleteBlock,
+  deleteBlocks,
   enableTaskCheckboxes,
   findSlashToken,
   formatTableBlock,
@@ -176,6 +177,57 @@ describe('activeBlockSpan', () => {
 
   it('is none without a range at all', () => {
     expect(activeBlockSpan(parseBlocks('one'), null)).toBeNull();
+  });
+});
+
+describe('deleteBlocks', () => {
+  const doc = 'one\n\ntwo\n\nthree\n\nfour';
+  const blocks = parseBlocks(doc);
+
+  it('removes a run and the separator that framed it', () => {
+    expect(deleteBlocks(doc, blocks, [1, 2])?.doc).toBe('one\n\nfour');
+  });
+
+  // Taken one at a time, the blank line between two blocks that are both
+  // going gets removed twice — eating the gap before the block that survives.
+  it('leaves the surviving blocks a blank line apart', () => {
+    const next = deleteBlocks(doc, blocks, [0, 1])?.doc ?? '';
+    expect(next).toBe('three\n\nfour');
+    expect(parseBlocks(next)).toHaveLength(2);
+  });
+
+  it('handles a selection with gaps in it', () => {
+    expect(deleteBlocks(doc, blocks, [0, 2])?.doc).toBe('two\n\nfour');
+  });
+
+  it('takes the separator before it when the run ends the note', () => {
+    expect(deleteBlocks(doc, blocks, [2, 3])?.doc).toBe('one\n\ntwo');
+  });
+
+  it('empties the note when everything is picked', () => {
+    expect(deleteBlocks(doc, blocks, [0, 1, 2, 3])?.doc).toBe('');
+  });
+
+  it('is order- and duplicate-proof', () => {
+    expect(deleteBlocks(doc, blocks, [2, 1, 2])?.doc).toBe('one\n\nfour');
+  });
+
+  it('points the caret at where the text closed up', () => {
+    const result = deleteBlocks(doc, blocks, [1, 2]);
+    expect(result?.doc.slice(result.caret)).toBe('four');
+  });
+
+  it('ignores indices with no block behind them', () => {
+    expect(deleteBlocks(doc, blocks, [99])).toBeNull();
+    expect(deleteBlocks(doc, blocks, [])).toBeNull();
+  });
+
+  it('agrees with deleteBlock on a single block', () => {
+    for (let index = 0; index < blocks.length; index += 1) {
+      expect(deleteBlocks(doc, blocks, [index])).toEqual(
+        deleteBlock(doc, blocks, index),
+      );
+    }
   });
 });
 
