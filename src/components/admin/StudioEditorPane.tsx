@@ -1,28 +1,39 @@
-import type { Ref, TargetedKeyboardEvent } from 'preact';
-import StudioToolbar from './StudioToolbar';
+import { useEffect, useRef } from 'preact/hooks';
+import type { MutableRef } from 'preact/hooks';
+import type { TargetedClipboardEvent, TargetedKeyboardEvent } from 'preact';
 import StudioSaveIndicator from './StudioSaveIndicator';
-import WikiLinkAutocomplete from './WikiLinkAutocomplete';
+import StudioVisualEditor from './StudioVisualEditor';
+import StudioPreviewPane from './StudioPreviewPane';
+import WikiLinkAutocomplete, {
+  WIKI_MENU_ID,
+  wikiOptionId,
+} from './WikiLinkAutocomplete';
 import type { EditorCommands } from './studioEditorCommands';
 import type { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
+import { markdownFromClipboard, planPaste } from './studioPaste';
 import { VIEW_MODES, type SaveState, type ViewMode } from './studioSession';
 
 interface Props {
   title: string;
   publishedUrl: string;
   body: string;
-  bodyHtml: string;
+  wikiLinkHrefs: ReadonlyMap<string, string>;
+  renderMarkdown: (raw: string) => string;
   wordCount: number;
+  readingMinutes: number;
   view: ViewMode;
   /** The collection stores a body — the view switch is pointless without one. */
   hasBody: boolean;
-  /** Phone layout: the mode switch and the word count move to a bottom dock. */
+  /** Phone layout: the mode switch and the counters move to a bottom dock. */
   compact: boolean;
   sidebarVisible: boolean;
   autosave: boolean;
+  focusMode: boolean;
   saveState: SaveState;
   savedAt: number | null;
   uploading: boolean;
-  editorRef: Ref<HTMLTextAreaElement>;
+  editorRef: MutableRef<HTMLTextAreaElement | null>;
+  focusRef: MutableRef<(() => void) | null>;
   commands: EditorCommands;
   wikiMenu: ReturnType<typeof useWikiLinkAutocomplete>;
   onToggleSidebar: () => void;
@@ -30,11 +41,15 @@ interface Props {
   onOpenFiles: () => void;
   onSetView: (view: ViewMode) => void;
   onToggleAutosave: () => void;
+  onToggleFocusMode: () => void;
   onSave: () => void;
-  onInsertImage: () => void;
   onBodyChange: (value: string) => void;
-  onKeyDown: (event: TargetedKeyboardEvent<HTMLTextAreaElement>) => void;
+  onShortcut: (event: TargetedKeyboardEvent<HTMLTextAreaElement>) => boolean;
   onImageFile: (file: File) => void;
+  /** Uploads and returns a URL, so a drop can place the image where it landed. */
+  uploadImage: (file: File) => Promise<string | null>;
+  onRequestImage: () => void;
+  onNotice: (message: string) => void;
 }
 
 function imageFromTransfer(
@@ -51,34 +66,99 @@ function imageFromTransfer(
   return null;
 }
 
-/** The primary editor: its title bar, the textarea and the live preview. */
+/**
+ * Paste into the raw source. The same conversions Visual mode makes — rich
+ * text arrives as Markdown, and a URL dropped on selected words becomes a link
+ * around them — because switching view should not change what ⌘V means.
+ */
+function onSourcePaste(
+  event: TargetedClipboardEvent<HTMLTextAreaElement>,
+  plainRef: MutableRef<boolean>,
+  commands: EditorCommands,
+  onImageFile: (file: File) => void,
+): void {
+  const file = imageFromTransfer(event.clipboardData?.items);
+  if (file) {
+    event.preventDefault();
+    onImageFile(file);
+    return;
+  }
+  const el = event.currentTarget;
+  const plain = plainRef.current;
+  plainRef.current = false;
+  const start = el.selectionStart ?? 0;
+  const end = el.selectionEnd ?? start;
+  const plan = planPaste(
+    markdownFromClipboard(event.clipboardData, plain),
+    el.value.slice(start, end),
+  );
+  if (!plan) return;
+  // Nothing to improve on — let the browser paste it, which keeps the native
+  // undo entry exactly as it would have been.
+  if (plan.text === (event.clipboardData?.getData('text/plain') ?? '')) return;
+  event.preventDefault();
+  commands.replaceRange(
+    start,
+    end,
+    plan.text,
+    start + (plan.caret ?? plan.text.length),
+  );
+}
+
+/** The note: its title bar, the surface it is edited on, and the status line. */
 export default function StudioEditorPane({
   title,
   publishedUrl,
   body,
-  bodyHtml,
+  wikiLinkHrefs,
+  renderMarkdown,
   wordCount,
+  readingMinutes,
   view,
   hasBody,
   compact,
   sidebarVisible,
   autosave,
+  focusMode,
   saveState,
   savedAt,
   uploading,
   editorRef,
+  focusRef,
   commands,
   wikiMenu,
   onToggleSidebar,
   onOpenFiles,
   onSetView,
   onToggleAutosave,
+  onToggleFocusMode,
   onSave,
-  onInsertImage,
   onBodyChange,
-  onKeyDown,
+  onShortcut,
   onImageFile,
+  uploadImage,
+  onRequestImage,
+  onNotice,
 }: Props) {
+  const sourceRef = useRef<HTMLTextAreaElement | null>(null);
+  // ⌘⇧V asks for the clipboard exactly as it is; the paste event carries no
+  // modifier state, so the keystroke that caused it is remembered.
+  const plainPasteRef = useRef(false);
+
+  // Markdown mode owns the shared textarea ref while it is the live surface.
+  useEffect(() => {
+    if (view !== 'markdown') return;
+    editorRef.current = sourceRef.current;
+    focusRef.current = () => sourceRef.current?.focus();
+    return () => {
+      if (editorRef.current === sourceRef.current) editorRef.current = null;
+    };
+  }, [editorRef, focusRef, view]);
+
+  useEffect(() => {
+    if (view === 'preview') focusRef.current = null;
+  }, [focusRef, view]);
+
   // One switch, two homes: the title bar on a desktop, the thumb-height dock
   // at the bottom of the screen on a phone.
   const viewSwitch = hasBody ? (
@@ -89,6 +169,7 @@ export default function StudioEditorPane({
           key={item.id}
           className={view === item.id ? 'is-active' : ''}
           aria-pressed={view === item.id}
+          title={`${item.hint} (⌘E cycles)`}
           onClick={() => onSetView(item.id)}
         >
           {item.label}
@@ -140,6 +221,22 @@ export default function StudioEditorPane({
           <span className="studio-bar__autosave-label">Autosave</span>
         </button>
         {!compact && viewSwitch}
+        {!compact && view !== 'preview' && (
+          <button
+            type="button"
+            className="studio-bar__focus"
+            role="switch"
+            aria-checked={focusMode}
+            aria-label="Focus mode"
+            title="Focus mode — dim everything but the note (⌘⇧F)"
+            onClick={onToggleFocusMode}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="10" r="6.25" />
+              <circle cx="10" cy="10" r="2" />
+            </svg>
+          </button>
+        )}
         {publishedUrl && (
           <a
             className="studio-bar__open"
@@ -157,19 +254,59 @@ export default function StudioEditorPane({
         )}
       </header>
 
-      <div className={`studio-panes is-${view}`}>
-        {view !== 'preview' && (
-          <div className="studio-write">
-            <StudioToolbar commands={commands} onInsertImage={onInsertImage} />
+      <div
+        className={`studio-surface is-${view} ${focusMode ? 'is-focused' : ''}`}
+      >
+        {view === 'visual' && (
+          <StudioVisualEditor
+            body={body}
+            renderMarkdown={renderMarkdown}
+            editorRef={editorRef}
+            focusRef={focusRef}
+            commands={commands}
+            wikiMenu={wikiMenu}
+            uploading={uploading}
+            compact={compact}
+            onChange={onBodyChange}
+            onShortcut={onShortcut}
+            onImageFile={onImageFile}
+            uploadImage={uploadImage}
+            onRequestImage={onRequestImage}
+            onNotice={onNotice}
+          />
+        )}
+
+        {view === 'markdown' && (
+          <div className="studio-source">
             <textarea
-              ref={editorRef}
+              ref={sourceRef}
               className="studio-textarea"
-              aria-label="Note body"
+              aria-label="Note source"
               placeholder="Write what you want to remember…"
               spellcheck
+              // The `[[` popover is a combobox over this field: without the
+              // wiring, a screen reader is told nothing when the list opens.
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={wikiMenu.open}
+              aria-controls={wikiMenu.open ? WIKI_MENU_ID : undefined}
+              aria-activedescendant={
+                wikiMenu.open ? wikiOptionId(wikiMenu.activeIndex) : undefined
+              }
               value={body}
-              onKeyDown={onKeyDown}
-              onChange={(event) => {
+              onKeyDown={(event) => {
+                plainPasteRef.current =
+                  (event.metaKey || event.ctrlKey) &&
+                  event.shiftKey &&
+                  event.key.toLowerCase() === 'v';
+                if (wikiMenu.onKeyDown(event)) return;
+                if (onShortcut(event)) return;
+                if (event.key === 'Tab') {
+                  event.preventDefault();
+                  commands.insertInline('  ');
+                }
+              }}
+              onInput={(event) => {
                 onBodyChange(event.currentTarget.value);
                 wikiMenu.refresh();
               }}
@@ -185,13 +322,9 @@ export default function StudioEditorPane({
               }}
               onClick={() => wikiMenu.refresh()}
               onBlur={() => wikiMenu.close()}
-              onPaste={(event) => {
-                const file = imageFromTransfer(event.clipboardData?.items);
-                if (file) {
-                  event.preventDefault();
-                  onImageFile(file);
-                }
-              }}
+              onPaste={(event) =>
+                onSourcePaste(event, plainPasteRef, commands, onImageFile)
+              }
               onDragOver={(event) => {
                 if (event.dataTransfer?.types.includes('Files'))
                   event.preventDefault();
@@ -204,10 +337,6 @@ export default function StudioEditorPane({
                 }
               }}
             />
-            <div className="studio-status">
-              <span>{wordCount} words</span>
-              <span>{uploading ? 'Uploading…' : ''}</span>
-            </div>
             <WikiLinkAutocomplete
               open={wikiMenu.open}
               items={wikiMenu.items}
@@ -218,25 +347,35 @@ export default function StudioEditorPane({
             />
           </div>
         )}
-        {view !== 'write' && (
-          <div className="studio-preview">
-            <article className="studio-preview__page">
-              {body.trim() ? (
-                <div
-                  className="prose"
-                  // Markdown authored by the signed-in admin, rendered
-                  // for that same admin. No third-party input reaches it.
-                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
-                />
-              ) : (
-                <p className="admin-empty">
-                  This page is still waiting for words.
-                </p>
-              )}
-            </article>
-          </div>
+
+        {view === 'preview' && (
+          <StudioPreviewPane
+            body={body}
+            title={title}
+            wikiLinkHrefs={wikiLinkHrefs}
+          />
         )}
       </div>
+
+      {!compact && (
+        // The counters, and nothing else. The line used to carry a permanent
+        // reminder of two shortcuts that are already on the controls they
+        // belong to — chrome that never changed, at the bottom of every note.
+        // It comes back only while the note is empty, where it is a hint
+        // rather than a caption.
+        <footer className="studio-status">
+          <span>{wordCount === 1 ? '1 word' : `${wordCount} words`}</span>
+          <span aria-hidden="true">·</span>
+          <span>{readingMinutes} min read</span>
+          {uploading && <span className="studio-status__busy">Uploading…</span>}
+          <span className="studio-status__spacer" />
+          {wordCount === 0 && view === 'visual' && (
+            <span className="studio-status__hint">
+              Press <kbd>/</kbd> for blocks
+            </span>
+          )}
+        </footer>
+      )}
 
       {compact && (
         <footer className="studio-dock">

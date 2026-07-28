@@ -31,10 +31,17 @@ export interface EditorCommands {
   insertInline(snippet: string): void;
   /**
    * Replace [from, to) with `text` (undo-safe), leaving the caret at `caret`
-   * (defaults to just after the inserted text). Used by wikilink autocomplete
-   * to swap the typed `[[query` token for a full link.
+   * (defaults to just after the inserted text). Pass `caretEnd` to leave a
+   * selection instead — which is what lets typing `*` over selected words wrap
+   * them and keep them selected, ready for a second `*`.
    */
-  replaceRange(from: number, to: number, text: string, caret?: number): void;
+  replaceRange(
+    from: number,
+    to: number,
+    text: string,
+    caret?: number,
+    caretEnd?: number,
+  ): void;
 }
 
 type Commit = (value: string) => void;
@@ -366,10 +373,10 @@ export function makeEditorCommands(
     align: (direction) => run((el) => align(el, commit, direction)),
     insertBlock: (markup) => run((el) => insertBlock(el, commit, markup)),
     insertInline: (snippet) => run((el) => insertInline(el, commit, snippet)),
-    replaceRange: (from, to, text, caret) =>
+    replaceRange: (from, to, text, caret, caretEnd) =>
       run((el) => {
         const pos = caret ?? from + text.length;
-        replaceRange(el, commit, from, to, text, pos, pos);
+        replaceRange(el, commit, from, to, text, pos, caretEnd ?? pos);
       }),
   };
 }

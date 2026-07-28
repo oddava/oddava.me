@@ -46,6 +46,7 @@ import {
 import {
   DEFAULT_SESSION,
   SIDEBAR_BOUNDS,
+  VIEW_MODES,
   clamp,
   readSession,
   writeSession,
@@ -77,7 +78,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
   const [sessionRestored, setSessionRestored] = useState(false);
 
+  // Whichever textarea is live — the block being edited in Visual mode, or the
+  // whole source in Markdown mode. Every shared command writes through it.
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  // How the active surface takes focus, registered by the surface itself.
+  const focusRef = useRef<(() => void) | null>(null);
   const sidebarRef = useRef<HTMLElement | null>(null);
   const scrimRef = useRef<HTMLDivElement | null>(null);
   const { confirm, dialog } = useDialogConfirm();
@@ -150,13 +155,17 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       ),
     [entries],
   );
-  // Same renderer and link index the published page uses, so preview links do
-  // not drift from the committed page.
-  const bodyHtml = useMemo(
-    () => renderNoteHtml(body, { wikiLinkHrefs }),
-    [body, wikiLinkHrefs],
+  // Same renderer and link index the published page uses, so what the editor
+  // draws and what a reader gets cannot drift apart. Passed down as a function
+  // rather than a rendered string because the visual editor renders one block
+  // at a time and caches the result per block.
+  const renderMarkdown = useCallback(
+    (raw: string) => renderNoteHtml(raw, { wikiLinkHrefs }),
+    [wikiLinkHrefs],
   );
   const wordCount = useMemo(() => countWords(body), [body]);
+  // 220 wpm, rounded up: the number a reader sees on the published page.
+  const readingMinutes = Math.max(1, Math.round(wordCount / 220));
   const currentTitle = titleFromBody(body, openId);
 
   // --- Session persistence -------------------------------------------------
@@ -250,7 +259,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         addTab(id, { placement, index: options.index });
         if (options.remember !== false) rememberHistory(id);
         if (options.focus !== false)
-          requestAnimationFrame(() => editorRef.current?.focus());
+          requestAnimationFrame(() => focusRef.current?.());
         return;
       }
       // Flush the note we're leaving before swapping documents.
@@ -284,7 +293,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           });
         }
         if (options.focus !== false)
-          requestAnimationFrame(() => editorRef.current?.focus());
+          requestAnimationFrame(() => focusRef.current?.());
       } catch (caught) {
         setError(
           caught instanceof Error ? caught.message : 'Could not open the note.',
@@ -485,43 +494,51 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     setNotice('Image added.');
   }
 
-  function onEditorKeyDown(event: TargetedKeyboardEvent<HTMLTextAreaElement>) {
-    // The wikilink menu claims navigation keys while it's open.
-    if (wikiMenu.onKeyDown(event)) return;
+  /**
+   * The shortcuts every writing surface shares. Returns true when the key was
+   * consumed, so Visual and Markdown mode can each run their own handling
+   * first and still agree on what ⌘B does.
+   */
+  function runEditorShortcut(
+    event: TargetedKeyboardEvent<HTMLTextAreaElement>,
+  ): boolean {
     const mod = event.metaKey || event.ctrlKey;
-    if (mod && event.key.toLowerCase() === 's') {
+    if (!mod) return false;
+    const key = event.key.toLowerCase();
+    const run = (command: () => void) => {
       event.preventDefault();
-      void saveNow();
-      return;
-    }
-    if (mod && event.key.toLowerCase() === 'b') {
-      event.preventDefault();
-      editorCommands.bold();
-      return;
-    }
-    if (mod && event.key.toLowerCase() === 'i') {
-      event.preventDefault();
-      editorCommands.italic();
-      return;
-    }
-    if (mod && event.shiftKey && event.key.toLowerCase() === 'x') {
-      event.preventDefault();
-      editorCommands.strike();
-      return;
-    }
-    if (event.key === 'Tab') {
-      event.preventDefault();
-      editorCommands.insertInline('  ');
-    }
+      // The workspace listens on `window` for its own shortcuts. Stopping the
+      // key here is what lets ⌘K mean "link" while the caret is in a note and
+      // "go to file" everywhere else, without either handler knowing about the
+      // other.
+      event.stopPropagation();
+      command();
+      return true;
+    };
+    if (key === 's') return run(() => void saveNow());
+    if (key === 'b') return run(editorCommands.bold);
+    if (key === 'i') return run(editorCommands.italic);
+    if (key === 'k' && !event.shiftKey) return run(editorCommands.link);
+    if (event.shiftKey && key === 'c') return run(editorCommands.inlineCode);
+    if (event.shiftKey && key === 'x') return run(editorCommands.strike);
+    if (event.shiftKey && key === '7') return run(editorCommands.orderedList);
+    if (event.shiftKey && key === '8') return run(editorCommands.bulletList);
+    if (event.shiftKey && key === '9') return run(editorCommands.taskList);
+    return false;
   }
 
   // --- Global keyboard shortcuts ------------------------------------------
 
   const cycleView = useCallback(() => {
-    const order: ViewMode[] = ['write', 'split', 'preview'];
+    const order = VIEW_MODES.map((mode) => mode.id);
     const index = order.indexOf(view);
     patchSession({ view: order[(index + 1) % order.length] });
   }, [patchSession, view]);
+
+  const nextViewLabel =
+    VIEW_MODES[
+      (VIEW_MODES.findIndex((mode) => mode.id === view) + 1) % VIEW_MODES.length
+    ]?.label ?? 'Visual';
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -576,6 +593,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       if (mod && event.key === 'e' && openId) {
         event.preventDefault();
         cycleView();
+        return;
+      }
+      if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        patchSession({ focusMode: !session.focusMode });
       }
     }
     window.addEventListener('keydown', onKeyDown);
@@ -584,6 +606,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     // listener is re-bound whenever one of them changes.
   }, [
     session.sidebarCollapsed,
+    session.focusMode,
     openId,
     openIds,
     phone,
@@ -658,9 +681,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     },
     {
       id: 'toggle-view',
-      title: `Switch to ${
-        view === 'write' ? 'Split' : view === 'split' ? 'Preview' : 'Write'
-      } view`,
+      title: `Switch to ${nextViewLabel}`,
       hint: '⌘E',
       run: cycleView,
     },
@@ -669,6 +690,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       title: session.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar',
       hint: '⌘\\',
       run: () => patchSession({ sidebarCollapsed: !session.sidebarCollapsed }),
+    },
+    {
+      id: 'toggle-focus',
+      title: session.focusMode ? 'Leave focus mode' : 'Focus mode',
+      hint: '⌘⇧F',
+      run: () => patchSession({ focusMode: !session.focusMode }),
     },
   ];
   if (openId) {
@@ -902,17 +929,21 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   title={currentTitle}
                   publishedUrl={publishedUrl}
                   body={body}
-                  bodyHtml={bodyHtml}
+                  wikiLinkHrefs={wikiLinkHrefs}
+                  renderMarkdown={renderMarkdown}
                   wordCount={wordCount}
+                  readingMinutes={readingMinutes}
                   view={view}
                   hasBody={hasBody}
                   compact={phone}
                   sidebarVisible={sidebarVisible}
                   autosave={session.autosave}
+                  focusMode={session.focusMode}
                   saveState={saveState}
                   savedAt={doc.savedAt}
                   uploading={busyKey === 'upload-body'}
                   editorRef={editorRef}
+                  focusRef={focusRef}
                   commands={editorCommands}
                   wikiMenu={wikiMenu}
                   onToggleSidebar={() =>
@@ -927,14 +958,19 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                     if (!autosave) doc.clearScheduledSave();
                     else if (doc.hasPendingWrites()) void doc.saveNow();
                   }}
+                  onToggleFocusMode={() =>
+                    patchSession({ focusMode: !session.focusMode })
+                  }
                   onSave={() => void doc.saveNow()}
-                  onInsertImage={() => setImageDialogOpen(true)}
                   onBodyChange={(value) => {
                     doc.setBody(value);
                     doc.markDirty({ body: value });
                   }}
-                  onKeyDown={onEditorKeyDown}
+                  onShortcut={runEditorShortcut}
                   onImageFile={(file) => void quickInsertImage(file)}
+                  uploadImage={uploadImageFile}
+                  onRequestImage={() => setImageDialogOpen(true)}
+                  onNotice={setNotice}
                 />
               )}
             </section>
@@ -965,7 +1001,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       <StudioImageDialog
         open={imageDialogOpen}
         entries={entries}
-        onClose={() => setImageDialogOpen(false)}
+        // The note gets the keyboard back when the dialog gives it up —
+        // otherwise the block that opened the dialog is left open with the
+        // focus nowhere, and the next keystroke goes to the page.
+        onClose={() => {
+          setImageDialogOpen(false);
+          requestAnimationFrame(() => focusRef.current?.());
+        }}
         onUpload={uploadImageFile}
         onSubmit={(markup) => editorCommands.insertBlock(markup)}
       />

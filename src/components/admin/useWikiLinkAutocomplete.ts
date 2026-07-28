@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
 import type { ContentEntryListItem } from '../../lib/contracts';
 import { fuzzyScore } from './StudioCommandPalette';
+import { caretCoordinates } from './studioCaret';
 
 // One suggestion in the `[[` popover: an existing note plus the exact text we
 // insert. The target is the note's canonical path id (folder/slug) so it always
@@ -39,68 +40,6 @@ function buildSuggestion(entry: ContentEntryListItem): WikiSuggestion {
   const target = [entry.folder, entry.id].filter(Boolean).join('/');
   const insert = entry.title ? `[[${target}|${entry.title}]]` : `[[${target}]]`;
   return { id: entry.id, title: entry.title, folder: entry.folder, insert };
-}
-
-// Mirror-div caret measurement: clone the textarea's box and typography into a
-// hidden div, fill it with the text up to the caret, and read the offset of a
-// marker span. Returns coordinates relative to the textarea's border box.
-const MIRRORED_PROPERTIES = [
-  'boxSizing',
-  'width',
-  'paddingTop',
-  'paddingRight',
-  'paddingBottom',
-  'paddingLeft',
-  'borderTopWidth',
-  'borderRightWidth',
-  'borderBottomWidth',
-  'borderLeftWidth',
-  'fontStyle',
-  'fontVariant',
-  'fontWeight',
-  'fontStretch',
-  'fontSize',
-  'fontFamily',
-  'lineHeight',
-  'letterSpacing',
-  'textTransform',
-  'textIndent',
-  'tabSize',
-] as const;
-
-function caretCoordinates(
-  el: WikiAutocompleteInput,
-  position: number,
-): { top: number; left: number; height: number } {
-  const mirror = document.createElement('div');
-  const style = mirror.style;
-  const computed = window.getComputedStyle(el);
-
-  style.position = 'absolute';
-  style.visibility = 'hidden';
-  style.whiteSpace = 'pre-wrap';
-  style.overflowWrap = 'break-word';
-  style.top = '0';
-  style.left = '-9999px';
-  for (const property of MIRRORED_PROPERTIES) {
-    style[property] = computed[property];
-  }
-  // The textarea scrollbar steals width the mirror doesn't have; pin the width
-  // so wrapping matches the real element.
-  style.width = `${el.clientWidth}px`;
-
-  mirror.textContent = el.value.slice(0, position);
-  const marker = document.createElement('span');
-  // A non-empty marker so it has a measurable box even at line end.
-  marker.textContent = el.value.slice(position) || '.';
-  mirror.appendChild(marker);
-  document.body.appendChild(mirror);
-
-  const top = marker.offsetTop + parseInt(computed.borderTopWidth, 10);
-  const left = marker.offsetLeft + parseInt(computed.borderLeftWidth, 10);
-  const height = parseInt(computed.lineHeight, 10) || marker.offsetHeight;
-  document.body.removeChild(mirror);
-  return { top, left, height };
 }
 
 export function useWikiLinkAutocomplete(

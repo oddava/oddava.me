@@ -6,10 +6,13 @@ import { normalizeWikiLinkTarget } from './utils';
 //
 // Notes are plain Markdown read from the Redis content store — nothing ever
 // used MDX — and their raw bodies render through this function.
-// Both surfaces that display a note body call it:
+// Every surface that displays a note body calls it:
 //   - the published page (`GardenDocumentPage.astro`)
-//   - the Studio preview pane (`ContentWorkspace.tsx`)
-// so the preview cannot drift from the page — it is the page. The matching CSS
+//   - Studio's Preview mode (`StudioPreviewPane.tsx`), one render of the note
+//   - Studio's Visual editor (`StudioVisualEditor.tsx`), one render per block,
+//     which is why block-to-block spacing there belongs to the editor's own
+//     stylesheet rather than to `.prose`
+// so the editor cannot drift from the page — it is the page. The matching CSS
 // lives in one file too: `src/styles/components/_note-prose.css`, loaded by
 // both. If you change how notes render, change it here; there is nowhere else.
 //
