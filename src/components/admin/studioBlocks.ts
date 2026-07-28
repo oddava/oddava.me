@@ -777,19 +777,62 @@ export function reorderBlocks(
   };
 }
 
+/**
+ * Remove several blocks at once, along with the blank lines that framed them.
+ *
+ * Neighbouring blocks are taken out together rather than one at a time: the
+ * separator between two blocks that are both going belongs to neither of them
+ * afterwards, and removing it twice would eat the blank line before the block
+ * that survives. So the selection is grouped into contiguous runs first, and
+ * each run is lifted the way a single block would be.
+ *
+ * The runs are applied back to front, because removing text never moves the
+ * offsets of anything before it — which is what lets the whole thing be one
+ * splice sequence against one snapshot of the document, and so one undo step.
+ */
+export function deleteBlocks(
+  doc: string,
+  blocks: StudioBlock[],
+  indices: readonly number[],
+): { doc: string; caret: number } | null {
+  const wanted = [...new Set(indices)]
+    .filter((index) => blocks[index] !== undefined)
+    .sort((a, b) => a - b);
+  if (wanted.length === 0) return null;
+
+  const runs: { first: number; last: number }[] = [];
+  for (const index of wanted) {
+    const open = runs.at(-1);
+    if (open && index === open.last + 1) open.last = index;
+    else runs.push({ first: index, last: index });
+  }
+
+  let next = doc;
+  // Where the text closes up. Set by the earliest run, which is applied last
+  // and whose offsets nothing after it can have moved.
+  let caret = 0;
+  for (let position = runs.length - 1; position >= 0; position -= 1) {
+    const run = runs[position]!;
+    const head = blocks[run.first]!;
+    const tail = blocks[run.last]!;
+    // A maximal run, so neither of these is going anywhere.
+    const after = blocks[run.last + 1];
+    const before = blocks[run.first - 1];
+    const from = after ? head.start : before ? before.end : head.start;
+    const to = after ? after.start : tail.end;
+    next = spliceRange(next, from, to, '');
+    caret = from;
+  }
+  return { doc: next, caret };
+}
+
 /** Remove a block along with one of the blank lines that framed it. */
 export function deleteBlock(
   doc: string,
   blocks: StudioBlock[],
   index: number,
 ): { doc: string; caret: number } | null {
-  const block = blocks[index];
-  if (!block) return null;
-  const next = blocks[index + 1];
-  const previous = blocks[index - 1];
-  const from = next ? block.start : previous ? previous.end : block.start;
-  const to = next ? next.start : block.end;
-  return { doc: spliceRange(doc, from, to, ''), caret: from };
+  return deleteBlocks(doc, blocks, [index]);
 }
 
 // --- Slash commands -------------------------------------------------------

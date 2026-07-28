@@ -1578,9 +1578,32 @@
 /* Hovering a block is not selecting it. The tint marks the target the gutter
    buttons belong to and nothing more, so it stays under the threshold where a
    reader would read it as state. */
-.studio-vblock:hover:not(.studio-vblock--editing)::before {
+.studio-vblock:hover:not(.studio-vblock--editing):not(.is-picked)::before {
   opacity: 1;
   transition-duration: var(--studio-fast);
+}
+
+/* Picked out as part of a group. The accent rather than the hover grey,
+   because this is state the writer put there and has to be able to see at a
+   glance across half a screen of blocks — but held well under the strength of
+   a text selection, since the blocks underneath still have to be readable to
+   decide whether they are the ones you meant. */
+.studio-vblock.is-picked::before {
+  opacity: 1;
+  background: color-mix(in srgb, var(--admin-accent) 15%, transparent);
+  transition-duration: var(--studio-fast);
+}
+
+/* The caret is nowhere while a group is held, so the picked blocks are the
+   only thing on screen that is "where you are". */
+.studio-vblock.is-picked:focus-visible::before {
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+/* Text inside a picked block is not what the gesture selected — the block is.
+   Leaving the browser's own highlight on top of it says the opposite. */
+.studio-vblock.is-picked ::selection {
+  background: transparent;
 }
 
 /* The ring is drawn on the same layer as the tint so the two share a geometry.
@@ -1824,6 +1847,7 @@
   }
 
   .studio-vblock::before,
+  .studio-vblock.is-picked::before,
   .studio-vblock.is-dragging,
   .studio-vblock__gutter,
   .content-workspace :is(.studio-vblock__add, .studio-vblock__handle),
