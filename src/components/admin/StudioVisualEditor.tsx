@@ -2,6 +2,7 @@ import { memo } from 'preact/compat';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,11 +30,18 @@ import type { EditorCommands } from './studioEditorCommands';
 import type { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
 import { caretViewportPoint, clampToViewport } from './studioCaret';
 import {
+  emissionsFrom,
+  isOurs,
+  remember,
+  type Emissions,
+} from './studioEmissions';
+import {
   EMPTY_HISTORY,
   clampRange,
   historyIntent,
   record,
   redo,
+  remapOffset,
   undo,
   type History,
 } from './studioHistory';
@@ -43,6 +51,7 @@ import {
   planPaste,
 } from './studioPaste';
 import {
+  activeBlockSpan,
   blockAtOffset,
   blockLabel,
   continueBlockOnEnter,
@@ -95,6 +104,50 @@ interface Props {
 const BLOCK_HINT_ID = 'studio-block-hint';
 /** Enough to clamp the selection toolbar without measuring it every frame. */
 const TOOLBAR_SIZE = { width: 212, height: 36 };
+/** Rendered blocks held by content. Bounded, oldest out first. */
+const RENDER_CACHE_LIMIT = 400;
+
+interface Point {
+  top: number;
+  left: number;
+}
+
+function samePoint(a: Point | null, b: Point | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.top === b.top && a.left === b.left;
+}
+
+/** How far from the pane's edge a drag starts pulling the note along. */
+const EDGE_SCROLL_ZONE = 88;
+/** Pixels per frame at the very edge — about a screenful per second. */
+const EDGE_SCROLL_SPEED = 15;
+/**
+ * Below this much travel a scroll is a correction, above it a journey.
+ *
+ * Roughly two lines. Pressing Enter at the bottom of the pane nudges the note
+ * by one line and you are already typing into the next block — easing that
+ * reads as the editor lagging behind the keyboard. Stepping to a block that is
+ * off screen is a move to somewhere else, and cutting to it loses the thread.
+ */
+const GLIDE_THRESHOLD = 72;
+/** Mirrors `scroll-margin-block` on the open block, so both agree on "in view". */
+const CARET_SCROLL_MARGIN = 80;
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  );
+}
+
+/** How far out of `pane` the box sits, counting the air it asks to keep. */
+function scrollDistance(box: DOMRect, pane: DOMRect, margin: number): number {
+  return Math.max(
+    0,
+    pane.top + margin - box.top,
+    box.bottom - (pane.bottom - margin),
+  );
+}
 
 function imageFromTransfer(
   items: DataTransferItemList | undefined,
@@ -192,6 +245,7 @@ type BlockDragEvent = TargetedDragEvent<HTMLElement>;
  * recreated — a fresh closure per render would defeat the memo it is passed to.
  */
 interface BlockActions {
+  pointerDown: (index: number, event: BlockMouseEvent) => void;
   click: (index: number, event: BlockMouseEvent) => void;
   keyDown: (
     index: number,
@@ -245,6 +299,7 @@ const BlockRow = memo(function BlockRow({
       aria-roledescription="block"
       aria-describedby={BLOCK_HINT_ID}
       onFocus={() => actions.focus(index)}
+      onMouseDown={(event) => actions.pointerDown(index, event)}
       onClick={(event) => actions.click(index, event)}
       onKeyDown={(event) => actions.keyDown(index, event)}
       onContextMenu={(event) => actions.contextMenu(index, event)}
@@ -340,12 +395,11 @@ export default function StudioVisualEditor({
   const [slash, setSlash] = useState<{
     items: SlashCommand[];
     grouped: boolean;
-    position: { top: number; left: number };
+    /** The token this list answers, so a narrowing query resets the choice. */
+    query: string;
+    position: Point;
   } | null>(null);
-  const [selectionPoint, setSelectionPoint] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
+  const [selectionPoint, setSelectionPoint] = useState<Point | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
   // Roving tab stop: the surface is one stop in the page's tab order, and the
@@ -358,11 +412,28 @@ export default function StudioVisualEditor({
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
-  // The document we last handed upward. Anything else arriving in `body` came
-  // from outside the surface — a note switch, a dialog insert — and the block
-  // being edited no longer means anything.
-  const emittedRef = useRef<string | null>(null);
+  // The pane that scrolls, as opposed to the column of blocks inside it.
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  // The autoscroll a drag near the edge of that pane runs on.
+  const edgeScrollRef = useRef({ frame: 0, velocity: 0 });
+  // The documents this surface has handed upward. Anything arriving in `body`
+  // that is not one of them came from outside — a note switch, a dialog
+  // insert — and the block being edited no longer means anything.
+  const emittedRef = useRef<Emissions>(emissionsFrom(body));
+  const rememberEmission = useCallback((doc: string) => {
+    remember(emittedRef.current, doc);
+  }, []);
   const pendingCaretRef = useRef<{ start: number; end: number } | null>(null);
+  // Where a pointer went down, and the document it went down on. The blur it
+  // causes can rewrite the note before the click lands, so the click is
+  // resolved against this rather than against whatever slid under the cursor.
+  const pointerRef = useRef<{
+    doc: string;
+    offset: number;
+  } | null>(null);
+  // Escape dismisses the slash menu; without remembering which token it was
+  // dismissed for, the keyup a frame later reopens it on the same `/`.
+  const slashDismissedRef = useRef<number | null>(null);
   // The latest document, for the handlers that resume after an await.
   const bodyRef = useRef(body);
   bodyRef.current = body;
@@ -396,7 +467,14 @@ export default function StudioVisualEditor({
       if (cached !== undefined) return cached;
       const html = enableTaskCheckboxes(renderMarkdown(raw));
       // Bounded so a long session of edits cannot grow it without limit.
-      if (renderCache.size > 400) renderCache.clear();
+      // Evicted one at a time, oldest first: clearing it wholesale would throw
+      // away every block currently on screen and re-render the entire note on
+      // the very next keystroke.
+      while (renderCache.size >= RENDER_CACHE_LIMIT) {
+        const oldest = renderCache.keys().next().value;
+        if (oldest === undefined) break;
+        renderCache.delete(oldest);
+      }
       renderCache.set(raw, html);
       return html;
     },
@@ -419,18 +497,23 @@ export default function StudioVisualEditor({
         Date.now(),
         options,
       );
-      emittedRef.current = next;
+      rememberEmission(next);
       bodyRef.current = next;
       onChange(next);
     },
-    [active, onChange],
+    [active, onChange, rememberEmission],
   );
 
-  const closePopovers = useCallback(() => {
+  const closeSlash = useCallback(() => {
+    slashDismissedRef.current = null;
     setSlash(null);
+  }, []);
+
+  const closePopovers = useCallback(() => {
+    closeSlash();
     setSelectionPoint(null);
     wikiMenu.close();
-  }, [wikiMenu]);
+  }, [closeSlash, wikiMenu]);
 
   /** Put the caret in a block, revealing its Markdown. */
   const activate = useCallback(
@@ -458,15 +541,48 @@ export default function StudioVisualEditor({
     inputRef.current = null;
   }, [closePopovers, editorRef]);
 
+  const stopEdgeScroll = useCallback(() => {
+    const state = edgeScrollRef.current;
+    if (state.frame) cancelAnimationFrame(state.frame);
+    state.frame = 0;
+    state.velocity = 0;
+  }, []);
+
+  /**
+   * Forget where you were. Everything the surface holds — the open block, a
+   * queued caret, a drag in flight, the popovers — describes a document that
+   * is no longer the one on screen.
+   */
+  const resetSurface = useCallback(() => {
+    pendingCaretRef.current = null;
+    pointerRef.current = null;
+    plainPasteRef.current = false;
+    stopEdgeScroll();
+    setDragFrom(null);
+    setDropAt(null);
+    setTabStop(0);
+    deactivate();
+  }, [deactivate, stopEdgeScroll]);
+  // Held in a ref so the effect below depends on the arriving document and
+  // nothing else: keyed on `resetSurface` itself it would rebuild — and wipe
+  // the open block — every time one of the callbacks it closes over changed.
+  const resetSurfaceRef = useRef(resetSurface);
+  resetSurfaceRef.current = resetSurface;
+
   // Outside changes reset the surface; our own round trip does not.
-  useEffect(() => {
-    if (emittedRef.current === body) return;
-    emittedRef.current = body;
+  //
+  // Before paint rather than after: a note arriving from elsewhere should not
+  // be drawn for a frame with the previous one's block still open over it.
+  useLayoutEffect(() => {
+    if (isOurs(emittedRef.current, body)) return;
+    // Nothing this surface produced is about this document. The memory goes
+    // with it, so a later note that happens to read like an old edit of this
+    // one is still recognised as a different file.
+    emittedRef.current = emissionsFrom(body);
     // A different note is a different history — undoing into the previous
     // one's text would write it into this file.
     historyRef.current = EMPTY_HISTORY;
-    setActive(null);
-    setDraft('');
+    resetSurfaceRef.current();
   }, [body]);
 
   // Leaving the mode takes the shared textarea pointer with it, so a command
@@ -478,25 +594,48 @@ export default function StudioVisualEditor({
     [editorRef],
   );
 
-  // Place the caret once the textarea for the newly active block exists.
-  useEffect(() => {
-    const pending = pendingCaretRef.current;
-    const el = inputRef.current;
-    if (!pending || !el) return;
-    pendingCaretRef.current = null;
-    el.focus({ preventScroll: true });
-    el.setSelectionRange(pending.start, pending.end);
-    el.scrollIntoView({ block: 'nearest' });
-  }, [caretNonce]);
-
   // Grow the block editor to its content: a textarea that scrolls internally
   // would hide the rest of the note behind it.
-  useEffect(() => {
+  //
+  // Before paint, not after. A textarea is one row tall until it is measured,
+  // so measuring it a frame late means a code block opens as a single line and
+  // then springs to its full height, shoving the rest of the note down with it.
+  useLayoutEffect(() => {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
   }, [draft, active]);
+
+  // Place the caret once the textarea for the newly active block exists —
+  // after the height above is settled, so `scrollIntoView` reasons about the
+  // box the block will actually occupy.
+  useLayoutEffect(() => {
+    const pending = pendingCaretRef.current;
+    if (!pending) return;
+    const el = inputRef.current;
+    // No field to put it in: drop the request rather than hold it for whatever
+    // block opens next, which would take the caret somewhere nobody asked for.
+    pendingCaretRef.current = null;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(pending.start, pending.end);
+    // Asked for here rather than set on the pane, so it applies to *this*
+    // scroll and not to the one the browser makes on its own to keep the caret
+    // in view while a block grows — easing that turns typing into a rubber
+    // band. `nearest` does nothing at all when the block is already on screen,
+    // so this only runs when there is somewhere to travel, and it only glides
+    // when that somewhere is far enough away to be worth watching.
+    const pane = scrollerRef.current?.getBoundingClientRect();
+    const travel = pane
+      ? scrollDistance(el.getBoundingClientRect(), pane, CARET_SCROLL_MARGIN)
+      : 0;
+    el.scrollIntoView?.({
+      block: 'nearest',
+      behavior:
+        travel > GLIDE_THRESHOLD && !prefersReducedMotion() ? 'smooth' : 'auto',
+    });
+  }, [caretNonce]);
 
   // --- Writing --------------------------------------------------------------
 
@@ -540,44 +679,97 @@ export default function StudioVisualEditor({
       el.selectionStart === el.selectionEnd
         ? findSlashToken(el.value, caret)
         : null;
-    if (token) {
-      const items = matchSlashCommands(token.query);
-      if (items.length > 0) {
-        const point = caretViewportPoint(el, token.start);
-        const placed = clampToViewport(point, { width: 260, height: 330 });
-        setSlash({
-          items,
-          grouped: token.query.trim() === '',
-          position: placed,
-        });
-        setSlashIndex((current) => (current < items.length ? current : 0));
-      } else {
-        setSlash(null);
-      }
+    // Leaving the token clears the dismissal, so a later `/` opens the menu
+    // again; carrying on typing inside a dismissed one does not.
+    if (!token) slashDismissedRef.current = null;
+    const items = token ? matchSlashCommands(token.query) : [];
+    if (
+      token &&
+      items.length > 0 &&
+      slashDismissedRef.current !== token.start
+    ) {
+      const point = caretViewportPoint(el, token.start);
+      const placed = clampToViewport(point, { width: 260, height: 330 });
+      const next = {
+        items,
+        grouped: token.query.trim() === '',
+        query: token.query,
+        position: { top: placed.top, left: placed.left },
+      };
+      // A new query is a new list, and keeping the old row number would leave
+      // the highlight on whatever command happens to sit there now.
+      setSlashIndex((current) =>
+        slash?.query === token.query ? Math.min(current, items.length - 1) : 0,
+      );
+      setSlash((current) =>
+        current &&
+        current.query === next.query &&
+        samePoint(current.position, next.position)
+          ? current
+          : next,
+      );
     } else {
-      setSlash(null);
+      setSlash((current) => (current === null ? current : null));
     }
 
     // The formatting bar follows the selection and nothing else. It prefers to
     // sit above the words it acts on; near the top of the window there is no
     // room, so it drops below rather than off the screen.
+    let point: Point | null = null;
     if (el.selectionStart !== el.selectionEnd) {
-      const point = caretViewportPoint(el, el.selectionStart ?? 0);
-      const above = point.top - TOOLBAR_SIZE.height - 8;
-      setSelectionPoint({
-        top: above >= 12 ? above : point.top + point.height + 8,
+      const caretPoint = caretViewportPoint(el, el.selectionStart ?? 0);
+      const above = caretPoint.top - TOOLBAR_SIZE.height - 8;
+      point = {
+        top: above >= 12 ? above : caretPoint.top + caretPoint.height + 8,
         left: Math.max(
           12,
           Math.min(
-            point.left - 12,
+            caretPoint.left - 12,
             Math.max(12, window.innerWidth - TOOLBAR_SIZE.width - 12),
           ),
         ),
-      });
-    } else {
-      setSelectionPoint(null);
+      };
     }
-  }, [wikiMenu]);
+    // A fresh object for an unchanged point would re-render the portal on
+    // every keystroke and every scroll frame.
+    setSelectionPoint((current) =>
+      samePoint(current, point) ? current : point,
+    );
+  }, [slash?.query, wikiMenu]);
+
+  const refreshMenusRef = useRef(refreshMenus);
+  refreshMenusRef.current = refreshMenus;
+
+  /**
+   * Popovers are placed in viewport coordinates, so anything that moves the
+   * caret on screen without touching the text — scrolling the note, resizing
+   * the window, the phone keyboard coming up — leaves them pointing at where
+   * the caret used to be. Re-measure once per frame while one is up, and cost
+   * nothing at all while none is.
+   */
+  const popoverOpen =
+    slash !== null || selectionPoint !== null || wikiMenu.open;
+  useEffect(() => {
+    if (!popoverOpen) return;
+    let frame = 0;
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        refreshMenusRef.current();
+      });
+    };
+    window.addEventListener('scroll', schedule, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule, { capture: true });
+      window.removeEventListener('resize', schedule);
+    };
+  }, [popoverOpen]);
 
   const runSlashCommand = useCallback(
     (index: number) => {
@@ -586,7 +778,7 @@ export default function StudioVisualEditor({
       if (!el || !command) return;
       const token = findSlashToken(el.value, el.selectionStart ?? 0);
       if (!token) return;
-      setSlash(null);
+      closeSlash();
       if (command.action === 'image') {
         // Leave the `/img` token *selected* rather than deleting it: the
         // dialog's insert replaces the selection, so the token goes with it.
@@ -615,12 +807,19 @@ export default function StudioVisualEditor({
       );
       // `Link to a note` inserts `[[` and hands straight over to the note
       // picker. The insertion places the caret a frame later, so ask after it.
-      requestAnimationFrame(() => refreshMenus());
+      requestAnimationFrame(() => refreshMenusRef.current());
     },
-    [commands, onRequestImage, refreshMenus, slash],
+    [closeSlash, commands, onRequestImage, slash],
   );
 
   // --- Block-level actions --------------------------------------------------
+
+  // Which blocks the editor is standing in for. More than one whenever the
+  // source in it has re-parsed — see `activeBlockSpan`.
+  const activeSpan = useMemo(
+    () => activeBlockSpan(blocks, active),
+    [active, blocks],
+  );
 
   /**
    * The block the caret is in, or -1.
@@ -629,17 +828,7 @@ export default function StudioVisualEditor({
    * sits between blocks, so no block contains it, and the answer is honestly
    * "none" rather than the block that happens to end there.
    */
-  const activeIndex = useMemo(() => {
-    if (!active) return -1;
-    if (active.start === active.end) {
-      return blocks.findIndex(
-        (block) => block.start <= active.start && active.start <= block.end,
-      );
-    }
-    return blocks.findIndex(
-      (block) => block.end > active.start && block.start < active.end,
-    );
-  }, [active, blocks]);
+  const activeIndex = activeSpan ? activeSpan.first : -1;
 
   const applyMove = useCallback(
     (index: number, direction: -1 | 1) => {
@@ -651,14 +840,36 @@ export default function StudioVisualEditor({
     [activate, blocks, body, emit],
   );
 
+  /**
+   * Put the keyboard on a rendered block, clamped to what is actually there.
+   *
+   * Deferred a frame because the caller has usually just changed how many
+   * blocks exist, and the block that takes the deleted one's place does not
+   * have a DOM node until the surface has been drawn again.
+   */
+  const focusBlock = useCallback((index: number) => {
+    requestAnimationFrame(() => {
+      const count = blocksRef.current.length;
+      if (count === 0) return;
+      const target = Math.max(0, Math.min(index, count - 1));
+      setTabStop(target);
+      surfaceRef.current
+        ?.querySelector<HTMLElement>(`[data-block="${target}"]`)
+        ?.focus();
+    });
+  }, []);
+
   const applyDelete = useCallback(
-    (index: number) => {
+    (index: number, options: { refocus?: boolean } = {}) => {
       const result = deleteBlock(body, blocks, index);
       if (!result) return;
       deactivate();
       emit(result.doc, { atomic: true });
+      // Deleting the block the keyboard was on would otherwise drop focus to
+      // the page, and with it every shortcut the surface answers.
+      if (options.refocus) focusBlock(index);
     },
-    [blocks, body, deactivate, emit],
+    [blocks, body, deactivate, emit, focusBlock],
   );
 
   const applyDuplicate = useCallback(
@@ -726,8 +937,10 @@ export default function StudioVisualEditor({
           : redo(historyRef.current, present);
       if (!step) return false;
 
+      // The menus hang off a caret in a document that is about to be replaced.
+      closePopovers();
       historyRef.current = step.history;
-      emittedRef.current = step.entry.doc;
+      rememberEmission(step.entry.doc);
       bodyRef.current = step.entry.doc;
       onChange(step.entry.doc);
 
@@ -747,7 +960,7 @@ export default function StudioVisualEditor({
       }
       return true;
     },
-    [activate, active, deactivate, onChange],
+    [activate, active, closePopovers, deactivate, onChange, rememberEmission],
   );
 
   // --- Leaving a block ------------------------------------------------------
@@ -839,6 +1052,10 @@ export default function StudioVisualEditor({
       }
       if (event.key === 'Escape') {
         event.preventDefault();
+        // Remember which token it was dismissed for: the keyup that follows
+        // asks the same question again, and would answer it the same way.
+        slashDismissedRef.current =
+          findSlashToken(el.value, caret)?.start ?? null;
         setSlash(null);
         return;
       }
@@ -854,12 +1071,10 @@ export default function StudioVisualEditor({
           ? activeIndex
           : Math.min(tabStop, Math.max(0, blocks.length - 1));
       commitAndDeactivate(el.value);
-      setTabStop(index);
-      requestAnimationFrame(() =>
-        surfaceRef.current
-          ?.querySelector<HTMLElement>(`[data-block="${index}"]`)
-          ?.focus(),
-      );
+      // Clamped against the blocks that survive the commit: leaving an empty
+      // last block takes it with it, and a tab stop past the end is a keyboard
+      // that has left the note entirely.
+      focusBlock(index);
       return;
     }
 
@@ -915,8 +1130,40 @@ export default function StudioVisualEditor({
 
     if (event.key === 'Backspace' && collapsed && caret === 0) {
       const block = blocks[activeIndex];
+      // A slot that was opened and never written in belongs to no block, so
+      // there is nothing to delete — only the blank line that made room for
+      // it. Without this, backspace in a fresh block did nothing at all and
+      // the only way out of it was the mouse.
+      if (
+        activeIndex < 0 &&
+        active &&
+        el.value.trim() === '' &&
+        body.slice(active.start - 2, active.start) === '\n\n'
+      ) {
+        event.preventDefault();
+        const at = active.start - 2;
+        const next = spliceRange(body, at, active.end, '');
+        emit(next, { atomic: true });
+        // Resolved against the document that results, not the one that is
+        // going away: every offset after the join has just moved.
+        const target = blockAtOffset(parseBlocks(next), at);
+        if (target) {
+          activate(
+            { start: target.start, end: target.end },
+            next,
+            at <= target.start ? 0 : target.raw.length,
+          );
+        } else {
+          deactivate();
+        }
+        return;
+      }
       const previous = blocks[activeIndex - 1];
-      if (el.value.trim() === '' && (previous || blocks.length > 1)) {
+      if (
+        activeIndex >= 0 &&
+        el.value.trim() === '' &&
+        (previous || blocks.length > 1)
+      ) {
         event.preventDefault();
         const result = deleteBlock(body, blocks, activeIndex);
         if (!result) return;
@@ -1011,7 +1258,10 @@ export default function StudioVisualEditor({
     if (
       (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
       collapsed &&
-      !event.shiftKey
+      !event.shiftKey &&
+      // A slot between blocks is in none of them, and `-1 + 1` is the first
+      // block of the note — arrowing down out of a new line jumped to the top.
+      activeIndex >= 0
     ) {
       const up = event.key === 'ArrowUp';
       const atEdge = up
@@ -1094,13 +1344,98 @@ export default function StudioVisualEditor({
     }
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
-      applyDelete(index);
+      applyDelete(index, { refocus: true });
     }
   }
 
   // --- Pointer --------------------------------------------------------------
 
+  /**
+   * Where the pointer went down, taken before anything can move underneath it.
+   *
+   * Pressing a block blurs whichever one was open, and that blur commits: an
+   * emptied block is removed, a table is lined up. Both rewrite the document
+   * between this event and the click that follows, and everything below the
+   * edit shifts up or down by a line. Reading the target at click time would
+   * therefore read whatever slid into the cursor's place.
+   */
+  function onBlockPointerDown(index: number, event: BlockMouseEvent) {
+    const block = blocksRef.current[index];
+    const host = event.currentTarget.querySelector<HTMLElement>(
+      '.studio-vblock__rendered',
+    );
+    if (!block || !host) {
+      pointerRef.current = null;
+      return;
+    }
+    pointerRef.current = {
+      doc: bodyRef.current,
+      offset:
+        block.start +
+        offsetFromPoint(block, host, event.clientX, event.clientY),
+    };
+  }
+
+  /**
+   * The block a gesture on row `index` means.
+   *
+   * While the document has not moved since the press that started the gesture,
+   * that is the row itself. When it has, the row numbers have shifted with it —
+   * so the offset the press pointed at is carried across the edit and the block
+   * holding it now is the answer.
+   */
+  const resolveIndex = useCallback((index: number): number => {
+    const pointer = pointerRef.current;
+    if (!pointer || pointer.doc === bodyRef.current) return index;
+    const offset = remapOffset(pointer.doc, bodyRef.current, pointer.offset);
+    const list = blocksRef.current;
+    const found = list.findIndex(
+      (block) => block.start <= offset && offset <= block.end,
+    );
+    return found === -1 ? Math.min(index, list.length - 1) : found;
+  }, []);
+
   function onBlockClick(index: number, event: BlockMouseEvent) {
+    const pointer = pointerRef.current;
+    pointerRef.current = null;
+
+    // Leave a deliberate selection alone so it can still be copied. Checked
+    // first: a drag that selects text never lands on a checkbox or a link, and
+    // deciding this before either keeps one gesture from meaning two things.
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && selection.toString().trim()) {
+      return;
+    }
+
+    // Links belong to the note, not to the editor: hold the modifier to follow
+    // one, click it to put the caret in it. Answered before anything else can
+    // return early, because the one thing a click on an anchor must never do
+    // is fall through to the browser and navigate out of the editor.
+    const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
+      'a[href]',
+    );
+    if (anchor) {
+      if (event.metaKey || event.ctrlKey) return;
+      event.preventDefault();
+    }
+
+    // The document moved between the press and the release — a block that was
+    // being left was emptied out and taken with it, a table was lined up.
+    // What is under the cursor now is not what was aimed at, so the caret goes
+    // where the press pointed, carried across the edit in between.
+    if (pointer && pointer.doc !== bodyRef.current) {
+      const offset = remapOffset(pointer.doc, bodyRef.current, pointer.offset);
+      const landing = blockAtOffset(blocksRef.current, offset);
+      if (landing) {
+        activate(
+          { start: landing.start, end: landing.end },
+          bodyRef.current,
+          Math.max(0, Math.min(offset - landing.start, landing.raw.length)),
+        );
+      }
+      return;
+    }
+
     const block = blocksRef.current[index];
     if (!block) return;
     const target = event.target as HTMLElement;
@@ -1115,18 +1450,6 @@ export default function StudioVisualEditor({
       emit(spliceRange(body, block.start, block.end, raw), { atomic: true });
       return;
     }
-    // Links belong to the note, not to the editor: hold the modifier to follow
-    // one, click it to put the caret in it.
-    const link = target.closest<HTMLAnchorElement>('a[href]');
-    if (link) {
-      if (event.metaKey || event.ctrlKey) return;
-      event.preventDefault();
-    }
-    // Leave a deliberate selection alone so it can still be copied.
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed && selection.toString().trim()) {
-      return;
-    }
     const host = currentTarget.querySelector<HTMLElement>(
       '.studio-vblock__rendered',
     );
@@ -1137,6 +1460,54 @@ export default function StudioVisualEditor({
   }
 
   // --- Drag and drop --------------------------------------------------------
+
+  /**
+   * Carry on past the edge of the pane. Paired with `stopEdgeScroll`, which
+   * lives above because leaving the note has to be able to call it.
+   *
+   * A drag can only reach what is on screen, so moving a block further than
+   * one screenful meant dropping it, scrolling, and picking it up again.
+   * Holding near an edge now pulls the note along instead.
+   *
+   * The speed ramps across the zone rather than switching on at a threshold:
+   * at the very edge it moves about a screenful a second, and a few pixels in
+   * it barely creeps — which is what lets you land on the block you want
+   * instead of overshooting and hunting back.
+   */
+  const edgeScroll = useCallback((clientY: number) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const state = edgeScrollRef.current;
+    const bounds = scroller.getBoundingClientRect();
+    // On a short pane the zones would meet in the middle and the note would
+    // scroll wherever the pointer was; a quarter of the height each is the
+    // most that leaves somewhere neutral to stand.
+    const zone = Math.min(EDGE_SCROLL_ZONE, bounds.height / 4);
+    const fromTop = clientY - bounds.top;
+    const fromBottom = bounds.bottom - clientY;
+    state.velocity =
+      fromTop < zone
+        ? -(1 - Math.max(0, fromTop) / zone)
+        : fromBottom < zone
+          ? 1 - Math.max(0, fromBottom) / zone
+          : 0;
+    if (state.velocity === 0 || state.frame) return;
+    const step = () => {
+      const live = edgeScrollRef.current;
+      if (live.velocity === 0) {
+        live.frame = 0;
+        return;
+      }
+      scroller.scrollTop += live.velocity * EDGE_SCROLL_SPEED;
+      live.frame = requestAnimationFrame(step);
+    };
+    state.frame = requestAnimationFrame(step);
+  }, []);
+
+  // A drag abandoned outside the window fires no drop and, in some browsers,
+  // no dragend either. Nothing should still be scrolling after the surface has
+  // gone away.
+  useEffect(() => stopEdgeScroll, [stopEdgeScroll]);
 
   /** The document offset a drop on block `index` should insert at. */
   const insertionOffset = useCallback((index: number): number => {
@@ -1195,6 +1566,7 @@ export default function StudioVisualEditor({
       const finish = () => {
         event.preventDefault();
         event.stopPropagation();
+        stopEdgeScroll();
         setDragFrom(null);
         setDropAt(null);
       };
@@ -1235,6 +1607,7 @@ export default function StudioVisualEditor({
       emit,
       insertBlockAt,
       insertionOffset,
+      stopEdgeScroll,
     ],
   );
 
@@ -1361,24 +1734,53 @@ export default function StudioVisualEditor({
 
   const liveActions = useRef<BlockActions | null>(null);
   liveActions.current = {
+    pointerDown: onBlockPointerDown,
     click: onBlockClick,
     keyDown: onBlockKeyDown,
+    // The gutter sits on a block the pointer went down on, and the press may
+    // have closed an emptied block above it — so these resolve the row number
+    // the same way a click does rather than acting on whoever inherited it.
     contextMenu: (index, event) => {
       event.preventDefault();
-      menu.openAtEvent(index, event);
+      const resolved = resolveIndex(index);
+      pointerRef.current = null;
+      menu.openAtEvent(resolved, event);
     },
     focus: setTabStop,
-    openMenu: (index, trigger) => menu.toggleUnder(index, trigger),
-    insertAfter,
+    openMenu: (index, trigger) => {
+      const resolved = resolveIndex(index);
+      pointerRef.current = null;
+      menu.toggleUnder(resolved, trigger);
+    },
+    insertAfter: (index) => {
+      const resolved = resolveIndex(index);
+      pointerRef.current = null;
+      insertAfter(resolved);
+    },
     dragStart: (index, event) => {
-      setDragFrom(index);
-      event.dataTransfer?.setData(
-        'text/plain',
-        blocksRef.current[index]?.raw ?? '',
-      );
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      const resolved = resolveIndex(index);
+      pointerRef.current = null;
+      setDragFrom(resolved);
+      const transfer = event.dataTransfer;
+      if (!transfer) return;
+      transfer.setData('text/plain', blocksRef.current[resolved]?.raw ?? '');
+      transfer.effectAllowed = 'move';
+      // What is draggable is the six-dot handle, so what the browser would
+      // carry is a picture of the six-dot handle — a 20px smudge that says
+      // nothing about what is being moved. Carry the block instead, held at
+      // the point on it the pointer actually grabbed.
+      const row = event.currentTarget.closest<HTMLElement>('[data-block]');
+      if (row) {
+        const bounds = row.getBoundingClientRect();
+        transfer.setDragImage(
+          row,
+          event.clientX - bounds.left,
+          event.clientY - bounds.top,
+        );
+      }
     },
     dragEnd: () => {
+      stopEdgeScroll();
       setDragFrom(null);
       setDropAt(null);
     },
@@ -1387,6 +1789,7 @@ export default function StudioVisualEditor({
       event.preventDefault();
       const rect = event.currentTarget.getBoundingClientRect();
       setDropAt(event.clientY < rect.top + rect.height / 2 ? index : index + 1);
+      edgeScroll(event.clientY);
     },
     // Where the pointer actually is, not which block it is over: the lower
     // half of a block means "after this one".
@@ -1394,6 +1797,8 @@ export default function StudioVisualEditor({
   };
   const actions = useMemo<BlockActions>(
     () => ({
+      pointerDown: (index, event) =>
+        liveActions.current?.pointerDown(index, event),
       click: (index, event) => liveActions.current?.click(index, event),
       keyDown: (index, event) => liveActions.current?.keyDown(index, event),
       contextMenu: (index, event) =>
@@ -1417,12 +1822,17 @@ export default function StudioVisualEditor({
   // no tab stop at all.
   const lastIndex = blocks.length - 1;
   const wanted = Math.min(Math.max(tabStop, 0), Math.max(0, lastIndex));
-  const tabStopIndex =
-    wanted === activeIndex
-      ? wanted < lastIndex
-        ? wanted + 1
-        : wanted - 1
-      : wanted;
+  // Anywhere inside the open span is a block the editor stands in for, so the
+  // stop moves past the whole of it rather than off its first row.
+  const insideActive =
+    activeSpan !== null &&
+    wanted >= activeSpan.first &&
+    wanted <= activeSpan.last;
+  const tabStopIndex = insideActive
+    ? activeSpan.last < lastIndex
+      ? activeSpan.last + 1
+      : activeSpan.first - 1
+    : wanted;
 
   const rows: VNode[] = [];
   let activeRendered = false;
@@ -1518,7 +1928,13 @@ export default function StudioVisualEditor({
   };
 
   blocks.forEach((block, index) => {
-    const overlapping = index === activeIndex;
+    // Every block the open range covers, not just the first: what is in the
+    // textarea may have re-parsed into several, and any left in the column
+    // would render the text being typed a second time underneath it.
+    const overlapping =
+      activeSpan !== null &&
+      index >= activeSpan.first &&
+      index <= activeSpan.last;
     if (
       active &&
       !activeRendered &&
@@ -1566,7 +1982,7 @@ export default function StudioVisualEditor({
   const menuBlock = menu.key === null ? null : blocks[menu.key];
 
   return (
-    <div className="studio-vsurface-scroll">
+    <div className="studio-vsurface-scroll" ref={scrollerRef}>
       <p id={BLOCK_HINT_ID} className="studio-visually-hidden">
         Press Enter to edit, Alt with the arrow keys to move it, Delete to
         remove it.
@@ -1576,13 +1992,22 @@ export default function StudioVisualEditor({
         ref={surfaceRef}
         onCopy={onSurfaceCopy}
         onDragOver={(event) => {
-          if (acceptsDrag(event.dataTransfer)) event.preventDefault();
+          if (dragFrom === null && !acceptsDrag(event.dataTransfer)) return;
+          event.preventDefault();
+          // The gaps between blocks and the margins beside them are part of
+          // the pane too: a drag held over one of them should still pull the
+          // note along rather than stalling until it finds a block.
+          edgeScroll(event.clientY);
         }}
         // Crossing between two blocks raises a leave on the one behind; only
         // a pointer that has left the surface entirely clears the marker.
         onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          if (
+            !event.currentTarget.contains(event.relatedTarget as Node | null)
+          ) {
+            stopEdgeScroll();
             setDropAt(null);
+          }
         }}
         onDrop={(event) => handleDrop(dropAt ?? blocks.length, event)}
       >
@@ -1616,6 +2041,7 @@ export default function StudioVisualEditor({
               if (dragFrom === null && !acceptsDrag(event.dataTransfer)) return;
               event.preventDefault();
               setDropAt(blocks.length);
+              edgeScroll(event.clientY);
             }}
           />
         )}

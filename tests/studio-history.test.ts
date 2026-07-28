@@ -9,6 +9,7 @@ import {
   historyIntent,
   record,
   redo,
+  remapOffset,
   undo,
   type History,
 } from '../src/components/admin/studioHistory';
@@ -190,5 +191,44 @@ describe('historyIntent', () => {
     expect(key({ metaKey: true, key: 'b' })).toBeNull();
     // ⌘Y is not redo on a Mac; it is nothing.
     expect(key({ metaKey: true, key: 'y' })).toBeNull();
+  });
+});
+
+// A pointer goes down on a block, the blur it causes rewrites the document —
+// an emptied block removed, a table lined up — and the click lands a moment
+// later. Every offset past that edit has moved, so a click resolved against
+// the document it was aimed at has to be carried across it.
+describe('remapOffset', () => {
+  const before = 'one\n\ntwo\n\nthree';
+
+  it('leaves an offset before the edit where it was', () => {
+    expect(remapOffset(before, 'one\n\nthree', 1)).toBe(1);
+  });
+
+  it('carries an offset after a deletion back by what was removed', () => {
+    const after = 'one\n\nthree';
+    // The `h` of `three`, in both documents.
+    expect(before[11]).toBe('h');
+    expect(remapOffset(before, after, 11)).toBe(6);
+    expect(after[6]).toBe('h');
+  });
+
+  it('carries an offset after an insertion forward', () => {
+    const after = 'one\n\nmiddle\n\ntwo\n\nthree';
+    // The `w` of `two`, in both documents.
+    expect(before[6]).toBe('w');
+    expect(remapOffset(before, after, 6)).toBe(14);
+    expect(after[14]).toBe('w');
+  });
+
+  it('lands inside the replacement when the offset was inside the edit', () => {
+    const wide = '| a    | b    |';
+    const mapped = remapOffset('| a | b |', wide, 4);
+    expect(mapped).toBeGreaterThanOrEqual(0);
+    expect(mapped).toBeLessThanOrEqual(wide.length);
+  });
+
+  it('is the identity when nothing changed', () => {
+    expect(remapOffset('same', 'same', 3)).toBe(3);
   });
 });

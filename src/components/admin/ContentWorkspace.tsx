@@ -129,8 +129,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     openId,
     body,
     saveState,
-    setBody,
-    markDirty,
     saveNow,
     setAutosave,
     closeIfOpen,
@@ -144,6 +142,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const hasBody = collection?.body ?? true;
   const view: ViewMode = session.view;
 
+  // Keyed by what the lookup is actually built from, not by the array holding
+  // it. Every save replaces `entries` wholesale, and a new lookup means a new
+  // `renderMarkdown`, which throws away the visual editor's per-block render
+  // cache — the whole note re-rendered through `marked` after each autosave,
+  // for a link index that had not changed.
+  const wikiLinkSignature = JSON.stringify(
+    entries.map((entry) => [entry.folder, entry.id, entry.title, entry.href]),
+  );
   const wikiLinkHrefs = useMemo(
     () =>
       buildWikiLinkHrefLookup(
@@ -153,7 +159,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           href: entry.href,
         })),
       ),
-    [entries],
+    // The signature is the dependency; `entries` is read through the closure,
+    // which is whatever it was when the signature last moved.
+    [wikiLinkSignature],
   );
   // Same renderer and link index the published page uses, so what the editor
   // draws and what a reader gets cannot drift apart. Passed down as a function
@@ -432,20 +440,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Editor helpers ------------------------------------------------------
 
-  // Commit is only used on the rare browser where execCommand is unavailable;
-  // the normal path lets the textarea's own input event drive `body`, which
-  // keeps the native undo/redo stack intact.
-  const commitBody = useCallback(
-    (value: string) => {
-      setBody(value);
-      markDirty({ body: value });
-    },
-    [markDirty, setBody],
-  );
-
+  // Every command writes through the live textarea and lets its own `input`
+  // event carry the change back — the same path a keystroke takes, so Visual
+  // mode splices into the open block and Markdown mode into the whole note
+  // without either command knowing which surface it landed on.
   const editorCommands = useMemo(
-    () => makeEditorCommands(() => editorRef.current, commitBody),
-    [commitBody],
+    () => makeEditorCommands(() => editorRef.current),
+    [],
   );
 
   // `[[` autocomplete: suggests existing notes at the caret and inserts a
@@ -521,9 +522,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     if (key === 'k' && !event.shiftKey) return run(editorCommands.link);
     if (event.shiftKey && key === 'c') return run(editorCommands.inlineCode);
     if (event.shiftKey && key === 'x') return run(editorCommands.strike);
-    if (event.shiftKey && key === '7') return run(editorCommands.orderedList);
-    if (event.shiftKey && key === '8') return run(editorCommands.bulletList);
-    if (event.shiftKey && key === '9') return run(editorCommands.taskList);
+    // By physical key, not by character: Shift over a digit produces `&`, `*`
+    // or `(` on a US layout and something else again elsewhere, so matching on
+    // `event.key` meant these three did nothing at all on most keyboards.
+    if (event.shiftKey) {
+      if (event.code === 'Digit7') return run(editorCommands.orderedList);
+      if (event.code === 'Digit8') return run(editorCommands.bulletList);
+      if (event.code === 'Digit9') return run(editorCommands.taskList);
+    }
     return false;
   }
 

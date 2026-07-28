@@ -2,8 +2,11 @@
 //
 // Every edit is applied through `document.execCommand('insertText')` so the
 // browser's native undo/redo stack stays intact and the textarea fires its
-// normal `input` event (which keeps React state in sync). When execCommand is
-// unavailable we fall back to mutating `value` directly and calling `commit`.
+// normal `input` event, which is the single path both writing surfaces read
+// their state back from. Where execCommand is unavailable the value is set
+// directly and that same `input` event is raised by hand — `setRangeText`
+// deliberately fires nothing, and a surface that never hears about the edit
+// would carry on from the text it thought was there.
 //
 // The notes are stored and rendered as Markdown, but the site renders them with
 // `marked`, which passes raw HTML through. That lets the toolbar express things
@@ -44,8 +47,6 @@ export interface EditorCommands {
   ): void;
 }
 
-type Commit = (value: string) => void;
-
 interface Region {
   value: string;
   start: number;
@@ -65,7 +66,6 @@ function read(el: HTMLTextAreaElement): Region {
  */
 function replaceRange(
   el: HTMLTextAreaElement,
-  commit: Commit,
   rangeStart: number,
   rangeEnd: number,
   replacement: string,
@@ -82,10 +82,16 @@ function replaceRange(
   const ok = execCommand?.call(document, 'insertText', false, replacement);
   if (!ok) {
     el.setRangeText(replacement, rangeStart, rangeEnd, 'end');
-    commit(el.value);
+    // The surfaces drive their state from the element's own input event, and
+    // setRangeText raises none. Without this the edit is on screen and in no
+    // model — the next keystroke would splice against the previous text.
+    el.dispatchEvent(new Event('input', { bubbles: true }));
   }
-  // Defer so it lands after the browser processes the insertion.
+  // Defer so it lands after the browser processes the insertion. By then the
+  // block may have been closed and this textarea taken off the page; focusing
+  // a detached element pulls the keyboard out of wherever it went next.
   requestAnimationFrame(() => {
+    if (!el.isConnected) return;
     el.focus();
     el.setSelectionRange(selectStart, selectEnd);
   });
@@ -93,11 +99,7 @@ function replaceRange(
 
 // --- Inline wrapping (bold / italic / strike / code) ----------------------
 
-function toggleWrap(
-  el: HTMLTextAreaElement,
-  commit: Commit,
-  marker: string,
-): void {
+function toggleWrap(el: HTMLTextAreaElement, marker: string): void {
   const { value, start, end, selected } = read(el);
   const len = marker.length;
   const before = value.slice(0, start);
@@ -110,7 +112,7 @@ function toggleWrap(
     selected.endsWith(marker)
   ) {
     const inner = selected.slice(len, selected.length - len);
-    replaceRange(el, commit, start, end, inner, start, start + inner.length);
+    replaceRange(el, start, end, inner, start, start + inner.length);
     return;
   }
 
@@ -130,7 +132,6 @@ function toggleWrap(
   if (surroundedByMarkers) {
     replaceRange(
       el,
-      commit,
       start - len,
       end + len,
       selected,
@@ -144,9 +145,9 @@ function toggleWrap(
   // the markers when there was no selection).
   const wrapped = `${marker}${selected}${marker}`;
   if (start === end) {
-    replaceRange(el, commit, start, end, wrapped, start + len, start + len);
+    replaceRange(el, start, end, wrapped, start + len, start + len);
   } else {
-    replaceRange(el, commit, start, end, wrapped, start + len, end + len);
+    replaceRange(el, start, end, wrapped, start + len, end + len);
   }
 }
 
@@ -172,7 +173,6 @@ function stripMarker(line: string): { indent: string; text: string } {
 
 function transformLines(
   el: HTMLTextAreaElement,
-  commit: Commit,
   transform: (lines: string[]) => string[],
 ): void {
   const { value, start, end } = read(el);
@@ -181,7 +181,6 @@ function transformLines(
   const next = transform(block.split('\n')).join('\n');
   replaceRange(
     el,
-    commit,
     lineStart,
     lineEnd,
     next,
@@ -190,10 +189,10 @@ function transformLines(
   );
 }
 
-function heading(el: HTMLTextAreaElement, commit: Commit, level: 1 | 2 | 3) {
+function heading(el: HTMLTextAreaElement, level: 1 | 2 | 3) {
   const hashes = '#'.repeat(level);
   const already = new RegExp(`^#{${level}}\\s+`);
-  transformLines(el, commit, (lines) => {
+  transformLines(el, (lines) => {
     const allSet = lines.every((l) => l.trim() === '' || already.test(l));
     return lines.map((line) => {
       if (line.trim() === '') return line;
@@ -205,7 +204,6 @@ function heading(el: HTMLTextAreaElement, commit: Commit, level: 1 | 2 | 3) {
 
 function toggleList(
   el: HTMLTextAreaElement,
-  commit: Commit,
   kind: 'bullet' | 'ordered' | 'task',
 ) {
   const test =
@@ -214,7 +212,7 @@ function toggleList(
       : kind === 'ordered'
         ? /^\s*\d+\.\s+/
         : /^\s*[-*+]\s+\[[ xX]\]\s+/;
-  transformLines(el, commit, (lines) => {
+  transformLines(el, (lines) => {
     const meaningful = lines.filter((l) => l.trim() !== '');
     const allSet =
       meaningful.length > 0 && meaningful.every((l) => test.test(l));
@@ -231,9 +229,9 @@ function toggleList(
   });
 }
 
-function toggleQuote(el: HTMLTextAreaElement, commit: Commit) {
+function toggleQuote(el: HTMLTextAreaElement) {
   const test = /^\s*>\s?/;
-  transformLines(el, commit, (lines) => {
+  transformLines(el, (lines) => {
     const meaningful = lines.filter((l) => l.trim() !== '');
     const allSet =
       meaningful.length > 0 && meaningful.every((l) => test.test(l));
@@ -246,7 +244,7 @@ function toggleQuote(el: HTMLTextAreaElement, commit: Commit) {
 
 // --- Block insertion (code fence / table / rule / alignment / image) ------
 
-function insertBlock(el: HTMLTextAreaElement, commit: Commit, block: string) {
+function insertBlock(el: HTMLTextAreaElement, block: string) {
   const { value, start, end } = read(el);
   const before = value.slice(0, start);
   const after = value.slice(end);
@@ -264,18 +262,17 @@ function insertBlock(el: HTMLTextAreaElement, commit: Commit, block: string) {
         : '\n\n';
   const payload = `${leadGap}${block}${trailGap}`;
   const caret = start + leadGap.length + block.length;
-  replaceRange(el, commit, start, end, payload, caret, caret);
+  replaceRange(el, start, end, payload, caret, caret);
 }
 
-function codeBlock(el: HTMLTextAreaElement, commit: Commit) {
+function codeBlock(el: HTMLTextAreaElement) {
   const { selected } = read(el);
-  insertBlock(el, commit, '```\n' + (selected || '') + '\n```');
+  insertBlock(el, '```\n' + (selected || '') + '\n```');
 }
 
-function table(el: HTMLTextAreaElement, commit: Commit) {
+function table(el: HTMLTextAreaElement) {
   insertBlock(
     el,
-    commit,
     [
       '| Column | Column |',
       '| --- | --- |',
@@ -287,7 +284,6 @@ function table(el: HTMLTextAreaElement, commit: Commit) {
 
 function align(
   el: HTMLTextAreaElement,
-  commit: Commit,
   direction: 'left' | 'center' | 'right',
 ) {
   const { value, start, end } = read(el);
@@ -319,7 +315,6 @@ function align(
     `<div style="text-align:${direction}">\n\n`.length;
   replaceRange(
     el,
-    commit,
     lineStart,
     lineEnd,
     payload,
@@ -328,55 +323,50 @@ function align(
   );
 }
 
-function link(el: HTMLTextAreaElement, commit: Commit) {
+function link(el: HTMLTextAreaElement) {
   const { start, end, selected } = read(el);
   const text = selected || 'link text';
   const url = 'https://';
   const markup = `[${text}](${url})`;
   // Drop the caret onto the URL so it's ready to overwrite.
   const urlStart = start + `[${text}](`.length;
-  replaceRange(el, commit, start, end, markup, urlStart, urlStart + url.length);
+  replaceRange(el, start, end, markup, urlStart, urlStart + url.length);
 }
 
-function insertInline(
-  el: HTMLTextAreaElement,
-  commit: Commit,
-  snippet: string,
-) {
+function insertInline(el: HTMLTextAreaElement, snippet: string) {
   const { start, end } = read(el);
   const caret = start + snippet.length;
-  replaceRange(el, commit, start, end, snippet, caret, caret);
+  replaceRange(el, start, end, snippet, caret, caret);
 }
 
 export function makeEditorCommands(
   getEl: () => HTMLTextAreaElement | null,
-  commit: Commit,
 ): EditorCommands {
   const run = (fn: (el: HTMLTextAreaElement) => void) => {
     const el = getEl();
     if (el) fn(el);
   };
   return {
-    bold: () => run((el) => toggleWrap(el, commit, '**')),
-    italic: () => run((el) => toggleWrap(el, commit, '_')),
-    strike: () => run((el) => toggleWrap(el, commit, '~~')),
-    inlineCode: () => run((el) => toggleWrap(el, commit, '`')),
-    heading: (level) => run((el) => heading(el, commit, level)),
-    bulletList: () => run((el) => toggleList(el, commit, 'bullet')),
-    orderedList: () => run((el) => toggleList(el, commit, 'ordered')),
-    taskList: () => run((el) => toggleList(el, commit, 'task')),
-    quote: () => run((el) => toggleQuote(el, commit)),
-    codeBlock: () => run((el) => codeBlock(el, commit)),
-    divider: () => run((el) => insertBlock(el, commit, '---')),
-    table: () => run((el) => table(el, commit)),
-    link: () => run((el) => link(el, commit)),
-    align: (direction) => run((el) => align(el, commit, direction)),
-    insertBlock: (markup) => run((el) => insertBlock(el, commit, markup)),
-    insertInline: (snippet) => run((el) => insertInline(el, commit, snippet)),
+    bold: () => run((el) => toggleWrap(el, '**')),
+    italic: () => run((el) => toggleWrap(el, '_')),
+    strike: () => run((el) => toggleWrap(el, '~~')),
+    inlineCode: () => run((el) => toggleWrap(el, '`')),
+    heading: (level) => run((el) => heading(el, level)),
+    bulletList: () => run((el) => toggleList(el, 'bullet')),
+    orderedList: () => run((el) => toggleList(el, 'ordered')),
+    taskList: () => run((el) => toggleList(el, 'task')),
+    quote: () => run((el) => toggleQuote(el)),
+    codeBlock: () => run((el) => codeBlock(el)),
+    divider: () => run((el) => insertBlock(el, '---')),
+    table: () => run((el) => table(el)),
+    link: () => run((el) => link(el)),
+    align: (direction) => run((el) => align(el, direction)),
+    insertBlock: (markup) => run((el) => insertBlock(el, markup)),
+    insertInline: (snippet) => run((el) => insertInline(el, snippet)),
     replaceRange: (from, to, text, caret, caretEnd) =>
       run((el) => {
         const pos = caret ?? from + text.length;
-        replaceRange(el, commit, from, to, text, pos, caretEnd ?? pos);
+        replaceRange(el, from, to, text, pos, caretEnd ?? pos);
       }),
   };
 }

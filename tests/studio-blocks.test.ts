@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activeBlockSpan,
   blockAtOffset,
   continueBlockOnEnter,
   deleteBlock,
@@ -98,6 +99,24 @@ describe('parseBlocks', () => {
     expect(blocks[1]?.raw).toBe(html);
   });
 
+  // An opening tag with no closer is what every keystroke of `<div` looks like
+  // while it is still being typed, and what is left behind when a closing tag
+  // is deleted. Running to the end of the file would swallow the whole note
+  // into one block under the caret.
+  it('stops an unclosed HTML container at the first blank line', () => {
+    const blocks = parseBlocks(
+      '<div style="text-align:center">\nstill typing\n\nafter\n\n## a heading',
+    );
+    expect(blocks.map((block) => block.type)).toEqual([
+      'html',
+      'paragraph',
+      'heading',
+    ]);
+    expect(blocks[0]?.raw).toBe(
+      '<div style="text-align:center">\nstill typing',
+    );
+  });
+
   it('recognises a figure as an image block', () => {
     const blocks = parseBlocks(
       '<figure class="note-figure">\n  <img src="/a.png" alt="a">\n</figure>',
@@ -124,6 +143,39 @@ describe('spliceRange', () => {
     expect(next).toContain('> louder');
     // Everything else is byte-identical, fences and tables included.
     expect(next.replace('> louder', '> quoted')).toBe(NOTE);
+  });
+});
+
+// What sits in an open block is source, and source re-parses as it is typed.
+// The editor stands in for every block its range covers; any it does not take
+// out of the rendered column shows up underneath, mirroring the keystrokes.
+describe('activeBlockSpan', () => {
+  it('covers every block a range re-parsed into, not just the first', () => {
+    const doc = 'a paragraph\n- and a list';
+    const blocks = parseBlocks(doc);
+    expect(blocks.map((block) => block.type)).toEqual(['paragraph', 'list']);
+    expect(activeBlockSpan(blocks, { start: 0, end: doc.length })).toEqual({
+      first: 0,
+      last: 1,
+    });
+  });
+
+  it('is one block when the range is one block', () => {
+    const blocks = parseBlocks('one\n\ntwo\n\nthree');
+    expect(activeBlockSpan(blocks, { start: 5, end: 8 })).toEqual({
+      first: 1,
+      last: 1,
+    });
+  });
+
+  it('is none for a slot opened between blocks', () => {
+    // The blank run between two blocks belongs to neither of them.
+    const blocks = parseBlocks('one\n\n\n\ntwo');
+    expect(activeBlockSpan(blocks, { start: 5, end: 5 })).toBeNull();
+  });
+
+  it('is none without a range at all', () => {
+    expect(activeBlockSpan(parseBlocks('one'), null)).toBeNull();
   });
 });
 
@@ -289,6 +341,15 @@ describe('turnBlockInto', () => {
     expect(turnBlockInto('one\ntwo', { type: 'heading', depth: 1 })).toBe(
       '# one\ntwo',
     );
+  });
+
+  // A rule has no content to carry over, and it is one line however many the
+  // block had. Mapping it per line left a stack of them.
+  it('makes one divider out of a block of any height', () => {
+    expect(turnBlockInto('one\ntwo\nthree', { type: 'divider' })).toBe('---');
+    expect(
+      parseBlocks(turnBlockInto('one\ntwo', { type: 'divider' })),
+    ).toHaveLength(1);
   });
 });
 
