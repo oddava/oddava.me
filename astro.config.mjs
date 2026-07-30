@@ -60,6 +60,18 @@ export default defineConfig({
     define: {
       __SPOTIFY_WIDGET_ENABLED__: JSON.stringify(spotifyWidgetEnabled),
     },
+    // Admin/Studio islands import `preact/compat` (createPortal, memo). The
+    // Preact integration only prebundles compat when `compat: true` (React
+    // aliases). Without an explicit include, SSR can request a missing
+    // `deps_ssr/preact_compat.js` after a stale or partial optimize pass.
+    optimizeDeps: {
+      include: ['preact/compat'],
+    },
+    ssr: {
+      optimizeDeps: {
+        include: ['preact/compat'],
+      },
+    },
     server: {
       watch: {
         // src/content/notes is an export artifact, not a source: Studio writes

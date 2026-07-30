@@ -1,0 +1,52 @@
+---
+export const prerender = true;
+import Base from '@layouts/Base.astro';
+import { changelogBodyParagraphs, getChangelogEntries } from '../lib/changelog';
+import '../styles/components/_prose.css';
+import '../styles/components/_changelog.css';
+
+const entries = getChangelogEntries().map((entry) => ({
+  ...entry,
+  paragraphs: changelogBodyParagraphs(entry.body),
+}));
+---
+
+<Base
+  title="changelog"
+  description="what has landed on this site, newest first."
+>
+  <div class="changelog-page">
+    <h1>changelog</h1>
+
+    {
+      entries.length === 0 ? (
+        <p class="changelog-empty">nothing recorded yet.</p>
+      ) : (
+        <ol class="changelog-list">
+          {entries.map((entry) => (
+            <li class="changelog-entry">
+              <div class="changelog-entry__header">
+                <time class="changelog-entry__date" datetime={entry.date}>
+                  {entry.date}
+                </time>
+                <h2 class="changelog-entry__title">{entry.title}</h2>
+              </div>
+              <div class="changelog-entry__body">
+                {entry.paragraphs.map((lines) => (
+                  <p>
+                    {lines.map((line, index) => (
+                      <>
+                        {index > 0 && <br />}
+                        {line}
+                      </>
+                    ))}
+                  </p>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )
+    }
+  </div>
+</Base>

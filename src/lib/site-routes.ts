@@ -12,7 +12,11 @@ const PUBLIC_NAVIGATION_ROUTES = [
   { href: '/about', label: 'about', isHome: false },
 ] as const satisfies readonly PublicNavigationRoute[];
 
-const EXTRA_STATIC_SITEMAP_PATHS = ['/links', NOTES_GRAPH_PATH] as const;
+const EXTRA_STATIC_SITEMAP_PATHS = [
+  '/links',
+  '/changelog',
+  NOTES_GRAPH_PATH,
+] as const;
 
 export function getPublicNavigationRoutes(): PublicNavigationRoute[] {
   return PUBLIC_NAVIGATION_ROUTES.map((route) => ({ ...route }));
