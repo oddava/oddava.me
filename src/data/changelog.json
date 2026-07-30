@@ -1,11 +1,6 @@
 [
   {
     "date": "2026-07-30",
-    "title": "test",
-    "body": "test log"
-  },
-  {
-    "date": "2026-07-30",
     "title": "changelog",
     "body": "added a hand-authored changelog at /changelog."
   },
