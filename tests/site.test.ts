@@ -20,7 +20,12 @@ describe('site metadata helpers', () => {
     );
 
     expect(sitemapPaths).toEqual(
-      expect.arrayContaining([...navigationPaths, '/links', NOTES_GRAPH_PATH]),
+      expect.arrayContaining([
+        ...navigationPaths,
+        '/links',
+        '/changelog',
+        NOTES_GRAPH_PATH,
+      ]),
     );
     expect(NOTES_GRAPH_PATH).toBe('/notes/graph');
     expect(sitemapPaths).not.toContain('/likes');
