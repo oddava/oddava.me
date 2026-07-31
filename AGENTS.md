@@ -122,7 +122,7 @@ Lowercase subject, imperative mood, optional scope in parentheses.
     content provider, runtime note rendering, Redis-backed media route, or
     real-Redis integration coverage as dead code.
 - **Integrations** are a registry, not a set of special cases. Each third-party
-  connection (Spotify, Lanyard, Turnstile) is one `IntegrationDefinition` under
+  connection (Spotify, Lanyard) is one `IntegrationDefinition` under
   `src/lib/server/integrations/providers/`, listed in `registry.ts`. The
   definition declares its credential fields (env vars, in priority order) and a
   `check()`; everything else — enable/disable, status, the

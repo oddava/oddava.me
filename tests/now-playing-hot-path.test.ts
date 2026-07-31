@@ -87,7 +87,6 @@ describe('now playing hot path', () => {
     expect(command.slice(1)).toEqual([
       'integrations:enabled:spotify',
       'integrations:enabled:lanyard',
-      'integrations:enabled:turnstile',
       'integrations:settings',
       'admin:settings',
     ]);

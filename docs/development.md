@@ -13,7 +13,6 @@ REDIS_MODE=local
 LOCAL_REDIS_URL=redis://127.0.0.1:6379
 ADMIN_PANEL_TOKEN=<random admin password>
 COMMUNITY_SIGNING_SECRET=<long random secret>
-TURNSTILE_BYPASS_IN_DEV=true
 ```
 
 Redis is required, not optional. Notes live in the runtime content store in

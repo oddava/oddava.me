@@ -6,8 +6,6 @@ type RedisMode = 'local' | 'upstash';
 
 export const DEFAULT_FETCH_TIMEOUT_MS = 5000;
 export const DEFAULT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
-export const TURNSTILE_VERIFY_ENDPOINT =
-  'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
 const REDIS_API_URL = firstConfiguredSecret(
   getServerEnv('UPSTASH_REDIS_REST_URL'),
@@ -19,11 +17,6 @@ const REDIS_API_TOKEN = firstConfiguredSecret(
 );
 const LOCAL_REDIS_URL =
   getServerEnv('LOCAL_REDIS_URL') ?? 'redis://127.0.0.1:6379';
-const TURNSTILE_SECRET_KEY = firstConfiguredSecret(
-  getServerEnv('TURNSTILE_SECRET_KEY'),
-);
-const TURNSTILE_BYPASS_IN_DEV =
-  getServerEnv('TURNSTILE_BYPASS_IN_DEV') === 'true';
 
 const APP_ENV: AppEnv =
   getServerEnv('APP_ENV') === 'production' ||
@@ -52,14 +45,6 @@ export function getLocalRedisUrl(): string {
   return LOCAL_REDIS_URL;
 }
 
-export function getTurnstileSecretKey(): string | undefined {
-  return TURNSTILE_SECRET_KEY;
-}
-
-export function getTurnstileSiteKey(): string | undefined {
-  return firstConfiguredSecret(getServerEnv('PUBLIC_TURNSTILE_SITE_KEY'));
-}
-
 export function getSigningSecret(): string {
   const secret = firstConfiguredSecret(
     getServerEnv('COMMUNITY_SIGNING_SECRET'),
@@ -86,10 +71,6 @@ export function shouldUseLocalRedis(): boolean {
   return REDIS_MODE === 'local';
 }
 
-export function isTurnstileBypassEnabled(): boolean {
-  return isDevelopmentEnv() && TURNSTILE_BYPASS_IN_DEV;
-}
-
 export function getStorageNamespacePrefix(): string {
   return isDevelopmentEnv() ? 'dev:' : '';
 }
@@ -97,9 +78,5 @@ export function getStorageNamespacePrefix(): string {
 export function logRuntimeEnvironment(): void {
   if (environmentLogged) return;
   environmentLogged = true;
-  console.info(
-    `[runtime] APP_ENV=${APP_ENV} REDIS_MODE=${REDIS_MODE} TURNSTILE_BYPASS_IN_DEV=${
-      isTurnstileBypassEnabled() ? 'true' : 'false'
-    }`,
-  );
+  console.info(`[runtime] APP_ENV=${APP_ENV} REDIS_MODE=${REDIS_MODE}`);
 }

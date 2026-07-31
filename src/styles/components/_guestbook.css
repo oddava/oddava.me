@@ -77,19 +77,6 @@
   color: var(--color-text-muted);
 }
 
-.guestbook__captcha {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.guestbook__captcha-hint {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  text-transform: lowercase;
-  color: var(--color-text-muted);
-}
-
 .guestbook__submit {
   justify-self: start;
   font-family: var(--font-mono);

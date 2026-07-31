@@ -24,9 +24,3 @@ export {
   rejectIfSigningUnavailable,
 } from './core/signing';
 export { sanitizePlainText } from './core/sanitize';
-export {
-  getTurnstileSiteKey,
-  hasTurnstileConfig,
-  isTurnstileChallengeRequired,
-  verifyTurnstileToken,
-} from './core/turnstile';

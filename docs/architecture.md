@@ -16,8 +16,8 @@ domain services and repositories
   admin · content · guestbook · integrations · now-playing
         ↓
 core (`src/lib/server/core.ts`)
-  environment, HTTP, request, signing, rate-limit, Turnstile,
-  and Redis primitives
+  environment, HTTP, request, signing, rate-limit, and Redis
+  primitives
 ```
 
 Route files import a domain barrel instead of reaching into its internals.
@@ -133,9 +133,9 @@ require a same-origin `Origin` or `Referer`.
 
 ### Core and guestbook
 
-`core` owns the shared HTTP, request, signing, rate-limit, Turnstile, and Redis
-primitives that the other domains build on. `guestbook` owns entry
-normalization, moderation state, and atomic Redis persistence.
+`core` owns the shared HTTP, request, signing, rate-limit, and Redis primitives
+that the other domains build on. `guestbook` owns entry normalization,
+moderation state, and atomic Redis persistence.
 
 Two names outlive the rename on purpose, because both are deployed state rather
 than code: the `COMMUNITY_SIGNING_SECRET` environment variable, and the

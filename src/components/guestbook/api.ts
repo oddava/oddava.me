@@ -4,14 +4,11 @@ import type {
 } from '../../lib/contracts';
 
 interface GuestbookState {
-  captchaRequired: boolean;
   entries: PublicGuestbookEntry[];
-  turnstileSiteKey: string;
   writable: boolean;
 }
 
 interface SubmitGuestbookEntryInput {
-  captchaToken: string;
   message: string;
   name: string;
 }
@@ -64,15 +61,12 @@ export async function fetchGuestbookState(): Promise<GuestbookState> {
   }
 
   return {
-    captchaRequired: Boolean(data.captchaRequired && data.turnstileSiteKey),
     entries: data.entries,
-    turnstileSiteKey: data.turnstileSiteKey ?? '',
     writable: data.writable !== false,
   };
 }
 
 export async function submitGuestbookEntry({
-  captchaToken,
   message,
   name,
 }: SubmitGuestbookEntryInput): Promise<string> {
@@ -82,7 +76,6 @@ export async function submitGuestbookEntry({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      captchaToken,
       message,
       name,
     }),

@@ -1,6 +1,5 @@
 import { lanyardIntegration } from './providers/lanyard';
 import { spotifyIntegration } from './providers/spotify';
-import { turnstileIntegration } from './providers/turnstile';
 import type { IntegrationDefinition } from './types';
 
 /**
@@ -12,7 +11,6 @@ import type { IntegrationDefinition } from './types';
 export const INTEGRATIONS: readonly IntegrationDefinition[] = [
   spotifyIntegration,
   lanyardIntegration,
-  turnstileIntegration,
 ];
 
 const BY_ID = new Map<string, IntegrationDefinition>(

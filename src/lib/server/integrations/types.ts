@@ -7,7 +7,7 @@ import type { RuntimeEnvName } from '../env';
 
 export type { CredentialFieldStatus } from '../../contracts';
 
-export type IntegrationId = 'spotify' | 'lanyard' | 'turnstile';
+export type IntegrationId = 'spotify' | 'lanyard';
 
 export interface CredentialFieldDefinition extends Omit<
   CredentialField,
