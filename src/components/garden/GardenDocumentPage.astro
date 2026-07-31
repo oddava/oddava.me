@@ -37,6 +37,33 @@ const isStub = !rendered.html && document.childIds.length === 0;
 ---
 
 <div class="garden-document-layout">
+  {
+    /* Rail first in the tree so the wide layout can pin it left without
+       fighting source-order placement. On narrow screens grid areas still
+       stack the article above it. */
+  }
+  <aside class="note-context" aria-label={`Context for ${document.title}`}>
+    <div class="note-context__inner">
+      <NoteTableOfContents headings={tocHeadings} variant="rail" />
+      <RelatedNotes document={document} index={index} />
+      {
+        /* Any note with a neighbourhood — see `hasLocalMap`, which the
+           landscape's "nearby" link asks too so it never points at a
+           missing anchor.
+
+           Inbound links live here and nowhere else. A standalone Backlinks
+           section above this one listed the same notes the reference lane
+           draws — including the parent, which the trunk had already claimed,
+           so a folder's own name appeared twice in the rail a few rows apart.
+           `Related` does not collide the same way: `getRelatedNotes` already
+           excludes the parent, children, and everything linked either way. */
+        hasLocalMap(document, index) && (
+          <LocalNoteMap document={document} index={index} />
+        )
+      }
+    </div>
+  </aside>
+
   <article class="garden-document">
     {
       /* Sits at the top right of the reading column, where the old header kept
@@ -81,26 +108,4 @@ const isStub = !rendered.html && document.childIds.length === 0;
       )
     }
   </article>
-
-  <aside class="note-context" aria-label={`Context for ${document.title}`}>
-    <div class="note-context__inner">
-      <NoteTableOfContents headings={tocHeadings} variant="rail" />
-      <RelatedNotes document={document} index={index} />
-      {
-        /* Any note with a neighbourhood — see `hasLocalMap`, which the
-           landscape's "bearings" link asks too so it never points at a
-           missing anchor.
-
-           Inbound links live here and nowhere else. A standalone Backlinks
-           section above this one listed the same notes the reference lane
-           draws — including the parent, which the trunk had already claimed,
-           so a folder's own name appeared twice in the rail a few rows apart.
-           `Related` does not collide the same way: `getRelatedNotes` already
-           excludes the parent, children, and everything linked either way. */
-        hasLocalMap(document, index) && (
-          <LocalNoteMap document={document} index={index} />
-        )
-      }
-    </div>
-  </aside>
 </div>

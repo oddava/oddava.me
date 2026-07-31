@@ -1341,7 +1341,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
                 className="knowledge-landscape__local-map"
                 href={cardPlace.localMapHref}
               >
-                bearings <span aria-hidden="true">↙</span>
+                nearby <span aria-hidden="true">↙</span>
               </a>
             )}
           </div>

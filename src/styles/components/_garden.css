@@ -162,21 +162,27 @@
   color: var(--color-text-muted);
 }
 
-/* The reading column stays centred on the page; the rail occupies the gutter
-   beside it. Symmetric side tracks are what keep the article centred — a
-   two-track grid would centre article+rail together and pull the prose left.
-   Below the two-column breakpoint the rail is just the next block in source
-   order, so there is no positioning to undo. */
+/* The reading column stays centred; the rail sits in the left gutter. Named
+   areas keep that true regardless of source order — on narrow screens the
+   article stacks above the rail; from 78rem the rail is left of the prose. */
 .garden-document-layout {
   display: grid;
   grid-template-columns: minmax(0, 44rem);
+  grid-template-areas:
+    'article'
+    'rail';
   justify-content: center;
   align-items: start;
   column-gap: 2.5rem;
 }
 
 .garden-document {
+  grid-area: article;
   min-width: 0;
+}
+
+.note-context {
+  grid-area: rail;
 }
 
 /* Fallback title when the body doesn't open with its own h1 — sized like the
@@ -276,7 +282,7 @@
 }
 
 /* Per-note context trails the article on narrow screens, and becomes the
-   right-hand rail wherever two calm columns fit. On mobile it stays flush
+   left-hand rail wherever two calm columns fit. On mobile it stays flush
    with the page (no raised card chrome) — section rules do the dividing.
    Order is by usefulness while reading: this page → this folder → what
    connects here → the map that summarises those connections. */
@@ -395,8 +401,8 @@
    `_local-map.css`, imported by the component. */
 
 /* Two calm columns. A centred 44rem column with a rail beside it needs
-   44 + 2 × (gap + rail) of room, because the left gutter has to mirror the
-   right one for the prose to stay centred — so 78rem is the honest gate. */
+   44 + 2 × (gap + rail) of room, because the right gutter has to mirror the
+   left one for the prose to stay centred — so 78rem is the honest gate. */
 @media (min-width: 78rem) {
   /* Break out of the 70rem page shell: inside it the gutters are only ~13rem
      and the rail ends up pinned against the viewport edge. Scoped to pages
@@ -408,21 +414,19 @@
 
   .garden-document-layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 44rem) minmax(0, 1fr);
-  }
-
-  .garden-document {
-    grid-column: 2;
+    grid-template-areas: 'rail article .';
   }
 
   /* Sticky on the grid item itself — not a nested wrapper. A sticky child can
      only travel inside its parent; when the parent is only as tall as the rail
-     content, sticky never activates and the rail scrolls away with the page. */
+     content, sticky never activates and the rail scrolls away with the page.
+     End-aligned in the left track so it sits against the prose, not the
+     viewport edge. */
   .note-context {
     position: sticky;
     top: 1.5rem;
-    grid-column: 3;
     align-self: start;
-    justify-self: start;
+    justify-self: end;
     width: min(100%, 15rem);
     max-height: calc(100dvh - 3rem);
     margin: 0;
@@ -442,13 +446,13 @@
 
   /* Cap the rail to the viewport. The rail itself never scrolls — a second
      scrollbar beside the article is noise. When the column is tight, list
-     sections (contents, related) shrink and scroll their lists; the bearings
+     sections (contents, related) shrink and scroll their lists; the nearby
      map stays full height so the drawing is never clipped mid-diagram. */
   .note-context__inner {
     display: flex;
     flex-direction: column;
     max-height: inherit;
-    padding: 0.2rem 0.45rem 0.2rem 0.15rem;
+    padding: 0.2rem 0.15rem 0.2rem 0.45rem;
     overflow: hidden;
   }
 
