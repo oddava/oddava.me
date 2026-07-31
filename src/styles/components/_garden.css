@@ -414,12 +414,22 @@
     grid-column: 2;
   }
 
-  /* Sits at the inner edge of the right gutter so it reads as attached to the
-     article, not adrift against the window. */
+  /* Sticky on the grid item itself — not a nested wrapper. A sticky child can
+     only travel inside its parent; when the parent is only as tall as the rail
+     content, sticky never activates and the rail scrolls away with the page. */
   .note-context {
+    position: sticky;
+    top: 1.5rem;
     grid-column: 3;
+    align-self: start;
     justify-self: start;
     width: min(100%, 15rem);
+    max-height: calc(100dvh - 3rem);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    overflow: hidden;
   }
 
   .note-toc--mobile {
@@ -430,26 +440,14 @@
     display: block;
   }
 
-  /* The card framing is for the mobile stack; in the rail the sections stand
-     on their own and a second box would only fight the article's edge. */
-  .note-context {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-  }
-
-  /* Sticky rail capped to the viewport. The rail itself never scrolls — a
-     second scrollbar beside the article is noise, and overflowing the fold
-     hid the last sections. When the column is tight, list sections
-     (contents, related) shrink and scroll their lists; the bearings map
-     stays full height so the drawing is never clipped mid-diagram. */
+  /* Cap the rail to the viewport. The rail itself never scrolls — a second
+     scrollbar beside the article is noise. When the column is tight, list
+     sections (contents, related) shrink and scroll their lists; the bearings
+     map stays full height so the drawing is never clipped mid-diagram. */
   .note-context__inner {
-    position: sticky;
-    top: 1.5rem;
     display: flex;
     flex-direction: column;
-    max-height: calc(100dvh - 3rem);
+    max-height: inherit;
     padding: 0.2rem 0.45rem 0.2rem 0.15rem;
     overflow: hidden;
   }
