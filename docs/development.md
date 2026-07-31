@@ -95,8 +95,10 @@ checks.
 
 ## Troubleshooting
 
-- Port `45555` busy: stop the previous dev process or set
-  `LOCAL_REDIS_PROXY_PORT` and keep the Worker-side value identical.
+- Local Redis proxy port busy: stop the previous dev process or set
+  `LOCAL_REDIS_PROXY_PORT` (default `18765`) and keep the Worker-side value
+  identical. On Windows, avoid ~45000–48000 — Hyper-V/WSL often reserves that
+  band, which makes bind fail with EADDRINUSE while nothing is listening.
 - Studio unavailable: confirm `REDIS_MODE`, the target Redis credentials,
   and that the content store has been seeded with `pnpm run notes:migrate`.
 - Redis-backed feature unavailable: confirm Redis is listening at

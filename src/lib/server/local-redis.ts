@@ -7,7 +7,10 @@ let client: RedisClientType | null = null;
 let clientUrl: string | null = null;
 let connection: Promise<RedisClientType> | null = null;
 
-const DEFAULT_LOCAL_REDIS_PROXY_PORT = 45555;
+// Keep in sync with vite/local-redis-dev-proxy.mjs. Avoid the high 45xxx band:
+// on Windows, Hyper-V/WSL often reserves ~45000–48000 so bind fails with
+// EADDRINUSE while nothing is listening — notes then 500.
+const DEFAULT_LOCAL_REDIS_PROXY_PORT = 18765;
 const LOCAL_REDIS_PROXY_TIMEOUT_MS = 3_000;
 
 function getLocalRedisDevProxyUrl(): string {

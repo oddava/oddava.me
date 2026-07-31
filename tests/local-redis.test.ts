@@ -50,7 +50,7 @@ describe('local Redis transport selection', () => {
     vi.stubEnv('DEV', true);
     vi.stubEnv('VITEST', '');
     vi.stubEnv('LOCAL_REDIS_PROXY_TOKEN', 'configured-proxy-token');
-    vi.stubEnv('LOCAL_REDIS_PROXY_PORT', '45555');
+    vi.stubEnv('LOCAL_REDIS_PROXY_PORT', '18765');
     vi.stubEnv('LOCAL_REDIS_PROXY_URL', '');
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
@@ -63,7 +63,7 @@ describe('local Redis transport selection', () => {
     ).resolves.toBe('PONG');
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      'http://localhost:45555/__local_redis',
+      'http://localhost:18765/__local_redis',
       expect.objectContaining({ method: 'POST' }),
     );
   });

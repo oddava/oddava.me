@@ -3,8 +3,8 @@
  * during `astro dev`.
  *
  * Without this, proxy sockets keep the Node event loop alive after Ctrl+C /
- * terminal close, which leaves an "abandoned" listener on 45555 (and sometimes
- * the main dev port).
+ * terminal close, which leaves an "abandoned" listener on the local Redis
+ * proxy port (and sometimes the main dev port).
  */
 
 /**
@@ -65,20 +65,37 @@ export function registerDevProxyCleanup(viteServer, cleanup) {
 
 /**
  * Close an HTTP server and drop active connections (Node 18.2+).
+ * Resolves once the port is released so a reconfigure can re-bind safely.
  * @param {import('node:http').Server | null | undefined} server
+ * @returns {Promise<void>}
  */
 export function closeHttpServer(server) {
-  if (!server) return;
-  try {
-    if (typeof server.closeAllConnections === 'function') {
-      server.closeAllConnections();
+  if (!server) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    try {
+      if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections();
+      }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
-  }
-  try {
-    server.close();
-  } catch {
-    /* already closed */
-  }
+
+    try {
+      server.close(done);
+    } catch {
+      done();
+      return;
+    }
+
+    // close() may never call back if the server never finished listening.
+    setTimeout(done, 500);
+  });
 }
