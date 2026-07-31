@@ -9,8 +9,6 @@ export interface GuestbookApiResponse {
   entries?: PublicGuestbookEntry[];
   writable?: boolean;
   reviewRequired?: boolean;
-  captchaRequired?: boolean;
-  turnstileSiteKey?: string;
   submitted?: boolean;
   status?: GuestbookStatus;
   message?: string;

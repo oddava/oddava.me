@@ -202,7 +202,7 @@ describe('integration enablement', () => {
   const manageable = definition;
   const alwaysOn: IntegrationDefinition = {
     ...definition,
-    id: 'turnstile',
+    id: 'lanyard',
     manageable: false,
   };
 
@@ -212,21 +212,21 @@ describe('integration enablement', () => {
 
     expect(await getEnabledMap([manageable, alwaysOn])).toEqual({
       spotify: true,
-      turnstile: true,
+      lanyard: true,
     });
   });
 
   it('ignores malformed enablement values', async () => {
     mockRedis({
       'integrations:settings': JSON.stringify({
-        enabled: { spotify: 'no', turnstile: true },
+        enabled: { spotify: 'no', lanyard: true },
       }),
     });
     const { getEnabledMap } = await importStore();
 
     expect(await getEnabledMap([manageable, alwaysOn])).toEqual({
       spotify: true,
-      turnstile: true,
+      lanyard: true,
     });
   });
 
@@ -260,16 +260,16 @@ describe('integration enablement', () => {
 
   it('cannot disable a non-manageable integration, even from stored state', async () => {
     // A stale or tampered settings blob must not be able to switch off a
-    // security control that the UI never exposes a switch for.
+    // control that the UI never exposes a switch for.
     mockRedis({
       'integrations:settings': JSON.stringify({
-        enabled: { turnstile: false },
+        enabled: { lanyard: false },
       }),
     });
 
     const { getEnabledMap } = await importStore();
 
-    expect((await getEnabledMap([alwaysOn])).turnstile).toBe(true);
+    expect((await getEnabledMap([alwaysOn])).lanyard).toBe(true);
   });
 
   it('adopts the legacy settings key', async () => {

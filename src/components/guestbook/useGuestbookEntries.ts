@@ -9,16 +9,12 @@ export function useGuestbookEntries() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [writable, setWritable] = useState(true);
-  const [captchaRequired, setCaptchaRequired] = useState(false);
-  const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
 
   const refreshEntries = useCallback(async () => {
     try {
       const data = await fetchGuestbookState();
       setEntries(data.entries);
       setWritable(data.writable);
-      setTurnstileSiteKey(data.turnstileSiteKey);
-      setCaptchaRequired(data.captchaRequired);
       setError(null);
     } catch (loadError) {
       setError(
@@ -27,16 +23,9 @@ export function useGuestbookEntries() {
           : 'Could not load guestbook messages.',
       );
       setWritable(false);
-      setCaptchaRequired(false);
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const markPostingUnavailable = useCallback((message: string) => {
-    setWritable(false);
-    setCaptchaRequired(false);
-    setError(message);
   }, []);
 
   useEffect(() => {
@@ -81,14 +70,11 @@ export function useGuestbookEntries() {
   }, [refreshEntries]);
 
   return {
-    captchaRequired,
     entries,
     error,
     loading,
-    markPostingUnavailable,
     refreshEntries,
     setError,
-    turnstileSiteKey,
     writable,
   };
 }

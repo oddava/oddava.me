@@ -25,15 +25,15 @@ export default defineConfig({
       directives: [
         "default-src 'self'",
         "base-uri 'self'",
-        "connect-src 'self' https://challenges.cloudflare.com",
+        "connect-src 'self'",
         "font-src 'self'",
         "form-action 'self'",
-        'frame-src https://challenges.cloudflare.com',
+        "frame-src 'none'",
         "img-src 'self' data: https:",
         "object-src 'none'",
       ],
       scriptDirective: {
-        resources: ["'self'", 'https://challenges.cloudflare.com'],
+        resources: ["'self'"],
       },
       styleDirective: {
         resources: ["'self'"],
@@ -60,16 +60,36 @@ export default defineConfig({
     define: {
       __SPOTIFY_WIDGET_ENABLED__: JSON.stringify(spotifyWidgetEnabled),
     },
-    // Admin/Studio islands import `preact/compat` (createPortal, memo). The
-    // Preact integration only prebundles compat when `compat: true` (React
-    // aliases). Without an explicit include, SSR can request a missing
-    // `deps_ssr/preact_compat.js` after a stale or partial optimize pass.
+    // Preact islands (Guestbook, Studio, Spotify) pull several entry points.
+    // Vite's SSR optimizer is partial by default: after a config change it may
+    // re-hash and leave `deps_ssr/preact_*.js` missing until a cold re-scan,
+    // which surfaces as "file does not exist … optimize deps directory" on the
+    // first island page hit. Pin the full surface used in dev SSR so the
+    // prebundle is complete up front. `preact/compat` is required by Studio
+    // (createPortal, memo) even without `compat: true` React aliases.
     optimizeDeps: {
-      include: ['preact/compat'],
+      include: [
+        'preact',
+        'preact/hooks',
+        'preact/compat',
+        'preact/jsx-runtime',
+        'preact/jsx-dev-runtime',
+        'preact/debug',
+        'preact/devtools',
+      ],
     },
     ssr: {
       optimizeDeps: {
-        include: ['preact/compat'],
+        include: [
+          'preact',
+          'preact/hooks',
+          'preact/compat',
+          'preact/jsx-runtime',
+          'preact/jsx-dev-runtime',
+          'preact/debug',
+          'preact/devtools',
+          'preact-render-to-string',
+        ],
       },
     },
     server: {

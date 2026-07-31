@@ -2,49 +2,23 @@ import '../styles/components/_guestbook.css';
 import { useCallback, useMemo, useState } from 'preact/hooks';
 import { useGuestbookEntries } from './guestbook/useGuestbookEntries';
 import { useGuestbookSubmit } from './guestbook/useGuestbookSubmit';
-import { useTurnstile } from './guestbook/useTurnstile';
 import { SkeletonRow } from './admin/Skeleton';
 
 const MAX_MESSAGE_LENGTH = 280;
 const INITIAL_VISIBLE_ENTRIES = 12;
 
 export function Guestbook() {
-  const {
-    captchaRequired,
-    entries,
-    error,
-    loading,
-    refreshEntries,
-    setError,
-    turnstileSiteKey,
-    writable,
-    markPostingUnavailable,
-  } = useGuestbookEntries();
+  const { entries, error, loading, refreshEntries, setError, writable } =
+    useGuestbookEntries();
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
-  const handleTurnstileError = useCallback(
-    () =>
-      markPostingUnavailable(
-        'Guestbook posting is unavailable because bot verification could not load.',
-      ),
-    [markPostingUnavailable],
-  );
-  const { captchaToken, resetCaptcha, widgetContainerRef, widgetLoading } =
-    useTurnstile({
-      enabled: captchaRequired && writable,
-      onError: handleTurnstileError,
-      siteKey: turnstileSiteKey,
-    });
   const [showAllEntries, setShowAllEntries] = useState(false);
   const handleAfterSubmit = useCallback(async () => {
     setMessage('');
-    resetCaptcha();
     await refreshEntries();
-  }, [refreshEntries, resetCaptcha]);
+  }, [refreshEntries]);
   const { notice, setNotice, submitEntry, submitting } = useGuestbookSubmit({
-    captchaToken,
     onAfterSubmit: handleAfterSubmit,
-    onFailedSubmit: resetCaptcha,
     setError,
   });
 
@@ -107,23 +81,10 @@ export function Guestbook() {
             <span className="sr-only"> characters remaining</span>
           </span>
         </label>
-        {captchaRequired && writable && (
-          <div className="guestbook__captcha">
-            <div ref={widgetContainerRef} />
-            {widgetLoading && (
-              <p className="guestbook__captcha-hint">loading spam check…</p>
-            )}
-          </div>
-        )}
         <button
           className="guestbook__submit"
           type="submit"
-          disabled={
-            submitting ||
-            !message.trim() ||
-            !writable ||
-            (captchaRequired && !captchaToken)
-          }
+          disabled={submitting || !message.trim() || !writable}
         >
           {submitting ? 'posting...' : 'submit'}
         </button>

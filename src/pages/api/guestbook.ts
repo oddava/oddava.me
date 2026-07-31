@@ -5,16 +5,12 @@ import {
   enforceRedisRateLimit,
   hasSigningSecret,
   hasRedisConfig,
-  hasTurnstileConfig,
-  getTurnstileSiteKey,
-  isTurnstileChallengeRequired,
   isStorageUnavailableError,
   json,
   readJsonBody,
   rejectIfSigningUnavailable,
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
-  verifyTurnstileToken,
 } from '../../lib/server/core';
 import {
   appendGuestbookEntry,
@@ -35,11 +31,8 @@ export const GET: APIRoute = async () => {
     return json(
       {
         entries,
-        writable:
-          hasRedisConfig() && hasTurnstileConfig() && hasSigningSecret(),
+        writable: hasRedisConfig() && hasSigningSecret(),
         reviewRequired: true,
-        captchaRequired: isTurnstileChallengeRequired(),
-        turnstileSiteKey: getTurnstileSiteKey(),
       },
       { status: 200 },
     );
@@ -51,8 +44,6 @@ export const GET: APIRoute = async () => {
           entries: [],
           writable: false,
           reviewRequired: true,
-          captchaRequired: isTurnstileChallengeRequired(),
-          turnstileSiteKey: getTurnstileSiteKey(),
         },
         { status: 200 },
       );
@@ -77,18 +68,6 @@ export const POST: APIRoute = async ({ request }) => {
   const signingUnavailable = rejectIfSigningUnavailable();
   if (signingUnavailable) return signingUnavailable;
 
-  const captchaUnavailable = !hasTurnstileConfig()
-    ? json(
-        {
-          error:
-            'Guestbook posting is temporarily unavailable because bot protection is not configured.',
-          code: 'captcha_unavailable',
-        },
-        { status: 503 },
-      )
-    : null;
-  if (captchaUnavailable) return captchaUnavailable;
-
   const rateLimitError = await enforceRedisRateLimit(
     request,
     'guestbook-post',
@@ -97,20 +76,16 @@ export const POST: APIRoute = async ({ request }) => {
   );
   if (rateLimitError) return rateLimitError;
 
-  let body: { name?: string; message?: string; captchaToken?: string };
+  let body: { name?: string; message?: string };
 
   try {
     body = await readJsonBody<{
       name?: string;
       message?: string;
-      captchaToken?: string;
     }>(request);
   } catch (error) {
     return requestBodyErrorResponse(error);
   }
-
-  const captchaError = await verifyTurnstileToken(request, body.captchaToken);
-  if (captchaError) return captchaError;
 
   const name = sanitizePlainText(body.name ?? '', NAME_MAX_LENGTH) || 'anon';
   const message = sanitizePlainText(body.message ?? '', MESSAGE_MAX_LENGTH);

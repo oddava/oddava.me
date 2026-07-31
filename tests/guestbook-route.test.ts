@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // Route-level coverage for the site's only anonymous write path. The individual
-// helpers (sanitize, turnstile, storage) are unit-tested elsewhere; what only a
-// route test can pin is the ORDER of the guard chain — notably that the rate
-// limit runs before Turnstile verification, so a token-less flood cannot bypass
-// throttling, and that validation runs on the sanitized value.
+// helpers (sanitize, storage) are unit-tested elsewhere; what only a route test
+// can pin is the ORDER of the guard chain — notably that the rate limit runs
+// before message validation, so a flood cannot bypass throttling, and that
+// validation runs on the sanitized value.
 
 const ORIGIN = 'https://oddava.me';
 
@@ -18,15 +18,11 @@ function post(body: unknown, origin = ORIGIN): Request {
 
 interface Overrides {
   enforceRedisRateLimit?: () => Promise<Response | null>;
-  verifyTurnstileToken?: () => Promise<Response | null>;
 }
 
 async function loadRoute(overrides: Overrides = {}) {
   const enforceRedisRateLimit = vi.fn(
     overrides.enforceRedisRateLimit ?? (async () => null),
-  );
-  const verifyTurnstileToken = vi.fn(
-    overrides.verifyTurnstileToken ?? (async () => null),
   );
 
   // Keep the real json/sanitize/body helpers; only the environment- and
@@ -35,13 +31,9 @@ async function loadRoute(overrides: Overrides = {}) {
     ...(await importOriginal<typeof import('../src/lib/server/core')>()),
     hasRedisConfig: () => true,
     hasSigningSecret: () => true,
-    hasTurnstileConfig: () => true,
-    isTurnstileChallengeRequired: () => true,
-    getTurnstileSiteKey: () => 'site-key',
     rejectIfStorageUnavailable: () => null,
     rejectIfSigningUnavailable: () => null,
     enforceRedisRateLimit,
-    verifyTurnstileToken,
   }));
 
   const appendGuestbookEntry = vi.fn(async () => {});
@@ -67,7 +59,6 @@ async function loadRoute(overrides: Overrides = {}) {
   return {
     POST,
     enforceRedisRateLimit,
-    verifyTurnstileToken,
     appendGuestbookEntry,
   };
 }
@@ -79,9 +70,8 @@ describe('guestbook POST route', () => {
     vi.unstubAllEnvs();
   });
 
-  it('rejects a cross-origin submission before any rate-limit or captcha work', async () => {
-    const { POST, enforceRedisRateLimit, verifyTurnstileToken } =
-      await loadRoute();
+  it('rejects a cross-origin submission before any rate-limit work', async () => {
+    const { POST, enforceRedisRateLimit } = await loadRoute();
 
     const response = await POST({
       request: post({ message: 'hello world' }, 'https://evil.example'),
@@ -89,52 +79,43 @@ describe('guestbook POST route', () => {
 
     expect(response.status).toBe(403);
     expect(enforceRedisRateLimit).not.toHaveBeenCalled();
-    expect(verifyTurnstileToken).not.toHaveBeenCalled();
   });
 
-  it('verifies Turnstile only after the rate limit, so a token-less flood is throttled', async () => {
-    const { POST, verifyTurnstileToken, appendGuestbookEntry } =
-      await loadRoute({
-        enforceRedisRateLimit: async () =>
-          Response.json({ code: 'rate_limited' }, { status: 429 }),
-      });
+  it('throttles floods at the rate limit before message validation', async () => {
+    const { POST, appendGuestbookEntry } = await loadRoute({
+      enforceRedisRateLimit: async () =>
+        Response.json({ code: 'rate_limited' }, { status: 429 }),
+    });
 
     const response = await POST({
-      request: post({ message: 'hello world', captchaToken: 'tok' }),
+      request: post({ message: 'hello world' }),
     } as never);
 
     expect(response.status).toBe(429);
-    expect(verifyTurnstileToken).not.toHaveBeenCalled();
     expect(appendGuestbookEntry).not.toHaveBeenCalled();
   });
 
   it('rejects a whitespace-only message on the sanitized value', async () => {
-    const { POST, verifyTurnstileToken, appendGuestbookEntry } =
-      await loadRoute();
+    const { POST, appendGuestbookEntry } = await loadRoute();
 
     const response = await POST({
-      request: post({ message: '   ', captchaToken: 'tok' }),
+      request: post({ message: '   ' }),
     } as never);
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       code: 'message_required',
     });
-    // The captcha is still verified first — the token is consumed even on a
-    // rejected message, which is exactly why the client resets it on failure.
-    expect(verifyTurnstileToken).toHaveBeenCalledOnce();
     expect(appendGuestbookEntry).not.toHaveBeenCalled();
   });
 
-  it('accepts a valid submission as pending after verifying the captcha', async () => {
-    const { POST, verifyTurnstileToken, appendGuestbookEntry } =
-      await loadRoute();
+  it('accepts a valid submission as pending', async () => {
+    const { POST, appendGuestbookEntry } = await loadRoute();
 
     const response = await POST({
       request: post({
         name: 'Ada',
         message: 'hello from the test',
-        captchaToken: 'tok',
       }),
     } as never);
 
@@ -143,7 +124,6 @@ describe('guestbook POST route', () => {
       submitted: true,
       status: 'pending',
     });
-    expect(verifyTurnstileToken).toHaveBeenCalledOnce();
     expect(appendGuestbookEntry).toHaveBeenCalledOnce();
   });
 });

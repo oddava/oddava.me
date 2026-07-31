@@ -25,7 +25,7 @@ it, because it meant the code serving real visitors was the code I tested least.
 
 ## Integrations
 
-Spotify, Lanyard and Turnstile each get one file in
+Spotify and Lanyard each get one file in
 `src/lib/server/integrations/providers`. The file says which env vars it needs
 and how to check whether it's up. The registry handles everything else: enabling,
 disabling, status, the admin UI. Adding a service is writing one definition
@@ -42,8 +42,7 @@ checks it stays that way.
 
 ## Other bits
 
-Guestbook entries are signed, rate limited, checked by Turnstile, stored in
-Redis.
+Guestbook entries are signed, rate limited, moderated, and stored in Redis.
 
 Admin is a token login. Every mutation checks the origin and uses a revision
 compare-and-set, so two open tabs can't overwrite each other. A content version

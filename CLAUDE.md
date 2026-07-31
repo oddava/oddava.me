@@ -117,23 +117,22 @@ watching it would mean a full reload per file for no change on screen.
 
 ### Integrations are a registry, not special cases
 
-Each third-party connection (Spotify, Lanyard, Turnstile) is one
-`IntegrationDefinition` under `src/lib/server/integrations/providers/`, listed in
-`registry.ts`, declaring its credential fields (env vars, in priority order) and
-a bounded `check()`. Enable/disable, status, the `/api/admin/integrations`
-routes, and the admin UI are all generic. Adding a provider means a definition, a
-registry entry, and tests — never provider-specific routes, forms, Redis keys, or
-status components.
+Each third-party connection (Spotify, Lanyard) is one `IntegrationDefinition`
+under `src/lib/server/integrations/providers/`, listed in `registry.ts`,
+declaring its credential fields (env vars, in priority order) and a bounded
+`check()`. Enable/disable, status, the `/api/admin/integrations` routes, and the
+admin UI are all generic. Adding a provider means a definition, a registry
+entry, and tests — never provider-specific routes, forms, Redis keys, or status
+components.
 
 **Credentials are deployment state and resolve from `env.ts` only** — no runtime
 store, no admin write path, synchronously. Rotating one means setting a
 Cloudflare secret and pushing, which redeploys anyway. A Redis override layer
-existed to avoid that redeploy; it bought nothing (a push already deploys; the
-one provider it could not help was Turnstile, whose site key ships in client
-HTML) and cost a Redis read on every public request that needed a credential.
-**Do not reintroduce a runtime credential store, a credential write API, or a
-credentials form.** `tests/now-playing-hot-path.test.ts` pins the cost of an
-uncached `/api/spotify` read at exactly one Redis round trip.
+existed to avoid that redeploy; it bought nothing (a push already deploys) and
+cost a Redis read on every public request that needed a credential. **Do not
+reintroduce a runtime credential store, a credential write API, or a credentials
+form.** `tests/now-playing-hot-path.test.ts` pins the cost of an uncached
+`/api/spotify` read at exactly one Redis round trip.
 
 Enable/disable _is_ Redis-backed and stays that way: an operator switching a
 provider off mid-incident should not wait for a deploy. That one `MGET` is the
