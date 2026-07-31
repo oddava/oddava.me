@@ -439,25 +439,58 @@
     background: none;
   }
 
-  /* The rail is as tall as its sections need. It used to cap at the viewport
-     and scroll inside itself, which put a second scrollbar beside the article
-     and cut the bearings map off mid-drawing — a diagram reads as one thing or not
-     at all. The sections here are short (a note's headings, a few links, the
-     map), so the column stretches and the page does the scrolling.
-
-     The consequence to watch: a rail taller than the viewport now sticks by its
-     top and its last section stays below the fold. If a note ever grows a table
-     of contents long enough for that, the cap belongs on the TOC, not here. */
+  /* Sticky rail capped to the viewport. The rail itself never scrolls — a
+     second scrollbar beside the article is noise, and overflowing the fold
+     hid the last sections. When the column is tight, list sections
+     (contents, related) shrink and scroll their lists; the bearings map
+     stays full height so the drawing is never clipped mid-diagram. */
   .note-context__inner {
     position: sticky;
     top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 3rem);
     padding: 0.2rem 0.45rem 0.2rem 0.15rem;
-    overflow-x: clip;
+    overflow: hidden;
   }
 
   .note-context__section + .note-context__section {
     margin-top: 1.4rem;
     padding-top: 1.25rem;
+  }
+
+  /* List sections may shrink to fit the cap; their lists become the
+     scroll surface. Labels and the map never shrink. */
+  .note-context__section:not(.local-map) {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .note-context__label {
+    flex-shrink: 0;
+  }
+
+  .note-context .note-toc__list,
+  .note-context .note-links__list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .note-context .note-toc__list::-webkit-scrollbar,
+  .note-context .note-links__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .note-context .local-map {
+    flex: 0 0 auto;
   }
 
   /* Rail type steps down one notch from the article, no further: the previous
