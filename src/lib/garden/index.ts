@@ -6,6 +6,7 @@ import {
   readRedisNoteFiles,
   readStableContentVersion,
 } from '../server/content';
+import { isStorageUnavailableError } from '../server/core';
 import {
   buildWikiLinkHrefLookup,
   deriveSummary,
@@ -414,21 +415,26 @@ export function findNoteLeafRedirect(
 export type GardenIndexResult =
   { ok: true; index: GardenIndex } | { ok: false; response: Response };
 
-// A garden with no root index document, or one whose store is mid-mutation, is
-// a content-store state, not a crash. Every route that reaches the index loads
-// it through this guard so those states read as 503 "not ready" instead of a
-// 500. Any other failure is a real bug and still throws.
+// A garden with no root index document, a mid-mutation store, or a store the
+// runtime cannot reach is a content-store state, not a crash. Every route that
+// reaches the index loads it through this guard so those states read as 503
+// "not ready" instead of a 500. Any other failure is a real bug and still throws.
 export async function getGardenIndexOrUnavailable(): Promise<GardenIndexResult> {
   try {
     return { ok: true, index: await getGardenIndex() };
   } catch (error) {
-    if (error instanceof GardenUnavailableError) {
+    if (
+      error instanceof GardenUnavailableError ||
+      isStorageUnavailableError(error)
+    ) {
+      const retryAfterSeconds =
+        error instanceof GardenUnavailableError ? error.retryAfterSeconds : 5;
       return {
         ok: false,
         response: new Response('Notes are not available yet.', {
           status: 503,
-          headers: error.retryAfterSeconds
-            ? { 'Retry-After': String(error.retryAfterSeconds) }
+          headers: retryAfterSeconds
+            ? { 'Retry-After': String(retryAfterSeconds) }
             : undefined,
         }),
       };

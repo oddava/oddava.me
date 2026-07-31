@@ -9,7 +9,10 @@ import {
 } from './dev-proxy-lifecycle.mjs';
 import { firstConfiguredSecret } from '../src/lib/server/secrets.ts';
 
-const DEFAULT_PROXY_PORT = 45555;
+// Keep in sync with src/lib/server/local-redis.ts. Avoid the high 45xxx band:
+// on Windows, Hyper-V/WSL often reserves ~45000–48000 so bind fails with
+// EADDRINUSE while nothing is listening — the Worker then cannot reach Redis.
+const DEFAULT_PROXY_PORT = 18765;
 // A Studio image can be 5 MB before base64 encoding inside a Redis record.
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const PROXY_PATH = '/__local_redis';
@@ -120,8 +123,9 @@ export function localRedisDevProxy() {
   async function shutdown() {
     disposeCleanup?.();
     disposeCleanup = null;
-    closeHttpServer(server);
+    const previous = server;
     server = null;
+    await closeHttpServer(previous);
 
     if (connection) {
       try {
@@ -131,6 +135,26 @@ export function localRedisDevProxy() {
       }
     }
     await closeClient();
+  }
+
+  /**
+   * @param {import('node:http').Server} httpServer
+   * @param {number} port
+   */
+  function listen(httpServer, port) {
+    return new Promise((resolve, reject) => {
+      const onError = (error) => {
+        httpServer.off('listening', onListening);
+        reject(error);
+      };
+      const onListening = () => {
+        httpServer.off('error', onError);
+        resolve();
+      };
+      httpServer.once('error', onError);
+      httpServer.once('listening', onListening);
+      httpServer.listen(port, '127.0.0.1');
+    });
   }
 
   return {
@@ -243,21 +267,22 @@ export function localRedisDevProxy() {
         });
       });
 
-      server.on('error', (error) => {
-        if (error.code === 'EADDRINUSE') {
-          console.warn(
-            `[local-redis] Port ${proxyPort} is busy; stop the old dev session or set LOCAL_REDIS_PROXY_PORT.`,
-          );
-          return;
-        }
-        console.error('[local-redis] Proxy server failed.', error);
-      });
-
-      server.listen(proxyPort, '127.0.0.1', () => {
+      try {
+        await listen(server, proxyPort);
         console.info(
           `[local-redis] Authenticated proxy on http://127.0.0.1:${proxyPort}${PROXY_PATH}.`,
         );
-      });
+      } catch (error) {
+        server = null;
+        if (error && error.code === 'EADDRINUSE') {
+          console.error(
+            `[local-redis] Port ${proxyPort} is busy or reserved by the OS. Stop the old dev session, or set LOCAL_REDIS_PROXY_PORT to a free port (and the same value in .env so the Worker can reach it). On Windows, avoid ~45000–48000 — Hyper-V/WSL often reserves that band.`,
+          );
+        } else {
+          console.error('[local-redis] Proxy server failed.', error);
+        }
+        return;
+      }
 
       disposeCleanup = registerDevProxyCleanup(viteServer, () => {
         void shutdown();
