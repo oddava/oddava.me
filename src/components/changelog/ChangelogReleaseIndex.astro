@@ -1,0 +1,74 @@
+---
+import TocScrollSpy from '@components/TocScrollSpy.astro';
+import {
+  formatReleaseDate,
+  releaseHeadline,
+  type Release,
+} from '@lib/changelog';
+
+/**
+ * The release index, in the same two shapes a note's table of contents takes:
+ * a rail beside the entries where there is room, a disclosure above them where
+ * there is not. Same component, same scroll spy, same voice.
+ */
+
+interface Props {
+  releases: Release[];
+  variant: 'rail' | 'mobile';
+}
+
+const { releases, variant } = Astro.props;
+const show = releases.length >= 2;
+---
+
+{
+  show && variant === 'rail' && (
+    <nav
+      class="changelog-toc changelog-toc--rail"
+      aria-label="Releases"
+      data-toc-spy
+    >
+      <h2 class="changelog-toc__label">Releases</h2>
+      <ol class="changelog-toc__list">
+        {releases.map((release) => (
+          <li>
+            <a class="changelog-toc__link" href={`#${release.slug}`}>
+              {releaseHeadline(release)}
+              {release.version && release.date && (
+                <time class="changelog-toc__date" datetime={release.date}>
+                  {formatReleaseDate(release.date)}
+                </time>
+              )}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+{
+  show && variant === 'mobile' && (
+    <details class="changelog-toc changelog-toc--mobile" data-toc-spy>
+      <summary class="changelog-toc__label">Releases</summary>
+      <nav aria-label="Releases">
+        <ol class="changelog-toc__list">
+          {releases.map((release) => (
+            <li>
+              <a class="changelog-toc__link" href={`#${release.slug}`}>
+                {releaseHeadline(release)}
+                {release.version && release.date && (
+                  <time class="changelog-toc__date" datetime={release.date}>
+                    {formatReleaseDate(release.date)}
+                  </time>
+                )}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </details>
+  )
+}
+
+<TocScrollSpy />

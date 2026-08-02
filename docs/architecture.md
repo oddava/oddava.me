@@ -44,6 +44,9 @@ health state.
   environment.
 - `src/lib/content/schemas.ts` is the shared frontmatter contract used by the
   garden read path, Studio, and the sync scripts.
+- `src/lib/changelog` parses the repository's root `CHANGELOG.md` — a
+  [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) document — into the
+  releases, change groups, and entries that `/changelog` renders.
 - `src/styles` contains global partials and feature-owned styles.
 
 Note identity comes from a note's path within the notes collection — the shape

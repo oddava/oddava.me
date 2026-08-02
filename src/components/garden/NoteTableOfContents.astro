@@ -1,4 +1,5 @@
 ---
+import TocScrollSpy from '@components/TocScrollSpy.astro';
 import type { NoteHeading } from '@lib/garden/render';
 
 interface Props {
@@ -14,7 +15,7 @@ const { headings, variant } = Astro.props;
     <nav
       class="note-toc note-toc--rail note-context__section"
       aria-label="On this page"
-      data-note-toc
+      data-toc-spy
     >
       <h2 class="note-context__label">On this page</h2>
       <ol class="note-toc__list">
@@ -32,7 +33,7 @@ const { headings, variant } = Astro.props;
 
 {
   headings.length >= 2 && variant === 'mobile' && (
-    <details class="note-toc note-toc--mobile" data-note-toc>
+    <details class="note-toc note-toc--mobile" data-toc-spy>
       <summary class="note-toc__summary">On this page</summary>
       <nav aria-label="On this page">
         <ol class="note-toc__list">
@@ -49,82 +50,4 @@ const { headings, variant } = Astro.props;
   )
 }
 
-<script>
-  const tocLinks = Array.from(
-    document.querySelectorAll<HTMLAnchorElement>(
-      '[data-note-toc] a[href^="#"]',
-    ),
-  );
-
-  if (tocLinks.length > 0) {
-    const headingIds = [
-      ...new Set(
-        tocLinks.map((link) => {
-          try {
-            return decodeURIComponent(link.hash.slice(1));
-          } catch {
-            return link.hash.slice(1);
-          }
-        }),
-      ),
-    ];
-    const headings = headingIds.flatMap((id) => {
-      const heading = document.getElementById(id);
-      return heading ? [heading] : [];
-    });
-    let frame = 0;
-    let pendingHash = window.location.hash.slice(1);
-
-    const updateCurrentHeading = () => {
-      frame = 0;
-      let current: HTMLElement | undefined;
-
-      for (const heading of headings) {
-        if (heading.getBoundingClientRect().top > 48) break;
-        current = heading;
-      }
-
-      const atDocumentEnd =
-        window.scrollY + window.innerHeight >=
-        document.documentElement.scrollHeight - 1;
-      if (atDocumentEnd) current = headings.at(-1);
-
-      if (pendingHash) {
-        try {
-          current =
-            document.getElementById(decodeURIComponent(pendingHash)) ?? current;
-        } catch {
-          current = document.getElementById(pendingHash) ?? current;
-        }
-        pendingHash = '';
-      }
-
-      for (const link of tocLinks) {
-        let linkTarget = link.hash.slice(1);
-        try {
-          linkTarget = decodeURIComponent(linkTarget);
-        } catch {
-          // Keep the literal fragment when it is not URI encoded.
-        }
-        if (current && linkTarget === current.id) {
-          link.setAttribute('aria-current', 'location');
-        } else {
-          link.removeAttribute('aria-current');
-        }
-      }
-    };
-
-    const scheduleUpdate = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(updateCurrentHeading);
-    };
-
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('resize', scheduleUpdate, { passive: true });
-    window.addEventListener('hashchange', () => {
-      pendingHash = window.location.hash.slice(1);
-      scheduleUpdate();
-    });
-    scheduleUpdate();
-  }
-</script>
+<TocScrollSpy />

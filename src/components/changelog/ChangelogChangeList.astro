@@ -1,0 +1,26 @@
+---
+import type { ChangeItem } from '@lib/changelog';
+
+/**
+ * Renders a group's bullets, and recurses through `Astro.self` for any nested
+ * beneath them — so an entry can qualify itself without the depth being a case
+ * the page has to know about.
+ */
+
+interface Props {
+  items: ChangeItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<ul class="changelog-changes">
+  {
+    items.map((item) => (
+      <li class="changelog-change">
+        <div class="changelog-prose" set:html={item.html} />
+        {item.children.length > 0 && <Astro.self items={item.children} />}
+      </li>
+    ))
+  }
+</ul>
