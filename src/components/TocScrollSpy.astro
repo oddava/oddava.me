@@ -1,0 +1,85 @@
+---
+/**
+ * Marks the in-page link whose target you are currently reading.
+ *
+ * Include it once beside any index of `#fragment` links, and give that index a
+ * `data-toc-spy` attribute; every matching link gets `aria-current="location"`
+ * as its heading passes the top of the viewport. Both the note table of
+ * contents and the changelog's release index use it, which is why it is a
+ * component rather than a script inside either of them.
+ *
+ * Astro bundles this script once no matter how many indexes are on the page.
+ */
+---
+
+<script>
+  const tocLinks = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>('[data-toc-spy] a[href^="#"]'),
+  );
+
+  if (tocLinks.length > 0) {
+    const decodeFragment = (link: HTMLAnchorElement): string => {
+      const fragment = link.hash.slice(1);
+      try {
+        return decodeURIComponent(fragment);
+      } catch {
+        // Keep the literal fragment when it is not URI encoded.
+        return fragment;
+      }
+    };
+
+    const headingIds = [...new Set(tocLinks.map(decodeFragment))];
+    const headings = headingIds.flatMap((id) => {
+      const heading = document.getElementById(id);
+      return heading ? [heading] : [];
+    });
+    let frame = 0;
+    let pendingHash = window.location.hash.slice(1);
+
+    const updateCurrentHeading = () => {
+      frame = 0;
+      let current: HTMLElement | undefined;
+
+      for (const heading of headings) {
+        if (heading.getBoundingClientRect().top > 48) break;
+        current = heading;
+      }
+
+      const atDocumentEnd =
+        window.scrollY + window.innerHeight >=
+        document.documentElement.scrollHeight - 1;
+      if (atDocumentEnd) current = headings.at(-1);
+
+      if (pendingHash) {
+        try {
+          current =
+            document.getElementById(decodeURIComponent(pendingHash)) ?? current;
+        } catch {
+          current = document.getElementById(pendingHash) ?? current;
+        }
+        pendingHash = '';
+      }
+
+      for (const link of tocLinks) {
+        if (current && decodeFragment(link) === current.id) {
+          link.setAttribute('aria-current', 'location');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      }
+    };
+
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateCurrentHeading);
+    };
+
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+    window.addEventListener('hashchange', () => {
+      pendingHash = window.location.hash.slice(1);
+      scheduleUpdate();
+    });
+    scheduleUpdate();
+  }
+</script>

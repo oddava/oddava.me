@@ -1,52 +1,139 @@
 ---
 export const prerender = true;
+import ChangelogChangeList from '@components/changelog/ChangelogChangeList.astro';
+import ChangelogReleaseIndex from '@components/changelog/ChangelogReleaseIndex.astro';
 import Base from '@layouts/Base.astro';
-import { changelogBodyParagraphs, getChangelogEntries } from '../lib/changelog';
-import '../styles/components/_prose.css';
-import '../styles/components/_changelog.css';
+import {
+  CHANGELOG_SOURCE_URL,
+  describeChangelog,
+  formatReleaseDate,
+  loadChangelog,
+  releaseHeadline,
+} from '@lib/changelog';
+import '@styles/components/_changelog.css';
 
-const entries = getChangelogEntries().map((entry) => ({
-  ...entry,
-  paragraphs: changelogBodyParagraphs(entry.body),
+// `CHANGELOG.md` is the whole data layer: parsed at build time, rendered here.
+const changelog = loadChangelog();
+const { introHtml, releases, title } = changelog;
+
+// A version names its release and the date sits beside it as metadata; a dated
+// entry with no version is named by its date, so it must not repeat it.
+const entries = releases.map((release) => ({
+  ...release,
+  headline: releaseHeadline(release),
+  dateBeside: release.version && release.date ? release.date : null,
 }));
+
+const shipped = releases.filter((release) => !release.unreleased);
+const count = `${shipped.length} release${shipped.length === 1 ? '' : 's'}`;
+const tally = shipped.at(-1)?.date
+  ? `${count} since ${formatReleaseDate(shipped.at(-1)!.date!)}`
+  : count;
+const heading = title.toLowerCase();
 ---
 
-<Base
-  title="changelog"
-  description="what has landed on this site, newest first."
->
+{
+  /* The note page's shape, because this is the same kind of page: one document
+     in a 44rem column, with a sticky index in the left gutter wherever two
+     columns fit and a disclosure above the entries where they do not. */
+}
+<Base title={heading} description={describeChangelog(changelog)} wide>
   <div class="changelog-page">
-    <h1>changelog</h1>
+    <div class="changelog-layout">
+      <aside class="changelog-context" aria-label="Release index">
+        <ChangelogReleaseIndex releases={releases} variant="rail" />
+      </aside>
 
-    {
-      entries.length === 0 ? (
-        <p class="changelog-empty">nothing recorded yet.</p>
-      ) : (
-        <ol class="changelog-list">
-          {entries.map((entry) => (
-            <li class="changelog-entry">
-              <div class="changelog-entry__header">
-                <time class="changelog-entry__date" datetime={entry.date}>
-                  {entry.date}
-                </time>
-                <h2 class="changelog-entry__title">{entry.title}</h2>
-              </div>
-              <div class="changelog-entry__body">
-                {entry.paragraphs.map((lines) => (
-                  <p>
-                    {lines.map((line, index) => (
-                      <>
-                        {index > 0 && <br />}
-                        {line}
-                      </>
-                    ))}
-                  </p>
-                ))}
-              </div>
-            </li>
-          ))}
-        </ol>
-      )
-    }
+      <article class="changelog-document">
+        <p class="changelog-document__tally">{tally}</p>
+        <h1 class="changelog-document__title">{heading}</h1>
+        {
+          introHtml && (
+            <div class="changelog-lede changelog-prose" set:html={introHtml} />
+          )
+        }
+
+        <ChangelogReleaseIndex releases={releases} variant="mobile" />
+
+        {
+          entries.length === 0 ? (
+            <p class="changelog-empty">nothing recorded yet.</p>
+          ) : (
+            <ol class="changelog-releases">
+              {entries.map((entry) => (
+                <li
+                  class:list={[
+                    'changelog-release',
+                    entry.yanked && 'changelog-release--yanked',
+                  ]}
+                >
+                  <div class="changelog-release__header">
+                    <h2
+                      class="changelog-release__title"
+                      id={entry.slug}
+                      tabindex="-1"
+                    >
+                      {entry.href ? (
+                        <a class="changelog-release__version" href={entry.href}>
+                          {entry.headline}
+                        </a>
+                      ) : (
+                        <span class="changelog-release__version">
+                          {entry.headline}
+                        </span>
+                      )}
+                      <a
+                        class="changelog-release__anchor"
+                        href={`#${entry.slug}`}
+                        aria-label={`Link to ${entry.label}`}
+                      >
+                        #
+                      </a>
+                    </h2>
+                    <p class="changelog-release__meta">
+                      {entry.dateBeside && (
+                        <time datetime={entry.dateBeside}>
+                          {formatReleaseDate(entry.dateBeside)}
+                        </time>
+                      )}
+                      {entry.unreleased && <span>not yet shipped</span>}
+                      {entry.yanked && (
+                        <span class="changelog-release__yanked">yanked</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {entry.noteHtml && (
+                    <div
+                      class="changelog-release__note changelog-prose"
+                      set:html={entry.noteHtml}
+                    />
+                  )}
+
+                  {entry.groups.map((group) => (
+                    <section class="changelog-group" data-kind={group.kind}>
+                      {group.label && (
+                        <h3 class="changelog-group__label">{group.label}</h3>
+                      )}
+                      {group.noteHtml && (
+                        <div
+                          class="changelog-group__note changelog-prose"
+                          set:html={group.noteHtml}
+                        />
+                      )}
+                      <ChangelogChangeList items={group.items} />
+                    </section>
+                  ))}
+                </li>
+              ))}
+            </ol>
+          )
+        }
+
+        <a class="changelog-source" href={CHANGELOG_SOURCE_URL}>
+          read CHANGELOG.md
+        </a>
+      </article>
+    </div>
   </div>
 </Base>

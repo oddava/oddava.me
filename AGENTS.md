@@ -16,7 +16,8 @@ oddava.me/
 ├── scripts/              # Build utilities (.mjs)
 ├── vite/                 # Custom Vite plugins
 ├── public/               # Static assets (fonts, images)
-└── docs/                 # Internal documentation
+├── docs/                 # Internal documentation
+└── CHANGELOG.md          # Source of truth for /changelog
 ```
 
 Server code is organized by domain under `src/lib/server/`: `admin/`, `content/`, `guestbook/`, `integrations/`, and `now-playing/`, over a shared `core/` kernel that every domain depends on and that depends on none of them. Barrel re-exports (`admin.ts`, `content.ts`, `core.ts`, `guestbook.ts`, `integrations.ts`, `now-playing.ts`) provide clean public APIs.
@@ -121,6 +122,13 @@ Lowercase subject, imperative mood, optional scope in parentheses.
     That round trip is the only durability story. Do not remove the Redis
     content provider, runtime note rendering, Redis-backed media route, or
     real-Redis integration coverage as dead code.
+- **The changelog is `CHANGELOG.md` at the repository root**, in
+  [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, and it is the
+  only source. `src/lib/changelog` parses it, `/changelog` prerenders from that
+  parse, and publishing an entry is editing the file — there is no data format
+  to keep in sync and nothing to read at runtime. The parser rejects a malformed
+  release heading, an impossible date, an out-of-order entry, and a group with
+  no release above it, so a mistake fails the build rather than the page.
 - **Integrations** are a registry, not a set of special cases. Each third-party
   connection (Spotify, Lanyard) is one `IntegrationDefinition` under
   `src/lib/server/integrations/providers/`, listed in `registry.ts`. The

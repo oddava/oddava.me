@@ -1,68 +1,553 @@
-/* /changelog — reverse-chronological list of hand-authored site updates. */
+/* ===================================================
+   /changelog
+
+   Built to the note page's measurements, because it is
+   the same kind of page: a 44rem reading column, a
+   sticky index in the left gutter from 78rem, mono for
+   metadata and hairlines for separation. The values
+   below are deliberately the ones in `_garden.css` —
+   if the note page's rail or rhythm changes, this
+   should follow it.
+
+   Change types carry their meaning in one accent
+   colour. A kind sets `--kind-accent` on its section
+   and the label and list markers read it, so adding a
+   type to `ChangeKind` needs one rule here.
+   =================================================== */
 
 .changelog-page {
-  padding-top: 0;
+  width: 100%;
+  padding: 0 0 var(--space-md);
 }
 
-.changelog-page h1 {
-  margin-bottom: var(--space-md);
+/* The reading column stays centred; the index sits in the left gutter. Named
+   areas keep that true regardless of source order. */
+.changelog-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 44rem);
+  grid-template-areas:
+    'article'
+    'rail';
+  justify-content: center;
+  align-items: start;
+  column-gap: 2.5rem;
 }
 
-.changelog-list {
-  list-style: none;
+.changelog-document {
+  grid-area: article;
+  min-width: 0;
+}
+
+/* Below two columns the disclosure inside the article is the index; a second
+   copy trailing the entries would be a list of links to what you just read. */
+.changelog-context {
+  display: none;
+  grid-area: rail;
+}
+
+/* --- Page header --- */
+
+/* Sits in the top right corner of the reading column, where a note keeps its
+   edited date. */
+.changelog-document__tally {
+  margin: 0 0 1.15rem;
+  color: var(--color-text-disabled);
+  font: 0.72rem / 1.4 var(--font-mono);
+  letter-spacing: 0.02em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.changelog-document__title {
+  margin: 0 0 0.5em;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.changelog-lede {
+  max-width: 54ch;
+  color: var(--color-text-secondary);
+  font-size: clamp(1rem, 1.6vw, 1.08rem);
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+/* --- Release index --- */
+
+.changelog-toc__label {
+  margin: 0 0 0.7rem;
+  color: var(--color-text-secondary);
+  font: 500 0.7rem var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.changelog-toc__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
-.changelog-entry {
-  margin: 0 0 var(--space-md);
-  padding-bottom: var(--space-md);
+/* Mono, like the release headings it points at and the date beneath it. */
+.changelog-toc__link {
+  display: block;
+  padding: 0.25rem 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.changelog-toc__link:hover,
+.changelog-toc__link:focus-visible,
+.changelog-toc__link[aria-current='location'] {
+  color: var(--color-text-primary);
+}
+
+.changelog-toc__link[aria-current='location'] {
+  font-weight: 500;
+}
+
+.changelog-toc__date {
+  display: block;
+  color: var(--color-text-disabled);
+  font: 0.68rem var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.changelog-toc--mobile {
+  margin: 1.75rem 0;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
 }
 
-.changelog-entry:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+.changelog-toc--mobile .changelog-toc__label {
+  margin: 0;
+  cursor: pointer;
 }
 
-.changelog-entry__header {
+.changelog-toc--mobile[open] .changelog-toc__label {
+  margin-bottom: 0.65rem;
+}
+
+/* --- Releases --- */
+
+/* The top margin owns the break between the page's opening and the first
+   release. The disclosure above it is display:none from 78rem, so leaning on
+   that element's margin would leave the lede flush against the first heading
+   on exactly the widths where the page has the most room. */
+.changelog-releases,
+.changelog-empty {
+  margin: clamp(2.5rem, 6vw, 3.25rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changelog-release {
+  padding-top: clamp(2rem, 5vw, 2.75rem);
+}
+
+.changelog-release:first-child {
+  padding-top: 0;
+}
+
+.changelog-release + .changelog-release {
+  margin-top: clamp(2rem, 5vw, 2.75rem);
+  border-top: 1px solid var(--color-rule);
+}
+
+/* Version left, date right, sharing a baseline — the two facts a release has,
+   on one line, until the column is too narrow to hold them. */
+.changelog-release__header {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
   align-items: baseline;
-  margin-bottom: 0.5rem;
+  justify-content: space-between;
+  gap: 0.3rem 1.25rem;
+  margin-bottom: 1.35rem;
 }
 
-.changelog-entry__date {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
+/* A version is an identifier, not a word, so it takes the face this site gives
+   every identifier and number. It also keeps the release headings clear of the
+   h1: only the page title uses the rounded display face at 700.
 
-.changelog-entry__title {
+   Weights are the ones actually loaded in `_fonts.css` — mono has 400 and 500,
+   the body face 400/500/700. Asking for 600 does not synthesise a semibold, it
+   snaps to the next real face up, which put these headings at the same 700 as
+   the h1 and left the two competing. */
+.changelog-release__title {
+  position: relative;
+  min-width: 0;
   margin: 0;
-  font-size: var(--text-base);
-  font-weight: 500;
   color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: clamp(1.15rem, 2.4vw, 1.35rem);
+  font-weight: 500;
   line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+  scroll-margin-top: 2rem;
 }
 
-.changelog-entry__body {
+a.changelog-release__version {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-text-interactive) 45%,
+    transparent
+  );
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color 150ms ease;
+}
+
+a.changelog-release__version:hover,
+a.changelog-release__version:focus-visible {
+  text-decoration-color: var(--color-text-interactive-hover);
+}
+
+/* The same anchor affordance note headings carry. */
+.changelog-release__anchor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1.1em;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 0.25em;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    color 150ms ease;
+}
+
+.changelog-release__title:hover .changelog-release__anchor,
+.changelog-release__anchor:focus-visible {
+  opacity: 1;
+}
+
+.changelog-release__anchor:hover,
+.changelog-release__anchor:focus-visible {
+  color: var(--color-text-interactive);
+}
+
+.changelog-release__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font: 0.72rem / 1.4 var(--font-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.changelog-release__yanked {
+  color: var(--color-text-error);
+}
+
+.changelog-release--yanked .changelog-release__version {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.changelog-release__note {
+  max-width: 62ch;
+  margin-bottom: 1.5rem;
   color: var(--color-text-secondary);
-  overflow-wrap: break-word;
 }
 
-.changelog-entry__body p {
-  margin: 0 0 0.75em;
+/* --- Change groups --- */
+
+.changelog-group {
+  --kind-accent: var(--color-text-muted);
 }
 
-.changelog-entry__body p:last-child {
+.changelog-group + .changelog-group {
+  margin-top: 1.6rem;
+}
+
+.changelog-group[data-kind='added'] {
+  --kind-accent: var(--color-text-success);
+}
+
+.changelog-group[data-kind='changed'] {
+  --kind-accent: var(--color-text-accent);
+}
+
+.changelog-group[data-kind='deprecated'] {
+  --kind-accent: var(--color-text-warning);
+}
+
+.changelog-group[data-kind='removed'] {
+  --kind-accent: var(--color-text-error);
+}
+
+.changelog-group[data-kind='fixed'] {
+  --kind-accent: var(--color-brand-strong);
+}
+
+.changelog-group[data-kind='security'] {
+  --kind-accent: var(--color-text-warning);
+}
+
+.changelog-group__label {
+  margin: 0 0 0.6rem;
+  color: var(--kind-accent);
+  font: 500 0.7rem var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.changelog-group__note {
+  max-width: 62ch;
+  margin: 0 0 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Ordinary bullets, as a note's lists have. The only tell is the marker taking
+   the group's colour — enough to scan by, nothing drawn by hand. The type is
+   set rather than inherited: nesting inside the releases `<ol>` would otherwise
+   have the browser pick `circle` here and `square` one level down. */
+.changelog-changes {
+  max-width: 64ch;
+  margin: 0;
+  padding-left: 1.35em;
+  color: var(--color-text-secondary);
+  list-style-type: disc;
+}
+
+.changelog-change {
+  margin-bottom: 0.5em;
+}
+
+.changelog-change:last-child {
   margin-bottom: 0;
+}
+
+.changelog-change::marker {
+  color: var(--kind-accent);
+}
+
+.changelog-change .changelog-changes {
+  margin-top: 0.5em;
+  color: var(--color-text-muted);
+  list-style-type: circle;
 }
 
 .changelog-empty {
-  margin: 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+}
+
+/* Closes the page the way a note closes: a hairline, then one quiet mono link
+   out. Here it goes to the file every entry above was written in. */
+.changelog-source {
+  display: inline-block;
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-rule);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.changelog-source:hover,
+.changelog-source:focus-visible {
+  color: var(--color-text-interactive);
+}
+
+.changelog-source::after {
+  content: '\2197';
+  margin-left: 0.25em;
+  font-size: 0.85em;
+}
+
+/* --- Rendered Markdown ---
+
+   Only what a changelog entry contains. `_note-prose.css` is the note body's
+   contract and is not reused here: its heading rhythm is built for an essay,
+   and an entry is a sentence. The link, code, and quote treatments below are
+   the same ones, at entry scale. */
+
+.changelog-prose > :first-child {
+  margin-top: 0;
+}
+
+.changelog-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.changelog-prose p {
+  margin: 0 0 0.75em;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+.changelog-prose a {
+  color: var(--color-text-interactive);
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-text-interactive) 55%,
+    transparent
+  );
+  text-underline-offset: 0.15em;
+  word-break: break-word;
+  transition: text-decoration-color 150ms ease;
+}
+
+.changelog-prose a:hover {
+  text-decoration-color: var(--color-text-interactive-hover);
+}
+
+.changelog-prose .external-link::after {
+  content: '\2197';
+  display: inline-block;
+  margin-left: 0.15em;
+  color: var(--color-text-muted);
+  font-size: 0.7em;
+}
+
+.changelog-prose strong {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.changelog-prose em {
+  font-style: italic;
+}
+
+.changelog-prose code {
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+  background: var(--color-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.changelog-prose pre {
+  max-width: 100%;
+  margin: 0.75em 0;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  overflow-x: auto;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.changelog-prose pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  word-break: normal;
+  white-space: pre;
+}
+
+.changelog-prose blockquote {
+  margin: 0.75em 0;
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.changelog-prose :is(ul, ol) {
+  margin: 0.5em 0;
+  padding-left: 1.35em;
+}
+
+/* --- Two columns ---
+
+   The gate is 78rem for the reason the note page's is: a centred 44rem column
+   with a rail beside it needs 44 + 2 × (gap + rail), because the right gutter
+   has to mirror the left one for the prose to stay centred. */
+
+@media (min-width: 78rem) {
+  /* Break out of the 70rem page shell — inside it the gutters are only ~13rem
+     and the rail ends up pinned against the viewport edge. */
+  .changelog-page {
+    width: min(100vw - 2 * var(--page-padding), 80rem);
+    margin-left: calc(50% - min(50vw - var(--page-padding), 40rem));
+  }
+
+  .changelog-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 44rem) minmax(0, 1fr);
+    grid-template-areas: 'rail article .';
+  }
+
+  /* Sticky on the grid item itself, not a nested wrapper: a sticky child can
+     only travel inside its parent, and a parent only as tall as the rail never
+     lets it activate. End-aligned so it sits against the prose rather than the
+     viewport edge. */
+  .changelog-context {
+    display: flex;
+    position: sticky;
+    top: 1.5rem;
+    flex-direction: column;
+    align-self: start;
+    justify-self: end;
+    width: min(100%, 15rem);
+    max-height: calc(100dvh - 3rem);
+    padding: 0.2rem 0.15rem 0.2rem 0.45rem;
+    overflow: hidden;
+  }
+
+  .changelog-toc--rail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .changelog-toc--rail .changelog-toc__label {
+    flex-shrink: 0;
+  }
+
+  /* The rail never scrolls beside the article — a second scrollbar there is
+     noise — so a long history scrolls its own list instead. */
+  .changelog-toc--rail .changelog-toc__list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .changelog-toc--rail .changelog-toc__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .changelog-toc--mobile {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .changelog-release__title {
+    padding-left: 1.15em;
+  }
+
+  .changelog-release__anchor {
+    left: 0;
+    opacity: 0.7;
+  }
 }
