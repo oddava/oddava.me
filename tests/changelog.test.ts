@@ -335,7 +335,14 @@ describe('the committed CHANGELOG.md', () => {
 
   it('records the releases the site actually shipped', () => {
     const shipped = parsed.releases.filter((release) => !release.unreleased);
+
+    // The history runs back to the first commit and is written as dated
+    // entries throughout — this site ships continuously and has never cut a
+    // tag, so a shipped entry without a day would be an entry nobody can place.
     expect(shipped.at(-1)?.date).toBe('2026-03-06');
-    expect(latestRelease(parsed)?.version).toBe('1.1.0');
+    for (const release of shipped) {
+      expect(release.date, release.label).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    expect(latestRelease(parsed)).toBe(shipped[0]);
   });
 });
