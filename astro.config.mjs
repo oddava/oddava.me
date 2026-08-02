@@ -60,13 +60,18 @@ export default defineConfig({
     define: {
       __SPOTIFY_WIDGET_ENABLED__: JSON.stringify(spotifyWidgetEnabled),
     },
-    // Preact islands (Guestbook, Studio, Spotify) pull several entry points.
-    // Vite's SSR optimizer is partial by default: after a config change it may
-    // re-hash and leave `deps_ssr/preact_*.js` missing until a cold re-scan,
-    // which surfaces as "file does not exist … optimize deps directory" on the
-    // first island page hit. Pin the full surface used in dev SSR so the
-    // prebundle is complete up front. `preact/compat` is required by Studio
-    // (createPortal, memo) even without `compat: true` React aliases.
+    // Vite's SSR optimizer is partial by default: after a config change or a
+    // lazy discovery pass it may re-hash and leave `deps_ssr/*` files missing
+    // until a cold re-scan, which surfaces as "file does not exist … optimize
+    // deps directory" on the first hit (often under the Cloudflare workerd
+    // runner). Pin the full surface used in dev SSR so the prebundle is
+    // complete up front.
+    // - Preact islands (Guestbook, Studio, Spotify): several entry points;
+    //   `preact/compat` is required by Studio (createPortal, memo) even without
+    //   `compat: true` React aliases.
+    // - `astro/zod` (and its `zod/v4` re-export) is imported by content schemas
+    //   and garden; without a pin it is discovered mid-request and can leave a
+    //   stale `astro_zod.js` reference after optimizer reloads.
     optimizeDeps: {
       include: [
         'preact',
@@ -89,6 +94,8 @@ export default defineConfig({
           'preact/debug',
           'preact/devtools',
           'preact-render-to-string',
+          'astro/zod',
+          'zod/v4',
         ],
       },
     },
