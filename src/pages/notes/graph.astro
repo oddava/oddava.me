@@ -40,23 +40,15 @@ for (const note of index.documents) {
 }
 
 // Shared themes are discovery paths, not structure. They appear only when at
-// least two specific themes overlap so generic tags never redraw the terrain.
-for (let leftIndex = 0; leftIndex < index.documents.length; leftIndex += 1) {
-  const left = index.documents[leftIndex]!;
-  const leftTags = new Set(left.tags);
-
-  for (
-    let rightIndex = leftIndex + 1;
-    rightIndex < index.documents.length;
-    rightIndex += 1
-  ) {
-    const right = index.documents[rightIndex]!;
-    const key = pairKey(left.id, right.id);
-    if (pathKindsByPair.has(key)) continue;
-    const sharedTopics = right.tags.filter((tag: string) => leftTags.has(tag));
-    if (sharedTopics.length < 2) continue;
-    addPath({ sourceId: left.id, targetId: right.id, kind: 'affinity' });
-  }
+// least two specific themes overlap, so generic tags never redraw the terrain.
+// The O(n²) pair scan runs once per content version inside `buildGardenIndex`
+// and is cached on the garden index; the request path only walks the edges.
+for (const edge of index.affinityPaths) {
+  addPath({
+    sourceId: edge.sourceId,
+    targetId: edge.targetId,
+    kind: 'affinity',
+  });
 }
 
 const linkCount = new Map(index.documents.map((note) => [note.id, 0]));

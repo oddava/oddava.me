@@ -36,6 +36,7 @@ function garden(documents: GardenDocument[]): GardenIndex {
     documents,
     byId: new Map(documents.map((document) => [document.id, document])),
     wikiLinkHrefs: new Map(),
+    affinityPaths: [],
   };
 }
 
