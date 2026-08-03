@@ -15,6 +15,7 @@ import {
   type LandscapePlace as PositionedPlace,
   type LandscapeRegion,
 } from '@lib/garden/landscape-layout';
+import { scoreNote } from '@lib/garden';
 
 export type KnowledgePlace = {
   id: string;
@@ -107,19 +108,6 @@ function cameraForBounds(
     y: view.height / 2 - bounds.centerY * scale,
     scale,
   };
-}
-
-function searchScore(place: KnowledgePlace, query: string): number {
-  if (!query) return 1;
-  const title = place.title.toLowerCase();
-  const summary = place.summary.toLowerCase();
-  const tags = place.tags.join(' ').toLowerCase();
-  if (title === query) return 100;
-  if (title.startsWith(query)) return 80;
-  if (title.includes(query)) return 60;
-  if (tags.includes(query)) return 35;
-  if (summary.includes(query)) return 20;
-  return 0;
 }
 
 function pathKey(path: KnowledgePath): string {
@@ -292,7 +280,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
         .map((place, position) => ({
           place,
           position,
-          score: searchScore(place, normalizedQuery),
+          score: scoreNote(place, normalizedQuery),
         }))
         .filter((result) => result.score > 0)
         .toSorted(

@@ -1,0 +1,224 @@
+/* Site-wide note search trigger, placed in the site header on /notes/* pages,
+   and its command-palette overlay. The header (`_site-nav.css`) is a flex row;
+   the trigger sits at the right edge of the 44rem header column. */
+
+.note-search__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.note-search__trigger:focus-visible {
+  outline: none;
+}
+
+.note-search__trigger svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 480px) {
+  .note-search__trigger :is(span, kbd) {
+    display: none;
+  }
+}
+
+/* Overlay — fixed layer over the whole viewport so the trigger mounting point
+   inside the header column does not constrain the dialog position. */
+.note-search__layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(1rem, 8vh, 4rem) var(--page-padding);
+  background: color-mix(in srgb, #000 72%, transparent);
+  backdrop-filter: blur(3px);
+  animation: note-search-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.note-search__layer.is-closing {
+  animation: note-search-fade-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.note-search__panel {
+  display: flex;
+  width: min(38rem, 100%);
+  max-height: min(72vh, 36rem);
+  flex-direction: column;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-lg);
+  /* Terminal-dark: darker than the page surface (#0c0e11) so the palette reads
+     as a sunk-in panel rather than another card on the page. */
+  background: #06070a;
+  overflow: hidden;
+  animation: note-search-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top center;
+}
+
+.note-search__panel.is-closing {
+  animation: note-search-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes note-search-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes note-search-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes note-search-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes note-search-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+
+.note-search__field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--color-rule-strong);
+  color: var(--color-text-muted);
+  transition: border-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.note-search__field:focus-within {
+  border-bottom-color: var(--color-brand);
+}
+
+.note-search__field svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.note-search__field:focus-within svg {
+  color: var(--color-brand-strong);
+}
+
+.note-search__field input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--color-text-primary);
+  background: transparent;
+  font: var(--text-base) var(--font-mono);
+  caret-color: var(--color-brand-strong);
+}
+
+.note-search__field input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.note-search__results {
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  overflow: auto;
+}
+
+.note-search__result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem 1rem;
+  align-items: baseline;
+  padding: 0.75rem 0.65rem;
+  border-radius: var(--radius-md);
+  border-top: 1px solid var(--color-rule);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.note-search__result:first-child {
+  border-top: 0;
+}
+
+.note-search__result:hover,
+.note-search__result.is-active {
+  background: var(--color-overlay-soft);
+}
+
+.note-search__result.is-active {
+  color: var(--color-text-primary);
+}
+
+.note-search__result-title {
+  grid-column: 1;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-search__result-arrow {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.note-search__result:hover .note-search__result-arrow,
+.note-search__result.is-active .note-search__result-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}

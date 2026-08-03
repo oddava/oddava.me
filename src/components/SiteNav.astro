@@ -1,11 +1,17 @@
 ---
 /**
- * Header: single wordmark home link.
- * Every Base page shows it except the homepage, whose hero is the nav.
+ * Header: single wordmark home link, with the global note-search trigger
+ * mounted on /notes/* pages (the graph keeps its own in-canvas search).
  */
 import '../styles/components/_site-nav.css';
+import '../styles/components/_note-search.css';
+import NoteSearch from './garden/NoteSearch.tsx';
+
+const pathname = Astro.url.pathname;
+const onNotes = pathname === '/notes' || pathname.startsWith('/notes/');
 ---
 
 <header class="site-nav">
   <a href="/" class="site-nav__wordmark" data-page-preview-ignore>oddava</a>
+  {onNotes && <NoteSearch client:idle />}
 </header>

@@ -4,7 +4,8 @@
    them flush with their own content. */
 .site-nav {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  gap: 1rem;
   width: min(100%, 44rem);
   margin: 0 auto;
   padding: var(--space-md) 0 var(--space-sm);
