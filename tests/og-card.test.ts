@@ -20,7 +20,7 @@ vi.mock('@lib/garden', () => ({
   getGardenIndexOrUnavailable: async () =>
     runtime.storeDown
       ? { ok: false, response: new Response(null, { status: 503 }) }
-      : { ok: true, index: { documents: runtime.notes } },
+      : { ok: true, index: { documents: runtime.notes, affinityPaths: [] } },
 }));
 
 vi.mock('@lib/server/content', () => ({

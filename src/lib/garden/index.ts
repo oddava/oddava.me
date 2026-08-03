@@ -67,6 +67,20 @@ export type GardenIndex = {
   documents: GardenDocument[];
   byId: Map<string, GardenDocument>;
   wikiLinkHrefs: Map<string, string>;
+  // Affinity edges — pairs of notes sharing at least two tags — precomputed once
+  // per content version so the landscape graph reads them instead of running an
+  // O(n²) pair scan per request. Pairs already joined by a reference (wikilink)
+  // are excluded, matching the graph's existing dedup rule. See
+  // `notes/graph.astro`.
+  affinityPaths: AffinityEdge[];
+};
+
+// A discovery edge between two unrelated notes that share themes. `kind` is
+// implied `affinity`; this lives in the index kernel rather than the graph
+// component so the build owns the O(n²) work and the request path is O(edges).
+export type AffinityEdge = {
+  sourceId: string;
+  targetId: string;
 };
 
 /**
@@ -303,7 +317,52 @@ async function buildGardenIndex(): Promise<GardenIndex> {
     })),
   );
 
-  return { root, documents, byId, wikiLinkHrefs };
+  const affinityPaths = buildAffinityPaths(documents);
+
+  return { root, documents, byId, wikiLinkHrefs, affinityPaths };
+}
+
+// Two notes are affinity-linked when they share at least two tags. This is the
+// O(n²) pass the landscape graph used to run per request; it now runs once per
+// content version alongside the rest of the index. Pairs already connected by a
+// reference (one note wikilinks the other) are dropped to match the graph's
+// dedup rule — the graph never drew both kinds between the same pair.
+function buildAffinityPaths(documents: GardenDocument[]): AffinityEdge[] {
+  const pairKey = (left: string, right: string) =>
+    [left, right].toSorted().join('::');
+
+  const referencePairs = new Set<string>();
+  for (const document of documents) {
+    for (const link of document.outbound) {
+      if (!link.resolvedId || link.resolvedId === document.id) continue;
+      referencePairs.add(pairKey(document.id, link.resolvedId));
+    }
+  }
+
+  const affinityPaths: AffinityEdge[] = [];
+  for (let leftIndex = 0; leftIndex < documents.length; leftIndex += 1) {
+    const left = documents[leftIndex]!;
+    const leftTags = new Set(left.tags);
+
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < documents.length;
+      rightIndex += 1
+    ) {
+      const right = documents[rightIndex]!;
+      const key = pairKey(left.id, right.id);
+      if (referencePairs.has(key)) continue;
+      let shared = 0;
+      for (const tag of right.tags) {
+        if (leftTags.has(tag)) shared += 1;
+        if (shared >= 2) break;
+      }
+      if (shared < 2) continue;
+      affinityPaths.push({ sourceId: left.id, targetId: right.id });
+    }
+  }
+
+  return affinityPaths;
 }
 
 // Discovery links, not structure: two notes are "related" when they share at
