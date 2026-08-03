@@ -81,13 +81,22 @@ export type GardenIndex = {
   affinityPaths: AffinityEdge[];
 };
 
-// A discovery edge between two unrelated notes that share themes. `kind` is
-// implied `affinity`; this lives in the index kernel rather than the graph
-// component so the build owns the O(n²) work and the request path is O(edges).
 export type AffinityEdge = {
   sourceId: string;
   targetId: string;
 };
+
+// A tag shared by this many notes is a category, not a theme. Counting it
+// toward affinity joined nearly every note to nearly every other — two generic
+// tags on a 500-note garden produced an O(n²) complete graph of edges that
+// froze /notes/graph, the only route that draws them. A tag rare enough to
+// mean "these two specifically" still counts.
+const AFFINITY_SPECIFIC_TAG_MAX_DOCS = 12;
+// Last-resort ceiling on the affinity edge list so a pathological corpus (many
+// notes each carrying several rare but mutually overlapping tags) can never
+// again grow the graph faster than it renders. The honest guarantee is the
+// generic-tag filter above; this cap only catches what it misses.
+const AFFINITY_EDGE_CAP = 1500;
 
 /**
  * The garden cannot be served right now, and that is a content-store state
@@ -333,7 +342,13 @@ async function buildGardenIndex(): Promise<GardenIndex> {
 // content version alongside the rest of the index. Pairs already connected by a
 // reference (one note wikilinks the other) are dropped to match the graph's
 // dedup rule — the graph never drew both kinds between the same pair.
-function buildAffinityPaths(documents: GardenDocument[]): AffinityEdge[] {
+//
+// Only *specific* tags count toward the two-theme threshold: a tag most of the
+// garden carries is a category, not a theme, and letting it count affinity-
+// linked every note to every other. See `AFFINITY_SPECIFIC_TAG_MAX_DOCS`.
+export function buildAffinityPaths(
+  documents: GardenDocument[],
+): AffinityEdge[] {
   const pairKey = (left: string, right: string) =>
     [left, right].toSorted().join('::');
 
@@ -345,22 +360,35 @@ function buildAffinityPaths(documents: GardenDocument[]): AffinityEdge[] {
     }
   }
 
+  const tagFrequency = new Map<string, number>();
+  for (const document of documents) {
+    for (const tag of document.tags) {
+      tagFrequency.set(tag, (tagFrequency.get(tag) ?? 0) + 1);
+    }
+  }
+  const isSpecificTheme = (tag: string): boolean =>
+    (tagFrequency.get(tag) ?? 0) <= AFFINITY_SPECIFIC_TAG_MAX_DOCS;
+
   const affinityPaths: AffinityEdge[] = [];
   for (let leftIndex = 0; leftIndex < documents.length; leftIndex += 1) {
+    if (affinityPaths.length >= AFFINITY_EDGE_CAP) break;
     const left = documents[leftIndex]!;
-    const leftTags = new Set(left.tags);
+    const leftThemes = left.tags.filter(isSpecificTheme);
+    if (leftThemes.length < 2) continue;
+    const leftThemeSet = new Set(leftThemes);
 
     for (
       let rightIndex = leftIndex + 1;
       rightIndex < documents.length;
       rightIndex += 1
     ) {
+      if (affinityPaths.length >= AFFINITY_EDGE_CAP) break;
       const right = documents[rightIndex]!;
       const key = pairKey(left.id, right.id);
       if (referencePairs.has(key)) continue;
       let shared = 0;
       for (const tag of right.tags) {
-        if (leftTags.has(tag)) shared += 1;
+        if (leftThemeSet.has(tag)) shared += 1;
         if (shared >= 2) break;
       }
       if (shared < 2) continue;

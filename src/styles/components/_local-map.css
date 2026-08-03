@@ -340,16 +340,19 @@
   opacity: 0.22;
 }
 
-/* In the rail the map is one of four sections in a 15rem column, so its type
-   steps down a notch; stacked under the article it is the only thing on its
-   line and needs a finger-sized row. The drawing keeps its full 26px scale in
-   both — the rail stretches to fit it rather than the map shrinking to fit the
-   rail (see `.note-context__inner` in `_garden.css`). */
+/* In the rail the map is one of four sections in a 16rem column. The drawing
+   keeps its full 26px scale in both rail and stacked — the rail stretches to
+   fit it rather than the map shrinking to fit the rail (see
+   `.note-context__inner` in `_garden.css`) — so the type must keep pace with
+   the marks rather than stepping down. Stepping the row and type down a notch
+   on the wide layout made the bearings read *smaller* on a desktop rail than
+   stacked on a phone, with full-size marks outweighing shrunken labels, which
+   read as cramped and mis-scaled. */
 @media (min-width: 78rem) {
   .note-context .local-map {
-    --map-row: 1.9rem;
-    --map-title: 0.8125rem;
-    --map-path: 0.75rem;
+    --map-row: 2.15rem;
+    --map-title: 0.875rem;
+    --map-path: 0.8125rem;
   }
 
   .note-context .local-map__frame {

@@ -427,7 +427,7 @@
     top: 1.5rem;
     align-self: start;
     justify-self: end;
-    width: min(100%, 15rem);
+    width: min(100%, 16rem);
     max-height: calc(100dvh - 3rem);
     margin: 0;
     padding: 0;
