@@ -25,6 +25,12 @@ export {
   noteIdFromSourceId,
   uniqueNoteLeafRedirects,
 } from './utils';
+export {
+  normalizeQuery,
+  searchNotes,
+  scoreNote,
+  type SearchableNote,
+} from './search';
 
 type NoteData = z.infer<typeof noteDataSchema>;
 
