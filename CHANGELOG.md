@@ -33,6 +33,28 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-08-03]
+
+### Added
+
+- Site-wide note search from the notes header: a command palette over titles,
+  tags, and summaries, scored the same way the landscape graph already ranks
+  matches so the two surfaces never disagree on order.
+- Affinity paths on the garden graph — discovery edges between notes that share
+  themes, precomputed once with the garden index instead of rescanned on every
+  request.
+
+### Changed
+
+- Affinity only counts tags rare enough to be themes rather than categories,
+  and the edge list is capped so a large garden cannot freeze the graph page
+  under a complete mesh of links.
+
+### Fixed
+
+- Page previews say a note was _edited_ rather than _updated_, matching the
+  wording on the note page itself.
+
 ## [2026-08-02]
 
 ### Added
