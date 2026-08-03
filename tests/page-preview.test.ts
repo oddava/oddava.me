@@ -185,7 +185,7 @@ describe('composePreviewContent', () => {
       path: 'notes / reading',
       title: 'On rereading',
       excerpt: 'Why the second pass is the one that sticks.',
-      meta: 'updated 4 May 2025 · 2 min read',
+      meta: 'edited 4 May 2025 · 2 min read',
     });
   });
 
@@ -244,9 +244,9 @@ describe('composePreviewContent', () => {
       composePreviewContent({
         pathname: '/notes/seeds',
         heading: 'Seeds',
-        updated: 'updated 4 May 2025',
+        updated: 'edited 4 May 2025',
       })?.meta,
-    ).toBe('updated 4 May 2025');
+    ).toBe('edited 4 May 2025');
   });
 
   it('refuses a document with no title at all', () => {
