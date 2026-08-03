@@ -247,7 +247,10 @@ export function composePreviewContent(
   const meta: string[] = [];
   const updated = collapse(source.updated);
   if (updated) {
-    meta.push(/^updated\b/i.test(updated) ? updated : `updated ${updated}`);
+    // The note page renders the date inside its own `edited <time>` line; the
+    // scraper pulls only the `<time>` text, so prefix it here. The regex keeps
+    // a date that already shipped with its own verb from being doubled.
+    meta.push(/^edited\b/i.test(updated) ? updated : `edited ${updated}`);
   }
   const words = source.wordCount ?? 0;
   if (words >= READING_TIME_FLOOR) {
