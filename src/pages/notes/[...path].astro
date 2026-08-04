@@ -42,6 +42,24 @@ const description = document.summary || NOTE_FALLBACK_DESCRIPTION;
   modifiedTime={document.updated}
   wide
 >
+  <Fragment slot="head">
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/literata-latin-400-normal.woff2"
+      crossorigin
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/literata-latin-700-normal.woff2"
+      crossorigin
+      fetchpriority="high"
+    />
+  </Fragment>
   <div class="garden-page">
     <GardenDocumentPage document={document} index={index} />
   </div>

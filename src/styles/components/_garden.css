@@ -67,7 +67,7 @@
   margin: 0;
   color: var(--color-text-primary);
   font-size: clamp(1.05rem, 2vw, 1.2rem);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   letter-spacing: -0.025em;
   transition: color 260ms ease;
@@ -190,11 +190,11 @@
 .garden-document__title {
   margin: 0 0 0.6em;
   color: var(--color-text-primary);
-  font-family: var(--font-body);
+  font-family: var(--font-prose);
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
   line-height: 1.12;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -363,7 +363,7 @@
 }
 
 .note-toc__link[aria-current='location'] {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .note-toc--rail {

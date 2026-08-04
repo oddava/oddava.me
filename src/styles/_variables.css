@@ -6,6 +6,10 @@
 :root {
   /* Typography */
   --font-body: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  /* The reading face: replaces the rounded sans on rendered note prose and
+     note titles. A serif carries long-form writing without looking like a
+     label; the fallback chain keeps a respectable serif on every platform. */
+  --font-prose: 'Literata', Georgia, Cambria, 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
   --text-sm: 0.875rem;
