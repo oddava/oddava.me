@@ -170,86 +170,101 @@ const PULSE: Record<StopKind, string> = {
                 MORE_KINDS.has(row.kind) && 'local-map__stop--more',
               ]}
             >
-              <a
-                class="local-map__link"
-                href={row.href}
-                aria-label={row.label}
-                data-local-map-stop
-                data-detail={row.detail}
-                data-page-preview-ignore
-              >
-                <svg
-                  class="local-map__mark"
-                  viewBox="0 0 26 26"
-                  width="26"
-                  height="26"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  {TRACE[row.kind] && (
-                    <path
-                      class:list={[
-                        'local-map__trace',
-                        REF_KINDS.has(row.kind) && 'local-map__trace--ref',
-                      ]}
-                      d={TRACE[row.kind]}
-                    />
-                  )}
-
-                  {row.kind === 'outbound' && (
-                    <path
-                      class="local-map__arrow"
-                      d="M17 10.3 L19.9 13 L17 15.7"
-                    />
-                  )}
-                  {row.kind === 'backlink' && (
-                    <path
-                      class="local-map__arrow"
-                      d="M13.6 10.3 L10.7 13 L13.6 15.7"
-                    />
-                  )}
-
-                  {row.kind === 'current' && (
+              {/* The "you are here" row is a marker, not a link out — the graph
+                  it pointed at is temporarily off the rail, so the pin stays
+                  put without a destination or a `↗` affordance. Every other row
+                  remains a link (to a neighbour, or to the rest on the full
+                  map). */}
+              {row.kind === 'current' ? (
+                <div class="local-map__link" aria-current="page">
+                  <svg
+                    class="local-map__mark"
+                    viewBox="0 0 26 26"
+                    width="26"
+                    height="26"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
                     <circle class="local-map__ring" cx="9" cy="13" r="6.6" />
-                  )}
-                  {row.kind === 'current' && (
                     <circle
                       class="local-map__dot local-map__dot--here"
                       cx="9"
                       cy="13"
                       r="3.4"
                     />
-                  )}
-                  {row.kind === 'ancestor' && (
-                    <circle class="local-map__dot" cx="9" cy="13" r="2.4" />
-                  )}
-                  {(row.kind === 'child' || MORE_KINDS.has(row.kind)) && (
-                    <circle
-                      class:list={[
-                        'local-map__dot',
-                        MORE_KINDS.has(row.kind) && 'local-map__dot--more',
-                      ]}
-                      cx="19"
-                      cy="13"
-                      r="2.4"
+                    <path
+                      class="local-map__pulse"
+                      d={PULSE.current}
+                      pathLength="1"
                     />
-                  )}
+                  </svg>
+                  <span class="local-map__title">{row.title}</span>
+                </div>
+              ) : (
+                <a
+                  class="local-map__link"
+                  href={row.href}
+                  aria-label={row.label}
+                  data-local-map-stop
+                  data-detail={row.detail}
+                  data-page-preview-ignore
+                >
+                  <svg
+                    class="local-map__mark"
+                    viewBox="0 0 26 26"
+                    width="26"
+                    height="26"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    {TRACE[row.kind] && (
+                      <path
+                        class:list={[
+                          'local-map__trace',
+                          REF_KINDS.has(row.kind) && 'local-map__trace--ref',
+                        ]}
+                        d={TRACE[row.kind]}
+                      />
+                    )}
 
-                  <path
-                    class="local-map__pulse"
-                    d={PULSE[row.kind]}
-                    pathLength="1"
-                  />
-                </svg>
+                    {row.kind === 'outbound' && (
+                      <path
+                        class="local-map__arrow"
+                        d="M17 10.3 L19.9 13 L17 15.7"
+                      />
+                    )}
+                    {row.kind === 'backlink' && (
+                      <path
+                        class="local-map__arrow"
+                        d="M13.6 10.3 L10.7 13 L13.6 15.7"
+                      />
+                    )}
 
-                <span class="local-map__title">{row.title}</span>
+                    {row.kind === 'ancestor' && (
+                      <circle class="local-map__dot" cx="9" cy="13" r="2.4" />
+                    )}
+                    {(row.kind === 'child' || MORE_KINDS.has(row.kind)) && (
+                      <circle
+                        class:list={[
+                          'local-map__dot',
+                          MORE_KINDS.has(row.kind) && 'local-map__dot--more',
+                        ]}
+                        cx="19"
+                        cy="13"
+                        r="2.4"
+                      />
+                    )}
 
-                {row.kind === 'current' && (
-                  <span class="local-map__zoom" aria-hidden="true">
-                    ↗
-                  </span>
-                )}
-              </a>
+                    <path
+                      class="local-map__pulse"
+                      d={PULSE[row.kind]}
+                      pathLength="1"
+                    />
+                  </svg>
+
+                  <span class="local-map__title">{row.title}</span>
+                </a>
+              )}
             </li>
           ))}
         </ol>

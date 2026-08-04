@@ -257,7 +257,7 @@
 
 .local-map__stop--current .local-map__title {
   color: var(--color-text-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .local-map__stop--more .local-map__title {
