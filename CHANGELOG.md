@@ -37,18 +37,15 @@ Everything notable that has landed on this site, newest first.
 
 ### Added
 
-- Literata as the reading face for note titles and body prose — a self-hosted
-  serif drawn for long-form screen reading, with normal, italic, and bold
-  weights. Note pages preload the body and bold cuts so the first paint does
-  not flash the fallback stack. UI, navigation, and listing surfaces keep the
-  rounded sans.
+- Self-hosted Literata serif for note titles and body text (400/600/700, plus
+  italic). Note pages preload the regular and bold files. UI and lists still
+  use M PLUS Rounded.
 
 ### Changed
 
-- The local map’s “you are here” stop is a marker, not a link: the full graph
-  it used to open is off the rail for now, so the pin stays put without a
-  destination or a zoom affordance. Neighbours and the rest-of-map row remain
-  links.
+- On the local note map, the current note is a non-link “you are here” marker
+  (`aria-current="page"`) instead of a link to the full graph. Other stops are
+  unchanged.
 
 ## [2026-08-03]
 
