@@ -35,6 +35,13 @@ Everything notable that has landed on this site, newest first.
 
 ## [2026-08-05]
 
+### Added
+
+- Temporary Spider-Man homepage skin (`HOME_THEME` in `src/lib/home-theme.ts`):
+  immersive rooftop-night layer over the existing index — red/blue token retint,
+  multi-depth web/city backdrop, parallax and spotlight on fine pointers. Fully
+  reversible; set the flag to `default` to restore the stock home.
+
 ### Changed
 
 - Note titles and body use M PLUS Rounded — the same face as the rest of the

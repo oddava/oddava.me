@@ -18,6 +18,12 @@ export interface Props extends SiteHeadProps {
   /** Overrides the drift field the route would choose, or removes it entirely
    *  for a page that composes its own full-bleed canvas. */
   particles?: ParticlePresetName | false;
+  /**
+   * Optional temporary visual skin (e.g. seasonal homepage theme). Sets
+   * `data-skin` on `<html>` so a scoped stylesheet can retint tokens and
+   * decorate without rewriting page structure. Omit for the default look.
+   */
+  skin?: string;
 }
 
 const {
@@ -31,13 +37,14 @@ const {
   hideNav = false,
   wide = false,
   particles,
+  skin,
 } = Astro.props;
 
 const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-skin={skin}>
   <head>
     <SiteHead {title} {description} {image} {imageAlt} {type} {modifiedTime}>
       <slot name="head" />
@@ -45,6 +52,11 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
   </head>
   <body>
     {particles !== false && <ParticleField preset={particles} />}
+    {
+      /* Optional full-bleed backdrop (seasonal skins, etc.). Sits above the
+         particle field and below page content — see ParticleField z-index. */
+    }
+    <slot name="backdrop" />
     <div class:list={['page', wide && 'page--wide']}>
       <a href="#main" class="skip-link">Skip to content</a>
 
