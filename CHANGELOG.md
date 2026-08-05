@@ -33,6 +33,13 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-08-05]
+
+### Changed
+
+- Note titles and body use M PLUS Rounded — the same face as the rest of the
+  site — instead of a separate Literata serif.
+
 ## [2026-08-04]
 
 ### Added
