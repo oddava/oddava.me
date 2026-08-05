@@ -33,6 +33,23 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-08-04]
+
+### Added
+
+- Literata as the reading face for note titles and body prose — a self-hosted
+  serif drawn for long-form screen reading, with normal, italic, and bold
+  weights. Note pages preload the body and bold cuts so the first paint does
+  not flash the fallback stack. UI, navigation, and listing surfaces keep the
+  rounded sans.
+
+### Changed
+
+- The local map’s “you are here” stop is a marker, not a link: the full graph
+  it used to open is off the rail for now, so the pin stays put without a
+  destination or a zoom affordance. Neighbours and the rest-of-map row remain
+  links.
+
 ## [2026-08-03]
 
 ### Added
