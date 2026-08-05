@@ -1,0 +1,328 @@
+---
+/**
+ * Immersive decorative layer for the temporary Spider-Man homepage skin.
+ *
+ * Renders only when `HOME_THEME === 'spiderman'` (see `src/lib/home-theme.ts`).
+ * Everything here is aria-hidden and pointer-events: none — page structure,
+ * copy, and navigation stay with the existing hero. Styles ship with this
+ * component so flipping the flag off drops markup, CSS, and behaviour together.
+ */
+import '../../styles/components/_home-spiderman.css';
+
+const radialDegs = [0, 20, 40, 60, 80, 100, 120, 140, 160];
+const ringRadii = [28, 56, 88, 122, 156];
+---
+
+<div class="sm-theme" data-sm-stage aria-hidden="true">
+  <!-- Far atmosphere -->
+  <div class="sm-theme__sky sm-theme__layer" data-depth="0.12"></div>
+  <div
+    class="sm-theme__fog sm-theme__fog--far sm-theme__layer"
+    data-depth="0.18"
+  >
+  </div>
+  <div class="sm-theme__stars sm-theme__layer" data-depth="0.08"></div>
+
+  <!-- Billboard / neon spill -->
+  <div
+    class="sm-theme__glow sm-theme__glow--red sm-theme__layer"
+    data-depth="0.32"
+  >
+  </div>
+  <div
+    class="sm-theme__glow sm-theme__glow--blue sm-theme__layer"
+    data-depth="0.38"
+  >
+  </div>
+  <div class="sm-theme__spotlight"></div>
+
+  <!-- Comic craft -->
+  <div class="sm-theme__halftone"></div>
+  <div class="sm-theme__grain"></div>
+  <div class="sm-theme__speedlines sm-theme__layer" data-depth="0.22"></div>
+
+  <!-- Mid city -->
+  <div class="sm-theme__city-haze sm-theme__layer" data-depth="0.42"></div>
+  <div class="sm-theme__layer sm-theme__skyline-wrap" data-depth="0.5">
+    <svg
+      class="sm-theme__skyline sm-theme__skyline--far"
+      viewBox="0 0 1200 140"
+      preserveAspectRatio="none"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M0 140 V88 H22 V60 H44 V88 H68 V48 H90 V88 H118 V70 H148 V36 H172 V70 H198 V88 H240 V58 H268 V22 H298 V58 H330 V88 H380 V72 H415 V88 H455 V42 H485 V62 H520 V28 H555 V62 H590 V88 H640 V55 H675 V88 H715 V48 H760 V88 H800 V68 H835 V34 H870 V68 H905 V88 H955 V52 H995 V88 H1035 V44 H1070 V88 H1105 V62 H1140 V88 H1170 V74 H1200 V140 Z"
+      ></path>
+    </svg>
+  </div>
+
+  <div class="sm-theme__layer sm-theme__skyline-wrap" data-depth="0.72">
+    <svg
+      class="sm-theme__skyline sm-theme__skyline--near"
+      viewBox="0 0 1200 160"
+      preserveAspectRatio="none"
+      focusable="false"
+    >
+      <path
+        class="sm-theme__buildings"
+        fill="currentColor"
+        d="M0 160 V95 H35 V55 H70 V95 H105 V40 H145 V95 H185 V70 H220 V25 H260 V70 H300 V95 H350 V60 H390 V95 H440 V35 H485 V55 H530 V18 H575 V55 H620 V95 H680 V50 H725 V95 H770 V65 H815 V30 H860 V65 H910 V95 H960 V48 H1010 V95 H1060 V58 H1105 V95 H1150 V72 H1200 V160 Z"
+      ></path>
+      <g class="sm-theme__windows" fill="currentColor">
+        <rect class="sm-theme__window" x="48" y="68" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="56" y="78" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="118" y="52" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="128" y="62" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="200" y="42" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="235" y="48" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="245" y="58" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="360" y="72" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="455" y="48" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="468" y="58" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="545" y="32" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="558" y="42" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="700" y="62" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="830" y="42" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="842" y="52" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="980" y="58" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="1075" y="70" width="3" height="4"
+        ></rect>
+        <rect class="sm-theme__window" x="1088" y="78" width="3" height="4"
+        ></rect>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Weather -->
+  <div class="sm-theme__rain sm-theme__layer" data-depth="0.88"></div>
+  <div
+    class="sm-theme__fog sm-theme__fog--near sm-theme__layer"
+    data-depth="0.82"
+  >
+  </div>
+
+  <!-- Web architecture: outer layer = parallax, inner svg = orientation -->
+  <div
+    class="sm-theme__layer sm-theme__web-anchor sm-theme__web-anchor--tl"
+    data-depth="1.05"
+  >
+    <svg
+      class="sm-theme__web sm-theme__web--tl sm-theme__web--draw"
+      viewBox="0 0 280 280"
+      focusable="false"
+    >
+      <g
+        class="sm-theme__web-strokes"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="0.95"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M0 0 L255 48"></path>
+        <path d="M0 0 L230 105"></path>
+        <path d="M0 0 L185 165"></path>
+        <path d="M0 0 L125 210"></path>
+        <path d="M0 0 L58 245"></path>
+        <path d="M0 0 L18 255"></path>
+        <path d="M52 0 Q52 52 0 52"></path>
+        <path d="M100 0 Q100 100 0 100"></path>
+        <path d="M150 0 Q150 150 0 150"></path>
+        <path d="M200 0 Q200 200 0 200"></path>
+        <path d="M245 0 Q245 245 0 245"></path>
+        <path d="M44 14 L78 32 L62 62 L32 78 L14 44"></path>
+        <path d="M86 24 L130 52 L105 105 L52 130 L24 86"></path>
+        <path d="M132 40 L178 78 L145 145 L78 178 L40 132"></path>
+      </g>
+      <circle cx="0" cy="0" r="4" fill="currentColor" opacity="0.6"></circle>
+    </svg>
+  </div>
+
+  <div
+    class="sm-theme__layer sm-theme__web-anchor sm-theme__web-anchor--br"
+    data-depth="1"
+  >
+    <svg
+      class="sm-theme__web sm-theme__web--br sm-theme__web--draw"
+      viewBox="0 0 280 280"
+      focusable="false"
+    >
+      <g
+        class="sm-theme__web-strokes"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="0.95"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        transform="rotate(180 140 140)"
+      >
+        <path d="M0 0 L255 48"></path>
+        <path d="M0 0 L230 105"></path>
+        <path d="M0 0 L185 165"></path>
+        <path d="M0 0 L125 210"></path>
+        <path d="M0 0 L58 245"></path>
+        <path d="M0 0 L18 255"></path>
+        <path d="M52 0 Q52 52 0 52"></path>
+        <path d="M100 0 Q100 100 0 100"></path>
+        <path d="M150 0 Q150 150 0 150"></path>
+        <path d="M200 0 Q200 200 0 200"></path>
+        <path d="M44 14 L78 32 L62 62 L32 78 L14 44"></path>
+        <path d="M86 24 L130 52 L105 105 L52 130 L24 86"></path>
+        <path d="M132 40 L178 78 L145 145 L78 178 L40 132"></path>
+      </g>
+      <circle cx="280" cy="280" r="4" fill="currentColor" opacity="0.55"
+      ></circle>
+    </svg>
+  </div>
+
+  <div
+    class="sm-theme__layer sm-theme__web-anchor sm-theme__web-anchor--center"
+    data-depth="0.5"
+  >
+    <svg
+      class="sm-theme__web sm-theme__web--center"
+      viewBox="0 0 360 360"
+      focusable="false"
+    >
+      <g
+        class="sm-theme__web-strokes"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="0.7"
+        stroke-linecap="round"
+      >
+        {
+          radialDegs.map((deg) => (
+            <line
+              x1="180"
+              y1="180"
+              x2={180 + Math.cos((deg * Math.PI) / 180) * 168}
+              y2={180 + Math.sin((deg * Math.PI) / 180) * 168}
+            />
+          ))
+        }
+        {
+          ringRadii.map((r, i) => (
+            <circle cx="180" cy="180" r={r} opacity={0.9 - i * 0.08} />
+          ))
+        }
+      </g>
+      <circle
+        class="sm-theme__reticle"
+        cx="180"
+        cy="180"
+        r="12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.1"></circle>
+    </svg>
+  </div>
+
+  <!-- Quiet HUD chrome -->
+  <div class="sm-theme__hud sm-theme__hud--tl">
+    <span class="sm-theme__hud-label">sector · east river</span>
+    <span class="sm-theme__hud-meta">40.71°n · 73.98°w</span>
+  </div>
+  <div class="sm-theme__hud sm-theme__hud--tr">
+    <span class="sm-theme__hud-label">status</span>
+    <span class="sm-theme__hud-meta sm-theme__hud-meta--live">web · live</span>
+  </div>
+  <div class="sm-theme__hud sm-theme__hud--bl">
+    <span class="sm-theme__hud-label">altitude</span>
+    <span class="sm-theme__hud-meta">rooftop</span>
+  </div>
+  <div class="sm-theme__scan"></div>
+  <div class="sm-theme__vignette"></div>
+</div>
+
+<script>
+  /**
+   * Stage director for the Spider-Man skin:
+   * multi-depth parallax + cursor spotlight. Entrances are pure CSS so the
+   * page stays readable without script.
+   */
+  const root = document.documentElement;
+  if (root.dataset.skin === 'spiderman') {
+    const stage = document.querySelector<HTMLElement>('[data-sm-stage]');
+    if (stage) {
+      const reduceMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches;
+      const finePointer = window.matchMedia('(pointer: fine)').matches;
+
+      if (!reduceMotion && finePointer) {
+        const layers = Array.from(
+          stage.querySelectorAll<HTMLElement>('.sm-theme__layer[data-depth]'),
+        ).map((el) => ({
+          el,
+          depth: Number.parseFloat(el.dataset.depth || '0.5') || 0.5,
+        }));
+
+        let targetX = 0;
+        let targetY = 0;
+        let currentX = 0;
+        let currentY = 0;
+        let spotX = 50;
+        let spotY = 40;
+        let targetSpotX = 50;
+        let targetSpotY = 40;
+        let frame = 0;
+
+        const tick = () => {
+          currentX += (targetX - currentX) * 0.07;
+          currentY += (targetY - currentY) * 0.07;
+          spotX += (targetSpotX - spotX) * 0.12;
+          spotY += (targetSpotY - spotY) * 0.12;
+
+          stage.style.setProperty('--sm-parallax-x', currentX.toFixed(4));
+          stage.style.setProperty('--sm-parallax-y', currentY.toFixed(4));
+          stage.style.setProperty('--sm-spot-x', `${spotX.toFixed(2)}%`);
+          stage.style.setProperty('--sm-spot-y', `${spotY.toFixed(2)}%`);
+
+          for (const { el, depth } of layers) {
+            const dx = currentX * depth * 14;
+            const dy = currentY * depth * 11;
+            el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0)`;
+          }
+
+          const moving =
+            Math.abs(targetX - currentX) > 0.008 ||
+            Math.abs(targetY - currentY) > 0.008 ||
+            Math.abs(targetSpotX - spotX) > 0.05 ||
+            Math.abs(targetSpotY - spotY) > 0.05;
+
+          frame = moving ? requestAnimationFrame(tick) : 0;
+        };
+
+        window.addEventListener(
+          'pointermove',
+          (event: PointerEvent) => {
+            targetX = (event.clientX / window.innerWidth - 0.5) * 2;
+            targetY = (event.clientY / window.innerHeight - 0.5) * 2;
+            targetSpotX = (event.clientX / window.innerWidth) * 100;
+            targetSpotY = (event.clientY / window.innerHeight) * 100;
+            if (!frame) frame = requestAnimationFrame(tick);
+          },
+          { passive: true },
+        );
+      }
+    }
+  }
+</script>
