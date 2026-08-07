@@ -44,6 +44,12 @@ Everything notable that has landed on this site, newest first.
   accents. Structure, copy, and navigation are unchanged. Set the flag to
   `default` to restore the permanent look.
 
+### Security
+
+- Bump the `js-yaml` override from 4.3.0 to 4.3.1
+  ([GHSA-5p4m-2wfm-xmqj](https://osv.dev/GHSA-5p4m-2wfm-xmqj): quadratic CPU in
+  `!!omap` resolution).
+
 ## [2026-08-05]
 
 ### Added
