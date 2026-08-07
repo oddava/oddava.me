@@ -33,6 +33,17 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-08-07]
+
+### Changed
+
+- Homepage visual language: the default card sits in a soft drafting-paper
+  wash; the temporary Spider-Man skin (`HOME_THEME` in `src/lib/home-theme.ts`)
+  drops HUD chrome, scan lines, radar reticles, fake coordinates, and status
+  labels in favour of corner webs, a quiet skyline, and restrained red/blue
+  accents. Structure, copy, and navigation are unchanged. Set the flag to
+  `default` to restore the permanent look.
+
 ## [2026-08-05]
 
 ### Added
