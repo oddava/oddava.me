@@ -33,6 +33,12 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-08-20]
+
+### Removed
+
+- The temporary Spider-Man homepage theme and its unused visual-skin plumbing.
+
 ## [2026-08-07]
 
 ### Changed

@@ -1,23 +1,15 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
-import SpidermanTheme from '../components/home/SpidermanTheme.astro';
 import LinkIcon from '../components/LinkIcon.astro';
-import { isSpidermanHomeTheme } from '../lib/home-theme';
 import '../styles/components/_home.css';
-
-/** Temporary homepage skin — flip via `HOME_THEME` in `src/lib/home-theme.ts`. */
-const spiderman = isSpidermanHomeTheme();
 ---
 
 <Base
   title="oddava"
   description="the notebook i keep out in the open — things i'm making, reading, and thinking about."
   hideNav
-  skin={spiderman ? 'spiderman' : undefined}
 >
-  {spiderman && <SpidermanTheme slot="backdrop" />}
-
   <section class="home-hero home-hero--intro">
     {
       /* Business card: name, then one breath of who, then the three stations.
