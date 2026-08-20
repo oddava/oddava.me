@@ -1,5 +1,56 @@
 # Development and operations
 
+## Quick start
+
+### Prerequisites
+
+- Node.js `22.12` through `24.x` (the repository pins the preferred major in
+  `.nvmrc`)
+- pnpm `10.28.0` (Corepack is the simplest way to provide it)
+- Redis 7+ running locally, either directly or through Docker
+
+With nvm and Corepack installed, prepare the JavaScript toolchain from the
+repository root:
+
+```bash
+nvm install
+nvm use
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+Create the local environment file and fill in the required secrets described
+below:
+
+```bash
+cp .env.example .env
+```
+
+Start Redis. Docker is the usual option:
+
+```bash
+docker compose up -d redis
+redis-cli ping
+```
+
+`PONG` confirms the store is ready. If port `6379` is already occupied but
+`redis-cli ping` returns `PONG`, reuse that running Redis instance instead of
+starting another container. A directly installed Redis server is equally valid
+when it listens at `LOCAL_REDIS_URL`.
+
+Seed an empty local content namespace from the repository export, then start
+Astro:
+
+```bash
+pnpm run notes:migrate
+pnpm run dev
+```
+
+The site is served at the URL Astro prints, normally
+`http://localhost:4321`. The development server starts the authenticated local
+Redis bridge automatically; it listens on `127.0.0.1:18765` unless
+`LOCAL_REDIS_PROXY_PORT` overrides it.
+
 ## Environment setup
 
 Start from `.env.example`. Placeholder values such as `your_...` are treated as
@@ -18,7 +69,10 @@ COMMUNITY_SIGNING_SECRET=<long random secret>
 Redis is required, not optional. Notes live in the runtime content store in
 every environment, and there is no file-based fallback — with no store
 reachable, Studio and the public `/notes` routes are unavailable rather than
-degraded. Seed a fresh store with `pnpm run notes:migrate`.
+degraded. Run `pnpm run notes:migrate` only to seed an empty local store or
+restore the repository snapshot: it replaces repository-managed note paths in
+the development namespace. Export any Studio changes first with
+`pnpm run notes:export`.
 
 Use a dedicated `LOCAL_REDIS_PROXY_TOKEN` when you do not want the local Redis
 bridge to reuse `COMMUNITY_SIGNING_SECRET`.
