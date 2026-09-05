@@ -33,6 +33,19 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-09-05]
+
+### Changed
+
+- Homepage destinations use compact bordered links again, keeping the existing
+  notes, about, and links navigation while simplifying their presentation.
+
+### Removed
+
+- The plotted station rules, markers, and related decorative SVG from the
+  homepage.
+- The homepage footer colophon.
+
 ## [2026-08-20]
 
 ### Removed

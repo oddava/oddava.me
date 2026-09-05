@@ -166,51 +166,31 @@
   padding-bottom: var(--space-md);
 }
 
-/* --- Primary destinations: plotted, not pilled ---
-
-   These were pill buttons: raised surface, full border, 999px radius. They were
-   also the only thing on the site borrowed whole from a UI kit, sitting on a
-   page whose substrate is drafting paper (see `--color-surface`) under a
-   starfield. So they are drawn instead of upholstered — each destination is a
-   station plotted on a measured rule, in the same grammar the garden's Bearings
-   map uses: a hairline that fades in from nothing, a tick down to a hollow dot,
-   mono lowercase type. Learn the drawing here and the note rail reads as the
-   same instrument.
-
-   The rule is per-item rather than one line behind all three, so a wrap onto a
-   second row keeps its geometry instead of stranding the line under one row of
-   stations. Adjacent segments fade at both ends, which is why the row still
-   reads as one intermittent scale rather than three underlines.
-
-   Nothing here moves on its own, matching `_local-map.css`. It has no travelling
-   pulse either: there the pulse is the only cue for which way a link points, and
-   these point nowhere but forward. */
+/* --- Primary destinations --- */
 .home-cta {
-  /* `--cta-drop` is the tick's run, and doubles as the grid gap that reserves
-     it. The dot's own size lives in the SVG's `r`, where it belongs. */
-  --cta-drop: 0.8rem;
-  --cta-rule: color-mix(in srgb, var(--color-brand) 26%, transparent);
-
-  display: grid;
-  justify-items: center;
-  gap: var(--cta-drop);
-  padding: 0.4rem 0.7rem 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--color-rule);
   border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-raised) 48%, transparent);
   color: var(--color-text-interactive);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   letter-spacing: 0.03em;
   text-decoration: none;
-  transition: color 180ms ease;
 }
 
 .home-cta:focus-visible {
-  outline: 1px solid var(--color-focus-ring);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
 .home-cta:hover,
 .home-cta:focus-visible {
+  border-color: var(--color-rule-strong);
+  background: var(--color-surface-raised);
   color: var(--color-text-interactive-hover);
 }
 
@@ -223,90 +203,12 @@
 .home-cta__glyph {
   width: 1rem;
   height: 1rem;
-  color: var(--color-text-disabled);
-  transition: color 180ms ease;
+  color: var(--color-text-muted);
 }
 
 .home-cta:hover .home-cta__glyph,
 .home-cta:focus-visible .home-cta__glyph {
   color: inherit;
-}
-
-/* The rule the station sits on. Constant through hover, like the map's trunk:
-   the sheet does not light up because you pointed at something drawn on it. */
-.home-cta__plot {
-  position: relative;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--cta-rule) 22%,
-    var(--cta-rule) 78%,
-    transparent
-  );
-}
-
-/* The tick, drawn as a solid line behind a fading mask rather than as a gradient
-   fill: a flat color is what `transition` can actually interpolate, so the
-   brighten on hover is a fade instead of a swap. */
-.home-cta__plot::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  height: var(--cta-drop);
-  transform: translateX(-50%);
-  background: var(--color-text-disabled);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 72%);
-  mask-image: linear-gradient(to bottom, transparent, #000 72%);
-  transition: background 180ms ease;
-}
-
-/* The station is drawn in SVG for the same reason the map's marks are, and it is
-   the one part of this that cannot be CSS. A ~5px ring built from `border` +
-   `border-radius` is a border box: the browser snaps its edges to whole device
-   pixels, and since the row is centred over text-derived widths, each station
-   lands on a different subpixel phase — one comes out visibly wider than tall.
-   The same snapping quantises the hover scale, so 5px→6.75px animates in three
-   integer steps and reads as a stutter on the way back down. A vector inside a
-   fixed 14px box has neither problem: the box is placed once at an integer size
-   and the circle is rasterised inside it at whatever offset, so it stays round
-   and scales continuously. Keep the geometry here in the SVG, not in CSS. */
-.home-cta__mark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  /* Whole-pixel offsets rather than `translate(-50%, -50%)`, which would leave
-     the box carrying a transform the dot's own scale would then have to restate. */
-  margin: -7px 0 0 -7px;
-  /* The scaled ring reaches past the box, as it does in the map's markers. */
-  overflow: visible;
-}
-
-.home-cta__dot {
-  fill: var(--color-surface);
-  stroke: var(--color-text-disabled);
-  stroke-width: 1;
-  transform-box: fill-box;
-  transform-origin: center;
-  transition:
-    fill 180ms ease,
-    stroke 180ms ease,
-    transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1);
-}
-
-.home-cta:hover .home-cta__plot::before,
-.home-cta:focus-visible .home-cta__plot::before {
-  background: currentcolor;
-}
-
-.home-cta:hover .home-cta__dot,
-.home-cta:focus-visible .home-cta__dot {
-  fill: currentcolor;
-  stroke: currentcolor;
-  transform: scale(1.35);
 }
 
 .now-card {
@@ -420,47 +322,14 @@
   }
 
   .home-cta {
-    --cta-drop: 0.65rem;
-
     padding-inline: 0.5rem;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .home-cta,
-  .home-cta__glyph,
-  .home-cta__plot::before,
-  .home-cta__dot {
-    transition: none;
-  }
-
-  /* Colour still answers the pointer; only the dot's swell is dropped. */
-  .home-cta:hover .home-cta__dot,
-  .home-cta:focus-visible .home-cta__dot {
-    transform: none;
-  }
-}
-
-/* Forced colours drop the tinted rule and the mask fade, which would leave the
-   stations floating. Restate them in system colours instead. */
 @media (forced-colors: active) {
-  .home-cta__plot {
-    background: CanvasText;
-  }
-
-  .home-cta__plot::before {
-    background: CanvasText;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .home-cta__dot {
-    fill: Canvas;
-    stroke: LinkText;
-  }
-
-  .home-cta:hover .home-cta__dot,
-  .home-cta:focus-visible .home-cta__dot {
-    fill: LinkText;
+  .home-cta {
+    border-color: ButtonText;
+    background: ButtonFace;
+    color: LinkText;
   }
 }
