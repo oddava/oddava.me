@@ -55,9 +55,14 @@ of its Redis key, which `notes:export` mirrors into `src/content/notes`. An
 file name matches the folder, allowing the stored hierarchy and the visible
 garden hierarchy to stay aligned without a second metadata store.
 
-The Studio and public note page share the same Markdown renderer and prose
-stylesheet. Preview output is therefore representative of the published page,
-not a separate approximation.
+Studio's Preview and the public note page share the same Markdown renderer
+and prose stylesheet. Visual mode uses Tiptap/ProseMirror for continuous rich
+editing, native selection, composition, and transaction history. The persisted
+body is still Markdown. `studioRichDocument.ts` retains untouched block source
+and separators, serializes edited blocks, and keeps custom HTML in explicit
+source blocks. Visual remains mounted across mode switches; external Markdown
+changes reset its history, and opening another file mounts a fresh editor.
+Editor CSS is bundled rather than injected at runtime, preserving the CSP.
 
 ### The drift field
 

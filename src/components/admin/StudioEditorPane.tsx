@@ -1,3 +1,4 @@
+import StudioControlMenu from './StudioControlMenu';
 import { useEffect, useRef } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import type { TargetedClipboardEvent, TargetedKeyboardEvent } from 'preact';
@@ -33,6 +34,7 @@ interface Props {
   savedAt: number | null;
   uploading: boolean;
   editorRef: MutableRef<HTMLTextAreaElement | null>;
+  richCommandsRef: MutableRef<EditorCommands | null>;
   focusRef: MutableRef<(() => void) | null>;
   commands: EditorCommands;
   wikiMenu: ReturnType<typeof useWikiLinkAutocomplete>;
@@ -124,6 +126,7 @@ export default function StudioEditorPane({
   savedAt,
   uploading,
   editorRef,
+  richCommandsRef,
   focusRef,
   commands,
   wikiMenu,
@@ -197,71 +200,73 @@ export default function StudioEditorPane({
           <strong>{title}</strong>
           <code>{publishedUrl}</code>
         </div>
-        <StudioSaveIndicator
-          state={saveState}
-          savedAt={savedAt}
-          manual={!autosave}
-          onSave={onSave}
-        />
-        <button
-          type="button"
-          className="studio-bar__autosave"
-          role="switch"
-          aria-checked={autosave}
-          // The label beside the dot is hidden on a phone; the name is not.
-          aria-label="Autosave"
-          title={
-            autosave
-              ? 'Autosave on — click to save manually with ⌘S'
-              : 'Autosave off — save with ⌘S'
-          }
-          onClick={onToggleAutosave}
-        >
-          <span className="studio-bar__autosave-dot" aria-hidden="true" />
-          <span className="studio-bar__autosave-label">Autosave</span>
-        </button>
         {!compact && viewSwitch}
-        {!compact && view !== 'preview' && (
-          <button
-            type="button"
-            className="studio-bar__focus"
-            role="switch"
-            aria-checked={focusMode}
-            aria-label="Focus mode"
-            title="Focus mode — dim everything but the note (⌘⇧F)"
-            onClick={onToggleFocusMode}
-          >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <circle cx="10" cy="10" r="6.25" />
-              <circle cx="10" cy="10" r="2" />
-            </svg>
-          </button>
-        )}
-        {publishedUrl && (
-          <a
-            className="studio-bar__open"
-            href={publishedUrl}
-            target="_blank"
-            rel="noreferrer"
-            title="Open published page"
-            aria-label="Open published page"
-          >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M8 4.75H5.5A1.75 1.75 0 0 0 3.75 6.5v8A1.75 1.75 0 0 0 5.5 16.25h8a1.75 1.75 0 0 0 1.75-1.75V12" />
-              <path d="M11.5 3.75h4.75v4.75M16 4l-7 7" />
-            </svg>
-          </a>
-        )}
+        <div className="studio-bar__actions">
+          <StudioSaveIndicator
+            state={saveState}
+            savedAt={savedAt}
+            manual={!autosave}
+            onSave={onSave}
+          />
+          <StudioControlMenu label="Editor options" settings>
+            <button
+              type="button"
+              className="studio-option"
+              role="switch"
+              aria-checked={autosave}
+              aria-label="Autosave"
+              onClick={onToggleAutosave}
+            >
+              <span>
+                Autosave<small>Save changes as you write</small>
+              </span>
+              <span className="studio-option__switch" aria-hidden="true" />
+            </button>
+            {view !== 'preview' && (
+              <button
+                type="button"
+                className="studio-option"
+                role="switch"
+                aria-checked={focusMode}
+                aria-label="Focus mode"
+                onClick={onToggleFocusMode}
+              >
+                <span>
+                  Focus mode<small>Dim the file sidebar</small>
+                </span>
+                <span className="studio-option__switch" aria-hidden="true" />
+              </button>
+            )}
+          </StudioControlMenu>
+          {publishedUrl && (
+            <a
+              className="studio-bar__open"
+              href={publishedUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="Open published page"
+              aria-label="Open published page"
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M8 4.75H5.5A1.75 1.75 0 0 0 3.75 6.5v8A1.75 1.75 0 0 0 5.5 16.25h8a1.75 1.75 0 0 0 1.75-1.75V12" />
+                <path d="M11.5 3.75h4.75v4.75M16 4l-7 7" />
+              </svg>
+              <span>View page</span>
+            </a>
+          )}
+        </div>
       </header>
 
       <div
         className={`studio-surface is-${view} ${focusMode ? 'is-focused' : ''}`}
       >
-        {view === 'visual' && (
+        <div hidden={view !== 'visual'} className="studio-visual-host">
           <StudioVisualEditor
             body={body}
             renderMarkdown={renderMarkdown}
             editorRef={editorRef}
+            richCommandsRef={richCommandsRef}
+            visible={view === 'visual'}
             focusRef={focusRef}
             commands={commands}
             wikiMenu={wikiMenu}
@@ -274,7 +279,7 @@ export default function StudioEditorPane({
             onRequestImage={onRequestImage}
             onNotice={onNotice}
           />
-        )}
+        </div>
 
         {view === 'markdown' && (
           <div className="studio-source">

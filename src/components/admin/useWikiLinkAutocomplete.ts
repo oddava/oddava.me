@@ -174,6 +174,7 @@ export function useWikiLinkAutocomplete(
   );
 
   return {
+    suggestions,
     open: state.open,
     items: state.items,
     activeIndex: state.activeIndex,

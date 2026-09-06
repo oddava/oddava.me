@@ -24,7 +24,10 @@ import StudioTabs from './StudioTabs';
 import StudioEditorPane from './StudioEditorPane';
 import type { TabPlacement } from './studioTabStrip';
 import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
-import { makeEditorCommands } from './studioEditorCommands';
+import {
+  makeEditorCommands,
+  type EditorCommands,
+} from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import { useContentLibrary } from './useContentLibrary';
 import { useContentMutations } from './useContentMutations';
@@ -55,6 +58,7 @@ import {
   type ViewMode,
 } from './studioSession';
 import './Studio.css';
+import './StudioProduct.css';
 // The preview renders through the site's own note stylesheet, not a copy of it.
 import '../../styles/components/_note-prose.css';
 
@@ -78,9 +82,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
   const [sessionRestored, setSessionRestored] = useState(false);
 
-  // Whichever textarea is live — the block being edited in Visual mode, or the
-  // whole source in Markdown mode. Every shared command writes through it.
+  // Markdown commands target the source textarea; Visual uses rich transactions.
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const richCommandsRef = useRef<EditorCommands | null>(null);
   // How the active surface takes focus, registered by the surface itself.
   const focusRef = useRef<(() => void) | null>(null);
   const sidebarRef = useRef<HTMLElement | null>(null);
@@ -417,14 +421,21 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Editor helpers ------------------------------------------------------
 
-  // Every command writes through the live textarea and lets its own `input`
-  // event carry the change back — the same path a keystroke takes, so Visual
-  // mode splices into the open block and Markdown mode into the whole note
-  // without either command knowing which surface it landed on.
-  const editorCommands = useMemo(
-    () => makeEditorCommands(() => editorRef.current),
-    [],
-  );
+  // Route shared shortcuts to the active surface, keeping its native undo history.
+  const editorCommands = useMemo(() => {
+    const source = makeEditorCommands(() => editorRef.current);
+    return Object.fromEntries(
+      Object.entries(source).map(([key]) => [
+        key,
+        (...args: unknown[]) => {
+          const target = richCommandsRef.current ?? source;
+          return (
+            target[key as keyof EditorCommands] as (...args: unknown[]) => void
+          )(...args);
+        },
+      ]),
+    ) as unknown as EditorCommands;
+  }, []);
 
   // `[[` autocomplete: suggests existing notes at the caret and inserts a
   // resolving wikilink. Shares the editor's undo-safe range replacement.
@@ -890,25 +901,39 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             >
               {!openId || !collection ? (
                 <div className="studio-blank">
-                  <p className="studio-blank__title">
-                    Open a file to start writing
-                  </p>
+                  <p className="studio-blank__title">No file open</p>
                   <p className="studio-blank__hint">
-                    Press <kbd>⌘</kbd>
-                    <kbd>P</kbd> to go to a file, or pick one from the explorer.
+                    Select a file or create a note.
                   </p>
-                  {!sidebarVisible && (
+                  <div className="studio-blank__actions">
                     <button
                       type="button"
-                      className="studio-blank__action"
-                      onClick={() => setSidebarCollapsed(false)}
+                      disabled={busyKey !== null || !collection}
+                      onClick={() =>
+                        void mutations.createEntryInFolder(
+                          activeFolder,
+                          mutations.uniqueItemId('untitled'),
+                        )
+                      }
                     >
-                      Browse files
+                      + New note
                     </button>
-                  )}
+                    <button type="button" onClick={() => setPaletteOpen(true)}>
+                      Find a file
+                    </button>
+                    {phone && (
+                      <button
+                        type="button"
+                        onClick={() => setSidebarCollapsed(false)}
+                      >
+                        Browse files
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <StudioEditorPane
+                  key={openId}
                   title={currentTitle}
                   publishedUrl={publishedUrl}
                   body={body}
@@ -926,6 +951,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   savedAt={doc.savedAt}
                   uploading={busyKey === 'upload-body'}
                   editorRef={editorRef}
+                  richCommandsRef={richCommandsRef}
                   focusRef={focusRef}
                   commands={editorCommands}
                   wikiMenu={wikiMenu}

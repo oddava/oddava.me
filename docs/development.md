@@ -123,6 +123,21 @@ Run the focused test while iterating, then finish with:
 pnpm run verify
 ```
 
+Studio interaction tests run in Chromium at desktop and phone sizes:
+
+```bash
+pnpm exec playwright install chromium
+pnpm run test:browser
+```
+
+On Linux, install Playwright's browser system dependencies if required
+(`pnpm exec playwright install-deps chromium`). The Vite fixture under
+`tests/browser` mounts the real workspace, with API responses intercepted only
+in Playwright. It never connects to the live content store or bypasses app
+authentication. Screenshots and failure traces are written to `test-results`.
+The Vitest suite separately checks lossless Markdown handling and real Redis
+persistence.
+
 CI runs formatting, Astro diagnostics, the full Vitest suite (including the
 real-Redis integration test), a production build, and a dependency audit. A push
 to `main` deploys only after those checks pass.

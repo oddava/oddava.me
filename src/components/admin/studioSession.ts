@@ -29,7 +29,7 @@ export interface StudioSession {
 }
 
 export const DEFAULT_SESSION: StudioSession = {
-  sidebar: 250,
+  sidebar: 280,
   sidebarCollapsed: false,
   view: 'visual',
   lastOpenId: '',

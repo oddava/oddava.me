@@ -1,3 +1,4 @@
+import StudioControlMenu, { StudioWorkspaceLinks } from './StudioControlMenu';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import type { ContentEntryListItem } from '../../lib/contracts';
@@ -210,7 +211,11 @@ export default function StudioTabs({
         onClick={onQuickOpen}
         aria-label="Quick open file"
       >
-        <span>Go to file</span>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5" />
+          <path d="m12.5 12.5 4 4" />
+        </svg>
+        <span>Find file</span>
         <kbd>Ctrl P</kbd>
       </button>
 
@@ -400,6 +405,9 @@ export default function StudioTabs({
           );
         })}
       </div>
+      <StudioControlMenu label="Workspace menu">
+        <StudioWorkspaceLinks />
+      </StudioControlMenu>
     </div>
   );
 }

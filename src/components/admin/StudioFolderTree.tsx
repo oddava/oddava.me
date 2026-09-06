@@ -428,6 +428,7 @@ export default function StudioFolderTree({
       return;
     }
     onSelectFolder(node.folder.id);
+    onSetFolderExpansion(ancestorPaths(node.folder.id), true);
     if (node.document) onEditEntry(node.document, options);
     else void onOpenFolder(node.folder, options);
   }
@@ -1094,17 +1095,33 @@ export default function StudioFolderTree({
                 disabled={inlineBusy}
                 aria-label={`Rename ${nodeLabel(node)}`}
                 onClick={(event) => event.stopPropagation()}
-                onChange={(event) =>
+                onInput={(event) =>
                   setRenaming({ ...renaming, value: event.currentTarget.value })
                 }
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') setRenaming(null);
                 }}
-                onBlur={() => {
-                  // Clicking away cancels the rename; Enter (submit) doesn't blur.
-                  if (!inlineBusy) setRenaming(null);
-                }}
               />
+              <button
+                type="submit"
+                className="studio-inline-confirm"
+                disabled={inlineBusy}
+                aria-label="Save name"
+                onClick={(event) => event.stopPropagation()}
+              >
+                ↵
+              </button>
+              <button
+                type="button"
+                className="studio-inline-confirm"
+                aria-label="Cancel rename"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setRenaming(null);
+                }}
+              >
+                ×
+              </button>
             </form>
           ) : (
             <span className="studio-tree-row__label">
@@ -1182,19 +1199,30 @@ export default function StudioFolderTree({
                 creating.kind === 'folder' ? 'new folder' : 'new note'
               }
               aria-label={`New ${creating.kind} name`}
-              onChange={(event) =>
+              onInput={(event) =>
                 setCreating({ ...creating, value: event.currentTarget.value })
               }
               onKeyDown={(event) => {
                 if (event.key === 'Escape') setCreating(null);
               }}
-              onBlur={() => {
-                // Clicking away dismisses the inline input instead of leaving it
-                // stuck open. Enter submits without blurring.
-                if (!inlineBusy) setCreating(null);
-              }}
             />
           </span>
+          <button
+            type="submit"
+            className="studio-inline-confirm"
+            disabled={inlineBusy}
+            aria-label="Create"
+          >
+            ↵
+          </button>
+          <button
+            type="button"
+            className="studio-inline-confirm"
+            aria-label="Cancel creation"
+            onClick={() => setCreating(null)}
+          >
+            ×
+          </button>
         </form>
       </li>
     );
@@ -1273,11 +1301,15 @@ export default function StudioFolderTree({
           <input
             className="admin-input"
             type="search"
-            placeholder="Find a file"
+            placeholder="Search files…"
             aria-label="Find a file by name, title or path"
             value={query}
             onChange={(event) => onQueryChange(event.currentTarget.value)}
             onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                focusRow(rowKeys[0] ?? ROOT_KEY);
+              }
               if (event.key === 'Escape' && query) {
                 event.preventDefault();
                 onQueryChange('');
@@ -1298,23 +1330,13 @@ export default function StudioFolderTree({
             </button>
           )}
         </div>
-        <button
-          type="button"
-          className="studio-icon-button"
-          title="New file"
-          aria-label="New file"
-          onClick={() => beginCreate('entry')}
-        >
-          <PlusIcon />
+      </div>
+      <div className="studio-library-actions">
+        <button type="button" onClick={() => beginCreate('entry')}>
+          <PlusIcon /> New note
         </button>
-        <button
-          type="button"
-          className="studio-icon-button"
-          title="New folder"
-          aria-label="New folder"
-          onClick={() => beginCreate('folder')}
-        >
-          <FolderPlusIcon />
+        <button type="button" onClick={() => beginCreate('folder')}>
+          <FolderPlusIcon /> Folder
         </button>
       </div>
 

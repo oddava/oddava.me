@@ -20,56 +20,6 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
   {
     configured ? (
       <>
-        <header class="admin-header admin-header--with-nav admin-header--compact">
-          <nav class="admin-header__nav" aria-label="Admin navigation">
-            <a
-              href="/admin"
-              class="admin-header__link"
-              title="Back to dashboard"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M19 12H5" />
-                <path d="M12 19l-7-7 7-7" />
-              </svg>
-            </a>
-            <span class="admin-header__current">Files</span>
-          </nav>
-          <form method="post" action="/api/admin/logout">
-            <button
-              class="admin-header__action"
-              type="submit"
-              aria-label="Sign out"
-              title="Sign out"
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M10 17l5-5-5-5" />
-                <path d="M15 12H3" />
-                <path d="M21 19V5a2 2 0 0 0-2-2h-5" />
-                <path d="M14 21h5a2 2 0 0 0 2-2" />
-              </svg>
-            </button>
-          </form>
-        </header>
         <main class="admin-main admin-main--full">
           <ContentWorkspace client:load fullWidth />
         </main>
