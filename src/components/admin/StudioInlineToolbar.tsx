@@ -14,6 +14,7 @@ interface Props {
    */
   docked?: boolean;
   commands: EditorCommands;
+  activeMarks?: ReadonlySet<string>;
 }
 
 const isMac =
@@ -33,11 +34,13 @@ function Action({
   label,
   hint,
   onClick,
+  active,
   children,
 }: {
   label: string;
   hint?: string;
   onClick: () => void;
+  active?: boolean;
   children: ComponentChildren;
 }) {
   return (
@@ -45,6 +48,7 @@ function Action({
       type="button"
       className="studio-inline-tool"
       aria-label={label}
+      aria-pressed={active}
       title={hint ? `${label} · ${hint}` : label}
       // Keep the selection alive while the button is pressed.
       onMouseDown={(event) => event.preventDefault()}
@@ -64,10 +68,11 @@ export default function StudioInlineToolbar({
   position,
   docked = false,
   commands,
+  activeMarks,
 }: Props) {
   if (!position && !docked) return null;
 
-  return createPortal(
+  const toolbar = (
     <div
       className={`studio-inline-toolbar ${docked ? 'is-docked' : ''}`}
       role="toolbar"
@@ -78,17 +83,33 @@ export default function StudioInlineToolbar({
           : { top: `${position.top}px`, left: `${position.left}px` }
       }
     >
-      <Action label="Bold" hint={`${mod}B`} onClick={commands.bold}>
+      <Action
+        label="Bold"
+        active={activeMarks?.has('bold')}
+        hint={`${mod}B`}
+        onClick={commands.bold}
+      >
         <span className="studio-tool-glyph studio-tool-glyph--bold">B</span>
       </Action>
-      <Action label="Italic" hint={`${mod}I`} onClick={commands.italic}>
+      <Action
+        label="Italic"
+        active={activeMarks?.has('italic')}
+        hint={`${mod}I`}
+        onClick={commands.italic}
+      >
         <span className="studio-tool-glyph studio-tool-glyph--italic">I</span>
       </Action>
-      <Action label="Strikethrough" hint={`${mod}⇧X`} onClick={commands.strike}>
+      <Action
+        label="Strikethrough"
+        active={activeMarks?.has('strike')}
+        hint={`${mod}⇧X`}
+        onClick={commands.strike}
+      >
         <span className="studio-tool-glyph studio-tool-glyph--strike">S</span>
       </Action>
       <Action
         label="Inline code"
+        active={activeMarks?.has('code')}
         hint={`${mod}⇧C`}
         onClick={commands.inlineCode}
       >
@@ -97,7 +118,12 @@ export default function StudioInlineToolbar({
         </svg>
       </Action>
       <span className="studio-inline-toolbar__divider" aria-hidden="true" />
-      <Action label="Link" hint={`${mod}K`} onClick={commands.link}>
+      <Action
+        label="Link"
+        active={activeMarks?.has('link')}
+        hint={`${mod}K`}
+        onClick={commands.link}
+      >
         <svg viewBox="0 0 20 20" {...icon}>
           <path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.3-2.3a3 3 0 0 0-4.2-4.2l-1 1" />
           <path d="M11.5 8.5a3 3 0 0 0-4.2 0L5 10.8a3 3 0 0 0 4.2 4.2l1-1" />
@@ -110,7 +136,7 @@ export default function StudioInlineToolbar({
       >
         <span className="studio-tool-glyph">[[</span>
       </Action>
-    </div>,
-    document.body,
+    </div>
   );
+  return docked ? toolbar : createPortal(toolbar, document.body);
 }

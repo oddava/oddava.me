@@ -38,3 +38,7 @@ agent-tools/
 .vscode/
 
 TODO
+
+# browser verification artifacts
+/test-results/
+/playwright-report/

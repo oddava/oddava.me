@@ -33,6 +33,46 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-09-06]
+
+Studio's visual editor is now a continuous writing surface. Notes still
+save as Markdown, and a save is still live.
+
+### Added
+
+- A Tiptap/ProseMirror visual editor in Studio: native selection, IME
+  composition, and undo history, with slash commands, task lists, tables,
+  and wiki-link chips on the same surface.
+- Lossless Markdown round-trip for visual edits — untouched blocks keep
+  their original source and separators, and custom HTML stays in explicit
+  source cards instead of being rewritten.
+- Editor options and workspace links behind overflow menus, so autosave,
+  focus mode, admin, and sign-out no longer crowd the title bar.
+- Confirm and cancel controls for inline rename and create in the file
+  tree.
+- Playwright coverage of Studio at desktop and phone sizes, plus Vitest
+  checks that Markdown survives a visual edit.
+
+### Changed
+
+- Visual mode stays mounted when switching to Markdown or Preview, so
+  undo history survives a glance at the source. Opening another file still
+  mounts a fresh editor.
+- Shared formatting shortcuts write through the rich editor's own
+  commands in Visual mode, instead of splicing into a hidden textarea.
+- The files workspace is the chrome: empty-state copy offers New note and
+  Find a file, and the library uses labeled New note and Folder actions.
+- Site palette: clearer blue accents over deep ink, shared by the public
+  pages and Studio.
+- Formatting marks in the inline toolbar show as pressed when they are
+  active.
+
+### Removed
+
+- The previous block-textarea visual editor.
+- The extra admin header on `/admin/files` — the workspace menu now owns
+  navigation and sign-out.
+
 ## [2026-09-05]
 
 ### Changed

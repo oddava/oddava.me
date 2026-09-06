@@ -58,40 +58,34 @@
 :root,
 [data-theme],
 [data-theme='dark'] {
-  /* Brand — "Blueprint": a desaturated steel-blue drawn over cool graphite.
-     Everything decorative mixes from --color-brand, so retinting cascades.
-     A cool brand leaves the warm spectrum free for unambiguous semantics. */
-  --color-brand: #5f92bd;
-  --color-brand-strong: #7aa6cb;
+  /* Clear blue accents over deep ink. Shared by the site and Studio. */
+  --color-brand: #6495f5;
+  --color-brand-strong: #96b8ff;
 
-  /* Semantic text roles. All text colors should reference this group.
-     Cool paper-ink hierarchy; a single steel-blue carries interactivity. */
-  --color-text-primary: #e4e8ee;
-  --color-text-secondary: #aab2bf;
-  /* Muted must clear 4.5:1 on --color-surface-elevated too, where it often
-     sits (cards, search meta). #8a93a1 is ~4.8:1 there, ~6:1 on the base. */
-  --color-text-muted: #8a93a1;
-  --color-text-disabled: #5e6674;
-  --color-text-accent: #7aa6cb;
-  --color-text-interactive: #7aa6cb;
-  --color-text-interactive-hover: #9cc0dd;
-  --color-text-success: #79ab9a;
-  --color-text-warning: #cbab68;
-  --color-text-error: #cf7f7a;
+  /* Text roles keep writing bright and secondary controls readable. */
+  --color-text-primary: #eef0f7;
+  --color-text-secondary: #bdc5d8;
+  --color-text-muted: #99a6c0;
+  --color-text-disabled: #69768f;
+  --color-text-accent: #96b8ff;
+  --color-text-interactive: #96b8ff;
+  --color-text-interactive-hover: #bed3ff;
+  --color-text-success: #75d4b0;
+  --color-text-warning: #ebc078;
+  --color-text-error: #f18c96;
   --color-text-on-accent: #0a0f14;
   --color-on-danger: #160a0a;
 
-  /* Surfaces and non-text decoration. Cool near-black ground, blended with
-     a trace of brand so the substrate reads as drafting paper, not pure slate. */
-  --color-surface: color-mix(in srgb, #0c0e11 96%, var(--color-brand) 4%);
+  /* Dark surfaces gain separation through lightness and a trace of blue. */
+  --color-surface: color-mix(in srgb, #0c0f18 96%, var(--color-brand) 4%);
   --color-surface-raised: color-mix(
     in srgb,
-    #13161b 94%,
+    #141a29 94%,
     var(--color-brand) 6%
   );
   --color-surface-elevated: color-mix(
     in srgb,
-    #1a1e25 91%,
+    #202b40 91%,
     var(--color-brand) 9%
   );
   --color-surface-glass: color-mix(

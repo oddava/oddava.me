@@ -49,17 +49,17 @@
   color-scheme: dark;
 }
 
-.admin-page a {
+.admin-page a:where(:not(.prose *)) {
   color: var(--admin-accent);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
-.admin-page a:hover {
+.admin-page a:where(:not(.prose *)):hover {
   color: var(--admin-accent-hover);
 }
 
-.admin-page code {
+.admin-page code:where(:not(.prose *)) {
   font-family: var(--font-mono);
   font-size: 0.8em;
   padding: 2px 6px;

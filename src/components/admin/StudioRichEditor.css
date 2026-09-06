@@ -1,0 +1,385 @@
+/* A continuous page. ProseMirror owns the descendants of .studio-rich-content. */
+.studio-visual-host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.studio-visual-host[hidden] {
+  display: none;
+}
+.studio-rich-scroll {
+  background: var(--color-surface);
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 54px max(52px, calc((100% - var(--max-width)) / 2)) 90px;
+}
+.studio-rich-page {
+  min-height: 320px;
+}
+.studio-rich-content {
+  outline: none;
+  min-height: 320px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.studio-rich-content > * {
+  position: relative;
+  scroll-margin-block: 80px;
+}
+.studio-rich-content li p {
+  margin: 0;
+}
+.studio-rich-content ul[data-type='taskList'] {
+  padding: 0;
+  list-style: none;
+}
+.studio-rich-content li[data-checked] {
+  display: flex;
+  gap: 10px;
+  padding: 0;
+}
+.studio-rich-content li[data-checked] > label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+.studio-rich-content li[data-checked] > label input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--admin-accent);
+  cursor: pointer;
+}
+.studio-rich-content li[data-checked] > div {
+  flex: 1;
+  min-width: 0;
+}
+.studio-rich-content li[data-checked='true'] > div > p {
+  text-decoration: line-through;
+  color: var(--admin-text-muted);
+}
+/* ProseMirror adds wrappers around table cells and editable task labels. */
+.studio-rich-content .tableWrapper {
+  overflow-x: auto;
+}
+.studio-rich-content :is(td, th) {
+  position: relative;
+  min-width: 80px;
+}
+.studio-rich-content :is(td, th) p {
+  margin: 0;
+}
+.studio-wiki-chip {
+  color: var(--color-text-interactive);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: default;
+}
+.studio-rich-content .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--admin-accent) 15%, transparent);
+  content: '';
+}
+.studio-rich-content .ProseMirror-selectednode {
+  outline: 2px solid color-mix(in srgb, var(--admin-accent) 65%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.studio-rich-content .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--admin-text-disabled);
+  height: 0;
+  pointer-events: none;
+}
+.studio-rich-content ::selection {
+  background: color-mix(in srgb, var(--admin-accent) 24%, transparent);
+}
+.studio-rich-handle {
+  position: absolute;
+  left: max(4px, calc((100% - var(--max-width)) / 2 - 49px));
+  display: flex;
+  align-items: center;
+  padding-top: 2px;
+  z-index: 2;
+}
+.studio-rich-handle button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  width: 23px;
+  height: 28px;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font: 20px/1 sans-serif;
+  cursor: pointer;
+}
+.studio-rich-handle button[draggable] {
+  cursor: grab;
+  font-size: 24px;
+}
+.studio-rich-handle button:hover {
+  color: var(--admin-text-primary);
+  background: var(--admin-surface-elevated);
+}
+.studio-rich-drop {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--admin-accent);
+  pointer-events: none;
+  z-index: 3;
+}
+.studio-source-block {
+  border: 1px dashed var(--admin-line-strong);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--admin-surface);
+  cursor: pointer;
+}
+.studio-source-block__label {
+  color: var(--admin-accent);
+  font: 11px var(--font-mono);
+}
+.studio-source-block pre {
+  max-height: 160px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+.studio-source-block::after {
+  content: 'Double-click to edit source';
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--admin-text-disabled);
+}
+.studio-rich-popover {
+  position: fixed;
+  z-index: 100;
+  width: min(290px, calc(100vw - 16px));
+  padding: 14px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 12px;
+  background: var(--admin-surface-elevated);
+  box-shadow: 0 16px 50px #0006;
+  color: var(--admin-text-primary);
+  font: 13px/1.5 var(--font-body);
+}
+.studio-link-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--admin-text-muted);
+}
+.studio-link-form input {
+  width: 100%;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
+}
+.studio-link-form > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.studio-link-form button,
+.studio-source-dialog button,
+.studio-table-tools button {
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-surface);
+  border-radius: 6px;
+  color: var(--admin-text-primary);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.studio-link-form button[type='submit'],
+.studio-source-dialog button:last-child {
+  background: var(--admin-accent);
+  color: var(--color-text-on-accent);
+}
+.studio-source-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #0009;
+  backdrop-filter: blur(6px);
+}
+.studio-source-dialog > div {
+  width: min(720px, 100%);
+  padding: 24px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 16px;
+  background: var(--admin-surface);
+}
+.studio-source-dialog h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.studio-source-dialog p {
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+.studio-source-dialog textarea {
+  width: 100%;
+  height: min(45vh, 380px);
+  resize: vertical;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
+  font: 13px/1.7 var(--font-mono);
+}
+.studio-source-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+.studio-table-tools {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  width: fit-content;
+  background: var(--admin-surface-elevated);
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+}
+@media (max-width: 720px) {
+  .studio-rich-scroll {
+    padding: 28px 24px 110px 40px;
+  }
+  .studio-rich-handle {
+    left: 2px;
+  }
+  .studio-rich-handle button {
+    width: 30px;
+    height: 36px;
+  }
+  .studio-rich-handle button:first-child {
+    display: none;
+  }
+  .studio-rich-drop {
+    left: 38px;
+    right: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-rich-scroll {
+    scroll-behavior: auto;
+  }
+}
+.studio-source-block::after {
+  display: none;
+}
+.studio-source-block button {
+  margin-top: 12px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 6px;
+  background: var(--admin-surface-elevated);
+  color: var(--admin-accent);
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.studio-rich-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.studio-rich-shell > .studio-inline-toolbar.is-docked {
+  position: static;
+  flex-shrink: 0;
+  transform: none;
+  min-height: 44px;
+  padding: 5px 8px;
+  box-shadow: none;
+}
+.studio-source-dialog {
+  z-index: 1600;
+}
+.studio-link-form {
+  z-index: 1300;
+}
+/* Editor infrastructure is bundled as CSS; no runtime style tag under the CSP. */
+.studio-rich-content {
+  position: relative;
+  white-space: break-spaces;
+}
+.studio-rich-content [contenteditable='false'] {
+  white-space: normal;
+}
+.studio-rich-content [contenteditable='false'] [contenteditable='true'] {
+  white-space: pre-wrap;
+}
+.studio-rich-content img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  margin: 0;
+}
+.ProseMirror-gapcursor::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--admin-accent);
+  animation: studio-caret 1.1s steps(2, start) infinite;
+}
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+.ProseMirror-hideselection * {
+  caret-color: transparent;
+}
+.studio-rich-handle button[draggable] {
+  touch-action: none;
+  user-select: none;
+}
+@keyframes studio-caret {
+  to {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ProseMirror-gapcursor::after {
+    animation: none;
+  }
+}

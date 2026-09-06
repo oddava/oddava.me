@@ -52,8 +52,8 @@ export default function StudioSaveIndicator({
     );
   }
 
-  let label = '';
-  let tone = 'idle';
+  let label = manual ? 'Manual save' : 'Saved';
+  let tone = manual ? 'idle' : 'saved';
   if (state === 'saving') {
     label = 'Saving…';
     tone = 'saving';
@@ -75,7 +75,13 @@ export default function StudioSaveIndicator({
   }
   if (!label) return <span className="studio-save" data-tone="idle" />;
   return (
-    <span className="studio-save" data-tone={tone}>
+    <span
+      className="studio-save"
+      data-tone={tone}
+      role="status"
+      aria-live="polite"
+      title={label}
+    >
       {tone === 'saved' ? (
         <SavedIcon />
       ) : (
