@@ -55,13 +55,18 @@ async function readLimitedBody(
   return text + decoder.decode();
 }
 
-export async function readJsonBody<T>(
+/** All JSON endpoints accept an object; domain handlers validate its fields. */
+export async function readJsonBody<T extends object>(
   request: Request,
   maxBytes = DEFAULT_JSON_BODY_LIMIT_BYTES,
 ): Promise<T> {
   const text = await readLimitedBody(request, maxBytes);
   try {
-    return JSON.parse(text) as T;
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Expected a JSON object.');
+    }
+    return parsed as T;
   } catch {
     throw new RequestBodyError('Invalid request.', 400, 'invalid_request');
   }

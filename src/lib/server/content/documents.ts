@@ -252,17 +252,21 @@ export async function readFolders(
       .filter(Boolean),
   );
 
+  const directCounts = new Map<string, number>();
+  const totalCounts = new Map<string, number>();
+  const entriesByLocation = new Map<string, ContentEntryListItem>();
   for (const entry of collectionEntries) {
+    directCounts.set(entry.folder, (directCounts.get(entry.folder) ?? 0) + 1);
+    entriesByLocation.set(
+      [entry.folder, entry.id].filter(Boolean).join('/'),
+      entry,
+    );
     let current = entry.folder;
     while (current) {
       folderIds.add(current);
+      totalCounts.set(current, (totalCounts.get(current) ?? 0) + 1);
       current = parentFolder(current);
     }
-  }
-
-  const directCounts = new Map<string, number>();
-  for (const entry of collectionEntries) {
-    directCounts.set(entry.folder, (directCounts.get(entry.folder) ?? 0) + 1);
   }
 
   return [...folderIds]
@@ -270,9 +274,7 @@ export async function readFolders(
     .map((id) => {
       const name = folderName(id);
       const parentId = parentFolder(id) || null;
-      const document = collectionEntries.find(
-        (entry) => entry.id === name && entry.folder === (parentId ?? ''),
-      );
+      const document = entriesByLocation.get(id);
 
       return {
         id,
@@ -280,9 +282,7 @@ export async function readFolders(
         parentId,
         depth: id.split('/').length - 1,
         noteCount: directCounts.get(id) ?? 0,
-        totalNoteCount: collectionEntries.filter(
-          (entry) => entry.folder === id || entry.folder.startsWith(`${id}/`),
-        ).length,
+        totalNoteCount: totalCounts.get(id) ?? 0,
         documentId: document?.id,
       };
     });

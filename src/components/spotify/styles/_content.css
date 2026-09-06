@@ -117,9 +117,12 @@
   background: var(--color-rule);
 }
 
-.spotify-widget-progress-bar::-webkit-progress-value,
+.spotify-widget-progress-bar::-webkit-progress-value {
+  background: var(--color-brand-strong);
+}
+
 .spotify-widget-progress-bar::-moz-progress-bar {
-  background: var(--color-accent);
+  background: var(--color-brand-strong);
 }
 
 .spotify-widget-time {

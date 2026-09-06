@@ -124,6 +124,12 @@ export interface ContentWriteResult {
   message: string;
 }
 
+export interface ContentEntryMove {
+  previousId: string;
+  previousRevision: string;
+  entry: ContentEntryListItem;
+}
+
 export interface ContentEntryListItem {
   id: string;
   title: string;

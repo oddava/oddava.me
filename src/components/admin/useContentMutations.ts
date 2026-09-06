@@ -442,18 +442,8 @@ export function useContentMutations({
         return false;
       }
 
-      await updateContentFolder(collection.id, folder.id, nextPath);
-      if (doc.docRef.current && folderPageIsOpen) {
-        doc.patch({ id: nextName, folder: parent });
-      } else if (doc.docRef.current && descendantIsOpen) {
-        doc.patch({
-          folder: remapFolderPath(
-            doc.docRef.current.folder,
-            folder.id,
-            nextPath,
-          ),
-        });
-      }
+      const response = await updateContentFolder(collection.id, folder.id, nextPath);
+      doc.applyMoves(response.moved ?? []);
       if (folder.documentId && folder.documentId !== nextName) {
         tabs.renameTab(folder.documentId, nextName);
       }

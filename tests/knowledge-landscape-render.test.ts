@@ -154,15 +154,58 @@ describe('buildAffinityPaths', () => {
     expect(edges).toEqual([{ sourceId: 'a', targetId: 'b' }]);
   });
 
-  it('caps the total edge count for a pathological corpus', () => {
-    // Each of 200 notes shares a private pair of specific tags with every other
-    // note — a complete graph of ~20k specific-theme edges. The cap keeps the
-    // graph renderable; the generic filter alone cannot bound this shape.
-    const documents: GardenDocument[] = [];
-    for (let i = 0; i < 200; i += 1) {
-      documents.push(fakeDocument(`note-${i}`, ['theme-a', 'theme-b']));
+  it('preserves pair order and excludes references in either direction', () => {
+    const documents = Array.from({ length: 60 }, (_, index) =>
+      fakeDocument(`note-${index}`, [
+        'generic',
+        `group-${index % 10}`,
+        `theme-${index % 5}`,
+        `neighbor-${Math.floor(index / 2)}`,
+      ]),
+    );
+    documents[0]!.outbound = [{ target: 'note-10', resolvedId: 'note-10' }];
+    documents[20]!.outbound = [{ target: 'note-0', resolvedId: 'note-0' }];
+    const expected = [];
+    // A small exhaustive oracle pins behavior independently of the index.
+    for (let left = 0; left < documents.length; left += 1) {
+      for (let right = left + 1; right < documents.length; right += 1) {
+        const a = documents[left]!;
+        const b = documents[right]!;
+        if (
+          a.outbound.some((link) => link.resolvedId === b.id) ||
+          b.outbound.some((link) => link.resolvedId === a.id)
+        )
+          continue;
+        const shared = a.tags.filter(
+          (tag) =>
+            b.tags.includes(tag) &&
+            documents.filter((doc) => doc.tags.includes(tag)).length <= 12,
+        );
+        if (shared.length >= 2)
+          expected.push({ sourceId: a.id, targetId: b.id });
+      }
     }
+    expect(expected.length).toBeGreaterThan(0);
+    expect(buildAffinityPaths(documents)).toEqual(expected);
+  });
 
-    expect(buildAffinityPaths(documents).length).toBeLessThanOrEqual(1500);
+  it('caps a genuinely dense graph of rare pair-specific tags', () => {
+    const documents = Array.from({ length: 60 }, (_, index) =>
+      fakeDocument(`note-${index}`, []),
+    );
+    const expected = [];
+    for (let left = 0; left < documents.length; left += 1) {
+      for (let right = left + 1; right < documents.length; right += 1) {
+        const tags = [`pair-${left}-${right}-a`, `pair-${left}-${right}-b`];
+        documents[left]!.tags.push(...tags);
+        documents[right]!.tags.push(...tags);
+        expected.push({
+          sourceId: documents[left]!.id,
+          targetId: documents[right]!.id,
+        });
+      }
+    }
+    expect(expected.length).toBeGreaterThan(1500);
+    expect(buildAffinityPaths(documents)).toEqual(expected.slice(0, 1500));
   });
 });

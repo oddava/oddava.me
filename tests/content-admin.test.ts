@@ -1,3 +1,5 @@
+import { readEntries, readFolders } from '../src/lib/server/content/documents';
+import { NOTES_COLLECTION } from '../src/lib/server/content/registry';
 import { describe, expect, it } from 'vitest';
 import {
   handleContentCollection,
@@ -911,5 +913,56 @@ describe('a content store still holding legacy .mdx notes', () => {
     expect(renamed.status).toBe(200);
     expect(provider.files.has('src/content/notes/library.md')).toBe(true);
     expect(provider.files.has('src/content/notes/reading.mdx')).toBe(false);
+  });
+});
+
+describe('folder summaries', () => {
+  it('counts descendants without counting a folder page as its own child', async () => {
+    const provider = new MemoryContentProvider();
+    for (const path of [
+      'index',
+      'reading',
+      'reading/books',
+      'reading/books/one',
+      'reading/books/two',
+      'reading-list/unrelated',
+    ]) {
+      await provider.writeTextFile(
+        `src/content/notes/${path}.md`,
+        `# ${path}`,
+        'seed',
+      );
+    }
+    await provider.createDirectory('src/content/notes/reading/empty', 'seed');
+    const entries = await readEntries(provider, NOTES_COLLECTION);
+    const folders = await readFolders(provider, NOTES_COLLECTION, entries);
+    expect(folders).toEqual([
+      expect.objectContaining({
+        id: 'reading',
+        noteCount: 1,
+        totalNoteCount: 3,
+        documentId: 'reading',
+      }),
+      expect.objectContaining({
+        id: 'reading-list',
+        noteCount: 1,
+        totalNoteCount: 1,
+        documentId: undefined,
+      }),
+      expect.objectContaining({
+        id: 'reading/books',
+        parentId: 'reading',
+        noteCount: 2,
+        totalNoteCount: 2,
+        documentId: 'books',
+      }),
+      expect.objectContaining({
+        id: 'reading/empty',
+        parentId: 'reading',
+        noteCount: 0,
+        totalNoteCount: 0,
+        documentId: undefined,
+      }),
+    ]);
   });
 });

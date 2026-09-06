@@ -64,6 +64,20 @@ async function loadRoute(overrides: Overrides = {}) {
 }
 
 describe('guestbook POST route', () => {
+  it.each([null, [], 'hello', 42])(
+    'returns 400 for non-object JSON (%j), after throttling and before storage',
+    async (body) => {
+      const { POST, enforceRedisRateLimit, appendGuestbookEntry } =
+        await loadRoute();
+      const response = await POST({ request: post(body) } as never);
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({
+        code: 'invalid_request',
+      });
+      expect(enforceRedisRateLimit).toHaveBeenCalledOnce();
+      expect(appendGuestbookEntry).not.toHaveBeenCalled();
+    },
+  );
   afterEach(() => {
     vi.restoreAllMocks();
     vi.resetModules();

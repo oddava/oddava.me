@@ -3,6 +3,7 @@ import type {
   ContentDeleteResponse,
   ContentEntriesResponse,
   ContentEntryResponse,
+  ContentEntryMove,
   ContentFolder,
   ContentMediaResponse,
   ContentSaveResponse,
@@ -245,6 +246,7 @@ export function createContentEntry(
 export interface ContentFoldersResponse {
   folders: ContentFolder[];
   result?: ContentSaveResponse['result'];
+  moved?: ContentEntryMove[];
 }
 
 function contentFoldersPath(collection: string): string {

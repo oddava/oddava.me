@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import type { ContentEntryMove } from '../../lib/contracts';
 import { fetchContentEntry, updateContentEntry } from './api';
 import { titleFromBody } from './studioHelpers';
 import { AUTOSAVE_DELAY_MS, type SaveState } from './studioSession';
@@ -33,8 +34,9 @@ export interface StudioDocument {
   markDirty: (next: Partial<OpenDoc>) => void;
   /** Rename/move bookkeeping — updates the doc without marking it dirty. */
   patch: (next: Partial<OpenDoc>) => void;
-  /** Load an entry into the editor. Throws; the caller owns busy/error state. */
-  open: (id: string, folderHint?: string) => Promise<string>;
+  applyMoves: (moves: ContentEntryMove[]) => void;
+  /** Flush edits and load an entry. Null means a newer selection superseded it. */
+  open: (id: string, folderHint?: string) => Promise<string | null>;
   /** Drop the open document if it is `id` (after a delete, say). */
   closeIfOpen: (id: string) => void;
   saveNow: () => Promise<boolean>;
@@ -64,6 +66,7 @@ export function useStudioDocument({
   const saveTimer = useRef<number | null>(null);
   const documentVersionRef = useRef(0);
   const persistedVersionRef = useRef(0);
+  const openRequestRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const saveNowRef = useRef<() => Promise<boolean>>(async () => true);
   // Mirror the autosave preference in a ref so the save loop reads the latest
@@ -83,6 +86,7 @@ export function useStudioDocument({
 
   useEffect(
     () => () => {
+      openRequestRef.current += 1;
       clearScheduledSave();
     },
     [clearScheduledSave],
@@ -222,10 +226,43 @@ export function useStudioDocument({
     if (next.id) setOpenId(next.id);
   }, []);
 
+  const applyMoves = useCallback((moves: ContentEntryMove[]) => {
+    const current = docRef.current;
+    if (!current) return;
+    const move = moves.find((item) => item.previousId === current.id);
+    if (!move) return;
+    patch({
+      id: move.entry.id,
+      folder: move.entry.folder,
+      // Adopt only a revision descended from our own snapshot. If another
+      // editor changed the body first, keeping our old revision preserves CAS.
+      ...(current.revision === move.previousRevision ? { revision: move.entry.revision } : {}),
+    });
+  }, [patch]);
+
   const open = useCallback(
-    async (id: string, folderHint?: string): Promise<string> => {
-      if (!collectionId) return '';
-      const response = await fetchContentEntry(collectionId, id);
+    async (id: string, folderHint?: string): Promise<string | null> => {
+      const request = ++openRequestRef.current;
+      if (!collectionId) return null;
+      if (docRef.current?.id === id) return docRef.current.folder;
+      let response;
+      try {
+        response = await fetchContentEntry(collectionId, id);
+        // Loading can overlap typing or an earlier save. Drain all edits,
+        // including failed saves and edits made while a save was in flight,
+        // before replacing the document. A render's saveState is not a guard.
+        while (request === openRequestRef.current) {
+          if (documentVersionRef.current <= persistedVersionRef.current) break;
+          if (!(await saveNow())) {
+            throw new Error('Save the current note before opening another.');
+          }
+        }
+      } catch (error) {
+        if (request !== openRequestRef.current) return null;
+        throw error;
+      }
+      if (request !== openRequestRef.current) return null;
+      clearScheduledSave();
       const entry = response.entry;
       const folder = entry.folder ?? folderHint ?? '';
       docRef.current = {
@@ -240,14 +277,16 @@ export function useStudioDocument({
       setOpenId(id);
       setBody(entry.body ?? '');
       setSaveState('idle');
+      setSavedAt(null);
       return folder;
     },
-    [collectionId],
+    [collectionId, saveNow, clearScheduledSave],
   );
 
   const closeIfOpen = useCallback(
     (id: string) => {
       if (docRef.current?.id !== id) return;
+      openRequestRef.current += 1;
       clearScheduledSave();
       docRef.current = null;
       documentVersionRef.current = 0;
@@ -255,6 +294,7 @@ export function useStudioDocument({
       setOpenId('');
       setBody('');
       setSaveState('idle');
+      setSavedAt(null);
     },
     [clearScheduledSave],
   );
@@ -278,6 +318,7 @@ export function useStudioDocument({
     setBody,
     markDirty,
     patch,
+    applyMoves,
     open,
     closeIfOpen,
     saveNow,
