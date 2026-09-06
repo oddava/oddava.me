@@ -262,26 +262,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     ) => {
       if (!collection || !id) return;
       const placement = options.placement ?? 'preview';
-      if (id === openId) {
-        // Already in the editor: an explicit gesture still pins its tab.
-        addTab(id, { placement, index: options.index });
-        if (options.remember !== false) rememberHistory(id);
-        if (options.focus !== false)
-          requestAnimationFrame(() => focusRef.current?.());
-        return;
-      }
-      // Flush the note we're leaving before swapping documents.
-      if (
-        (saveState === 'dirty' || saveState === 'saving') &&
-        !(await saveNow())
-      ) {
-        return;
-      }
-
       setBusyKey(`open-${id}`);
       setError(null);
       try {
         const folder = await openDocument(id, folderHint);
+        if (folder === null) return;
         // The strip follows the editor, never leads it: a preview tab that took
         // this file's place before a failed load would leave the note that is
         // still open with no tab at all.
@@ -307,18 +292,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           caught instanceof Error ? caught.message : 'Could not open the note.',
         );
       } finally {
-        setBusyKey(null);
+        setBusyKey((current) => (current === `open-${id}` ? null : current));
       }
     },
-    [
-      addTab,
-      collection,
-      openDocument,
-      openId,
-      rememberHistory,
-      saveNow,
-      saveState,
-    ],
+    [addTab, collection, openDocument, rememberHistory],
   );
 
   // Reopen the last note once the tree is loaded.

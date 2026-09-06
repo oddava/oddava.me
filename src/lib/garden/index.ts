@@ -337,15 +337,9 @@ async function buildGardenIndex(): Promise<GardenIndex> {
   return { root, documents, byId, wikiLinkHrefs, affinityPaths };
 }
 
-// Two notes are affinity-linked when they share at least two tags. This is the
-// O(n²) pass the landscape graph used to run per request; it now runs once per
-// content version alongside the rest of the index. Pairs already connected by a
-// reference (one note wikilinks the other) are dropped to match the graph's
-// dedup rule — the graph never drew both kinds between the same pair.
-//
-// Only *specific* tags count toward the two-theme threshold: a tag most of the
-// garden carries is a category, not a theme, and letting it count affinity-
-// linked every note to every other. See `AFFINITY_SPECIFIC_TAG_MAX_DOCS`.
+// Only notes sharing specific tags can be affinity-linked. Index tag members
+// first, then count candidate neighbors (at most 11 per specific tag), instead
+// of comparing every pair of notes on every content-version rebuild.
 export function buildAffinityPaths(
   documents: GardenDocument[],
 ): AffinityEdge[] {
@@ -360,39 +354,36 @@ export function buildAffinityPaths(
     }
   }
 
-  const tagFrequency = new Map<string, number>();
-  for (const document of documents) {
-    for (const tag of document.tags) {
-      tagFrequency.set(tag, (tagFrequency.get(tag) ?? 0) + 1);
+  const membersByTag = new Map<string, number[]>();
+  for (const [index, document] of documents.entries()) {
+    for (const tag of new Set(document.tags)) {
+      const members = membersByTag.get(tag) ?? [];
+      members.push(index);
+      membersByTag.set(tag, members);
     }
   }
-  const isSpecificTheme = (tag: string): boolean =>
-    (tagFrequency.get(tag) ?? 0) <= AFFINITY_SPECIFIC_TAG_MAX_DOCS;
 
   const affinityPaths: AffinityEdge[] = [];
-  for (let leftIndex = 0; leftIndex < documents.length; leftIndex += 1) {
-    if (affinityPaths.length >= AFFINITY_EDGE_CAP) break;
-    const left = documents[leftIndex]!;
-    const leftThemes = left.tags.filter(isSpecificTheme);
-    if (leftThemes.length < 2) continue;
-    const leftThemeSet = new Set(leftThemes);
-
-    for (
-      let rightIndex = leftIndex + 1;
-      rightIndex < documents.length;
-      rightIndex += 1
-    ) {
-      if (affinityPaths.length >= AFFINITY_EDGE_CAP) break;
-      const right = documents[rightIndex]!;
-      const key = pairKey(left.id, right.id);
-      if (referencePairs.has(key)) continue;
-      let shared = 0;
-      for (const tag of right.tags) {
-        if (leftThemeSet.has(tag)) shared += 1;
-        if (shared >= 2) break;
+  for (const [leftIndex, left] of documents.entries()) {
+    const sharedThemes = new Map<number, number>();
+    for (const tag of new Set(left.tags)) {
+      const members = membersByTag.get(tag)!;
+      if (members.length > AFFINITY_SPECIFIC_TAG_MAX_DOCS) continue;
+      for (const rightIndex of members) {
+        if (rightIndex <= leftIndex) continue;
+        sharedThemes.set(rightIndex, (sharedThemes.get(rightIndex) ?? 0) + 1);
       }
-      if (shared < 2) continue;
+    }
+    // Preserve document order, including which edges survive the render cap.
+    const neighbors = [...sharedThemes]
+      .filter(([, count]) => count >= 2)
+      .map(([index]) => index)
+      .sort((left, right) => left - right);
+    for (const rightIndex of neighbors) {
+      const right = documents[rightIndex]!;
+      if (referencePairs.has(pairKey(left.id, right.id))) continue;
       affinityPaths.push({ sourceId: left.id, targetId: right.id });
+      if (affinityPaths.length >= AFFINITY_EDGE_CAP) return affinityPaths;
     }
   }
 

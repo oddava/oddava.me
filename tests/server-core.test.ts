@@ -8,6 +8,20 @@ beforeAll(() => {
 });
 
 describe('server core utilities', () => {
+  it.each([null, [], ['value'], 'text', 1, true])(
+    'rejects non-object JSON bodies (%j)',
+    async (body) => {
+      const { readJsonBody } = await import('../src/lib/server/core');
+      const request = new Request('https://oddava.me/api/example', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      await expect(readJsonBody(request)).rejects.toMatchObject({
+        status: 400,
+        code: 'invalid_request',
+      });
+    },
+  );
   it('parses bounded JSON bodies', async () => {
     const { readJsonBody } = await import('../src/lib/server/core');
     const request = new Request('https://oddava.me/api/example', {
