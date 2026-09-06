@@ -442,7 +442,11 @@ export function useContentMutations({
         return false;
       }
 
-      const response = await updateContentFolder(collection.id, folder.id, nextPath);
+      const response = await updateContentFolder(
+        collection.id,
+        folder.id,
+        nextPath,
+      );
       doc.applyMoves(response.moved ?? []);
       if (folder.documentId && folder.documentId !== nextName) {
         tabs.renameTab(folder.documentId, nextName);

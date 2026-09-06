@@ -375,9 +375,24 @@ export async function handleContentFolders(
       const previousById = new Map(entries.map((entry) => [entry.id, entry]));
       const moved = updatedEntries.flatMap((entry) => {
         const isPage = entry.path === nextPagePath;
-        if (!isPage && entry.folder !== nextFolder && !entry.folder.startsWith(`${nextFolder}/`)) return [];
-        const previous = previousById.get(isPage ? folderName(folder) : entry.id);
-        return previous ? [{ previousId: previous.id, previousRevision: previous.revision, entry }] : [];
+        if (
+          !isPage &&
+          entry.folder !== nextFolder &&
+          !entry.folder.startsWith(`${nextFolder}/`)
+        )
+          return [];
+        const previous = previousById.get(
+          isPage ? folderName(folder) : entry.id,
+        );
+        return previous
+          ? [
+              {
+                previousId: previous.id,
+                previousRevision: previous.revision,
+                entry,
+              },
+            ]
+          : [];
       });
       return adminJson({
         folders: await readFolders(store, collection, updatedEntries),
