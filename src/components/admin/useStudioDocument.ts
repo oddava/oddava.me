@@ -226,19 +226,24 @@ export function useStudioDocument({
     if (next.id) setOpenId(next.id);
   }, []);
 
-  const applyMoves = useCallback((moves: ContentEntryMove[]) => {
-    const current = docRef.current;
-    if (!current) return;
-    const move = moves.find((item) => item.previousId === current.id);
-    if (!move) return;
-    patch({
-      id: move.entry.id,
-      folder: move.entry.folder,
-      // Adopt only a revision descended from our own snapshot. If another
-      // editor changed the body first, keeping our old revision preserves CAS.
-      ...(current.revision === move.previousRevision ? { revision: move.entry.revision } : {}),
-    });
-  }, [patch]);
+  const applyMoves = useCallback(
+    (moves: ContentEntryMove[]) => {
+      const current = docRef.current;
+      if (!current) return;
+      const move = moves.find((item) => item.previousId === current.id);
+      if (!move) return;
+      patch({
+        id: move.entry.id,
+        folder: move.entry.folder,
+        // Adopt only a revision descended from our own snapshot. If another
+        // editor changed the body first, keeping our old revision preserves CAS.
+        ...(current.revision === move.previousRevision
+          ? { revision: move.entry.revision }
+          : {}),
+      });
+    },
+    [patch],
+  );
 
   const open = useCallback(
     async (id: string, folderHint?: string): Promise<string | null> => {
