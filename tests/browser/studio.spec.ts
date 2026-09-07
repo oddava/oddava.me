@@ -673,10 +673,16 @@ test('columns keep mixed content through preview and mode changes', async ({
   await page.getByRole('button', { name: 'Visual', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await expect(editor.locator('.note-column')).toHaveCount(2);
+  await expect(
+    page.getByRole('toolbar', { name: 'Column actions' }),
+  ).toHaveCount(0);
   await editor.getByText('Right text', { exact: true }).click();
   await page.keyboard.press('End');
   await page.keyboard.type(' edited');
-  await page.getByLabel('Column widths').selectOption('left');
+  await page
+    .getByRole('button', { name: 'Block actions', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Wider left', exact: true }).click();
   await expect(editor.locator('.note-columns')).toHaveClass(
     /note-columns--left/,
   );
@@ -691,6 +697,9 @@ test('columns keep mixed content through preview and mode changes', async ({
   await page.screenshot({
     path: `test-results/columns-${info.project.name}.png`,
   });
+  await page
+    .getByRole('button', { name: 'Block actions', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Stack', exact: true }).click();
   await expect(editor.locator('.note-columns')).toHaveCount(0);
   await expect(editor).toContainText('Right text edited');
@@ -718,9 +727,32 @@ test('dragging an image moves one block and preserves its size', async ({
     );
   await page.getByRole('button', { name: 'Visual', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Note editor' });
-  await editor
+  const imageBox = (await editor
     .getByRole('img', { name: 'Move me' })
-    .dragTo(editor.locator('h1'), { targetPosition: { x: 10, y: 1 } });
+    .boundingBox())!;
+  const headingBox = (await editor.locator('h1').boundingBox())!;
+  await page.mouse.move(
+    imageBox.x + imageBox.width / 2,
+    imageBox.y + imageBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(headingBox.x + headingBox.width / 2, headingBox.y + 1, {
+    steps: 12,
+  });
+  await page.mouse.move(headingBox.x + headingBox.width / 2, headingBox.y + 2);
+  await expect(page.locator('.studio-rich-drop')).toBeVisible();
+  // The native editor cursor still exists, but must not compete with our marker.
+  const nativeCursor = page.locator(
+    '.prosemirror-dropcursor-block, .prosemirror-dropcursor-inline',
+  );
+  await expect(nativeCursor).toHaveCount(1);
+  await expect(nativeCursor).toBeHidden();
+  await expect(
+    page.locator(
+      '.studio-rich-drop:visible, .studio-rich-side-drop:visible, .prosemirror-dropcursor-block:visible, .prosemirror-dropcursor-inline:visible',
+    ),
+  ).toHaveCount(1);
+  await page.mouse.up();
   await expect(editor.locator('img')).toHaveCount(1);
   await expect(editor.locator('img')).toHaveClass(/width-50/);
   await expect(editor.locator(':scope > :first-child')).toHaveAttribute(
@@ -809,6 +841,10 @@ test('create columns from a block and add a third column', async ({
   await expect(editor.locator('.note-column').nth(1)).toContainText(
     'Beside it.',
   );
+  await editor.locator('.note-column').nth(1).locator('p').click();
+  await page
+    .getByRole('button', { name: 'Block actions', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Add column', exact: true }).click();
   await expect(editor.locator('.note-column')).toHaveCount(3);
   await editor.locator('.note-column').nth(2).locator('p').click();
@@ -1070,4 +1106,63 @@ test('images keep their width across repeated snap and unsnap moves', async ({
   expect(markdown.match(/layout-b.svg/g)).toHaveLength(1);
   expect(markdown).not.toContain(':::columns');
   expect(errors).toEqual([]);
+});
+
+test('marquee selects blocks for copy, cut, undo and moving together', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'desktop',
+    'Mouse marquee is a desktop interaction',
+  );
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill('# Page\n\nAlpha\n\nBeta\n\nGamma');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const first = (await editor
+    .getByText('Alpha', { exact: true })
+    .boundingBox())!;
+  const second = (await editor
+    .getByText('Beta', { exact: true })
+    .boundingBox())!;
+  await page.mouse.move(first.x + first.width + 24, first.y - 5);
+  await page.mouse.down();
+  await page.mouse.move(first.x + 20, second.y + second.height + 5, {
+    steps: 12,
+  });
+  await expect(page.locator('.studio-block-marquee')).toBeVisible();
+  await expect(editor.locator('.studio-block-selected')).toHaveCount(2);
+  await page.screenshot({ path: 'test-results/block-selection.png' });
+  await page.mouse.up();
+  await expect(page.locator('.studio-block-marquee')).toHaveCount(0);
+  await expect(editor.locator('.studio-block-selected')).toHaveCount(2);
+  await page.keyboard.press('Control+c');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('Alpha');
+  expect(copied).toContain('Beta');
+  expect(copied).not.toContain('Gamma');
+  await page.keyboard.press('Control+x');
+  await expect(editor.locator('p')).toHaveText(['Gamma']);
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('p')).toHaveText(['Alpha', 'Beta', 'Gamma']);
+  await expect(editor.locator('.studio-block-selected')).toHaveCount(2);
+  await editor.getByText('Beta', { exact: true }).hover();
+  const gamma = editor.getByText('Gamma', { exact: true });
+  const box = (await gamma.boundingBox())!;
+  await page
+    .getByRole('button', { name: 'Block actions', exact: true })
+    .dragTo(gamma, { targetPosition: { x: box.width / 2, y: box.height - 1 } });
+  await expect(editor.locator('p')).toHaveText(['Gamma', 'Alpha', 'Beta']);
+  await expect(editor.locator('.studio-block-selected')).toHaveCount(2);
+  await page.keyboard.press('Delete');
+  await expect(editor.locator('p')).toHaveText(['Gamma']);
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('p')).toHaveText(['Gamma', 'Alpha', 'Beta']);
+  await page.keyboard.press('Escape');
+  await expect(editor.locator('.studio-block-selected')).toHaveCount(0);
 });

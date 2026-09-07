@@ -1,7 +1,13 @@
 import {
+  BlockSelection,
+  BlockSelectionExtension,
+  duplicateSelectedBlocks,
+} from './studioBlockSelection';
+import { useStudioBlockMarquee } from './useStudioBlockMarquee';
+import {
   findSideDrop,
   moveBeside,
-  moveBlockTo,
+  moveBlocksTo,
   removeBlock,
   type SideDrop,
 } from './studioSideDrop';
@@ -10,6 +16,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
 import { Editor } from '@tiptap/core';
+import { Slice, Fragment } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import TaskList from '@tiptap/extension-task-list';
@@ -19,7 +26,12 @@ import type { ImageEditRequest } from './StudioImageDialog';
 import type { ImageMarkupOptions } from './studioEditorCommands';
 import { TableKit } from '@tiptap/extension-table';
 import Placeholder from '@tiptap/extension-placeholder';
-import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state';
+import {
+  EditorState,
+  Selection,
+  NodeSelection,
+  TextSelection,
+} from '@tiptap/pm/state';
 import StudioSlashMenu, {
   SLASH_MENU_ID,
   slashOptionId,
@@ -108,6 +120,7 @@ export default function StudioVisualEditor(props: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
+  const marquee = useStudioBlockMarquee(editorRef, scroller);
   const live = useRef(props);
   live.current = props;
   const source = useRef(new RichDocument());
@@ -131,9 +144,11 @@ export default function StudioVisualEditor(props: Props) {
   handleRef.current = handle;
   const dragFrom = useRef<number | null>(null);
   const nativeDragFrom = useRef<number | null>(null);
+  const nativeDragSources = useRef<number[]>([]);
   const [sideDrop, setSideDrop] = useState<SideDrop | null>(null);
   const pointerDrag = useRef<{
     from: number;
+    sources: number[];
     y: number;
     x: number;
     moved: boolean;
@@ -276,7 +291,22 @@ export default function StudioVisualEditor(props: Props) {
     const editor = editorRef.current;
     if (!editor || editor.isDestroyed) return;
     const content = source.current.parse(editor, markdown).content ?? [];
-    editor.chain().focus().insertContent(content).run();
+    if (editor.state.selection instanceof BlockSelection) {
+      editor.view.dispatch(
+        editor.state.tr
+          .replaceSelection(
+            new Slice(
+              Fragment.from(
+                content.map((node) => editor.schema.nodeFromJSON(node)),
+              ),
+              0,
+              0,
+            ),
+          )
+          .scrollIntoView(),
+      );
+      editor.view.focus();
+    } else editor.chain().focus().insertContent(content).run();
   }
 
   const imageTap = useRef({ pos: -1, time: 0 });
@@ -386,6 +416,23 @@ export default function StudioVisualEditor(props: Props) {
   function moveBlock(direction: -1 | 1) {
     const editor = editorRef.current;
     if (!editor) return;
+    if (editor.state.selection instanceof BlockSelection) {
+      const positions = editor.state.selection.positions;
+      const first = positions[0]!;
+      const last = positions.at(-1)!;
+      const end = last + editor.state.doc.nodeAt(last)!.nodeSize;
+      const neighbor =
+        direction < 0
+          ? editor.state.doc.resolve(first).nodeBefore
+          : editor.state.doc.nodeAt(end);
+      if (neighbor)
+        moveBlocksTo(
+          editor,
+          positions,
+          direction < 0 ? first - neighbor.nodeSize : end + neighbor.nodeSize,
+        );
+      return;
+    }
     const block = topBlock(editor, menu.key ?? editor.state.selection.from);
     if (!block) return;
     const { from, node } = block;
@@ -422,6 +469,7 @@ export default function StudioVisualEditor(props: Props) {
         TaskList,
         TaskItem.configure({ nested: true }),
         RichImage,
+        BlockSelectionExtension,
         Columns,
         Column,
         TableKit,
@@ -456,6 +504,36 @@ export default function StudioVisualEditor(props: Props) {
             setDropLine(null);
             suppressHandleClick.current = true;
             return true;
+          }
+          if (editor.state.selection instanceof BlockSelection) {
+            if (
+              (event.ctrlKey || event.metaKey) &&
+              event.shiftKey &&
+              event.key.toLowerCase() === 'd'
+            ) {
+              event.preventDefault();
+              event.stopPropagation();
+              duplicateSelectedBlocks(editor);
+              return true;
+            }
+            if (event.key === 'Escape') {
+              editor.view.dispatch(
+                editor.state.tr.setSelection(
+                  Selection.near(
+                    editor.state.doc.resolve(editor.state.selection.from),
+                  ),
+                ),
+              );
+              return true;
+            }
+            if (event.key === 'Backspace' || event.key === 'Delete') {
+              event.preventDefault();
+              editor.view.dispatch(
+                editor.state.tr.deleteSelection().scrollIntoView(),
+              );
+              setHandle(null);
+              return true;
+            }
           }
           const current = slashRef.current ?? wikiRef.current;
           if (current) {
@@ -607,16 +685,23 @@ export default function StudioVisualEditor(props: Props) {
                 view.state.doc.nodeAt(pos)?.type.name === 'image'
                   ? pos
                   : $pos.before();
-              view.dispatch(
-                view.state.tr.setSelection(
-                  NodeSelection.create(view.state.doc, from),
-                ),
-              );
+              if (!(
+                view.state.selection instanceof BlockSelection &&
+                view.state.selection.positions.includes(from)
+              ))
+                view.dispatch(
+                  view.state.tr.setSelection(
+                    NodeSelection.create(view.state.doc, from),
+                  ),
+                );
             }
-            nativeDragFrom.current =
-              view.state.selection instanceof NodeSelection
-                ? view.state.selection.from
-                : null;
+            nativeDragSources.current =
+              view.state.selection instanceof BlockSelection
+                ? view.state.selection.positions
+                : view.state.selection instanceof NodeSelection
+                  ? [view.state.selection.from]
+                  : [];
+            nativeDragFrom.current = nativeDragSources.current[0] ?? null;
             return false;
           },
         },
@@ -627,7 +712,13 @@ export default function StudioVisualEditor(props: Props) {
           setDropLine(null);
           if (nativeFrom !== null && !event.altKey && !event.ctrlKey) {
             event.preventDefault();
-            applyBlockDrop(editor, nativeFrom, event.clientX, event.clientY);
+            applyBlockDrop(
+              editor,
+              nativeFrom,
+              event.clientX,
+              event.clientY,
+              nativeDragSources.current,
+            );
             return true;
           }
           // Preserve native text-selection drags and explicit copy modifiers.
@@ -947,7 +1038,13 @@ export default function StudioVisualEditor(props: Props) {
     };
   }
 
-  function applyBlockDrop(editor: Editor, from: number, x: number, y: number) {
+  function applyBlockDrop(
+    editor: Editor,
+    from: number,
+    x: number,
+    y: number,
+    sources = [from],
+  ) {
     const bounds = scroller.current!.getBoundingClientRect();
     setDropLine(null);
     setSideDrop(null);
@@ -958,9 +1055,9 @@ export default function StudioVisualEditor(props: Props) {
       y > bounds.bottom
     )
       return;
-    const snap = findSideDrop(editor, from, x, y);
-    if (snap) moveBeside(editor, from, snap.from, snap.side);
-    else moveBlockTo(editor, from, dropDestination(editor, y, x));
+    const snap = findSideDrop(editor, from, x, y, sources);
+    if (snap) moveBeside(editor, from, snap.from, snap.side, sources);
+    else moveBlocksTo(editor, sources, dropDestination(editor, y, x));
     setHandle(null);
   }
 
@@ -998,6 +1095,10 @@ export default function StudioVisualEditor(props: Props) {
       <div
         className="studio-rich-scroll"
         ref={scroller}
+        onPointerDown={marquee.down}
+        onPointerMove={marquee.move}
+        onPointerUp={marquee.up}
+        onPointerCancel={marquee.cancel}
         onScroll={() => refreshRef.current()}
         onDragOver={(event) => {
           const from = dragFrom.current ?? nativeDragFrom.current;
@@ -1005,7 +1106,15 @@ export default function StudioVisualEditor(props: Props) {
           event.preventDefault();
           const snap =
             !event.altKey && !event.ctrlKey
-              ? findSideDrop(editor, from, event.clientX, event.clientY)
+              ? findSideDrop(
+                  editor,
+                  from,
+                  event.clientX,
+                  event.clientY,
+                  nativeDragSources.current.length
+                    ? nativeDragSources.current
+                    : [from],
+                )
               : null;
           setSideDrop(snap);
           if (snap) {
@@ -1028,7 +1137,13 @@ export default function StudioVisualEditor(props: Props) {
           if (from === null || !editor) return;
           event.preventDefault();
           nativeDragFrom.current = null;
-          applyBlockDrop(editor, from, event.clientX, event.clientY);
+          applyBlockDrop(
+            editor,
+            from,
+            event.clientX,
+            event.clientY,
+            nativeDragSources.current,
+          );
         }}
       >
         <div
@@ -1056,6 +1171,13 @@ export default function StudioVisualEditor(props: Props) {
           }}
         >
           <div ref={host} />
+          {marquee.box && (
+            <div
+              className="studio-block-marquee"
+              style={marquee.box}
+              aria-hidden="true"
+            />
+          )}
           {handle && (
             <div
               className={`studio-rich-handle${handle.column ? ' is-column' : ''}`}
@@ -1096,7 +1218,11 @@ export default function StudioVisualEditor(props: Props) {
                     return;
                   }
                   if (!editor) return;
-                  editor.commands.setNodeSelection(handle.from);
+                  if (!(
+                    editor.state.selection instanceof BlockSelection &&
+                    editor.state.selection.positions.includes(handle.from)
+                  ))
+                    editor.commands.setNodeSelection(handle.from);
                   menu.toggleUnder(handle.from, event.currentTarget);
                 }}
                 onDragStart={(event) => event.preventDefault()}
@@ -1106,6 +1232,11 @@ export default function StudioVisualEditor(props: Props) {
                   event.currentTarget.setPointerCapture(event.pointerId);
                   pointerDrag.current = {
                     from: handle.from,
+                    sources:
+                      editor?.state.selection instanceof BlockSelection &&
+                      editor.state.selection.positions.includes(handle.from)
+                        ? editor.state.selection.positions
+                        : [handle.from],
                     y: event.clientY,
                     x: event.clientX,
                     moved: false,
@@ -1128,6 +1259,7 @@ export default function StudioVisualEditor(props: Props) {
                     drag.from,
                     event.clientX,
                     event.clientY,
+                    drag.sources,
                   );
                   setSideDrop(snap);
                   if (snap) {
@@ -1160,6 +1292,7 @@ export default function StudioVisualEditor(props: Props) {
                     drag.from,
                     event.clientX,
                     event.clientY,
+                    drag.sources,
                   );
                 }}
                 onPointerCancel={() => {
@@ -1262,63 +1395,53 @@ export default function StudioVisualEditor(props: Props) {
         position={menu.position}
         onClose={menu.close}
         onTurnInto={turnInto}
-        onColumns={(count) => {
-          if (editor && menu.key !== null) makeColumns(editor, menu.key, count);
-        }}
-        onMove={moveBlock}
-        onDuplicate={() => {
-          if (editor && menuNode && menu.key !== null)
-            editor
-              .chain()
-              .focus()
-              .insertContentAt(menu.key + menuNode.nodeSize, menuNode.toJSON())
-              .run();
-        }}
-        onCopy={() => {
-          void navigator.clipboard.writeText(menuMarkdown).then(
-            () => props.onNotice('Block copied.'),
-            () => props.onNotice('Could not access the clipboard.'),
-          );
-        }}
-        onDelete={() => {
-          if (editor && menuNode && menu.key !== null)
-            deleteBlockAt(editor, menu.key);
-        }}
-      />
-      {editor && activeColumns(editor) && props.visible && (
-        <div
-          className="studio-table-tools"
-          role="toolbar"
-          aria-label="Column actions"
-        >
-          <select
-            aria-label="Column widths"
-            value={activeColumns(editor)!.node.attrs.layout}
-            onChange={(event) => {
-              const row = activeColumns(editor)!;
-              editor.view.dispatch(
-                editor.state.tr.setNodeMarkup(row.from, undefined, {
-                  layout: event.currentTarget.value,
-                }),
-              );
-              editor.view.focus();
-            }}
-          >
-            {activeColumns(editor)!.node.childCount === 3 ? (
-              <option value="three">Equal thirds</option>
-            ) : (
-              <>
-                <option value="equal">Equal widths</option>
-                <option value="left">Wider left</option>
-                <option value="right">Wider right</option>
-              </>
-            )}
-          </select>
-          {activeColumns(editor)!.node.childCount === 2 && (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
+        columnLayout={
+          editor ? activeColumns(editor)?.node.attrs.layout : undefined
+        }
+        onColumnLayout={
+          editor && activeColumns(editor)?.node.childCount === 2
+            ? (layout) => {
+                const row = activeColumns(editor)!;
+                editor.view.dispatch(
+                  editor.state.tr.setNodeMarkup(row.from, undefined, {
+                    layout,
+                  }),
+                );
+                editor.view.focus();
+              }
+            : undefined
+        }
+        onStack={
+          editor && activeColumns(editor)
+            ? () => {
+                const row = activeColumns(editor)!;
+                const blocks: import('@tiptap/pm/model').Node[] = [];
+                row.node.forEach((column) =>
+                  column.forEach((block) => {
+                    blocks.push(block);
+                  }),
+                );
+                editor.view.dispatch(
+                  editor.state.tr.replaceWith(
+                    row.from,
+                    row.from + row.node.nodeSize,
+                    blocks,
+                  ),
+                );
+                editor.view.focus();
+              }
+            : undefined
+        }
+        onColumns={
+          editor && !activeColumns(editor)
+            ? (count) => {
+                if (menu.key !== null) makeColumns(editor, menu.key, count);
+              }
+            : undefined
+        }
+        onAddColumn={
+          editor && activeColumns(editor)?.node.childCount === 2
+            ? () => {
                 const row = activeColumns(editor)!;
                 editor.view.dispatch(
                   editor.state.tr
@@ -1329,36 +1452,47 @@ export default function StudioVisualEditor(props: Props) {
                     .setNodeMarkup(row.from, undefined, { layout: 'three' }),
                 );
                 editor.view.focus();
-              }}
-            >
-              Add column
-            </button>
-          )}
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              const row = activeColumns(editor)!;
-              const blocks: import('@tiptap/pm/model').Node[] = [];
-              row.node.forEach((column) =>
-                column.forEach((block) => {
-                  blocks.push(block);
-                }),
-              );
-              editor.view.dispatch(
-                editor.state.tr.replaceWith(
-                  row.from,
-                  row.from + row.node.nodeSize,
-                  blocks,
-                ),
-              );
-              editor.view.focus();
-            }}
-          >
-            Stack
-          </button>
-        </div>
-      )}
+              }
+            : undefined
+        }
+        onMove={moveBlock}
+        onDuplicate={() => {
+          if (editor?.state.selection instanceof BlockSelection) {
+            duplicateSelectedBlocks(editor);
+            return;
+          }
+          if (editor && menuNode && menu.key !== null)
+            editor
+              .chain()
+              .focus()
+              .insertContentAt(menu.key + menuNode.nodeSize, menuNode.toJSON())
+              .run();
+        }}
+        onCopy={() => {
+          const selection = editor?.state.selection;
+          const markdown =
+            selection instanceof BlockSelection
+              ? editor!.markdown!.serialize({
+                  type: 'doc',
+                  content: selection.positions.map((pos) =>
+                    editor!.state.doc.nodeAt(pos)!.toJSON(),
+                  ),
+                })
+              : menuMarkdown;
+          void navigator.clipboard.writeText(markdown).then(
+            () => props.onNotice('Block copied.'),
+            () => props.onNotice('Could not access the clipboard.'),
+          );
+        }}
+        onDelete={() => {
+          if (editor?.state.selection instanceof BlockSelection)
+            editor.view.dispatch(
+              editor.state.tr.deleteSelection().scrollIntoView(),
+            );
+          else if (editor && menuNode && menu.key !== null)
+            deleteBlockAt(editor, menu.key);
+        }}
+      />
       {editor?.isActive('table') && props.visible && (
         <div
           className="studio-table-tools"

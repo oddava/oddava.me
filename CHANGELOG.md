@@ -37,12 +37,16 @@ Everything notable that has landed on this site, newest first.
 
 ### Added
 
+- Drag-to-select blocks from blank editor space, with block highlighting,
+  Shift to extend the selection, and group copy, cut, delete, duplicate, and move.
 - Two- and three-column layouts in Studio for mixed text, images, and blocks,
   with width controls, block movement between columns, and a Stack action.
   Layouts survive mode changes and stack vertically on small screens.
 
 ### Changed
 
+- Column layout actions live in the block menu instead of a persistent bottom
+  toolbar. The menu stays compact and scrolls within small screens.
 - Drag a block or image beside another block to snap it into a column layout,
   with a vertical drop indicator and no column slash command.
 - Studio block controls have a wider gutter, larger targets, and a clear grip.
