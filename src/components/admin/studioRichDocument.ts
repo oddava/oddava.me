@@ -1,3 +1,4 @@
+import { readColumns } from '../../lib/garden/columns';
 import { parseImageMarkup } from './studioRichImage';
 import {
   Node,
@@ -122,6 +123,18 @@ export class RichDocument {
     const content: JSONContent[] = [];
     const hasReferences = /^ {0,3}\[[^\]]+\]:/m.test(source);
     for (const block of parseBlocks(source)) {
+      const columns = readColumns(block.raw);
+      if (columns) {
+        content.push({
+          type: 'columns',
+          attrs: { layout: columns.layout },
+          content: columns.columns.map((raw) => ({
+            type: 'column',
+            content: this.parse(editor, raw).content,
+          })),
+        });
+        continue;
+      }
       const image = parseImageMarkup(block.raw);
       if (image) {
         content.push({ type: 'image', attrs: image });

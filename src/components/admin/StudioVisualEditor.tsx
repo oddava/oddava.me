@@ -1,3 +1,4 @@
+import { Columns, Column, makeColumns, activeColumns } from './studioColumns';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
@@ -87,7 +88,10 @@ function topBlock(editor: Editor, position = editor.state.selection.from) {
   const $pos = editor.state.doc.resolve(
     Math.min(position, editor.state.doc.content.size),
   );
-  const from = $pos.depth ? $pos.before(1) : $pos.pos;
+  let depth = 1;
+  for (let d = 1; d <= $pos.depth; d++)
+    if ($pos.node(d).type.name === 'column') depth = d + 1;
+  const from = $pos.depth >= depth ? $pos.before(depth) : $pos.pos;
   const node = editor.state.doc.nodeAt(from);
   return node ? { from, node } : null;
 }
@@ -110,15 +114,18 @@ export default function StudioVisualEditor(props: Props) {
   wikiRef.current = wiki;
   const dismissed = useRef<number | null>(null);
   const [selectionPoint, setSelectionPoint] = useState<Point | null>(null);
-  const [handle, setHandle] = useState<{ from: number; top: number } | null>(
-    null,
-  );
+  const [handle, setHandle] = useState<{
+    from: number;
+    top: number;
+    left: number;
+  } | null>(null);
   const handleRef = useRef(handle);
   handleRef.current = handle;
   const dragFrom = useRef<number | null>(null);
   const pointerDrag = useRef<{
     from: number;
     y: number;
+    x: number;
     moved: boolean;
   } | null>(null);
   const suppressHandleClick = useRef(false);
@@ -146,6 +153,11 @@ export default function StudioVisualEditor(props: Props) {
     if (!dom || !pane) return;
     setHandle({
       from,
+      left:
+        dom.getBoundingClientRect().left -
+        pane.getBoundingClientRect().left +
+        pane.scrollLeft -
+        48,
       top:
         dom.getBoundingClientRect().top -
         pane.getBoundingClientRect().top +
@@ -306,6 +318,14 @@ export default function StudioVisualEditor(props: Props) {
       table: commands.table,
       divider: commands.divider,
       image: () => live.current.onRequestImage(),
+      columns: () => {
+        const block = topBlock(editor);
+        if (block) makeColumns(editor, block.from);
+      },
+      'three-columns': () => {
+        const block = topBlock(editor);
+        if (block) makeColumns(editor, block.from, 3);
+      },
       link: showLink,
       wikilink: () => editor.commands.insertContent('[['),
       date: () =>
@@ -381,6 +401,8 @@ export default function StudioVisualEditor(props: Props) {
         TaskList,
         TaskItem.configure({ nested: true }),
         RichImage,
+        Columns,
+        Column,
         TableKit,
         Markdown,
         SourceBlock,
@@ -529,7 +551,30 @@ export default function StudioVisualEditor(props: Props) {
           }
           return false;
         },
+        handleDOMEvents: {
+          dragstart: (view, event) => {
+            const figure = (event.target as HTMLElement).closest(
+              '[data-rich-image]',
+            );
+            if (figure) {
+              const pos = view.posAtDOM(figure, 0);
+              const $pos = view.state.doc.resolve(pos);
+              const from =
+                view.state.doc.nodeAt(pos)?.type.name === 'image'
+                  ? pos
+                  : $pos.before();
+              view.dispatch(
+                view.state.tr.setSelection(
+                  NodeSelection.create(view.state.doc, from),
+                ),
+              );
+            }
+            return false;
+          },
+        },
         handleDrop: (_view, event) => {
+          // ProseMirror owns internal drags, including deleting their source.
+          if (_view.dragging) return false;
           const from = dragFrom.current;
           dragFrom.current = null;
           setDropLine(null);
@@ -539,7 +584,11 @@ export default function StudioVisualEditor(props: Props) {
           });
           if (from !== null) {
             const node = editor.state.doc.nodeAt(from);
-            const destination = dropDestination(editor, event.clientY);
+            const destination = dropDestination(
+              editor,
+              event.clientY,
+              event.clientX,
+            );
             if (!node || destination === null) return true;
             if (destination >= from && destination <= from + node.nodeSize)
               return true;
@@ -810,15 +859,33 @@ export default function StudioVisualEditor(props: Props) {
     }
   }, [slash, wiki]);
 
-  function dropDestination(editor: Editor, y: number) {
-    let destination = editor.state.doc.content.size;
-    editor.state.doc.forEach((_node, pos) => {
+  function dropDestination(editor: Editor, y: number, x?: number) {
+    const column =
+      x === undefined
+        ? null
+        : document.elementFromPoint(x, y)?.closest('[data-note-column]');
+    let parent = editor.state.doc;
+    let start = 0;
+    if (column) {
+      editor.state.doc.descendants((node, pos) => {
+        if (
+          node.type.name === 'column' &&
+          editor.view.nodeDOM(pos) === column
+        ) {
+          parent = node;
+          start = pos + 1;
+        }
+      });
+    }
+    let destination = start + parent.content.size;
+    parent.forEach((_node, offset) => {
+      const pos = start + offset;
       const dom = editor.view.nodeDOM(pos) as HTMLElement | null;
       if (!dom) return;
       const rect = dom.getBoundingClientRect();
       if (
         y < rect.top + rect.height / 2 &&
-        destination === editor.state.doc.content.size
+        destination === start + parent.content.size
       )
         destination = pos;
     });
@@ -863,10 +930,17 @@ export default function StudioVisualEditor(props: Props) {
               return;
             let element = event.target as HTMLElement;
             const root = editor.view.dom;
-            while (element.parentElement && element.parentElement !== root)
+            while (
+              element.parentElement &&
+              element.parentElement !== root &&
+              !element.parentElement.matches('[data-note-column]')
+            )
               element = element.parentElement;
-            if (element.parentElement === root) {
-              editor.state.doc.forEach((_node, pos) => {
+            if (
+              element.parentElement === root ||
+              element.parentElement?.matches('[data-note-column]')
+            ) {
+              editor.state.doc.descendants((_node, pos) => {
                 if (editor.view.nodeDOM(pos) === element)
                   updateHandle(editor, pos);
               });
@@ -875,7 +949,11 @@ export default function StudioVisualEditor(props: Props) {
           onDragOver={(event) => {
             if (dragFrom.current === null || !editor) return;
             event.preventDefault();
-            const position = dropDestination(editor, event.clientY);
+            const position = dropDestination(
+              editor,
+              event.clientY,
+              event.clientX,
+            );
             const dom = editor.view.nodeDOM(position) as HTMLElement | null;
             const pane = scroller.current!;
             setDropLine(
@@ -893,7 +971,7 @@ export default function StudioVisualEditor(props: Props) {
           {handle && (
             <div
               className="studio-rich-handle"
-              style={{ top: `${handle.top}px` }}
+              style={{ top: `${handle.top}px`, left: `${handle.left}px` }}
             >
               <button
                 type="button"
@@ -941,6 +1019,7 @@ export default function StudioVisualEditor(props: Props) {
                   pointerDrag.current = {
                     from: handle.from,
                     y: event.clientY,
+                    x: event.clientX,
                     moved: false,
                   };
                   suppressHandleClick.current = false;
@@ -948,11 +1027,19 @@ export default function StudioVisualEditor(props: Props) {
                 onPointerMove={(event) => {
                   const drag = pointerDrag.current;
                   if (!drag || !editor) return;
-                  if (!drag.moved && Math.abs(event.clientY - drag.y) < 5)
+                  if (
+                    !drag.moved &&
+                    Math.hypot(event.clientY - drag.y, event.clientX - drag.x) <
+                      5
+                  )
                     return;
                   drag.moved = true;
                   dragFrom.current = drag.from;
-                  const position = dropDestination(editor, event.clientY);
+                  const position = dropDestination(
+                    editor,
+                    event.clientY,
+                    event.clientX,
+                  );
                   const dom = editor.view.nodeDOM(
                     position,
                   ) as HTMLElement | null;
@@ -977,7 +1064,11 @@ export default function StudioVisualEditor(props: Props) {
                   if (!drag?.moved || !editor) return;
                   suppressHandleClick.current = true;
                   const node = editor.state.doc.nodeAt(drag.from);
-                  const destination = dropDestination(editor, event.clientY);
+                  const destination = dropDestination(
+                    editor,
+                    event.clientY,
+                    event.clientX,
+                  );
                   const bounds = scroller.current!.getBoundingClientRect();
                   if (
                     !node ||
@@ -987,13 +1078,12 @@ export default function StudioVisualEditor(props: Props) {
                       destination <= drag.from + node.nodeSize)
                   )
                     return;
-                  const target =
-                    destination > drag.from
-                      ? destination - node.nodeSize
-                      : destination;
-                  const tr = editor.state.tr
-                    .delete(drag.from, drag.from + node.nodeSize)
-                    .insert(target, node);
+                  const tr = editor.state.tr.delete(
+                    drag.from,
+                    drag.from + node.nodeSize,
+                  );
+                  const target = tr.mapping.map(destination);
+                  tr.insert(target, node);
                   tr.setSelection(NodeSelection.create(tr.doc, target));
                   editor.view.dispatch(tr.scrollIntoView());
                   editor.view.focus();
@@ -1069,6 +1159,9 @@ export default function StudioVisualEditor(props: Props) {
         position={menu.position}
         onClose={menu.close}
         onTurnInto={turnInto}
+        onColumns={(count) => {
+          if (editor && menu.key !== null) makeColumns(editor, menu.key, count);
+        }}
         onMove={moveBlock}
         onDuplicate={() => {
           if (editor && menuNode && menu.key !== null)
@@ -1093,6 +1186,80 @@ export default function StudioVisualEditor(props: Props) {
               .run();
         }}
       />
+      {editor && activeColumns(editor) && props.visible && (
+        <div
+          className="studio-table-tools"
+          role="toolbar"
+          aria-label="Column actions"
+        >
+          <select
+            aria-label="Column widths"
+            value={activeColumns(editor)!.node.attrs.layout}
+            onChange={(event) => {
+              const row = activeColumns(editor)!;
+              editor.view.dispatch(
+                editor.state.tr.setNodeMarkup(row.from, undefined, {
+                  layout: event.currentTarget.value,
+                }),
+              );
+              editor.view.focus();
+            }}
+          >
+            {activeColumns(editor)!.node.childCount === 3 ? (
+              <option value="three">Equal thirds</option>
+            ) : (
+              <>
+                <option value="equal">Equal widths</option>
+                <option value="left">Wider left</option>
+                <option value="right">Wider right</option>
+              </>
+            )}
+          </select>
+          {activeColumns(editor)!.node.childCount === 2 && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                const row = activeColumns(editor)!;
+                editor.view.dispatch(
+                  editor.state.tr
+                    .insert(
+                      row.from + row.node.nodeSize - 1,
+                      editor.schema.nodes.column!.createAndFill()!,
+                    )
+                    .setNodeMarkup(row.from, undefined, { layout: 'three' }),
+                );
+                editor.view.focus();
+              }}
+            >
+              Add column
+            </button>
+          )}
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const row = activeColumns(editor)!;
+              const blocks: import('@tiptap/pm/model').Node[] = [];
+              row.node.forEach((column) =>
+                column.forEach((block) => {
+                  blocks.push(block);
+                }),
+              );
+              editor.view.dispatch(
+                editor.state.tr.replaceWith(
+                  row.from,
+                  row.from + row.node.nodeSize,
+                  blocks,
+                ),
+              );
+              editor.view.focus();
+            }}
+          >
+            Stack
+          </button>
+        </div>
+      )}
       {editor?.isActive('table') && props.visible && (
         <div
           className="studio-table-tools"

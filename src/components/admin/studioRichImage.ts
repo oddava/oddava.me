@@ -43,6 +43,21 @@ export function parseImageMarkup(raw: string): ImageMarkupOptions | null {
 }
 
 export const RichImage = Image.extend({
+  parseHTML() {
+    return [
+      {
+        tag: 'figure[data-rich-image]',
+        getAttrs: (element) =>
+          parseImageMarkup(
+            element.outerHTML.replace(/<button[\s\S]*?<\/button>/g, ''),
+          ) ?? false,
+      },
+      {
+        tag: 'img[src]',
+        getAttrs: (element) => parseImageMarkup(element.outerHTML) ?? false,
+      },
+    ];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -58,7 +73,12 @@ export const RichImage = Image.extend({
     if (align !== 'inline') classes.push(`note-image--align-${align}`);
     const image: DOMOutputSpec = [
       'img',
-      { src: imageSource(src), alt, class: classes.join(' ') },
+      {
+        src: imageSource(src),
+        alt,
+        class: classes.join(' '),
+        draggable: 'false',
+      },
     ];
     return [
       'figure',

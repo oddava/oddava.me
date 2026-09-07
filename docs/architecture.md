@@ -64,6 +64,18 @@ source blocks. Visual remains mounted across mode switches; external Markdown
 changes reset its history, and opening another file mounts a fresh editor.
 Editor CSS is bundled rather than injected at runtime, preserving the CSP.
 
+Column layouts use `:::columns equal` (or `left`, `right`, `three`),
+`:::column` separators, and a closing `:::` line. Each column contains ordinary
+Markdown, including nested layouts. `src/lib/garden/columns.ts` recognizes the
+container while ignoring delimiters inside code fences. Studio imports it as
+editable column nodes; the shared note renderer parses each column with the
+same heading, wiki-link, and tag handling as the surrounding note. CSS classes
+control widths without inline styles, and layouts stack below 600px. Use the
+block menu or `/columns` to create a layout; the contextual controls change its
+widths, add a third column, or stack its content without deleting it.
+Native image drags stay owned by ProseMirror so one transaction moves the
+source, while the block handle supports movement into and out of columns.
+
 ### The drift field
 
 `src/lib/particles` is the ambient background: a field of suspended graphite

@@ -654,3 +654,167 @@ test('images keep text below and clicking underneath continues writing', async (
     path: `test-results/image-blocks-${info.project.name}.png`,
   });
 });
+
+test('columns keep mixed content through preview and mode changes', async ({
+  page,
+}, info) => {
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(
+      'Intro.\n\n:::columns equal\nLeft text\n:::column\nRight text\n:::\n\nAfter.',
+    );
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await editor.getByText('Right text', { exact: true }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' edited');
+  await page.getByLabel('Column widths').selectOption('left');
+  await expect(editor.locator('.note-columns')).toHaveClass(
+    /note-columns--left/,
+  );
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
+    /:::columns left[\s\S]*Right text edited/,
+  );
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(page.locator('.studio-preview .note-column')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  await editor.getByText('Right text edited', { exact: true }).click();
+  await page.screenshot({
+    path: `test-results/columns-${info.project.name}.png`,
+  });
+  await page.getByRole('button', { name: 'Stack', exact: true }).click();
+  await expect(editor.locator('.note-columns')).toHaveCount(0);
+  await expect(editor).toContainText('Right text edited');
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+});
+
+test('dragging an image moves one block and preserves its size', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Native drag uses a mouse');
+  await setup(page);
+  await openNote(page);
+  await page.route('**/images/drag.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="300" height="150" fill="blue"/></svg>',
+    }),
+  );
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(
+      '# Start\n\nBefore.\n\n<img src="/images/drag.svg" alt="Move me" class="note-image note-image--width-50">\n\nEnd.',
+    );
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor
+    .getByRole('img', { name: 'Move me' })
+    .dragTo(editor.locator('h1'), { targetPosition: { x: 10, y: 1 } });
+  await expect(editor.locator('img')).toHaveCount(1);
+  await expect(editor.locator('img')).toHaveClass(/width-50/);
+  await expect(editor.locator(':scope > :first-child')).toHaveAttribute(
+    'data-rich-image',
+    '',
+  );
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('img')).toHaveCount(1);
+  await expect(editor.locator(':scope > :first-child')).toHaveText('Start');
+});
+
+test('block handles move content between columns without copying', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Pointer drag uses a mouse');
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(':::columns equal\nLeft text\n:::column\nRight text\n:::');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.getByText('Left text', { exact: true }).hover();
+  await page
+    .getByRole('button', { name: 'Block actions', exact: true })
+    .dragTo(editor.getByText('Right text', { exact: true }), {
+      targetPosition: { x: 10, y: 2 },
+    });
+  await expect(editor.locator('.note-column').nth(1)).toContainText(
+    'Left text',
+  );
+  await expect(editor.getByText('Left text', { exact: true })).toHaveCount(1);
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('.note-column').first()).toContainText(
+    'Left text',
+  );
+});
+
+test('small images stack in the shared public preview', async ({ page }) => {
+  await setup(page);
+  await openNote(page);
+  await page.route('**/images/stack.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"/>',
+    }),
+  );
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(
+      '<img src="/images/stack.svg" alt="First" class="note-image note-image--width-50">\n\n<img src="/images/stack.svg" alt="Second" class="note-image note-image--width-50">',
+    );
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  const images = page.locator('.studio-preview img');
+  await expect(images).toHaveCount(2);
+  await expect(images.first()).toHaveCSS('display', 'block');
+  const first = await images.first().boundingBox();
+  const second = await images.nth(1).boundingBox();
+  expect(second!.y).toBeGreaterThanOrEqual(first!.y + first!.height);
+});
+
+test('create columns from a block and add a third column', async ({
+  page,
+}, info) => {
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill('Keep this text.');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.locator('p').click();
+  if (info.project.name === 'desktop') await editor.locator('p').hover();
+  await page
+    .getByRole('button', { name: 'Block actions', exact: true })
+    .click();
+  await page.getByRole('button', { name: '2 columns', exact: true }).click();
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await page.keyboard.type('Beside it.');
+  await expect(editor.locator('.note-column').nth(1)).toContainText(
+    'Beside it.',
+  );
+  await page.getByRole('button', { name: 'Add column', exact: true }).click();
+  await expect(editor.locator('.note-column')).toHaveCount(3);
+  await editor.locator('.note-column').nth(2).locator('p').click();
+  await page.keyboard.type('One more.');
+  await expect(editor.locator('.note-column').first()).toHaveText(
+    'Keep this text.',
+  );
+  await page.screenshot({
+    path: `test-results/columns-${info.project.name}.png`,
+  });
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
+    /:::columns three[\s\S]*Keep this text.[\s\S]*Beside it.[\s\S]*One more./,
+  );
+});
