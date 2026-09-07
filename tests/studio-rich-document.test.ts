@@ -1,6 +1,7 @@
 import {
   moveBeside,
   moveBlockTo,
+  removeBlock,
 } from '../src/components/admin/studioSideDrop';
 import {
   Columns,
