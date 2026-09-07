@@ -415,3 +415,23 @@
   text-align: left;
   cursor: text;
 }
+
+.studio-rich-content .note-column {
+  border: 1px dashed var(--admin-line);
+  padding: 10px;
+  border-radius: 4px;
+  min-height: 80px;
+}
+.studio-rich-content .note-column:focus-within {
+  border-color: var(--admin-accent);
+}
+.studio-rich-content .note-column > * {
+  position: relative;
+}
+.studio-table-tools select {
+  color: inherit;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  padding: 4px;
+}

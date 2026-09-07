@@ -25,6 +25,7 @@ interface Props {
   position: MenuPosition;
   onClose: () => void;
   onTurnInto: (target: TurnTarget) => void;
+  onColumns?: (count: number) => void;
   onMove: (direction: -1 | 1) => void;
   onDuplicate: () => void;
   onCopy: () => void;
@@ -46,6 +47,7 @@ export default function StudioBlockMenu({
   onClose,
   onTurnInto,
   onMove,
+  onColumns,
   onDuplicate,
   onCopy,
   onDelete,
@@ -86,6 +88,16 @@ export default function StudioBlockMenu({
         Move down
         <span className="studio-menu__hint">⌥↓</span>
       </button>
+      {onColumns && (
+        <>
+          <button type="button" onClick={run(() => onColumns(2))}>
+            2 columns
+          </button>
+          <button type="button" onClick={run(() => onColumns(3))}>
+            3 columns
+          </button>
+        </>
+      )}
       <button type="button" onClick={run(onDuplicate)}>
         Duplicate
         <span className="studio-menu__hint">⌘⇧D</span>

@@ -1,3 +1,4 @@
+import { readColumns } from '../../lib/garden/columns';
 // The block model behind the Studio visual editor.
 //
 // The Markdown string stays the single source of truth. Nothing here builds a
@@ -105,6 +106,14 @@ export function parseBlocks(markdown: string): StudioBlock[] {
     const line = lines[index]!;
     if (isBlank(line)) {
       index += 1;
+      continue;
+    }
+
+    const columns = readColumns(markdown.slice(offsets[index]!));
+    if (columns) {
+      const last = index + columns.raw.split('\n').length - 1;
+      push('html', index, last);
+      index = last + 1;
       continue;
     }
 
@@ -858,6 +867,22 @@ export interface SlashCommand {
 const SLASH_GROUP_ORDER: SlashGroup[] = ['Basic', 'Lists', 'Blocks', 'Insert'];
 
 export const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    id: 'columns',
+    title: '2 columns',
+    hint: 'Ⅱ',
+    keywords: 'columns layout side by side',
+    group: 'Blocks',
+    insert: ':::columns equal\n\n:::column\n\n:::',
+  },
+  {
+    id: 'three-columns',
+    title: '3 columns',
+    hint: 'Ⅲ',
+    keywords: 'columns layout side by side',
+    group: 'Blocks',
+    insert: ':::columns three\n\n:::column\n\n:::column\n\n:::',
+  },
   {
     id: 'text',
     title: 'Text',

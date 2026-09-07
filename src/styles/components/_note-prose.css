@@ -270,6 +270,7 @@
 /* --- Media --- */
 
 .prose img {
+  display: block;
   max-width: 100%;
   height: auto;
   border-radius: 4px;
@@ -298,8 +299,9 @@
 }
 
 .prose :is(.note-image--align-left, img[style*='float:left']) {
-  float: left;
-  margin: 0.4em 1.2em 0.8em 0;
+  float: none;
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .prose :is(.note-image--align-center, img[style*='display:block']) {
@@ -309,8 +311,9 @@
 }
 
 .prose :is(.note-image--align-right, img[style*='float:right']) {
-  float: right;
-  margin: 0.4em 0 0.8em 1.2em;
+  float: none;
+  margin-left: auto;
+  margin-right: 0;
 }
 
 .prose :is(.note-image--width-10, img[style*='width:10%']) {
@@ -484,5 +487,35 @@
 @media (max-width: 420px) {
   .prose h1 {
     font-size: clamp(1.65rem, 8vw, 2.2rem);
+  }
+}
+
+.prose .note-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin: 1.5em 0;
+}
+.prose .note-columns--left {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+.prose .note-columns--right {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+.prose .note-columns--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.prose .note-column {
+  min-width: 0;
+}
+.prose .note-column > :first-child {
+  margin-top: 0;
+}
+.prose .note-column > :last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .prose .note-columns {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

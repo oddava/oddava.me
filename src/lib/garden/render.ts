@@ -1,3 +1,4 @@
+import { readColumns } from './columns';
 import { marked, Renderer, type Token, type Tokens } from 'marked';
 import { slugifyHeading } from '../../components/mdx/headings';
 import { normalizeWikiLinkTarget } from './utils';
@@ -158,7 +159,30 @@ function ensureConfigured(): void {
     // metadata rows, lists of one-liners — so a newline means what it looks
     // like. Blank line still starts a new paragraph.
     breaks: true,
-    extensions: [wikiLinkExtension, noteTagExtension],
+    extensions: [
+      wikiLinkExtension,
+      noteTagExtension,
+      {
+        name: 'noteColumns',
+        level: 'block',
+        start: (src: string) => src.indexOf(':::columns '),
+        tokenizer(src: string) {
+          const result = readColumns(src);
+          if (!result) return;
+          return {
+            type: 'noteColumns',
+            raw: result.raw,
+            layout: result.layout,
+            columns: result.columns.map((raw) => this.lexer.blockTokens(raw)),
+          };
+        },
+        childTokens: ['columns'],
+        renderer(token: Tokens.Generic) {
+          const columns = token.columns as Token[][];
+          return `<div class="note-columns note-columns--${token.layout}">${columns.map((tokens) => `<div class="note-column">${this.parser.parse(tokens)}</div>`).join('')}</div>`;
+        },
+      },
+    ],
   });
   configured = true;
 }

@@ -35,6 +35,12 @@ Everything notable that has landed on this site, newest first.
 
 ## [2026-09-07]
 
+### Added
+
+- Two- and three-column layouts in Studio for mixed text, images, and blocks,
+  with width controls, block movement between columns, and a Stack action.
+  Layouts survive mode changes and stack vertically on small screens.
+
 ### Changed
 
 - Same-origin link hover previews sit as a flat bordered sheet: title,
@@ -43,6 +49,12 @@ Everything notable that has landed on this site, newest first.
 ### Removed
 
 - The folder/note path breadcrumb from link hover previews.
+
+### Fixed
+
+- Smaller note images stay on separate lines in preview and public pages.
+- Dragging images in Visual moves the original block and retains its size,
+  alignment, and caption.
 
 ## [2026-09-06]
 

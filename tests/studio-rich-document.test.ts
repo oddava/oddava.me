@@ -1,3 +1,9 @@
+import {
+  Columns,
+  Column,
+  makeColumns,
+} from '../src/components/admin/studioColumns';
+import { renderNote } from '../src/lib/garden/render';
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { EditorState } from '@tiptap/pm/state';
@@ -24,6 +30,8 @@ function open(body: string) {
       TaskItem,
       TableKit,
       Image,
+      Columns,
+      Column,
       SourceBlock,
       WikiLink,
     ],
@@ -129,5 +137,59 @@ describe('rich image markup', () => {
   it('keeps unsupported image URL schemes in source instead of mounting them', () => {
     const { editor } = open('<img src="javascript:alert(1)">');
     expect(editor.getJSON().content?.[0]?.type).toBe('sourceBlock');
+  });
+});
+
+describe('columns', () => {
+  it('edits mixed column content and preserves it through serialization and undo', () => {
+    const body =
+      ':::columns left\n## Heading\n\n![Photo](/photo.png)\n:::column\n- [ ] Task\n\nSee [[notes/example|Example]].\n:::';
+    const { editor, document } = open(body);
+    expect(editor.state.doc.firstChild?.type.name).toBe('columns');
+    editor.commands.insertContentAt(3, 'New ');
+    const saved = document.serialize(editor);
+    const reopened = open(saved);
+    expect(reopened.editor.getJSON()).toEqual(editor.getJSON());
+    const rendered = renderNote(saved, {
+      wikiLinkHrefs: new Map([['notes/example', '/notes/example']]),
+    });
+    expect(rendered.html).toContain('note-columns--left');
+    expect(rendered.html).toContain('src="/photo.png"');
+    expect(rendered.html).toContain('href="/notes/example"');
+    expect(rendered.headings[0]?.text).toBe('New Heading');
+    editor.commands.undo();
+    expect(document.serialize(editor)).toBe(body);
+  });
+  it('converts existing blocks without duplicating content', () => {
+    const { editor, document } = open('![Photo](/photo.png)\n\nAfter.');
+    makeColumns(editor, 0);
+    expect(editor.state.doc.firstChild?.childCount).toBe(2);
+    expect(document.serialize(editor).match(/Photo/g)).toHaveLength(1);
+    expect(open(document.serialize(editor)).editor.getJSON()).toEqual(
+      editor.getJSON(),
+    );
+  });
+  it('ignores column separators in fenced code and supports nested rows', () => {
+    const body =
+      ':::columns equal\n```text\n:::column\n:::\n```\n:::column\n:::columns equal\nOne\n:::column\nTwo\n:::\n:::';
+    const { editor, document } = open(body);
+    expect(editor.state.doc.childCount).toBe(1);
+    expect(document.serialize(editor)).toBe(body);
+    expect(renderNote(body).html.match(/class="note-columns /g)).toHaveLength(
+      2,
+    );
+  });
+  it('retains image attributes when native dragging parses its HTML slice', () => {
+    const { editor } = open(
+      '<img src="/photo.png" alt="Photo" class="note-image note-image--width-50 note-image--align-right">',
+    );
+    const html = editor.getHTML();
+    editor.commands.setContent(html);
+    expect(editor.state.doc.childCount).toBe(1);
+    expect(editor.state.doc.firstChild?.attrs).toMatchObject({
+      widthPercent: 50,
+      align: 'right',
+      src: '/photo.png',
+    });
   });
 });
