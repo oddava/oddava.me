@@ -159,7 +159,6 @@ export function resolvePreviewPlacement(
    --------------------------------------------------------------------------- */
 
 export interface PreviewSource {
-  pathname: string;
   heading?: string | null;
   documentTitle?: string | null;
   description?: string | null;
@@ -171,7 +170,6 @@ export interface PreviewSource {
 }
 
 export interface PreviewContent {
-  path: string;
   title: string;
   excerpt: string;
   meta: string;
@@ -194,29 +192,9 @@ const EXCERPT_LIMIT = 190;
 const WORDS_PER_MINUTE = 220;
 /** Below this a reading time says nothing useful, so it is left off. */
 const READING_TIME_FLOOR = 80;
-const PATH_SEGMENT_LIMIT = 3;
 
 const collapse = (value: string | null | undefined) =>
   value?.replace(/\s+/g, ' ').trim() ?? '';
-
-/**
- * Render a pathname as a breadcrumb trail. Deep paths keep their first and
- * last segment — the section and the page — and elide the middle, which is
- * what a reader needs to place the destination.
- */
-export function formatPreviewPath(pathname: string): string {
-  let segments: string[];
-  try {
-    segments = decodeURI(pathname).split('/').filter(Boolean);
-  } catch {
-    segments = pathname.split('/').filter(Boolean);
-  }
-  if (segments.length === 0) return 'home';
-  if (segments.length > PATH_SEGMENT_LIMIT) {
-    segments = [segments[0]!, '…', segments[segments.length - 1]!];
-  }
-  return segments.join(' / ');
-}
 
 /** Trim to a whole word, never leaving dangling punctuation before the ellipsis. */
 export function truncateExcerpt(value: string, limit = EXCERPT_LIMIT): string {
@@ -233,8 +211,9 @@ export function readingMinutes(words: number): number {
 }
 
 /**
- * Build the preview's four fields, or `null` when the fetched document has no
- * title — which is the one signal that it is not a readable page.
+ * Build the preview's title, excerpt, and provenance, or `null` when the
+ * fetched document has no title — which is the one signal that it is not a
+ * readable page.
  */
 export function composePreviewContent(
   source: PreviewSource,
@@ -263,7 +242,6 @@ export function composePreviewContent(
     : description;
 
   return {
-    path: formatPreviewPath(source.pathname),
     title,
     excerpt: truncateExcerpt(summary || collapse(source.lead)),
     meta: meta.join(' · '),

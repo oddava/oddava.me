@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   composePreviewContent,
-  formatPreviewPath,
   previewPageUrl,
   resolvePreviewPlacement,
   truncateExcerpt,
@@ -139,23 +138,6 @@ describe('resolvePreviewPlacement', () => {
   });
 });
 
-describe('formatPreviewPath', () => {
-  it('reads a pathname as a breadcrumb trail', () => {
-    expect(formatPreviewPath('/')).toBe('home');
-    expect(formatPreviewPath('/notes/reading')).toBe('notes / reading');
-    expect(formatPreviewPath('/notes/craft/typography/kerning')).toBe(
-      'notes / … / kerning',
-    );
-  });
-
-  it('shows encoded segments the way the reader wrote them', () => {
-    expect(formatPreviewPath('/notes/deep%20work')).toBe('notes / deep work');
-    expect(formatPreviewPath('/notes/%E2%9A%A1')).toBe('notes / ⚡');
-    // A malformed escape is displayed rather than thrown away.
-    expect(formatPreviewPath('/notes/100%')).toBe('notes / 100%');
-  });
-});
-
 describe('truncateExcerpt', () => {
   it('collapses whitespace and leaves short text alone', () => {
     expect(truncateExcerpt('  a  quiet\n note  ')).toBe('a quiet note');
@@ -174,7 +156,6 @@ describe('composePreviewContent', () => {
   it('builds the miniature document from a page heading', () => {
     expect(
       composePreviewContent({
-        pathname: '/notes/reading',
         heading: '  On rereading  ',
         documentTitle: 'On rereading | oddava.me',
         description: 'Why the second pass is the one that sticks.',
@@ -182,7 +163,6 @@ describe('composePreviewContent', () => {
         wordCount: 440,
       }),
     ).toEqual({
-      path: 'notes / reading',
       title: 'On rereading',
       excerpt: 'Why the second pass is the one that sticks.',
       meta: 'edited 4 May 2025 · 2 min read',
@@ -192,7 +172,6 @@ describe('composePreviewContent', () => {
   it('falls back to the document title, without the site suffix', () => {
     expect(
       composePreviewContent({
-        pathname: '/about',
         documentTitle: 'About — oddava.me',
       }),
     ).toMatchObject({ title: 'About', excerpt: '', meta: '' });
@@ -201,7 +180,6 @@ describe('composePreviewContent', () => {
   it('uses the opening paragraph when a page has no description', () => {
     expect(
       composePreviewContent({
-        pathname: '/notes',
         heading: 'Notes',
         lead: 'A garden of half-finished thinking.',
       })?.excerpt,
@@ -211,7 +189,6 @@ describe('composePreviewContent', () => {
   it('drops a boilerplate description in favour of the page itself', () => {
     expect(
       composePreviewContent({
-        pathname: '/notes/seeds',
         heading: 'Seeds',
         description: NOTE_FALLBACK_DESCRIPTION,
         lead: 'Everything here is provisional, including this sentence.',
@@ -222,7 +199,6 @@ describe('composePreviewContent', () => {
     // line under every link on the page.
     expect(
       composePreviewContent({
-        pathname: '/blog',
         heading: 'Blog',
         description: SITE_DESCRIPTION,
       })?.excerpt,
@@ -232,7 +208,6 @@ describe('composePreviewContent', () => {
   it('omits a reading time too short to tell the reader anything', () => {
     expect(
       composePreviewContent({
-        pathname: '/colophon',
         heading: 'Colophon',
         wordCount: 40,
       })?.meta,
@@ -242,7 +217,6 @@ describe('composePreviewContent', () => {
   it('does not repeat a date label the page already wrote', () => {
     expect(
       composePreviewContent({
-        pathname: '/notes/seeds',
         heading: 'Seeds',
         updated: 'edited 4 May 2025',
       })?.meta,
@@ -250,8 +224,6 @@ describe('composePreviewContent', () => {
   });
 
   it('refuses a document with no title at all', () => {
-    expect(
-      composePreviewContent({ pathname: '/notes/ghost', description: 'x' }),
-    ).toBeNull();
+    expect(composePreviewContent({ description: 'x' })).toBeNull();
   });
 });
