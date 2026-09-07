@@ -12,9 +12,6 @@ import '../styles/components/_page-preview.css';
 >
   <div class="page-preview__frame">
     <div class="page-preview__sheet">
-      <p class="page-preview__kicker">
-        <span class="page-preview__path" data-page-preview-path></span>
-      </p>
       <div class="page-preview__skeleton" aria-hidden="true">
         <span class="page-preview__bar page-preview__bar--title"></span>
         <span class="page-preview__bar"></span>
@@ -32,7 +29,6 @@ import '../styles/components/_page-preview.css';
 <script>
   import {
     composePreviewContent,
-    formatPreviewPath,
     previewPageUrl,
     resolvePreviewPlacement,
     type PreviewContent,
@@ -42,9 +38,6 @@ import '../styles/components/_page-preview.css';
   const preview = document.querySelector<HTMLElement>('#page-preview');
   const frame = preview?.querySelector<HTMLElement>('.page-preview__frame');
   const sheet = preview?.querySelector<HTMLElement>('.page-preview__sheet');
-  const pathEl = preview?.querySelector<HTMLElement>(
-    '[data-page-preview-path]',
-  );
   const titleEl = preview?.querySelector<HTMLElement>(
     '[data-page-preview-title]',
   );
@@ -55,7 +48,7 @@ import '../styles/components/_page-preview.css';
     '[data-page-preview-meta]',
   );
 
-  if (preview && frame && sheet && pathEl && titleEl && excerptEl && metaEl) {
+  if (preview && frame && sheet && titleEl && excerptEl && metaEl) {
     /** Nothing is open yet, so the reader still has to mean it. */
     const COLD_INTENT_MS = 130;
     /** A sheet is already open; scanning down a list should feel immediate. */
@@ -226,9 +219,8 @@ import '../styles/components/_page-preview.css';
 
     /* --- Content -------------------------------------------------------- */
 
-    const renderLoading = (pathname: string) => {
+    const renderLoading = () => {
       preview.dataset.state = 'loading';
-      pathEl.textContent = formatPreviewPath(pathname);
       titleEl.textContent = '';
       excerptEl.textContent = '';
       excerptEl.hidden = true;
@@ -237,7 +229,6 @@ import '../styles/components/_page-preview.css';
 
     const renderContent = (content: PreviewContent) => {
       preview.dataset.state = 'ready';
-      pathEl.textContent = content.path;
       titleEl.textContent = content.title;
       excerptEl.textContent = content.excerpt;
       excerptEl.hidden = !content.excerpt;
@@ -247,9 +238,8 @@ import '../styles/components/_page-preview.css';
       metaEl.hidden = !content.meta;
     };
 
-    const renderUnavailable = (pathname: string) => {
+    const renderUnavailable = () => {
       preview.dataset.state = 'empty';
-      pathEl.textContent = formatPreviewPath(pathname);
       titleEl.textContent = 'no preview for this page';
       excerptEl.textContent = '';
       excerptEl.hidden = true;
@@ -268,7 +258,7 @@ import '../styles/components/_page-preview.css';
     const countWords = (text: string) =>
       text.trim().split(/\s+/).filter(Boolean).length;
 
-    const readPreview = (html: string, responseUrl: URL) => {
+    const readPreview = (html: string) => {
       const parsed = new DOMParser().parseFromString(html, 'text/html');
       const main = parsed.querySelector('main') ?? parsed.body;
       // A note page puts its related notes and local map inside <main>
@@ -276,7 +266,6 @@ import '../styles/components/_page-preview.css';
       // opening line nor the reading time comes from the rail beside it.
       const body = main?.querySelector('article') ?? main;
       return composePreviewContent({
-        pathname: responseUrl.pathname,
         heading: main?.querySelector('h1')?.textContent,
         documentTitle: parsed.title,
         description: parsed.querySelector<HTMLMetaElement>(
@@ -310,7 +299,7 @@ import '../styles/components/_page-preview.css';
             }
             const responseUrl = new URL(response.url);
             if (responseUrl.origin !== window.location.origin) return null;
-            return readPreview(await response.text(), responseUrl);
+            return readPreview(await response.text());
           })
           .catch(() => null),
       };
@@ -384,7 +373,6 @@ import '../styles/components/_page-preview.css';
       link.classList.add('page-preview-link');
 
       const token = ++requestToken;
-      const pathname = new URL(resolved).pathname;
       const entry = loadPreview(resolved);
 
       // The sheet has to be rendered before it can be measured, and the
@@ -396,9 +384,9 @@ import '../styles/components/_page-preview.css';
       // sheet simply becomes the next document.
       if (entry.settled !== undefined) {
         if (entry.settled) renderContent(entry.settled);
-        else renderUnavailable(pathname);
+        else renderUnavailable();
       } else {
-        renderLoading(pathname);
+        renderLoading();
       }
       syncHeight();
       place();
@@ -414,7 +402,7 @@ import '../styles/components/_page-preview.css';
         renderContent(content);
         describe(link);
       } else {
-        renderUnavailable(pathname);
+        renderUnavailable();
       }
       glide();
       syncHeight();

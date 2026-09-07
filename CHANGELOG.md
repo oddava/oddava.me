@@ -33,6 +33,17 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-09-07]
+
+### Changed
+
+- Same-origin link hover previews sit as a flat bordered sheet: title,
+  opening lines, and provenance, with no raised shadow or glass.
+
+### Removed
+
+- The folder/note path breadcrumb from link hover previews.
+
 ## [2026-09-06]
 
 Studio's visual editor is now a continuous writing surface. Notes still
