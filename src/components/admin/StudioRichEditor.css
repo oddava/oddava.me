@@ -88,7 +88,8 @@
   background: color-mix(in srgb, var(--admin-accent) 15%, transparent);
   content: '';
 }
-.studio-rich-content .ProseMirror-selectednode {
+.studio-rich-content .ProseMirror-selectednode:not([data-rich-image]),
+.studio-rich-content [data-rich-image].ProseMirror-selectednode > img {
   outline: 2px solid color-mix(in srgb, var(--admin-accent) 65%, transparent);
   outline-offset: 4px;
   border-radius: 4px;
@@ -382,4 +383,35 @@
   .ProseMirror-gapcursor::after {
     animation: none;
   }
+}
+
+/* Images occupy a whole document row; alignment never floats text beside them. */
+.studio-rich-content [data-rich-image] {
+  display: flow-root;
+  clear: both;
+  width: 100%;
+}
+.studio-rich-content [data-rich-image] > img {
+  display: block;
+  float: none;
+  margin: 0;
+}
+.studio-rich-content [data-rich-image] > .note-image--align-center {
+  margin-inline: auto;
+}
+.studio-rich-content [data-rich-image] > .note-image--align-right {
+  margin-left: auto;
+}
+.studio-rich-content [data-write-below-image] {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: text;
 }

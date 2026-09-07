@@ -6,7 +6,9 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import Image from '@tiptap/extension-image';
+import { RichImage } from './studioRichImage';
+import type { ImageEditRequest } from './StudioImageDialog';
+import type { ImageMarkupOptions } from './studioEditorCommands';
 import { TableKit } from '@tiptap/extension-table';
 import Placeholder from '@tiptap/extension-placeholder';
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state';
@@ -50,7 +52,7 @@ interface Props {
   onShortcut: (event: TargetedKeyboardEvent<HTMLTextAreaElement>) => boolean;
   onImageFile: (file: File) => void;
   uploadImage: (file: File) => Promise<string | null>;
-  onRequestImage: () => void;
+  onRequestImage: (request?: ImageEditRequest) => void;
   onNotice: (message: string) => void;
 }
 
@@ -236,6 +238,34 @@ export default function StudioVisualEditor(props: Props) {
     editor.chain().focus().insertContent(content).run();
   }
 
+  const imageTap = useRef({ pos: -1, time: 0 });
+  function editImage(node: import('@tiptap/pm/model').Node) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    live.current.onRequestImage({
+      image: node.attrs as ImageMarkupOptions,
+      onSubmit: (markup) => {
+        if (editor.isDestroyed) return;
+        let position: number | null = null;
+        editor.state.doc.descendants((candidate, pos) => {
+          if (candidate === node) position = pos;
+        });
+        if (position === null) {
+          live.current.onNotice('This image is no longer in the document.');
+          return;
+        }
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(
+            { from: position, to: position + node.nodeSize },
+            source.current.parse(editor, markup).content ?? [],
+          )
+          .run();
+      },
+    });
+  }
+
   function showLink() {
     const editor = editorRef.current;
     if (!editor) return;
@@ -350,7 +380,7 @@ export default function StudioVisualEditor(props: Props) {
         }),
         TaskList,
         TaskItem.configure({ nested: true }),
-        Image,
+        RichImage,
         TableKit,
         Markdown,
         SourceBlock,
@@ -533,7 +563,40 @@ export default function StudioVisualEditor(props: Props) {
           }
           return false;
         },
+        handleDoubleClickOn: (_view, _pos, node) => {
+          if (node.type.name !== 'image') return false;
+          editImage(node);
+          return true;
+        },
         handleClickOn: (_view, _pos, node, nodePos, event) => {
+          if (node.type.name === 'image') {
+            if (
+              (event.target as HTMLElement).closest('[data-write-below-image]')
+            ) {
+              const after = nodePos + node.nodeSize;
+              const next = editor.state.doc.nodeAt(after);
+              const chain = editor.chain();
+              if (!next?.isTextblock)
+                chain.insertContentAt(after, { type: 'paragraph' });
+              chain
+                .setTextSelection(after + 1)
+                .focus()
+                .run();
+              imageTap.current = { pos: -1, time: 0 };
+              return true;
+            }
+            const now = Date.now();
+            if (
+              imageTap.current.pos === nodePos &&
+              now - imageTap.current.time < 350
+            ) {
+              imageTap.current = { pos: -1, time: 0 };
+              editImage(node);
+              return true;
+            }
+            imageTap.current = { pos: nodePos, time: now };
+            return false;
+          }
           if (
             node.type.name !== 'sourceBlock' ||
             (event.detail !== 2 &&
@@ -986,10 +1049,10 @@ export default function StudioVisualEditor(props: Props) {
         onHover={(index) => wiki && setWiki({ ...wiki, index })}
         onChoose={chooseWiki}
       />
-      {activeCommands && !rawEdit && (
+      {props.visible && activeCommands && !rawEdit && (
         <StudioInlineToolbar
           position={slash || link ? null : selectionPoint}
-          docked={props.compact && props.visible && !slash && !link}
+          docked={props.compact && Boolean(selectionPoint) && !slash && !link}
           commands={activeCommands}
           activeMarks={
             new Set(

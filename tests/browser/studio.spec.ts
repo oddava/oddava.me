@@ -458,3 +458,199 @@ test('editor controls preserve settings and keyboard focus', async ({
     page.getByRole('button', { name: 'Workspace menu' }),
   ).toHaveAttribute('aria-expanded', 'false');
 });
+
+test('phone typing keeps the page spacious and Files covers editor controls', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await setup(page);
+  await openNote(page);
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.locator('p').first().click();
+  await expect(
+    page.getByRole('toolbar', { name: 'Formatting' }),
+  ).not.toBeVisible();
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport!, 'height', {
+      configurable: true,
+      value: 420,
+    });
+    window.visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('.studio')).toHaveClass(/is-keyboard-open/);
+  await expect(page.locator('.studio-dock')).not.toBeVisible();
+  await expect(page.locator('.studio-workbench-nav')).not.toBeVisible();
+  expect(
+    await page
+      .locator('.studio-rich-scroll')
+      .evaluate((node) => node.getBoundingClientRect().height),
+  ).toBeGreaterThan(330);
+  await page.keyboard.type(' Still writing.');
+  await page.screenshot({
+    path: 'test-results/phone-keyboard.png',
+    clip: { x: 0, y: 0, width: 390, height: 420 },
+  });
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport!, 'height', {
+      configurable: true,
+      value: innerHeight,
+    });
+    window.visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('.studio')).not.toHaveClass(/is-keyboard-open/);
+  await editor.click();
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.press('Control+Shift+ArrowRight');
+  await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
+  await page.getByRole('button', { name: 'Show sidebar', exact: true }).click();
+  await expect(
+    page.getByRole('toolbar', { name: 'Formatting' }),
+  ).not.toBeVisible();
+  await expect(page.locator('.studio-workbench')).toHaveAttribute('inert', '');
+  const drawer = page.getByRole('region', { name: 'Files explorer' });
+  await expect(drawer).toBeVisible();
+  await page.screenshot({ path: 'test-results/phone-files.png' });
+  expect(
+    await drawer.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return node.contains(
+        document.elementFromPoint(rect.width / 2, rect.bottom - 120),
+      );
+    }),
+  ).toBe(true);
+});
+
+test('local images and captions render and reopen for adjustment', async ({
+  page,
+}, info) => {
+  await setup(page);
+  await page.route('**/images/test.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240"><rect width="400" height="240" fill="#6495f5"/></svg>',
+    }),
+  );
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  const source =
+    '# Images\n\n<img src="/images/test.svg" alt="Local image" style="width:50%;display:block;margin:auto">\n\n<figure style="margin:1.2em 0;text-align:left">\n  <img src="/images/test.svg" alt="Captioned image" style="width:75%">\n  <figcaption style="opacity:0.7">Original caption</figcaption>\n</figure>';
+  await page.getByRole('combobox', { name: 'Note source' }).fill(source);
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await expect(editor.locator('img')).toHaveCount(2);
+  await expect(editor.locator('figcaption')).toHaveText('Original caption');
+  await expect(editor.locator('.studio-source-block')).toHaveCount(0);
+  expect(
+    await editor
+      .locator('img')
+      .first()
+      .evaluate(
+        (node: HTMLImageElement) => node.complete && node.naturalWidth > 0,
+      ),
+  ).toBe(true);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
+    source,
+  );
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const target = editor.getByRole('img', { name: 'Captioned image' });
+  if (info.project.name === 'mobile') {
+    await target.tap();
+    await target.tap();
+  } else await target.dblclick();
+  const dialog = page.getByRole('dialog', { name: 'Edit image' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Image URL or path')).toHaveValue(
+    '/images/test.svg',
+  );
+  await expect(dialog.getByRole('tab', { name: 'Upload' })).toHaveCount(0);
+  await dialog.getByLabel('Caption (optional)').fill('Updated caption');
+  await dialog.getByRole('button', { name: 'Center', exact: true }).click();
+  await dialog.getByRole('slider', { name: 'Image width' }).fill('50');
+  await expect(dialog.locator('img')).toHaveAttribute(
+    'src',
+    '/images/test.svg',
+  );
+  await page.screenshot({
+    path: `test-results/image-dialog-${info.project.name}.png`,
+  });
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(editor.locator('img')).toHaveCount(2);
+  await expect(editor.locator('figcaption')).toHaveText('Updated caption');
+  await expect(
+    editor.getByRole('img', { name: 'Captioned image' }),
+  ).toHaveClass(/note-image--width-50/);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
+    /note-figure--align-center/,
+  );
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
+    /Updated caption/,
+  );
+});
+
+test('images keep text below and clicking underneath continues writing', async ({
+  page,
+}, info) => {
+  await setup(page);
+  await page.route('**/images/block.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="140"><rect width="300" height="140" fill="#6495f5"/></svg>',
+    }),
+  );
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(
+      '<img src="/images/block.svg" alt="First" class="note-image note-image--width-50 note-image--align-left">\n\n![Last](/images/block.svg)',
+    );
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const selectedImage = editor.getByRole('img', { name: 'First', exact: true });
+  await selectedImage.click();
+  await expect(editor.locator('[data-rich-image]').first()).toHaveClass(
+    /ProseMirror-selectednode/,
+  );
+  await expect(editor.locator('[data-rich-image]').first()).toHaveCSS(
+    'outline-style',
+    'none',
+  );
+  await expect(selectedImage).toHaveCSS('outline-style', 'solid');
+  await page.screenshot({
+    path: `test-results/image-selection-${info.project.name}.png`,
+  });
+
+  await editor
+    .getByRole('button', { name: 'Write below image' })
+    .first()
+    .click();
+  await page.keyboard.type('Between images');
+  await expect(editor.locator('p')).toHaveText('Between images');
+  const first = await editor
+    .getByRole('img', { name: 'First', exact: true })
+    .boundingBox();
+  const paragraph = await editor.locator('p').boundingBox();
+  expect(paragraph!.y).toBeGreaterThanOrEqual(first!.y + first!.height);
+  await editor
+    .getByRole('button', { name: 'Write below image' })
+    .last()
+    .click();
+  await page.keyboard.type('After the last image');
+  await expect(editor.locator('p').last()).toHaveText('After the last image');
+  const last = await editor
+    .getByRole('img', { name: 'Last', exact: true })
+    .boundingBox();
+  const end = await editor.locator('p').last().boundingBox();
+  expect(end!.y).toBeGreaterThanOrEqual(last!.y + last!.height);
+  await editor
+    .getByRole('button', { name: 'Write below image' })
+    .last()
+    .click();
+  await expect(editor.locator('p')).toHaveCount(2);
+  await page.screenshot({
+    path: `test-results/image-blocks-${info.project.name}.png`,
+  });
+});

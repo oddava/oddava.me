@@ -1,3 +1,4 @@
+import type { ImageEditRequest } from './StudioImageDialog';
 import StudioControlMenu from './StudioControlMenu';
 import { useEffect, useRef } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
@@ -27,6 +28,7 @@ interface Props {
   hasBody: boolean;
   /** Phone layout: the mode switch and the counters move to a bottom dock. */
   compact: boolean;
+  keyboardOpen: boolean;
   sidebarVisible: boolean;
   autosave: boolean;
   focusMode: boolean;
@@ -50,7 +52,7 @@ interface Props {
   onImageFile: (file: File) => void;
   /** Uploads and returns a URL, so a drop can place the image where it landed. */
   uploadImage: (file: File) => Promise<string | null>;
-  onRequestImage: () => void;
+  onRequestImage: (request?: ImageEditRequest) => void;
   onNotice: (message: string) => void;
 }
 
@@ -119,6 +121,7 @@ export default function StudioEditorPane({
   view,
   hasBody,
   compact,
+  keyboardOpen,
   sidebarVisible,
   autosave,
   focusMode,
@@ -144,6 +147,10 @@ export default function StudioEditorPane({
   onNotice,
 }: Props) {
   const sourceRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (compact && sidebarVisible) wikiMenu.close();
+  }, [compact, sidebarVisible]);
+
   // ⌘⇧V asks for the clipboard exactly as it is; the paste event carries no
   // modifier state, so the keystroke that caused it is remembered.
   const plainPasteRef = useRef(false);
@@ -201,6 +208,22 @@ export default function StudioEditorPane({
           <code>{publishedUrl}</code>
         </div>
         {!compact && viewSwitch}
+        {compact && keyboardOpen && (
+          <button
+            type="button"
+            className="studio-keyboard-done"
+            onClick={() => {
+              if (document.activeElement instanceof HTMLElement)
+                document.activeElement.blur();
+              sourceRef.current?.blur();
+              document
+                .querySelector<HTMLElement>('.studio-rich-content')
+                ?.blur();
+            }}
+          >
+            Done
+          </button>
+        )}
         <div className="studio-bar__actions">
           <StudioSaveIndicator
             state={saveState}
@@ -266,7 +289,7 @@ export default function StudioEditorPane({
             renderMarkdown={renderMarkdown}
             editorRef={editorRef}
             richCommandsRef={richCommandsRef}
-            visible={view === 'visual'}
+            visible={view === 'visual' && !(compact && sidebarVisible)}
             focusRef={focusRef}
             commands={commands}
             wikiMenu={wikiMenu}
