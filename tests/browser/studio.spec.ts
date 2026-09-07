@@ -141,6 +141,10 @@ test('continuous typing, slash blocks, formatting, undo and Markdown round trip'
   await page.keyboard.press('Enter');
   await page.keyboard.type('Keep going');
   await page.keyboard.press('Control+Shift+ArrowLeft');
+  // Wait for the editor to observe the browser's native selection change.
+  await expect(
+    page.getByRole('toolbar', { name: 'Formatting', exact: true }),
+  ).toBeVisible();
   await page.keyboard.press('Control+b');
   await expect(editor.locator('strong').last()).toHaveText('going');
   await page.getByRole('button', { name: 'Markdown', exact: true }).click();
@@ -737,14 +741,16 @@ test('block handles move content between columns without copying', async ({
   await page.getByRole('button', { name: 'Markdown', exact: true }).click();
   await page
     .getByRole('combobox', { name: 'Note source' })
-    .fill(':::columns equal\nLeft text\n:::column\nRight text\n:::');
+    .fill(
+      ':::columns equal\nLeft text\n\nStay here\n:::column\nRight text\n:::',
+    );
   await page.getByRole('button', { name: 'Visual', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await editor.getByText('Left text', { exact: true }).hover();
   await page
     .getByRole('button', { name: 'Block actions', exact: true })
     .dragTo(editor.getByText('Right text', { exact: true }), {
-      targetPosition: { x: 10, y: 2 },
+      targetPosition: { x: 100, y: 18 },
     });
   await expect(editor.locator('.note-column').nth(1)).toContainText(
     'Left text',
@@ -817,4 +823,251 @@ test('create columns from a block and add a third column', async ({
   await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
     /:::columns three[\s\S]*Keep this text.[\s\S]*Beside it.[\s\S]*One more./,
   );
+});
+
+test('drag beside a block snaps into columns with a spaced grip', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'desktop',
+    'Side snapping requires space and a pointer',
+  );
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill('Keep this text.\n\nMove this beside it.\n\nAdd this too.');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const source = editor.getByText('Move this beside it.', { exact: true });
+  await source.hover();
+  const grip = page.getByRole('button', { name: 'Block actions', exact: true });
+  const gripBox = (await grip.boundingBox())!;
+  const sourceBox = (await source.boundingBox())!;
+  expect(sourceBox.x - gripBox.x - gripBox.width).toBeGreaterThanOrEqual(12);
+  const target = (await editor
+    .getByText('Keep this text.', { exact: true })
+    .boundingBox())!;
+  await page.mouse.move(
+    gripBox.x + gripBox.width / 2,
+    gripBox.y + gripBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    target.x + target.width - 2,
+    target.y + target.height / 2,
+    { steps: 12 },
+  );
+  await expect(page.locator('.studio-rich-side-drop')).toBeVisible();
+  await page.screenshot({ path: 'test-results/side-snap-preview.png' });
+  await page.mouse.up();
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await expect(editor.locator('.note-column').nth(1)).toHaveText(
+    'Move this beside it.',
+  );
+  await expect(
+    editor.getByText('Move this beside it.', { exact: true }),
+  ).toHaveCount(1);
+  await editor.getByText('Add this too.', { exact: true }).hover();
+  const column = editor.locator('.note-column').nth(1);
+  const box = (await column.boundingBox())!;
+  await grip.dragTo(column, {
+    targetPosition: { x: box.width - 2, y: box.height / 2 },
+  });
+  await expect(editor.locator('.note-column')).toHaveCount(3);
+  await expect(editor.locator('.note-column').nth(2)).toHaveText(
+    'Add this too.',
+  );
+  await page.screenshot({ path: 'test-results/side-snap-result.png' });
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
+    /:::columns three/,
+  );
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(page.locator('.studio-preview .note-column')).toHaveCount(3);
+});
+
+test('native image drag snaps beside text and undo restores one image', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Native drag requires a mouse');
+  await setup(page);
+  await openNote(page);
+  await page.route('**/images/snap.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="300" height="150" fill="slateblue"/></svg>',
+    }),
+  );
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(
+      'Beside the image.\n\n<img src="/images/snap.svg" alt="Snap me" class="note-image note-image--width-50">',
+    );
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const target = editor.getByText('Beside the image.', { exact: true });
+  const box = (await target.boundingBox())!;
+  await editor
+    .getByRole('img')
+    .dragTo(target, { targetPosition: { x: 2, y: box.height / 2 } });
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await expect(
+    editor.locator('.note-column').first().locator('img'),
+  ).toHaveClass(/width-50/);
+  await expect(editor.locator('img')).toHaveCount(1);
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('.note-column')).toHaveCount(0);
+  await expect(editor.locator('img')).toHaveCount(1);
+  const image = editor.getByRole('img');
+  await image.hover();
+  const grip = page.getByRole('button', { name: 'Block actions', exact: true });
+  const gripBox = (await grip.boundingBox())!;
+  const imageBox = (await image.boundingBox())!;
+  expect(imageBox.x - gripBox.x - gripBox.width).toBeGreaterThanOrEqual(12);
+  await page.screenshot({ path: 'test-results/image-grip-spacing.png' });
+  await target.hover();
+  await grip.dragTo(image, {
+    targetPosition: { x: imageBox.width - 2, y: imageBox.height / 2 },
+  });
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await expect(
+    editor.locator('.note-column').first().locator('img'),
+  ).toHaveCount(1);
+  await expect(editor.locator('.note-column').nth(1)).toHaveText(
+    'Beside the image.',
+  );
+});
+
+test('side snapping cancels with Escape and stays off when columns cannot fit', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'desktop',
+    'Pointer drag uses desktop layout',
+  );
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill('Target.\n\nSource.');
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  async function dragToSide() {
+    await editor.getByText('Source.', { exact: true }).hover();
+    const grip = (await page
+      .getByRole('button', { name: 'Block actions', exact: true })
+      .boundingBox())!;
+    const target = (await editor
+      .getByText('Target.', { exact: true })
+      .boundingBox())!;
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(
+      target.x + target.width - 2,
+      target.y + target.height / 2,
+      { steps: 10 },
+    );
+  }
+  await dragToSide();
+  await expect(page.locator('.studio-rich-side-drop')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await expect(page.locator('.studio-rich-side-drop')).toHaveCount(0);
+  await expect(editor.locator('.note-columns')).toHaveCount(0);
+  await expect(editor.locator('p')).toHaveText(['Target.', 'Source.']);
+  await page.setViewportSize({ width: 780, height: 1000 });
+  await dragToSide();
+  await expect(page.locator('.studio-rich-side-drop')).toHaveCount(0);
+  await page.mouse.up();
+  await expect(editor.locator('.note-columns')).toHaveCount(0);
+});
+
+test('images keep their width across repeated snap and unsnap moves', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Native drag requires a mouse');
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await setup(page);
+  await openNote(page);
+  await page.route('**/images/layout-*.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200" fill="slateblue"/></svg>',
+    }),
+  );
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Note source' })
+    .fill(
+      '# Images\n\n<img src="/images/layout-a.svg" alt="A" class="note-image note-image--width-25">\n\n<img src="/images/layout-b.svg" alt="B" class="note-image note-image--width-25">',
+    );
+  await page.getByRole('button', { name: 'Visual', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const first = editor.getByRole('img', { name: 'A', exact: true });
+  const second = editor.getByRole('img', { name: 'B', exact: true });
+  const initialWidth = (await first.boundingBox())!.width;
+  for (let i = 0; i < 3; i++) {
+    const target = (await first.boundingBox())!;
+    await second.dragTo(first, {
+      targetPosition: { x: target.width - 2, y: target.height / 2 },
+    });
+    await expect(editor.locator('.note-column')).toHaveCount(2);
+    expect((await first.boundingBox())!.width).toBeCloseTo(initialWidth, 0);
+    expect((await second.boundingBox())!.width).toBeCloseTo(initialWidth, 0);
+    if (i === 0) {
+      await page.screenshot({
+        path: 'test-results/stable-image-columns-desktop.png',
+      });
+      await page.getByRole('button', { name: 'Preview', exact: true }).click();
+      const note = page.locator('.studio-preview .prose');
+      const noteWidth = (await note.boundingBox())!.width;
+      const columnWidth = (await note
+        .locator('.note-column')
+        .first()
+        .boundingBox())!.width;
+      expect(
+        (await note.locator('img').first().boundingBox())!.width,
+      ).toBeCloseTo(Math.min(noteWidth * 0.25, columnWidth), 0);
+      await page.getByRole('button', { name: 'Visual', exact: true }).click();
+    }
+    // The image's write-below affordance creates the otherwise invisible caret paragraph.
+    await editor
+      .locator('.note-column')
+      .first()
+      .getByRole('button', { name: 'Write below image' })
+      .click();
+    const row = (await editor.locator('.note-columns').boundingBox())!;
+    const scroll = page.locator('.studio-rich-scroll');
+    const scrollBox = (await scroll.boundingBox())!;
+    await second.dragTo(scroll, {
+      targetPosition: {
+        x: target.x - scrollBox.x + 20,
+        y: Math.min(
+          scrollBox.height - 25,
+          row.y + row.height - scrollBox.y + 130,
+        ),
+      },
+    });
+    await expect(editor.locator('.note-column')).toHaveCount(0);
+    await expect(editor.locator('img')).toHaveCount(2);
+    expect((await first.boundingBox())!.width).toBeCloseTo(initialWidth, 0);
+    expect((await second.boundingBox())!.width).toBeCloseTo(initialWidth, 0);
+  }
+  await page.keyboard.press('Control+z');
+  await expect(editor.locator('.note-column')).toHaveCount(2);
+  await page.keyboard.press('Control+Shift+z');
+  await expect(editor.locator('.note-column')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+  const markdown = await page
+    .getByRole('combobox', { name: 'Note source' })
+    .inputValue();
+  expect(markdown.match(/layout-a.svg/g)).toHaveLength(1);
+  expect(markdown.match(/layout-b.svg/g)).toHaveLength(1);
+  expect(markdown).not.toContain(':::columns');
+  expect(errors).toEqual([]);
 });

@@ -1,4 +1,8 @@
 import {
+  moveBeside,
+  moveBlockTo,
+} from '../src/components/admin/studioSideDrop';
+import {
   Columns,
   Column,
   makeColumns,
@@ -191,5 +195,156 @@ describe('columns', () => {
       align: 'right',
       src: '/photo.png',
     });
+  });
+});
+
+describe('drag beside a block', () => {
+  it.each(['left', 'right'] as const)(
+    'moves an image to the %s without copying, with one-step undo',
+    (side) => {
+      const body =
+        'Before.\n\n<img src="/photo.png" alt="Photo" class="note-image note-image--width-50">\n\nAfter.';
+      const { editor, document } = open(body);
+      const from = editor.state.doc.firstChild!.nodeSize;
+      expect(moveBeside(editor, from, 0, side)).toBe(true);
+      editor.state.doc.check();
+      expect(editor.state.doc.firstChild?.type.name).toBe('columns');
+      expect(document.serialize(editor).match(/photo.png/g)).toHaveLength(1);
+      expect(open(document.serialize(editor)).editor.getJSON()).toEqual(
+        editor.getJSON(),
+      );
+      editor.commands.undo();
+      expect(document.serialize(editor)).toBe(body);
+    },
+  );
+  it('adds a third column instead of nesting another row', () => {
+    const { editor } = open(
+      ':::columns equal\nLeft\n:::column\nRight\n:::\n\nThird',
+    );
+    const from = editor.state.doc.firstChild!.nodeSize;
+    expect(moveBeside(editor, from, 1, 'left')).toBe(true);
+    editor.state.doc.check();
+    const row = editor.state.doc.firstChild!;
+    expect(row.childCount).toBe(3);
+    expect(row.firstChild!.textContent).toBe('Third');
+    expect(row.attrs.layout).toBe('three');
+  });
+  it('removes the vacated column and unwraps the remaining content', () => {
+    const { editor } = open(
+      ':::columns equal\nLeft\n:::column\nRight\n:::\n\nTarget',
+    );
+    const target = editor.state.doc.firstChild!.nodeSize;
+    expect(moveBeside(editor, 2, target, 'right')).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.type.name).toBe('paragraph');
+    expect(editor.state.doc.firstChild!.textContent).toBe('Right');
+    expect(editor.state.doc.lastChild!.textContent).toBe('TargetLeft');
+  });
+  it('moves across a row without leaving an empty column behind', () => {
+    const { editor } = open(':::columns equal\nLeft\n:::column\nRight\n:::');
+    const right = 1 + editor.state.doc.firstChild!.firstChild!.nodeSize;
+    expect(moveBeside(editor, 2, right, 'right')).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.childCount).toBe(2);
+    expect(editor.state.doc.firstChild!.textContent).toBe('RightLeft');
+  });
+  it('does not allow drops into the source or a full row', () => {
+    const { editor, document } = open(
+      ':::columns three\nOne\n:::column\nTwo\n:::column\nThree\n:::\n\nFour',
+    );
+    const before = document.serialize(editor);
+    expect(moveBeside(editor, 2, 1, 'right')).toBe(false);
+    expect(
+      moveBeside(editor, editor.state.doc.firstChild!.nodeSize, 1, 'left'),
+    ).toBe(false);
+    expect(document.serialize(editor)).toBe(before);
+  });
+});
+
+describe('layout move transitions', () => {
+  it('moving out of a row drops blank caret paragraphs and collapses the row', () => {
+    const { editor, document } = open(
+      ':::columns equal\n![A](/a.png)\n:::column\n![B](/b.png)\n:::',
+    );
+    // Writing below an image leaves a legitimate empty caret block behind.
+    editor.commands.insertContentAt(3, { type: 'paragraph' });
+    const before = document.serialize(editor);
+    expect(moveBlockTo(editor, 2, editor.state.doc.content.size)).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.childCount).toBe(2);
+    expect(editor.state.doc.firstChild!.attrs.src).toBe('/b.png');
+    expect(editor.state.doc.lastChild!.attrs.src).toBe('/a.png');
+    editor.commands.undo();
+    expect(document.serialize(editor)).toBe(before);
+  });
+  it('reorders a full row without inserting a fourth column', () => {
+    const { editor } = open(
+      ':::columns three\n![A](/a.png)\n:::column\n![B](/b.png)\n:::column\n![C](/c.png)\n:::',
+    );
+    const row = editor.state.doc.firstChild!;
+    const third = 1 + row.child(0).nodeSize + row.child(1).nodeSize;
+    expect(moveBeside(editor, 2, third, 'right')).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.childCount).toBe(3);
+    expect(editor.state.doc.firstChild!.lastChild!.firstChild!.attrs.src).toBe(
+      '/a.png',
+    );
+  });
+  it('does not create a third column for two images and a blank caret', () => {
+    const { editor } = open(
+      ':::columns equal\n![A](/a.png)\n:::column\n![B](/b.png)\n:::',
+    );
+    editor.commands.insertContentAt(3, { type: 'paragraph' });
+    const second = 1 + editor.state.doc.firstChild!.firstChild!.nodeSize;
+    expect(moveBeside(editor, 2, second, 'right')).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.childCount).toBe(2);
+    expect(editor.state.doc.firstChild!.attrs.layout).toBe('equal');
+  });
+  it('uses an existing empty slot rather than adding another column', () => {
+    const { editor } = open(
+      ':::columns equal\n![A](/a.png)\n:::column\n\n:::\n\n![B](/b.png)',
+    );
+    const row = editor.state.doc.firstChild!;
+    expect(
+      moveBeside(editor, row.nodeSize, 1 + row.firstChild!.nodeSize, 'right'),
+    ).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.childCount).toBe(2);
+    expect(editor.state.doc.firstChild!.attrs.layout).toBe('equal');
+  });
+  it('moving down from three columns leaves two, preserves unrelated empty layouts', () => {
+    const { editor } = open(
+      ':::columns three\n![A](/a.png)\n:::column\n![B](/b.png)\n:::column\n![C](/c.png)\n:::\n\n:::columns equal\nDraft\n:::column\n\n:::',
+    );
+    const firstSize = editor.state.doc.firstChild!.nodeSize;
+    expect(moveBlockTo(editor, 2, firstSize)).toBe(true);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.childCount).toBe(2);
+    expect(editor.state.doc.firstChild!.attrs.layout).toBe('equal');
+    expect(editor.state.doc.child(1).attrs.src).toBe('/a.png');
+    expect(editor.state.doc.lastChild!.childCount).toBe(2);
+  });
+});
+
+describe('empty layout repair', () => {
+  it('opens and renders a saved empty third column as two columns', () => {
+    const body =
+      ':::columns three\n![A](/a.png)\n:::column\n![B](/b.png)\n:::column\n\n:::';
+    const { editor } = open(body);
+    expect(editor.state.doc.firstChild!.childCount).toBe(2);
+    expect(editor.state.doc.firstChild!.attrs.layout).toBe('equal');
+    expect(renderNote(body).html.match(/class="note-column"/g)).toHaveLength(2);
+    expect(renderNote(body).html).not.toContain('note-columns--three');
+  });
+  it('deleting a column’s last block unwraps its sibling, and undo restores it', () => {
+    const body = ':::columns equal\n![A](/a.png)\n:::column\n![B](/b.png)\n:::';
+    const { editor, document } = open(body);
+    removeBlock(editor, 2);
+    editor.state.doc.check();
+    expect(editor.state.doc.childCount).toBe(1);
+    expect(editor.state.doc.firstChild!.attrs.src).toBe('/b.png');
+    editor.commands.undo();
+    expect(document.serialize(editor)).toBe(body);
   });
 });

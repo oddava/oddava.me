@@ -43,6 +43,9 @@ Everything notable that has landed on this site, newest first.
 
 ### Changed
 
+- Drag a block or image beside another block to snap it into a column layout,
+  with a vertical drop indicator and no column slash command.
+- Studio block controls have a wider gutter, larger targets, and a clear grip.
 - Same-origin link hover previews sit as a flat bordered sheet: title,
   opening lines, and provenance, with no raised shadow or glass.
 
@@ -52,6 +55,11 @@ Everything notable that has landed on this site, newest first.
 
 ### Fixed
 
+- Snapping images no longer applies their percentage width a second time.
+  Moving them back out restores their authored width.
+- Dragging below a row works throughout the editor, including blank space.
+  Moves and deletions remove vacated columns; two items do not leave an empty
+  third column, and each move can be undone independently.
 - Smaller note images stay on separate lines in preview and public pages.
 - Dragging images in Visual moves the original block and retains its size,
   alignment, and caption.

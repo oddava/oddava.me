@@ -868,22 +868,6 @@ const SLASH_GROUP_ORDER: SlashGroup[] = ['Basic', 'Lists', 'Blocks', 'Insert'];
 
 export const SLASH_COMMANDS: SlashCommand[] = [
   {
-    id: 'columns',
-    title: '2 columns',
-    hint: 'Ⅱ',
-    keywords: 'columns layout side by side',
-    group: 'Blocks',
-    insert: ':::columns equal\n\n:::column\n\n:::',
-  },
-  {
-    id: 'three-columns',
-    title: '3 columns',
-    hint: 'Ⅲ',
-    keywords: 'columns layout side by side',
-    group: 'Blocks',
-    insert: ':::columns three\n\n:::column\n\n:::column\n\n:::',
-  },
-  {
     id: 'text',
     title: 'Text',
     hint: 'Aa',

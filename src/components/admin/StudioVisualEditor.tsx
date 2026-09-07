@@ -1,3 +1,10 @@
+import {
+  findSideDrop,
+  moveBeside,
+  moveBlockTo,
+  removeBlock,
+  type SideDrop,
+} from './studioSideDrop';
 import { Columns, Column, makeColumns, activeColumns } from './studioColumns';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
@@ -118,10 +125,13 @@ export default function StudioVisualEditor(props: Props) {
     from: number;
     top: number;
     left: number;
+    column: boolean;
   } | null>(null);
   const handleRef = useRef(handle);
   handleRef.current = handle;
   const dragFrom = useRef<number | null>(null);
+  const nativeDragFrom = useRef<number | null>(null);
+  const [sideDrop, setSideDrop] = useState<SideDrop | null>(null);
   const pointerDrag = useRef<{
     from: number;
     y: number;
@@ -129,7 +139,11 @@ export default function StudioVisualEditor(props: Props) {
     moved: boolean;
   } | null>(null);
   const suppressHandleClick = useRef(false);
-  const [dropLine, setDropLine] = useState<number | null>(null);
+  const [dropLine, setDropLine] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const menu = useStudioMenu<number>();
   const [link, setLink] = useState<{
     from: number;
@@ -147,17 +161,32 @@ export default function StudioVisualEditor(props: Props) {
   const chooseWikiRef = useRef<(index: number) => void>(() => {});
   const moveRef = useRef<(direction: -1 | 1) => void>(() => {});
 
+  useEffect(() => {
+    const cancelDrag = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !pointerDrag.current) return;
+      pointerDrag.current = null;
+      dragFrom.current = null;
+      setSideDrop(null);
+      setDropLine(null);
+      suppressHandleClick.current = true;
+    };
+    window.addEventListener('keydown', cancelDrag);
+    return () => window.removeEventListener('keydown', cancelDrag);
+  }, []);
+
   function updateHandle(editor: Editor, from: number) {
     const dom = editor.view.nodeDOM(from) as HTMLElement | null;
     const pane = scroller.current;
     if (!dom || !pane) return;
+    const column = dom.parentElement?.matches('[data-note-column]') ?? false;
     setHandle({
       from,
+      column,
       left:
         dom.getBoundingClientRect().left -
         pane.getBoundingClientRect().left +
         pane.scrollLeft -
-        48,
+        (live.current.compact || column ? 44 : 76),
       top:
         dom.getBoundingClientRect().top -
         pane.getBoundingClientRect().top +
@@ -318,14 +347,6 @@ export default function StudioVisualEditor(props: Props) {
       table: commands.table,
       divider: commands.divider,
       image: () => live.current.onRequestImage(),
-      columns: () => {
-        const block = topBlock(editor);
-        if (block) makeColumns(editor, block.from);
-      },
-      'three-columns': () => {
-        const block = topBlock(editor);
-        if (block) makeColumns(editor, block.from, 3);
-      },
       link: showLink,
       wikilink: () => editor.commands.insertContent('[['),
       date: () =>
@@ -424,6 +445,18 @@ export default function StudioVisualEditor(props: Props) {
         },
         handleKeyDown: (_view, event) => {
           if (event.isComposing || editor.view.composing) return false;
+          if (
+            event.key === 'Escape' &&
+            (pointerDrag.current || nativeDragFrom.current !== null)
+          ) {
+            pointerDrag.current = null;
+            dragFrom.current = null;
+            nativeDragFrom.current = null;
+            setSideDrop(null);
+            setDropLine(null);
+            suppressHandleClick.current = true;
+            return true;
+          }
           const current = slashRef.current ?? wikiRef.current;
           if (current) {
             if (
@@ -466,6 +499,15 @@ export default function StudioVisualEditor(props: Props) {
           }
           const mod = event.metaKey || event.ctrlKey;
           if (
+            !mod &&
+            (event.key === 'Backspace' || event.key === 'Delete') &&
+            editor.state.selection instanceof NodeSelection
+          ) {
+            event.preventDefault();
+            deleteBlockAt(editor, editor.state.selection.from);
+            return true;
+          }
+          if (
             mod &&
             event.shiftKey &&
             ['d', 'Backspace'].includes(
@@ -476,11 +518,7 @@ export default function StudioVisualEditor(props: Props) {
             if (!block) return false;
             event.preventDefault();
             event.stopPropagation();
-            if (event.key === 'Backspace')
-              editor.commands.deleteRange({
-                from: block.from,
-                to: block.from + block.node.nodeSize,
-              });
+            if (event.key === 'Backspace') deleteBlockAt(editor, block.from);
             else
               editor
                 .chain()
@@ -552,6 +590,12 @@ export default function StudioVisualEditor(props: Props) {
           return false;
         },
         handleDOMEvents: {
+          dragend: () => {
+            nativeDragFrom.current = null;
+            setSideDrop(null);
+            setDropLine(null);
+            return false;
+          },
           dragstart: (view, event) => {
             const figure = (event.target as HTMLElement).closest(
               '[data-rich-image]',
@@ -569,39 +613,29 @@ export default function StudioVisualEditor(props: Props) {
                 ),
               );
             }
+            nativeDragFrom.current =
+              view.state.selection instanceof NodeSelection
+                ? view.state.selection.from
+                : null;
             return false;
           },
         },
         handleDrop: (_view, event) => {
-          // ProseMirror owns internal drags, including deleting their source.
-          if (_view.dragging) return false;
-          const from = dragFrom.current;
-          dragFrom.current = null;
+          const nativeFrom = nativeDragFrom.current;
+          nativeDragFrom.current = null;
+          setSideDrop(null);
           setDropLine(null);
+          if (nativeFrom !== null && !event.altKey && !event.ctrlKey) {
+            event.preventDefault();
+            applyBlockDrop(editor, nativeFrom, event.clientX, event.clientY);
+            return true;
+          }
+          // Preserve native text-selection drags and explicit copy modifiers.
+          if (_view.dragging) return false;
           const hit = editor.view.posAtCoords({
             left: event.clientX,
             top: event.clientY,
           });
-          if (from !== null) {
-            const node = editor.state.doc.nodeAt(from);
-            const destination = dropDestination(
-              editor,
-              event.clientY,
-              event.clientX,
-            );
-            if (!node || destination === null) return true;
-            if (destination >= from && destination <= from + node.nodeSize)
-              return true;
-            const tr = editor.state.tr.delete(from, from + node.nodeSize);
-            const target =
-              destination > from ? destination - node.nodeSize : destination;
-            tr.insert(target, node).setSelection(
-              NodeSelection.create(tr.doc, target),
-            );
-            editor.view.dispatch(tr.scrollIntoView());
-            editor.view.focus();
-            return true;
-          }
           const image = Array.from(event.dataTransfer?.files ?? []).find(
             (file) => file.type.startsWith('image/'),
           );
@@ -866,7 +900,8 @@ export default function StudioVisualEditor(props: Props) {
         : document.elementFromPoint(x, y)?.closest('[data-note-column]');
     let parent = editor.state.doc;
     let start = 0;
-    if (column) {
+    const rowRect = column?.parentElement?.getBoundingClientRect();
+    if (column && rowRect && y > rowRect.top + 12 && y < rowRect.bottom - 12) {
       editor.state.doc.descendants((node, pos) => {
         if (
           node.type.name === 'column' &&
@@ -890,6 +925,48 @@ export default function StudioVisualEditor(props: Props) {
         destination = pos;
     });
     return destination;
+  }
+
+  function dropMarker(editor: Editor, position: number) {
+    const pane = scroller.current!;
+    const $pos = editor.state.doc.resolve(position);
+    const parent =
+      $pos.parent.type.name === 'column'
+        ? (editor.view.nodeDOM($pos.before()) as HTMLElement)
+        : editor.view.dom;
+    const rect = parent.getBoundingClientRect();
+    const next = editor.view.nodeDOM(position) as HTMLElement | null;
+    const bounds = pane.getBoundingClientRect();
+    return {
+      top:
+        (next?.getBoundingClientRect().top ?? rect.bottom) -
+        bounds.top +
+        pane.scrollTop,
+      left: rect.left - bounds.left + pane.scrollLeft,
+      width: rect.width,
+    };
+  }
+
+  function applyBlockDrop(editor: Editor, from: number, x: number, y: number) {
+    const bounds = scroller.current!.getBoundingClientRect();
+    setDropLine(null);
+    setSideDrop(null);
+    if (
+      x < bounds.left ||
+      x > bounds.right ||
+      y < bounds.top ||
+      y > bounds.bottom
+    )
+      return;
+    const snap = findSideDrop(editor, from, x, y);
+    if (snap) moveBeside(editor, from, snap.from, snap.side);
+    else moveBlockTo(editor, from, dropDestination(editor, y, x));
+    setHandle(null);
+  }
+
+  function deleteBlockAt(editor: Editor, from: number) {
+    removeBlock(editor, from);
+    setHandle(null);
   }
 
   function turnInto(target: TurnTarget) {
@@ -922,6 +999,37 @@ export default function StudioVisualEditor(props: Props) {
         className="studio-rich-scroll"
         ref={scroller}
         onScroll={() => refreshRef.current()}
+        onDragOver={(event) => {
+          const from = dragFrom.current ?? nativeDragFrom.current;
+          if (from === null || !editor) return;
+          event.preventDefault();
+          const snap =
+            !event.altKey && !event.ctrlKey
+              ? findSideDrop(editor, from, event.clientX, event.clientY)
+              : null;
+          setSideDrop(snap);
+          if (snap) {
+            setDropLine(null);
+            return;
+          }
+          const position = dropDestination(
+            editor,
+            event.clientY,
+            event.clientX,
+          );
+          const pane = scroller.current!;
+          setDropLine(dropMarker(editor, position));
+          const rect = pane.getBoundingClientRect();
+          if (event.clientY < rect.top + 60) pane.scrollTop -= 14;
+          if (event.clientY > rect.bottom - 60) pane.scrollTop += 14;
+        }}
+        onDrop={(event) => {
+          const from = nativeDragFrom.current;
+          if (from === null || !editor) return;
+          event.preventDefault();
+          nativeDragFrom.current = null;
+          applyBlockDrop(editor, from, event.clientX, event.clientY);
+        }}
       >
         <div
           className="studio-rich-page"
@@ -946,31 +1054,11 @@ export default function StudioVisualEditor(props: Props) {
               });
             }
           }}
-          onDragOver={(event) => {
-            if (dragFrom.current === null || !editor) return;
-            event.preventDefault();
-            const position = dropDestination(
-              editor,
-              event.clientY,
-              event.clientX,
-            );
-            const dom = editor.view.nodeDOM(position) as HTMLElement | null;
-            const pane = scroller.current!;
-            setDropLine(
-              (dom?.getBoundingClientRect().top ??
-                editor.view.dom.getBoundingClientRect().bottom) -
-                pane.getBoundingClientRect().top +
-                pane.scrollTop,
-            );
-            const rect = pane.getBoundingClientRect();
-            if (event.clientY < rect.top + 60) pane.scrollTop -= 14;
-            if (event.clientY > rect.bottom - 60) pane.scrollTop += 14;
-          }}
         >
           <div ref={host} />
           {handle && (
             <div
-              className="studio-rich-handle"
+              className={`studio-rich-handle${handle.column ? ' is-column' : ''}`}
               style={{ top: `${handle.top}px`, left: `${handle.left}px` }}
             >
               <button
@@ -1001,7 +1089,7 @@ export default function StudioVisualEditor(props: Props) {
                 draggable
                 aria-label="Block actions"
                 aria-haspopup="menu"
-                title="Drag to reorder · click for actions · Alt+↑/↓ to move"
+                title="Drag to move or place beside a block · click for actions"
                 onClick={(event) => {
                   if (suppressHandleClick.current) {
                     suppressHandleClick.current = false;
@@ -1035,21 +1123,24 @@ export default function StudioVisualEditor(props: Props) {
                     return;
                   drag.moved = true;
                   dragFrom.current = drag.from;
+                  const snap = findSideDrop(
+                    editor,
+                    drag.from,
+                    event.clientX,
+                    event.clientY,
+                  );
+                  setSideDrop(snap);
+                  if (snap) {
+                    setDropLine(null);
+                    return;
+                  }
                   const position = dropDestination(
                     editor,
                     event.clientY,
                     event.clientX,
                   );
-                  const dom = editor.view.nodeDOM(
-                    position,
-                  ) as HTMLElement | null;
                   const pane = scroller.current!;
-                  setDropLine(
-                    (dom?.getBoundingClientRect().top ??
-                      editor.view.dom.getBoundingClientRect().bottom) -
-                      pane.getBoundingClientRect().top +
-                      pane.scrollTop,
-                  );
+                  setDropLine(dropMarker(editor, position));
                   const bounds = pane.getBoundingClientRect();
                   if (event.clientY < bounds.top + 60) pane.scrollTop -= 18;
                   if (event.clientY > bounds.bottom - 60) pane.scrollTop += 18;
@@ -1059,52 +1150,64 @@ export default function StudioVisualEditor(props: Props) {
                   pointerDrag.current = null;
                   dragFrom.current = null;
                   setDropLine(null);
+                  setSideDrop(null);
                   if (event.currentTarget.hasPointerCapture(event.pointerId))
                     event.currentTarget.releasePointerCapture(event.pointerId);
                   if (!drag?.moved || !editor) return;
                   suppressHandleClick.current = true;
-                  const node = editor.state.doc.nodeAt(drag.from);
-                  const destination = dropDestination(
+                  applyBlockDrop(
                     editor,
-                    event.clientY,
-                    event.clientX,
-                  );
-                  const bounds = scroller.current!.getBoundingClientRect();
-                  if (
-                    !node ||
-                    event.clientX < bounds.left ||
-                    event.clientX > bounds.right ||
-                    (destination >= drag.from &&
-                      destination <= drag.from + node.nodeSize)
-                  )
-                    return;
-                  const tr = editor.state.tr.delete(
                     drag.from,
-                    drag.from + node.nodeSize,
+                    event.clientX,
+                    event.clientY,
                   );
-                  const target = tr.mapping.map(destination);
-                  tr.insert(target, node);
-                  tr.setSelection(NodeSelection.create(tr.doc, target));
-                  editor.view.dispatch(tr.scrollIntoView());
-                  editor.view.focus();
-                  updateHandle(editor, target);
-                  props.onNotice('Block moved.');
                 }}
                 onPointerCancel={() => {
                   pointerDrag.current = null;
                   dragFrom.current = null;
                   setDropLine(null);
+                  setSideDrop(null);
                 }}
               >
-                ⠿
+                <svg
+                  width="16"
+                  height="20"
+                  viewBox="0 0 16 20"
+                  aria-hidden="true"
+                  fill="currentColor"
+                >
+                  {[5, 10, 15].map((y) => (
+                    <g key={y}>
+                      <circle cx="5" cy={y} r="1.5" />
+                      <circle cx="11" cy={y} r="1.5" />
+                    </g>
+                  ))}
+                </svg>
               </button>
             </div>
           )}
-          {dropLine !== null && (
+          {sideDrop && scroller.current && (
             <div
-              className="studio-rich-drop"
-              style={{ top: `${dropLine}px` }}
+              className="studio-rich-side-drop"
+              aria-hidden="true"
+              style={{
+                top:
+                  sideDrop.rect.top -
+                  scroller.current.getBoundingClientRect().top +
+                  scroller.current.scrollTop,
+                left:
+                  (sideDrop.side === 'left'
+                    ? sideDrop.rect.left
+                    : sideDrop.rect.right) -
+                  scroller.current.getBoundingClientRect().left +
+                  scroller.current.scrollLeft -
+                  2,
+                height: sideDrop.rect.height,
+              }}
             />
+          )}
+          {dropLine !== null && (
+            <div className="studio-rich-drop" style={dropLine} />
           )}
         </div>
         {props.uploading && (
@@ -1179,11 +1282,7 @@ export default function StudioVisualEditor(props: Props) {
         }}
         onDelete={() => {
           if (editor && menuNode && menu.key !== null)
-            editor
-              .chain()
-              .focus()
-              .deleteRange({ from: menu.key, to: menu.key + menuNode.nodeSize })
-              .run();
+            deleteBlockAt(editor, menu.key);
         }}
       />
       {editor && activeColumns(editor) && props.visible && (

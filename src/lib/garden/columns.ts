@@ -37,14 +37,17 @@ export function readColumns(source: string) {
       }
       columns.push(lines.slice(start, i).join('\n').trim());
       if (columns.length < 2 || columns.length > 3) return null;
+      const populated = columns.filter((column) => column.trim());
+      const effective =
+        columns.length === 3 && populated.length === 2 ? populated : columns;
       return {
         layout:
-          columns.length === 3
+          effective.length === 3
             ? 'three'
             : opening[1] === 'three'
               ? 'equal'
               : opening[1]!,
-        columns,
+        columns: effective,
         raw: lines.slice(0, i + 1).join('\n'),
       };
     }

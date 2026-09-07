@@ -318,78 +318,97 @@
 
 .prose :is(.note-image--width-10, img[style*='width:10%']) {
   width: 10%;
+  --note-image-width: 10cqw;
 }
 
 .prose :is(.note-image--width-15, img[style*='width:15%']) {
   width: 15%;
+  --note-image-width: 15cqw;
 }
 
 .prose :is(.note-image--width-20, img[style*='width:20%']) {
   width: 20%;
+  --note-image-width: 20cqw;
 }
 
 .prose :is(.note-image--width-25, img[style*='width:25%']) {
   width: 25%;
+  --note-image-width: 25cqw;
 }
 
 .prose :is(.note-image--width-30, img[style*='width:30%']) {
   width: 30%;
+  --note-image-width: 30cqw;
 }
 
 .prose :is(.note-image--width-33, img[style*='width:33%']) {
   width: 33%;
+  --note-image-width: 33cqw;
 }
 
 .prose :is(.note-image--width-35, img[style*='width:35%']) {
   width: 35%;
+  --note-image-width: 35cqw;
 }
 
 .prose :is(.note-image--width-40, img[style*='width:40%']) {
   width: 40%;
+  --note-image-width: 40cqw;
 }
 
 .prose :is(.note-image--width-45, img[style*='width:45%']) {
   width: 45%;
+  --note-image-width: 45cqw;
 }
 
 .prose :is(.note-image--width-50, img[style*='width:50%']) {
   width: 50%;
+  --note-image-width: 50cqw;
 }
 
 .prose :is(.note-image--width-55, img[style*='width:55%']) {
   width: 55%;
+  --note-image-width: 55cqw;
 }
 
 .prose :is(.note-image--width-60, img[style*='width:60%']) {
   width: 60%;
+  --note-image-width: 60cqw;
 }
 
 .prose :is(.note-image--width-65, img[style*='width:65%']) {
   width: 65%;
+  --note-image-width: 65cqw;
 }
 
 .prose :is(.note-image--width-70, img[style*='width:70%']) {
   width: 70%;
+  --note-image-width: 70cqw;
 }
 
 .prose :is(.note-image--width-75, img[style*='width:75%']) {
   width: 75%;
+  --note-image-width: 75cqw;
 }
 
 .prose :is(.note-image--width-80, img[style*='width:80%']) {
   width: 80%;
+  --note-image-width: 80cqw;
 }
 
 .prose :is(.note-image--width-85, img[style*='width:85%']) {
   width: 85%;
+  --note-image-width: 85cqw;
 }
 
 .prose :is(.note-image--width-90, img[style*='width:90%']) {
   width: 90%;
+  --note-image-width: 90cqw;
 }
 
 .prose :is(.note-image--width-95, img[style*='width:95%']) {
   width: 95%;
+  --note-image-width: 95cqw;
 }
 
 .prose figcaption {
@@ -493,7 +512,7 @@
 .prose .note-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
+  gap: 3rem;
   margin: 1.5em 0;
 }
 .prose .note-columns--left {
@@ -518,4 +537,13 @@
   .prose .note-columns {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Image percentages refer to the note, not a second percentage of a column. */
+.prose {
+  container-type: inline-size;
+}
+.prose .note-column img {
+  width: var(--note-image-width, auto);
+  max-width: 100%;
 }
