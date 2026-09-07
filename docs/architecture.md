@@ -71,10 +71,21 @@ container while ignoring delimiters inside code fences. Studio imports it as
 editable column nodes; the shared note renderer parses each column with the
 same heading, wiki-link, and tag handling as the surrounding note. CSS classes
 control widths without inline styles, and layouts stack below 600px. Use the
-block menu or `/columns` to create a layout; the contextual controls change its
-widths, add a third column, or stack its content without deleting it.
-Native image drags stay owned by ProseMirror so one transaction moves the
-source, while the block handle supports movement into and out of columns.
+block's left or right edge as a drop target to create a layout directly. The
+vertical snap indicator appears only when each resulting column has at least
+160px of space. Top and bottom edges remain reorder targets. The block menu
+retains a keyboard-accessible layout action; there is no column slash command.
+Contextual controls change widths, add a third column, or stack the content.
+`studioSideDrop.ts` performs block moves in one history event, preserving content
+and removing columns that contain only blank caret paragraphs. Native block
+drags and handle drags share the same side and vertical move paths; the scroll
+surface accepts drops below the document. Text-selection drags remain native.
+Empty slots are reused, a lone remaining column is unwrapped, and reordering a
+full row never temporarily adds a fourth column. The Markdown reader repairs a
+saved three-column row containing only two populated columns. Image percentage
+widths continue to refer to the whole note inside columns (using container
+units, capped at the available column width), so moving an image does not apply
+its percentage a second time. Its authored width returns when moved out.
 
 ### The drift field
 
