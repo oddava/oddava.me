@@ -1,3 +1,4 @@
+import { parseImageMarkup } from './studioRichImage';
 import {
   Node,
   nodeInputRule,
@@ -121,6 +122,12 @@ export class RichDocument {
     const content: JSONContent[] = [];
     const hasReferences = /^ {0,3}\[[^\]]+\]:/m.test(source);
     for (const block of parseBlocks(source)) {
+      const image = parseImageMarkup(block.raw);
+      if (image) {
+        content.push({ type: 'image', attrs: image });
+        continue;
+      }
+
       // HTML, reference definitions and inline HTML cannot safely be reduced
       // to the rich schema. Keep these editable in an explicit source card.
       const custom =

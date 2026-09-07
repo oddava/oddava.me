@@ -19,7 +19,7 @@ import StudioMobileFiles from './StudioMobileFiles';
 import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
-import StudioImageDialog from './StudioImageDialog';
+import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
 import StudioTabs from './StudioTabs';
 import StudioEditorPane from './StudioEditorPane';
 import type { TabPlacement } from './studioTabStrip';
@@ -78,6 +78,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageEdit, setImageEdit] = useState<ImageEditRequest | null>(null);
 
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
   const [sessionRestored, setSessionRestored] = useState(false);
@@ -95,7 +96,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // beside it, and the shell tracks the visual viewport so the format bar
   // stays above the keyboard.
   const phone = useMediaQuery(PHONE_QUERY);
-  useVisualViewportHeight(phone);
+  const keyboardOpen = useVisualViewportHeight(phone);
 
   const reportError = useCallback((message: string) => setError(message), []);
   const library = useContentLibrary(reportError);
@@ -727,6 +728,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // --- Render --------------------------------------------------------------
 
   const sidebarVisible = !session.sidebarCollapsed;
+  useEffect(() => {
+    if (!phone || !sidebarVisible) return;
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused.closest('.studio-workbench'))
+      focused.blur();
+  }, [phone, sidebarVisible]);
+
   const sidebarStyle =
     session.sidebar === DEFAULT_SESSION.sidebar
       ? undefined
@@ -741,7 +749,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // slide out as well as in — and follow a finger between the two.
   return (
     <article
-      className={`content-workspace studio ${fullWidth ? 'studio--full' : ''}`}
+      className={`content-workspace studio ${fullWidth ? 'studio--full' : ''} ${keyboardOpen ? 'is-keyboard-open' : ''}`}
     >
       <div
         className={`studio-grid ${sidebarVisible ? '' : 'studio-grid--collapsed'} ${
@@ -870,7 +878,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           </section>
         )}
 
-        <div className="studio-workbench">
+        <div
+          className="studio-workbench"
+          inert={phone && sidebarVisible}
+          aria-hidden={phone && sidebarVisible}
+        >
           <StudioTabs
             entries={entries}
             openIds={openIds}
@@ -944,6 +956,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   view={view}
                   hasBody={hasBody}
                   compact={phone}
+                  keyboardOpen={keyboardOpen}
                   sidebarVisible={sidebarVisible}
                   autosave={session.autosave}
                   focusMode={session.focusMode}
@@ -978,7 +991,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   onShortcut={runEditorShortcut}
                   onImageFile={(file) => void quickInsertImage(file)}
                   uploadImage={uploadImageFile}
-                  onRequestImage={() => setImageDialogOpen(true)}
+                  onRequestImage={(request) => {
+                    setImageEdit(request ?? null);
+                    setImageDialogOpen(true);
+                  }}
                   onNotice={setNotice}
                 />
               )}
@@ -1015,10 +1031,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         // focus nowhere, and the next keystroke goes to the page.
         onClose={() => {
           setImageDialogOpen(false);
+          setImageEdit(null);
           requestAnimationFrame(() => focusRef.current?.());
         }}
-        onUpload={uploadImageFile}
-        onSubmit={(markup) => editorCommands.insertBlock(markup)}
+        initial={imageEdit?.image}
+        onSubmit={(markup) =>
+          imageEdit
+            ? imageEdit.onSubmit(markup)
+            : editorCommands.insertBlock(markup)
+        }
       />
       {dialog}
     </article>

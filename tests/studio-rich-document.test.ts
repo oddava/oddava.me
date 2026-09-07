@@ -7,7 +7,7 @@ import { Markdown } from '@tiptap/markdown';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
-import Image from '@tiptap/extension-image';
+import { RichImage as Image } from '../src/components/admin/studioRichImage';
 import {
   RichDocument,
   SourceBlock,
@@ -77,7 +77,7 @@ describe('rich Markdown document boundary', () => {
   });
   it('keeps unsupported markup explicit and lossless', () => {
     const body =
-      '<figure><img src="/image.png" width="300" /><figcaption>Caption</figcaption></figure>\n\n[ref]: https://example.com';
+      '<figure><img src="/image.png" width="300" /><figcaption><em>Caption</em></figcaption></figure>\n\n[ref]: https://example.com';
     const { editor, document } = open(body);
     expect(
       editor.getJSON().content?.every((node) => node.type === 'sourceBlock'),
@@ -101,5 +101,33 @@ describe('rich Markdown document boundary', () => {
     editor.commands.undo();
     // Undo restores content, which may have a new immutable node identity.
     expect(document.serialize(editor)).toBe(body);
+  });
+});
+
+describe('rich image markup', () => {
+  it('renders legacy local figures without rewriting them until adjusted', () => {
+    const body =
+      '<figure style="text-align:center">\n<img src="/images/notes/example/photo.jpg" alt="Photo" style="width:50%">\n<figcaption style="opacity:.7">A caption</figcaption>\n</figure>';
+    const { editor, document } = open(body);
+    expect(editor.getJSON().content?.[0]).toMatchObject({
+      type: 'image',
+      attrs: {
+        src: '/images/notes/example/photo.jpg',
+        caption: 'A caption',
+        align: 'center',
+        widthPercent: 50,
+      },
+    });
+    expect(document.serialize(editor)).toBe(body);
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { caption: 'Changed caption' });
+    expect(document.serialize(editor)).toContain('note-image--width-50');
+    expect(document.serialize(editor)).toContain('Changed caption');
+    editor.commands.undo();
+    expect(document.serialize(editor)).toBe(body);
+  });
+  it('keeps unsupported image URL schemes in source instead of mounting them', () => {
+    const { editor } = open('<img src="javascript:alert(1)">');
+    expect(editor.getJSON().content?.[0]?.type).toBe('sourceBlock');
   });
 });

@@ -36,23 +36,45 @@ export function useMediaQuery(query: string): boolean {
  * `visualViewport.height` is the part actually on screen, so the shell tracks
  * that instead and its bottom row stays reachable while typing.
  */
-export function useVisualViewportHeight(enabled: boolean): void {
+export function useVisualViewportHeight(enabled: boolean): boolean {
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const viewport = window.visualViewport;
     const root = document.documentElement;
     if (!enabled || !viewport) return;
+    let fullHeight = viewport.height;
+    let width = viewport.width;
     const apply = () => {
+      if (Math.abs(viewport.width - width) > 80) {
+        fullHeight = viewport.height;
+        width = viewport.width;
+      }
+      fullHeight = Math.max(fullHeight, viewport.height);
+      const focused = document.activeElement;
+      const editing =
+        focused instanceof HTMLElement &&
+        (focused.isContentEditable ||
+          focused.matches(
+            'textarea, input:not([type="checkbox"]):not([type="button"])',
+          ));
+      const reduced =
+        fullHeight - viewport.height > 120 && viewport.scale < 1.1;
+      setKeyboardOpen((previous) => reduced && (editing || previous));
       root.style.setProperty('--studio-vh', `${Math.round(viewport.height)}px`);
     };
     apply();
     viewport.addEventListener('resize', apply);
+    document.addEventListener('focusin', apply);
     viewport.addEventListener('scroll', apply);
     return () => {
       viewport.removeEventListener('resize', apply);
+      document.removeEventListener('focusin', apply);
+      setKeyboardOpen(false);
       viewport.removeEventListener('scroll', apply);
       root.style.removeProperty('--studio-vh');
     };
   }, [enabled]);
+  return keyboardOpen;
 }
 
 interface DrawerSwipeOptions {

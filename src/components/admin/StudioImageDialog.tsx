@@ -1,3 +1,4 @@
+import { imageSource } from './studioRichImage';
 import { createPortal } from 'preact/compat';
 import {
   useCallback,
@@ -18,13 +19,15 @@ import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
 interface StudioImageDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Upload a file and resolve with its URL (or null on failure). */
-  onUpload: (file: File) => Promise<string | null>;
+  initial?: ImageMarkupOptions;
   onSubmit: (markup: string) => void;
   entries: ContentEntryListItem[];
 }
 
-type Tab = 'upload' | 'url';
+export interface ImageEditRequest {
+  image: ImageMarkupOptions;
+  onSubmit: (markup: string) => void;
+}
 
 const ALIGN_OPTIONS: { id: ImageAlign; label: string }[] = [
   { id: 'inline', label: 'Inline' },
@@ -33,31 +36,19 @@ const ALIGN_OPTIONS: { id: ImageAlign; label: string }[] = [
   { id: 'right', label: 'Right' },
 ];
 
-const WIDTH_PRESETS: { label: string; value: number }[] = [
-  { label: 'S', value: 33 },
-  { label: 'M', value: 50 },
-  { label: 'L', value: 75 },
-  { label: 'Full', value: 100 },
-];
-
 export default function StudioImageDialog({
   open,
   onClose,
-  onUpload,
+  initial,
   onSubmit,
   entries,
 }: StudioImageDialogProps) {
-  const [tab, setTab] = useState<Tab>('upload');
   const [src, setSrc] = useState('');
-  const [urlInput, setUrlInput] = useState('');
   const [alt, setAlt] = useState('');
   const [caption, setCaption] = useState('');
   const [widthPercent, setWidthPercent] = useState(100);
   const [align, setAlign] = useState<ImageAlign>('inline');
-  const [uploading, setUploading] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const captionInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -84,18 +75,14 @@ export default function StudioImageDialog({
   // Reset every time the dialog opens.
   useEffect(() => {
     if (!open) return;
-    setTab('upload');
-    setSrc('');
-    setUrlInput('');
-    setAlt('');
-    setCaption('');
-    setWidthPercent(100);
-    setAlign('inline');
-    setUploading(false);
-    setDragging(false);
+    setSrc(initial?.src ?? '');
+    setAlt(initial?.alt ?? '');
+    setCaption(initial?.caption ?? '');
+    setWidthPercent(initial?.widthPercent ?? 100);
+    setAlign(initial?.align ?? 'inline');
     setError(null);
     captionWikiMenu.close();
-  }, [open, captionWikiMenu.close]);
+  }, [open, initial, captionWikiMenu.close]);
 
   useEffect(() => {
     if (!open) return;
@@ -110,9 +97,9 @@ export default function StudioImageDialog({
   }, [open, onClose]);
 
   const markup = useMemo<string>(() => {
-    if (!src) return '';
+    if (!imageSource(src)) return '';
     const options: ImageMarkupOptions = {
-      src,
+      src: imageSource(src),
       alt: alt.trim(),
       caption,
       widthPercent,
@@ -122,35 +109,6 @@ export default function StudioImageDialog({
   }, [src, alt, caption, widthPercent, align]);
 
   if (!open) return null;
-
-  async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) {
-      setError('That file is not an image.');
-      return;
-    }
-    setError(null);
-    setUploading(true);
-    try {
-      const url = await onUpload(file);
-      if (url) {
-        setSrc(url);
-        if (!alt) setAlt(file.name.replace(/\.[a-z0-9]+$/i, ''));
-      } else {
-        setError('Upload failed. Try again.');
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Upload failed.');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function applyUrl() {
-    const value = urlInput.trim();
-    if (!value) return;
-    setSrc(value);
-    setError(null);
-  }
 
   function insert() {
     if (!markup) return;
@@ -172,11 +130,27 @@ export default function StudioImageDialog({
         className="studio-imgdlg"
         role="dialog"
         aria-modal="true"
-        aria-label="Insert image"
+        aria-label={initial ? 'Edit image' : 'Insert image'}
         onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key !== 'Tab') return;
+          const controls = Array.from(
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), input:not([disabled])',
+            ),
+          );
+          const index = controls.indexOf(document.activeElement as HTMLElement);
+          if (event.shiftKey && index === 0) {
+            event.preventDefault();
+            controls.at(-1)?.focus();
+          } else if (!event.shiftKey && index === controls.length - 1) {
+            event.preventDefault();
+            controls[0]?.focus();
+          }
+        }}
       >
         <header className="studio-imgdlg__head">
-          <h2>Insert image</h2>
+          <h2>{initial ? 'Edit image' : 'Insert image'}</h2>
           <button
             type="button"
             className="studio-imgdlg__close"
@@ -196,110 +170,31 @@ export default function StudioImageDialog({
         </header>
 
         <div className="studio-imgdlg__body">
-          <div className="studio-imgdlg__source">
-            <div className="studio-imgdlg__tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'upload'}
-                className={tab === 'upload' ? 'is-active' : ''}
-                onClick={() => setTab('upload')}
-              >
-                Upload
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'url'}
-                className={tab === 'url' ? 'is-active' : ''}
-                onClick={() => setTab('url')}
-              >
-                From URL
-              </button>
-            </div>
-
-            {tab === 'upload' ? (
-              <div
-                className={`studio-imgdlg__drop ${dragging ? 'is-dragging' : ''}`}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(event) => {
-                  if (event.dataTransfer?.types.includes('Files')) {
-                    event.preventDefault();
-                    setDragging(true);
-                  }
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setDragging(false);
-                  const file = event.dataTransfer?.files?.[0];
-                  if (file) void handleFile(file);
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    if (file) void handleFile(file);
-                    event.currentTarget.value = '';
-                  }}
-                />
-                {uploading ? (
-                  <span>Uploading…</span>
-                ) : (
-                  <>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M12 15V4m0 0L8 8m4-4 4 4M5 17v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                    <span>Drop an image, or click to choose</span>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="studio-imgdlg__url">
-                <input
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  value={urlInput}
-                  onInput={(event) => setUrlInput(event.currentTarget.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      applyUrl();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="admin-button admin-button--ghost"
-                  onClick={applyUrl}
-                >
-                  Use
-                </button>
-              </div>
-            )}
-
-            {error && <p className="studio-imgdlg__error">{error}</p>}
-          </div>
-
+          <label className="studio-imgdlg__field">
+            <span>Image URL or path</span>
+            <input
+              autoFocus={!initial}
+              type="text"
+              value={src}
+              placeholder="https://… or /images/…"
+              onInput={(event) => {
+                setSrc(event.currentTarget.value);
+                setError(null);
+              }}
+            />
+          </label>
           {/* Live preview */}
           <div
             className={`studio-imgdlg__preview studio-imgdlg__preview--${previewAlign}`}
           >
-            {src ? (
+            {imageSource(src) ? (
               <img
                 className={`studio-imgdlg__preview-image studio-imgdlg__preview-image--${widthPercent}`}
-                src={src}
+                src={imageSource(src)}
+                onError={() =>
+                  setError('Image could not be loaded. Check the URL or path.')
+                }
+                onLoad={() => setError(null)}
                 alt={alt}
               />
             ) : (
@@ -309,10 +204,28 @@ export default function StudioImageDialog({
             )}
           </div>
 
+          {caption && (
+            <p
+              className="studio-imgdlg__caption"
+              style={{ textAlign: previewAlign }}
+            >
+              {caption}
+            </p>
+          )}
+          {error && (
+            <p role="status" className="studio-imgdlg__error">
+              {error}
+            </p>
+          )}
+          {src && !imageSource(src) && (
+            <p role="status" className="studio-imgdlg__error">
+              Use an https:// URL or a path starting with /.
+            </p>
+          )}
           {/* Options */}
           <fieldset
             className="studio-imgdlg__options"
-            disabled={!src}
+            disabled={!imageSource(src)}
             aria-label="Image options"
           >
             <label className="studio-imgdlg__field">
@@ -379,6 +292,7 @@ export default function StudioImageDialog({
               <div className="studio-imgdlg__width">
                 <input
                   type="range"
+                  aria-label="Image width"
                   min={10}
                   max={100}
                   step={5}
@@ -387,20 +301,6 @@ export default function StudioImageDialog({
                     setWidthPercent(Number(event.currentTarget.value))
                   }
                 />
-                <div className="studio-imgdlg__presets">
-                  {WIDTH_PRESETS.map((preset) => (
-                    <button
-                      type="button"
-                      key={preset.value}
-                      className={
-                        widthPercent === preset.value ? 'is-active' : ''
-                      }
-                      onClick={() => setWidthPercent(preset.value)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           </fieldset>
@@ -425,10 +325,10 @@ export default function StudioImageDialog({
           <button
             type="button"
             className="admin-button primary"
-            disabled={!src}
+            disabled={!imageSource(src)}
             onClick={insert}
           >
-            Insert image
+            {initial ? 'Save changes' : 'Insert image'}
           </button>
         </footer>
       </div>
