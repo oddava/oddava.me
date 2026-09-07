@@ -152,7 +152,11 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
     }
     // Anything that moves what the menu points at closes it rather than
     // leaving it floating over unrelated rows.
-    const dismiss = () => setKey(null);
+    const dismiss = (event: Event) => {
+      if (event.target instanceof Node && ref.current?.contains(event.target))
+        return;
+      setKey(null);
+    };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('scroll', dismiss, {

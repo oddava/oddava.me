@@ -951,6 +951,9 @@
    on a phone the drawer is transformed — anchored inside any of them the menu
    would be cut off or would drift away from what it points at. */
 .studio-menu {
+  max-height: calc(var(--studio-vh, 100dvh) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   position: fixed;
   z-index: 1200;
   display: grid;
@@ -4294,4 +4297,15 @@
   .studio-mfiles__fab {
     transition: none;
   }
+}
+
+.studio-menu-turn summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--admin-text-primary);
+  font-size: 12px;
+}
+.studio-menu-turn summary:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: -2px;
 }

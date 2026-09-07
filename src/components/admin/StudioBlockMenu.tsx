@@ -25,6 +25,10 @@ interface Props {
   position: MenuPosition;
   onClose: () => void;
   onTurnInto: (target: TurnTarget) => void;
+  columnLayout?: string;
+  onColumnLayout?: (layout: string) => void;
+  onStack?: () => void;
+  onAddColumn?: () => void;
   onColumns?: (count: number) => void;
   onMove: (direction: -1 | 1) => void;
   onDuplicate: () => void;
@@ -48,6 +52,10 @@ export default function StudioBlockMenu({
   onTurnInto,
   onMove,
   onColumns,
+  columnLayout,
+  onColumnLayout,
+  onStack,
+  onAddColumn,
   onDuplicate,
   onCopy,
   onDelete,
@@ -68,17 +76,19 @@ export default function StudioBlockMenu({
       menuRef={menuRef}
       position={position}
     >
-      <p className="studio-menu__label">Turn into</p>
-      {TURN_INTO.map((option) => (
-        <button
-          type="button"
-          key={option.label}
-          onClick={run(() => onTurnInto(option.target))}
-        >
-          {option.label}
-          <span className="studio-menu__hint">{option.hint}</span>
-        </button>
-      ))}
+      <details className="studio-menu-turn">
+        <summary>Turn into</summary>
+        {TURN_INTO.map((option) => (
+          <button
+            type="button"
+            key={option.label}
+            onClick={run(() => onTurnInto(option.target))}
+          >
+            {option.label}
+            <span className="studio-menu__hint">{option.hint}</span>
+          </button>
+        ))}
+      </details>
       <span className="studio-menu__divider" role="separator" />
       <button type="button" onClick={run(() => onMove(-1))}>
         Move up
@@ -97,6 +107,34 @@ export default function StudioBlockMenu({
             3 columns
           </button>
         </>
+      )}
+      {onColumnLayout && (
+        <>
+          <span className="studio-menu__divider" role="separator" />
+          {[
+            ['equal', 'Equal widths'],
+            ['left', 'Wider left'],
+            ['right', 'Wider right'],
+          ].map(([layout, label]) => (
+            <button
+              type="button"
+              aria-pressed={columnLayout === layout}
+              onClick={run(() => onColumnLayout(layout!))}
+            >
+              {label}
+            </button>
+          ))}
+        </>
+      )}
+      {onAddColumn && (
+        <button type="button" onClick={run(onAddColumn)}>
+          Add column
+        </button>
+      )}
+      {onStack && (
+        <button type="button" onClick={run(onStack)}>
+          Stack
+        </button>
       )}
       <button type="button" onClick={run(onDuplicate)}>
         Duplicate

@@ -133,6 +133,11 @@
   color: var(--admin-text-primary);
   background: var(--admin-surface-elevated);
 }
+/* Block moves have their own placement marker; keep the native cursor for text. */
+.studio-rich-shell:has(.studio-rich-drop, .studio-rich-side-drop)
+  :is(.prosemirror-dropcursor-block, .prosemirror-dropcursor-inline) {
+  display: none;
+}
 .studio-rich-drop {
   position: absolute;
   left: 48px;
@@ -430,13 +435,6 @@
 .studio-rich-content .note-column > * {
   position: relative;
 }
-.studio-table-tools select {
-  color: inherit;
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-line);
-  border-radius: 4px;
-  padding: 4px;
-}
 
 .studio-rich-handle.is-column button:first-child {
   display: none;
@@ -459,4 +457,22 @@
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--admin-accent) 14%, transparent);
   pointer-events: none;
   z-index: 4;
+}
+
+.studio-block-marquee {
+  position: absolute;
+  border: 1px solid var(--admin-accent);
+  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 3px;
+}
+.studio-rich-content .studio-block-selected {
+  background: color-mix(in srgb, var(--admin-accent) 16%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--admin-accent) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.studio-rich-content.ProseMirror-hideselection ::selection {
+  background: transparent;
 }

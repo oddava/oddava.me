@@ -1,6 +1,12 @@
 import {
+  BlockSelection,
+  BlockSelectionExtension,
+  duplicateSelectedBlocks,
+} from '../src/components/admin/studioBlockSelection';
+import {
   moveBeside,
   moveBlockTo,
+  moveBlocksTo,
   removeBlock,
 } from '../src/components/admin/studioSideDrop';
 import {
@@ -36,6 +42,7 @@ function open(body: string) {
       TableKit,
       Image,
       Columns,
+      BlockSelectionExtension,
       Column,
       SourceBlock,
       WikiLink,
@@ -347,5 +354,100 @@ describe('empty layout repair', () => {
     expect(editor.state.doc.firstChild!.attrs.src).toBe('/b.png');
     editor.commands.undo();
     expect(document.serialize(editor)).toBe(body);
+  });
+});
+
+describe('block selection', () => {
+  it('copies only selected blocks and deletes disjoint ranges without losing siblings', () => {
+    const body = 'One\n\nTwo\n\nThree';
+    const { editor, document } = open(body);
+    const third =
+      editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize;
+    const selection = new BlockSelection(editor.state.doc, [0, third]);
+    editor.view.dispatch(editor.state.tr.setSelection(selection));
+    expect(
+      selection
+        .content()
+        .content.textBetween(0, selection.content().content.size, '|'),
+    ).toBe('One|Three');
+    editor.view.dispatch(editor.state.tr.deleteSelection());
+    expect(editor.state.doc.textContent).toBe('Two');
+    editor.commands.undo();
+    expect(document.serialize(editor)).toBe(body);
+    expect(editor.state.selection).toBeInstanceOf(BlockSelection);
+  });
+  it('cutting across columns unwraps the remaining blocks', () => {
+    const { editor } = open(
+      ':::columns equal\nAlpha\n\nKeep\n:::column\nBeta\n:::',
+    );
+    const beta = editor.state.doc.firstChild!.firstChild!.nodeSize + 2;
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        new BlockSelection(editor.state.doc, [2, beta]),
+      ),
+    );
+    editor.view.dispatch(editor.state.tr.deleteSelection());
+    editor.state.doc.check();
+    expect(editor.state.doc.childCount).toBe(1);
+    expect(editor.state.doc.firstChild!.type.name).toBe('paragraph');
+    expect(editor.state.doc.textContent).toBe('Keep');
+  });
+  it('moves a selected group without copying or reversing its blocks', () => {
+    const { editor } = open('One\n\nTwo\n\nThree');
+    const positions = [0, editor.state.doc.firstChild!.nodeSize];
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        new BlockSelection(editor.state.doc, positions),
+      ),
+    );
+    moveBlocksTo(editor, positions, editor.state.doc.content.size);
+    editor.state.doc.check();
+    expect(editor.state.doc.textContent).toBe('ThreeOneTwo');
+    expect(editor.state.selection).toBeInstanceOf(BlockSelection);
+    editor.commands.undo();
+    expect(editor.state.doc.textContent).toBe('OneTwoThree');
+  });
+  it('snaps a group as one column and preserves its order', () => {
+    const { editor } = open('One\n\nTwo\n\nThree');
+    const positions = [0, editor.state.doc.firstChild!.nodeSize];
+    const third = positions[1]! + editor.state.doc.child(1).nodeSize;
+    moveBeside(editor, 0, third, 'right', positions);
+    editor.state.doc.check();
+    expect(editor.state.doc.firstChild!.firstChild!.textContent).toBe('Three');
+    expect(editor.state.doc.firstChild!.lastChild!.textContent).toBe('OneTwo');
+    expect(editor.state.selection).toBeInstanceOf(BlockSelection);
+  });
+});
+
+describe('selected block editing', () => {
+  it('duplicates all selected blocks in place and selects the copies', () => {
+    const { editor } = open('One\n\nTwo\n\nThree');
+    const positions = [0, editor.state.doc.firstChild!.nodeSize];
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        new BlockSelection(editor.state.doc, positions),
+      ),
+    );
+    duplicateSelectedBlocks(editor);
+    editor.state.doc.check();
+    expect(editor.state.doc.textContent).toBe('OneOneTwoTwoThree');
+    expect((editor.state.selection as BlockSelection).positions).toHaveLength(
+      2,
+    );
+    editor.commands.undo();
+    expect(editor.state.doc.textContent).toBe('OneTwoThree');
+  });
+  it('replacing disjoint selected blocks keeps the unselected content', () => {
+    const { editor } = open('One\n\nKeep\n\nThree');
+    const third =
+      editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize;
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        new BlockSelection(editor.state.doc, [0, third]),
+      ),
+    );
+    editor.view.dispatch(editor.state.tr.insertText('New'));
+    editor.state.doc.check();
+    expect(editor.state.doc.textContent).toBe('NewKeep');
   });
 });

@@ -87,6 +87,16 @@ widths continue to refer to the whole note inside columns (using container
 units, capped at the available column width), so moving an image does not apply
 its percentage a second time. Its authored width returns when moved out.
 
+Block layout controls live in the block menu, not a persistent toolbar. On
+mouse and pen devices, dragging from blank editor space selects intersecting
+blocks; Shift adds to the selection and Escape cancels it. `BlockSelection`
+represents disjoint ProseMirror ranges, so copying, cutting, replacing, deleting,
+duplicating, and moving selected blocks preserve unselected siblings, including
+inside columns. Its decorations provide block highlights while normal text
+selection stays native. Selection and drag overlays are transient editor UI;
+they are never serialized into notes. Touch retains native scrolling and text
+selection.
+
 ### The drift field
 
 `src/lib/particles` is the ambient background: a field of suspended graphite
