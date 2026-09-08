@@ -33,6 +33,34 @@ Everything notable that has landed on this site, newest first.
   `###` group, so a mistake here fails the build rather than the page.
 -->
 
+## [2026-09-08]
+
+Navigation and note search now show when something is happening, without
+flashing for fast responses.
+
+### Added
+
+- A thin progress line during same-origin navigations. Fast pages never flash
+  it; downloads, cancelled trips, Escape, and the back button clear it.
+- Live search status: searching, no matches, unavailable, and a result count,
+  with an underline on the input while a query is in flight.
+- Keyboard trapping in the search dialog, with Escape to close.
+
+### Changed
+
+- The document declares a dark color scheme and ink background so the browser
+  chrome and first paint match the site.
+
+### Fixed
+
+- Navigations no longer flash the browser canvas: cross-document view
+  transitions are off, and the page paints opaque from the first frame.
+- Typing a new query no longer leaves the previous results on screen.
+- Opening a notes page no longer jumps focus to Find a note.
+- Reduced-motion close of search restores focus without the exit animation.
+- Modifier-clicks on a search result (new tab, new window) are no longer
+  intercepted.
+
 ## [2026-09-07]
 
 ### Added

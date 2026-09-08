@@ -1,0 +1,10 @@
+---
+import '../styles/components/_loading-indicator.css';
+---
+
+<div class="loading-indicator" aria-hidden="true"><span></span></div>
+
+<script>
+  import { installNavigationFeedback } from '../lib/loading-feedback';
+  installNavigationFeedback();
+</script>

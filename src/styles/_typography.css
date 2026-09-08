@@ -3,6 +3,7 @@
    =================================================== */
 
 body {
+  isolation: isolate;
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--leading-body);

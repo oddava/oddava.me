@@ -6,6 +6,7 @@ import type {
 } from 'preact';
 
 import '@styles/components/_note-search.css';
+import { beginNavigationFeedback } from '../../lib/loading-feedback';
 
 type SearchResult = {
   id: string;
@@ -69,6 +70,10 @@ export default function NoteSearch() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
+    'idle',
+  );
+  const restoreFocus = useRef(false);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,40 +93,56 @@ export default function NoteSearch() {
   // before firing a new one, so a fast typer never sees results from an old
   // query land over a newer one.
   useEffect(() => {
-    if (!open) return;
+    if (!open || closing) return;
     if (!normalizedQuery) {
       setResults([]);
+      setStatus('idle');
       return;
     }
+    setResults([]);
+    setStatus('loading');
     const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      controller.abort();
+      setStatus('error');
+    }, 10_000);
     const timer = window.setTimeout(async () => {
       try {
         const fetched = await fetchResults(query, controller.signal);
+        if (controller.signal.aborted) return;
         setResults(fetched.slice(0, RESULT_LIMIT));
+        setStatus('ready');
       } catch {
         if (controller.signal.aborted) return;
         setResults([]);
+        setStatus('error');
+      } finally {
+        window.clearTimeout(timeout);
       }
     }, DEBOUNCE_MS);
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [normalizedQuery, open, query]);
+  }, [normalizedQuery, open, closing, query]);
 
-  // Open: focus the input. Close: hand focus back to the trigger — but only
-  // after the exit animation unmounts the dialog, so focus does not jump
-  // mid-close.
+  // Never focus the trigger on hydration: it can jump a restored/deep-linked page.
   useEffect(() => {
     if (open && !closing) {
-      inputRef.current?.focus();
-    } else if (!open) {
-      // Defer to after the dialog unmounts so the trigger exists in the layout.
-      requestAnimationFrame(() => {
-        if (!openRef.current) triggerRef.current?.focus();
-      });
+      inputRef.current?.focus({ preventScroll: true });
+      restoreFocus.current = true;
+    } else if (!open && restoreFocus.current) {
+      triggerRef.current?.focus({ preventScroll: true });
+      restoreFocus.current = false;
     }
   }, [open, closing]);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add('note-search-open');
+    return () => document.body.classList.remove('note-search-open');
+  }, [open]);
 
   function openSearch() {
     setClosing(false);
@@ -133,11 +154,20 @@ export default function NoteSearch() {
   // is a graceful fade rather than an instant vanish.
   function closeSearch() {
     if (!open || closing) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setOpen(false);
+      setQuery('');
+      setResults([]);
+      return;
+    }
     setClosing(true);
   }
 
-  function onPanelAnimationEnd() {
-    if (!closing) return;
+  function onPanelAnimationEnd(event: {
+    target: EventTarget | null;
+    currentTarget: EventTarget | null;
+  }) {
+    if (!closing || event.target !== event.currentTarget) return;
     setOpen(false);
     setClosing(false);
     setQuery('');
@@ -151,6 +181,7 @@ export default function NoteSearch() {
     setClosing(false);
     setQuery('');
     setResults([]);
+    beginNavigationFeedback();
     window.location.assign(result.href);
   }
 
@@ -214,6 +245,28 @@ export default function NoteSearch() {
           role="dialog"
           aria-modal="true"
           aria-label="Find a note"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              closeSearch();
+            }
+            if (event.key === 'Tab') {
+              const focusable = Array.from(
+                event.currentTarget.querySelectorAll<HTMLElement>(
+                  'input, a[href]',
+                ),
+              );
+              const first = focusable[0];
+              const last = focusable.at(-1);
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last?.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first?.focus();
+              }
+            }
+          }}
           onPointerDown={onBackdropPointerDown}
         >
           <section
@@ -223,6 +276,11 @@ export default function NoteSearch() {
             onAnimationEnd={onPanelAnimationEnd}
           >
             <label htmlFor="note-search-input" className="note-search__field">
+              {status === 'loading' && !closing && (
+                <span className="note-search__loading" aria-hidden="true">
+                  <span />
+                </span>
+              )}
               <SearchIcon />
               <input
                 ref={inputRef}
@@ -233,16 +291,33 @@ export default function NoteSearch() {
                 spellcheck={false}
                 role="combobox"
                 aria-autocomplete="list"
+                aria-expanded={results.length > 0}
+                aria-busy={status === 'loading'}
                 aria-controls="note-search-results"
                 aria-activedescendant={
                   activeResult ? `note-search-${activeResult.id}` : undefined
                 }
-                onInput={(event: TargetedInputEvent<HTMLInputElement>) =>
-                  setQuery(event.currentTarget.value)
-                }
+                onInput={(event: TargetedInputEvent<HTMLInputElement>) => {
+                  setQuery(event.currentTarget.value);
+                  setResults([]);
+                  setStatus(
+                    event.currentTarget.value.trim() ? 'loading' : 'idle',
+                  );
+                }}
                 onKeyDown={onInputKeyDown}
               />
             </label>
+            <p className="note-search__status" role="status" aria-live="polite">
+              {status === 'loading'
+                ? 'Searching…'
+                : status === 'error'
+                  ? 'Search is unavailable. Try again in a moment.'
+                  : status === 'ready' && results.length === 0
+                    ? 'No notes found.'
+                    : status === 'idle'
+                      ? 'Type to find a note.'
+                      : `${results.length} notes found.`}
+            </p>
             {results.length > 0 && (
               <ul
                 id="note-search-results"
@@ -262,6 +337,14 @@ export default function NoteSearch() {
                       }
                       onPointerEnter={() => setActiveIndex(index)}
                       onClick={(event) => {
+                        if (
+                          event.button !== 0 ||
+                          event.metaKey ||
+                          event.ctrlKey ||
+                          event.shiftKey ||
+                          event.altKey
+                        )
+                          return;
                         event.preventDefault();
                         chooseResult(result);
                       }}

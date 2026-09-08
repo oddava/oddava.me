@@ -1,3 +1,4 @@
+import { beginNavigationFeedback } from '../../lib/loading-feedback';
 import type {
   TargetedInputEvent,
   TargetedKeyboardEvent,
@@ -873,6 +874,7 @@ export default function KnowledgeLandscape({ places, paths }: Props) {
       return;
     }
     if (event.key.toLowerCase() === 'o') {
+      beginNavigationFeedback();
       window.location.assign(place.href);
     }
   }

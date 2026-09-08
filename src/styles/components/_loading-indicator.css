@@ -1,0 +1,53 @@
+.loading-indicator {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 100;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.site-nav > .loading-indicator {
+  position: absolute;
+  inset: auto 0 -1px;
+}
+
+.loading-indicator span {
+  display: block;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-brand),
+    var(--color-brand-strong)
+  );
+  border-radius: 2px;
+}
+
+html[data-loading] .loading-indicator {
+  opacity: 1;
+}
+
+html[data-loading] .loading-indicator span {
+  animation: loading-line 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-line {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(386%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-loading] .loading-indicator span {
+    animation: none !important;
+    width: 100%;
+    background: var(--color-brand);
+  }
+}
