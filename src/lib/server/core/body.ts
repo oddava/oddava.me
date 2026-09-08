@@ -11,10 +11,10 @@ export class RequestBodyError extends Error {
   }
 }
 
-async function readLimitedBody(
+export async function readRequestBody(
   request: Request,
   maxBytes: number,
-): Promise<string> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const contentLength = Number(request.headers.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     throw new RequestBodyError(
@@ -24,12 +24,11 @@ async function readLimitedBody(
     );
   }
 
-  if (!request.body) return '';
+  if (!request.body) return new Uint8Array();
 
   const reader = request.body.getReader();
-  const decoder = new TextDecoder();
+  const chunks: Uint8Array[] = [];
   let bytesRead = 0;
-  let text = '';
 
   try {
     while (true) {
@@ -46,13 +45,19 @@ async function readLimitedBody(
         );
       }
 
-      text += decoder.decode(value, { stream: true });
+      chunks.push(value);
     }
   } finally {
     reader.releaseLock();
   }
 
-  return text + decoder.decode();
+  const body = new Uint8Array(bytesRead);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
 }
 
 /** All JSON endpoints accept an object; domain handlers validate its fields. */
@@ -60,7 +65,9 @@ export async function readJsonBody<T extends object>(
   request: Request,
   maxBytes = DEFAULT_JSON_BODY_LIMIT_BYTES,
 ): Promise<T> {
-  const text = await readLimitedBody(request, maxBytes);
+  const text = new TextDecoder().decode(
+    await readRequestBody(request, maxBytes),
+  );
   try {
     const parsed: unknown = JSON.parse(text);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -76,7 +83,9 @@ export async function readUrlEncodedBody(
   request: Request,
   maxBytes = DEFAULT_JSON_BODY_LIMIT_BYTES,
 ): Promise<URLSearchParams> {
-  return new URLSearchParams(await readLimitedBody(request, maxBytes));
+  return new URLSearchParams(
+    new TextDecoder().decode(await readRequestBody(request, maxBytes)),
+  );
 }
 
 export function requestBodyErrorResponse(error: unknown): Response {
@@ -90,4 +99,20 @@ export function requestBodyErrorResponse(error: unknown): Response {
     { error: 'Invalid request.', code: 'invalid_request' },
     { status: 400 },
   );
+}
+
+/** Buffer a bounded body before a parser (such as formData) can allocate without limit. */
+export async function boundedRequest(
+  request: Request,
+  maxBytes: number,
+): Promise<Request> {
+  if (request.method === 'GET' || request.method === 'HEAD') return request;
+  const body = await readRequestBody(request, maxBytes);
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body,
+    redirect: request.redirect,
+    signal: request.signal,
+  });
 }

@@ -21,7 +21,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SRC = path.join(ROOT, 'src');
 // The module that owns both the raw builder and the guard wrapping it. It is
 // the one place allowed to name the unguarded function.
-const GARDEN_MODULE = path.join(SRC, 'lib', 'garden', 'index.ts');
+const GARDEN_MODULE = path.join(SRC, 'lib', 'garden', 'runtime.ts');
 
 const SOURCE_EXTENSIONS = ['.astro', '.ts', '.tsx'];
 

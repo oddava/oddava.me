@@ -106,4 +106,53 @@ describe('admin API client', () => {
       'Could not reach the admin API.',
     );
   });
+  it.each([null, [], 'unexpected', 42])(
+    'rejects non-object response envelopes (%j)',
+    async (payload) => {
+      mockFetch(Response.json(payload));
+      await expect(fetchAdminOverview()).rejects.toMatchObject({
+        code: 'invalid_response',
+      });
+    },
+  );
+
+  it('ignores malformed issues while retaining useful validation details', async () => {
+    mockFetch(
+      Response.json(
+        {
+          error: 'Content validation failed.',
+          code: 'validation_failed',
+          issues: [
+            null,
+            false,
+            { message: 5 },
+            { message: 'Bad order', path: ['order'] },
+            { message: 'Invalid field', path: null },
+          ],
+        },
+        { status: 400 },
+      ),
+    );
+    await expect(fetchAdminOverview()).rejects.toMatchObject({
+      message: 'Content validation failed.',
+      code: 'validation_failed',
+      issues: [
+        { message: 'Bad order', path: ['order'] },
+        { message: 'Invalid field', path: [] },
+      ],
+    });
+  });
+
+  it('uses a safe fallback for malformed error fields', async () => {
+    mockFetch(
+      Response.json(
+        { error: { message: 'wrong shape' }, code: 42 },
+        { status: 500 },
+      ),
+    );
+    await expect(fetchAdminOverview()).rejects.toMatchObject({
+      message: 'Request failed.',
+      code: undefined,
+    });
+  });
 });

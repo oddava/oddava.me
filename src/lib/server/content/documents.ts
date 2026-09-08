@@ -3,6 +3,7 @@ import {
   entryIdFromPath,
   normalizeFolderPath,
   sourcePath,
+  slugify,
 } from './paths';
 import type { ContentCollectionMeta } from '../../contracts';
 import { NOTES_COLLECTION } from './registry';
@@ -57,8 +58,8 @@ function noteHref(folder: string, id: string): string {
 function toListItem(
   collection: ContentCollectionDefinition,
   file: ContentSourceFile,
+  { fields, body } = parseContentDocument(file.content),
 ): ContentEntryListItem {
-  const { fields, body } = parseContentDocument(file.content);
   const id = entryIdFromPath(file.path, collection.readExtensions);
   const folder = entryFolderFromPath(file.path, collection.sourceDir);
   const rawOrder = fields[collection.orderField];
@@ -85,7 +86,7 @@ export function toDetail(
   // way to repair it, so surface the raw fields rather than throwing a 500.
   const validated = collection.schema.safeParse(parsed.fields);
   return {
-    ...toListItem(collection, file),
+    ...toListItem(collection, file, parsed),
     fields: validated.success ? validated.data : parsed.fields,
     body: parsed.body,
   };
@@ -314,13 +315,7 @@ export function contentWithOrder(
 }
 
 export function uniqueContentId(base: string, reserved: Set<string>): string {
-  const normalizedBase =
-    base
-      .trim()
-      .toLowerCase()
-      .replace(/['"]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'copy';
+  const normalizedBase = slugify(base) || 'copy';
   let candidate = normalizedBase;
   let suffix = 2;
   while (reserved.has(candidate)) {

@@ -4,7 +4,12 @@ import {
   requireSecuredAdminApi,
   withAdminSecurityHeaders,
 } from '../admin';
-import { ensureSameOrigin, isStorageUnavailableError } from '../core';
+import {
+  boundedRequest,
+  RequestBodyError,
+  ensureSameOrigin,
+  isStorageUnavailableError,
+} from '../core';
 import {
   ContentMutationBusyError,
   createRedisContentProvider,
@@ -15,13 +20,6 @@ import {
 import { dispatchContentRequest } from './router';
 
 const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
-
-class ContentPayloadTooLargeError extends Error {
-  constructor() {
-    super('Content requests are limited to 6 MB.');
-    this.name = 'ContentPayloadTooLargeError';
-  }
-}
 
 function contentStoreUnavailable(message?: string): Response {
   return adminJson(
@@ -43,52 +41,6 @@ function contentPayloadTooLarge(): Response {
     },
     { status: 413 },
   );
-}
-
-async function readBoundedRequestBody(request: Request): Promise<Uint8Array> {
-  const declaredLength = Number(request.headers.get('content-length') ?? 0);
-  if (declaredLength > MAX_CONTENT_REQUEST_BYTES) {
-    throw new ContentPayloadTooLargeError();
-  }
-  if (!request.body) return new Uint8Array();
-
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > MAX_CONTENT_REQUEST_BYTES) {
-        await reader.cancel();
-        throw new ContentPayloadTooLargeError();
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return body;
-}
-
-async function boundedRequest(request: Request): Promise<Request> {
-  if (request.method === 'GET' || request.method === 'HEAD') return request;
-  const body = await readBoundedRequestBody(request);
-  return new Request(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: body as BodyInit,
-    redirect: request.redirect,
-    signal: request.signal,
-  });
 }
 
 function waitForContentStore(signal: AbortSignal): Promise<void> {
@@ -115,7 +67,7 @@ async function dispatchRedisRequest(
 ): Promise<Response> {
   if (!hasContentStore()) return contentStoreUnavailable();
   const provider = createRedisContentProvider();
-  const bounded = await boundedRequest(request);
+  const bounded = await boundedRequest(request, MAX_CONTENT_REQUEST_BYTES);
   const dispatch = () =>
     Promise.resolve(dispatchContentRequest(provider, bounded));
   let response: Response;
@@ -154,7 +106,10 @@ async function dispatch(
   try {
     return await dispatchRedisRequest(context.request, mutation);
   } catch (error) {
-    if (error instanceof ContentPayloadTooLargeError) {
+    if (
+      error instanceof RequestBodyError &&
+      error.code === 'payload_too_large'
+    ) {
       return contentPayloadTooLarge();
     }
     if (error instanceof ContentMutationBusyError) {

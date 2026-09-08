@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { fetchIntegrations, testIntegration, toggleIntegration } from './api';
-import { SkeletonRow } from './Skeleton';
+import { SkeletonRow } from '../ui/Skeleton';
 import type { IntegrationState, IntegrationStatus } from '../../lib/contracts';
 import { useDialogConfirm } from './useDialogConfirm';
-import { VisuallyHidden } from './VisuallyHidden';
+import { VisuallyHidden } from '../ui/VisuallyHidden';
 
 const STATE_LABEL: Record<IntegrationState, string> = {
   ok: 'ok',

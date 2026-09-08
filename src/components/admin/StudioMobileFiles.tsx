@@ -7,7 +7,7 @@ import {
 } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
-import { VisuallyHidden } from './VisuallyHidden';
+import { VisuallyHidden } from '../ui/VisuallyHidden';
 import { FileIcon, FolderIcon } from './studioFileIcons';
 import StudioSheet from './StudioSheet';
 import { useLongPress } from './useLongPress';

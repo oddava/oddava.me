@@ -28,11 +28,11 @@ export const NOW_PLAYING_UNAVAILABLE_MESSAGE =
 async function readProvider(
   definition: IntegrationDefinition,
   read: (
-    credentials: Awaited<ReturnType<typeof resolveCredentials>>,
+    credentials: ReturnType<typeof resolveCredentials>,
   ) => Promise<SpotifyNowPlaying>,
 ): Promise<{ state: SpotifyNowPlaying } | { failed: true }> {
   try {
-    const credentials = await resolveCredentials(definition);
+    const credentials = resolveCredentials(definition);
     return { state: await read(credentials) };
   } catch (error) {
     console.error(`[now-playing] ${definition.id} read failed`, error);

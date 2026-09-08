@@ -15,6 +15,8 @@ import {
   writeSocialCard,
 } from '../../../lib/server/content';
 import {
+  boundedRequest,
+  RequestBodyError,
   ensureSameOrigin,
   isStorageUnavailableError,
 } from '../../../lib/server/core';
@@ -31,6 +33,13 @@ function contentStoreUnavailable(): Response {
       code: 'content_store_unavailable',
     },
     { status: 503 },
+  );
+}
+
+function cardPayloadTooLarge(): Response {
+  return adminJson(
+    { error: 'Social cards are limited to 2 MB.', code: 'payload_too_large' },
+    { status: 413 },
   );
 }
 
@@ -71,17 +80,11 @@ async function listCards(): Promise<Response> {
 async function storeCard(request: Request): Promise<Response> {
   if (!hasContentStore()) return contentStoreUnavailable();
 
-  if (Number(request.headers.get('content-length') ?? 0) > CARD_MAX_BYTES) {
-    return adminJson(
-      { error: 'Social cards are limited to 2 MB.', code: 'payload_too_large' },
-      { status: 413 },
-    );
-  }
-
   let formData: FormData;
   try {
-    formData = await request.formData();
-  } catch {
+    formData = await (await boundedRequest(request, CARD_MAX_BYTES)).formData();
+  } catch (error) {
+    if (error instanceof RequestBodyError) return cardPayloadTooLarge();
     return adminJson(
       { error: 'Invalid multipart request.', code: 'invalid_body' },
       { status: 400 },
@@ -97,12 +100,7 @@ async function storeCard(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  if (file.size > CARD_MAX_BYTES) {
-    return adminJson(
-      { error: 'Social cards are limited to 2 MB.', code: 'payload_too_large' },
-      { status: 413 },
-    );
-  }
+  if (file.size > CARD_MAX_BYTES) return cardPayloadTooLarge();
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (!isPng(bytes)) {

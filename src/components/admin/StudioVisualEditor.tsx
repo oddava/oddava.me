@@ -47,7 +47,7 @@ import {
   type TurnTarget,
 } from './studioBlocks';
 import { RichDocument, SourceBlock, WikiLink } from './studioRichDocument';
-import { fuzzyScore } from './StudioCommandPalette';
+import { fuzzyScore } from './studioSearch';
 import type { EditorCommands } from './studioEditorCommands';
 import type {
   useWikiLinkAutocomplete,

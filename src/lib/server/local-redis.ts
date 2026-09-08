@@ -1,5 +1,5 @@
 import type { RedisClientType } from 'redis';
-import { fetchWithTimeout } from './core';
+import { fetchWithTimeout } from './core/http';
 import { getServerEnv } from './env';
 import { firstConfiguredSecret } from './secrets';
 

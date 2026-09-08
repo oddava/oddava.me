@@ -55,7 +55,7 @@ describe('a cold read while the mutation lock is held', () => {
   });
 
   it('serves the cached index instead, once the isolate is warm', async () => {
-    const garden = await import('../src/lib/garden');
+    const garden = await import('../src/lib/garden/runtime');
 
     runtime.version = '7';
     expect((await garden.getGardenIndex()).root.id).toBe('index');
@@ -71,7 +71,7 @@ describe('a cold read while the mutation lock is held', () => {
   it('still lets a real failure through as a failure', async () => {
     // The 503 is for a busy store only. Widening it would launder actual bugs.
     runtime.versionError = new Error('redis exploded');
-    const garden = await import('../src/lib/garden');
+    const garden = await import('../src/lib/garden/runtime');
 
     await expect(garden.getGardenIndexOrUnavailable()).rejects.toThrow(
       'redis exploded',
