@@ -1,0 +1,75 @@
+---
+import type { GardenDocument, GardenIndex } from '@lib/garden';
+
+interface Props {
+  node: GardenDocument;
+  index: GardenIndex;
+  currentId: string;
+  expanded: Set<string>;
+}
+
+const { node, index, currentId, expanded } = Astro.props;
+const children = node.childIds.flatMap((id) => {
+  const child = index.byId.get(id);
+  return child ? [child] : [];
+});
+const folder = children.length > 0 || node.id === index.root.id;
+const current = node.id === currentId;
+---
+
+<li class="note-explorer__item">
+  {
+    folder ? (
+      <details class="note-explorer__folder" open={expanded.has(node.id)}>
+        <summary class:list={['note-explorer__row', current && 'is-current']}>
+          <svg
+            class="note-explorer__chevron"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+          >
+            <path d="m6 4 4 4-4 4" />
+          </svg>
+          <svg
+            class="note-explorer__icon note-explorer__icon--folder"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+          >
+            <path d="M2.5 6V4.5h5l2 2h8v10h-15Z" />
+          </svg>
+          <a
+            href={node.href}
+            aria-current={current ? 'page' : undefined}
+            title={node.title}
+            data-page-preview-ignore
+          >
+            {node.title}
+          </a>
+        </summary>
+        {children.length > 0 && (
+          <ul class="note-explorer__children" role="list">
+            {children.map((child) => (
+              <Astro.self node={child} {index} {currentId} {expanded} />
+            ))}
+          </ul>
+        )}
+      </details>
+    ) : (
+      <a
+        class:list={[
+          'note-explorer__row',
+          'note-explorer__file',
+          current && 'is-current',
+        ]}
+        href={node.href}
+        aria-current={current ? 'page' : undefined}
+        title={node.title}
+        data-page-preview-ignore
+      >
+        <svg class="note-explorer__icon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M5 2.5h6l4 4v11H5Z M11 2.5v4h4 M7.5 10h5 M7.5 13h5" />
+        </svg>
+        <span>{node.title}</span>
+      </a>
+    )
+  }
+</li>

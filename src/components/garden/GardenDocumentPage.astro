@@ -47,16 +47,8 @@ const isStub = !rendered.html && document.childIds.length === 0;
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
       <RelatedNotes document={document} index={index} />
       {
-        /* Any note with a neighbourhood — see `hasLocalMap`, which the
-           landscape's "nearby" link asks too so it never points at a
-           missing anchor.
-
-           Inbound links live here and nowhere else. A standalone Backlinks
-           section above this one listed the same notes the reference lane
-           draws — including the parent, which the trunk had already claimed,
-           so a folder's own name appeared twice in the rail a few rows apart.
-           `Related` does not collide the same way: `getRelatedNotes` already
-           excludes the parent, children, and everything linked either way. */
+        /* Keep the explorer in the existing rail. Its anchor also serves the
+           landscape's nearby link; linked notes retain inbound navigation. */
         hasLocalMap(document, index) && (
           <LocalNoteMap document={document} index={index} />
         )
