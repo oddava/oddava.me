@@ -29,16 +29,16 @@ describe('findNoteLeafRedirect', () => {
   });
 
   it('redirects a legacy slug to where the note now lives', async () => {
-    const { findNoteLeafRedirect, getGardenIndex } =
-      await import('../src/lib/garden');
+    const { findNoteLeafRedirect } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     const index = await getGardenIndex();
 
     expect(findNoteLeafRedirect(index, 'books')).toBe('/notes/reading/books');
   });
 
   it('resolves a note the build-time snapshot never saw', async () => {
-    const { findNoteLeafRedirect, getGardenIndex } =
-      await import('../src/lib/garden');
+    const { findNoteLeafRedirect } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
 
     // A note authored in Studio after the last deploy: it exists in the content
     // store but in no build artifact. This is the case a getStaticPaths map
@@ -62,16 +62,16 @@ describe('findNoteLeafRedirect', () => {
     );
     runtime.version += 1;
 
-    const { findNoteLeafRedirect, getGardenIndex } =
-      await import('../src/lib/garden');
+    const { findNoteLeafRedirect } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     expect(
       findNoteLeafRedirect(await getGardenIndex(), 'duplicate'),
     ).toBeNull();
   });
 
   it('has no redirect for an unknown slug', async () => {
-    const { findNoteLeafRedirect, getGardenIndex } =
-      await import('../src/lib/garden');
+    const { findNoteLeafRedirect } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     expect(findNoteLeafRedirect(await getGardenIndex(), 'nope')).toBeNull();
   });
 });

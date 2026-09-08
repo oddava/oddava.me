@@ -2,7 +2,7 @@ import '../styles/components/_guestbook.css';
 import { useCallback, useMemo, useState } from 'preact/hooks';
 import { useGuestbookEntries } from './guestbook/useGuestbookEntries';
 import { useGuestbookSubmit } from './guestbook/useGuestbookSubmit';
-import { SkeletonRow } from './admin/Skeleton';
+import { SkeletonRow } from './ui/Skeleton';
 
 const MAX_MESSAGE_LENGTH = 280;
 const INITIAL_VISIBLE_ENTRIES = 12;

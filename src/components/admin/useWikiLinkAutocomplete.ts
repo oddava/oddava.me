@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
 import type { ContentEntryListItem } from '../../lib/contracts';
-import { fuzzyScore } from './StudioCommandPalette';
+import { fuzzyScore } from './studioSearch';
 import { caretCoordinates } from './studioCaret';
 
 // One suggestion in the `[[` popover: an existing note plus the exact text we

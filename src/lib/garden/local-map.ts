@@ -1,4 +1,4 @@
-import type { GardenDocument, GardenIndex } from './index';
+import type { GardenDocument, GardenIndex } from './types';
 
 export type LocalMapRelationship =
   'ancestor' | 'child' | 'outbound' | 'backlink';

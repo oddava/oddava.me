@@ -40,7 +40,7 @@ describe('Redis-backed notes runtime', () => {
   });
 
   it('builds hierarchy and backlinks from runtime files', async () => {
-    const { getGardenIndex } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     const index = await getGardenIndex();
 
     expect(index.root.id).toBe('index');
@@ -51,7 +51,7 @@ describe('Redis-backed notes runtime', () => {
   });
 
   it('invalidates the cached garden as soon as the content version changes', async () => {
-    const { getGardenIndex } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     expect((await getGardenIndex()).byId.has('journal')).toBe(false);
 
     runtime.files.push({
@@ -98,8 +98,8 @@ describe('getRelatedNotes', () => {
   });
 
   it('surfaces notes sharing >=2 tags, excluding self, linked, and single-tag notes', async () => {
-    const { getGardenIndex, getRelatedNotes } =
-      await import('../src/lib/garden');
+    const { getRelatedNotes } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     const index = await getGardenIndex();
     const alpha = index.byId.get('alpha')!;
 
@@ -111,8 +111,8 @@ describe('getRelatedNotes', () => {
   });
 
   it('excludes notes already shown as backlinks', async () => {
-    const { getGardenIndex, getRelatedNotes } =
-      await import('../src/lib/garden');
+    const { getRelatedNotes } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     const index = await getGardenIndex();
     // alpha links to beta, so beta lists alpha as a backlink. Related should not
     // echo that backlink.
@@ -124,15 +124,15 @@ describe('getRelatedNotes', () => {
   });
 
   it('returns nothing for a note with fewer than two tags', async () => {
-    const { getGardenIndex, getRelatedNotes } =
-      await import('../src/lib/garden');
+    const { getRelatedNotes } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     const index = await getGardenIndex();
     expect(getRelatedNotes(index.byId.get('delta')!, index)).toEqual([]);
   });
 
   it('respects the limit option', async () => {
-    const { getGardenIndex, getRelatedNotes } =
-      await import('../src/lib/garden');
+    const { getRelatedNotes } = await import('../src/lib/garden');
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
     const index = await getGardenIndex();
     const gamma = index.byId.get('gamma')!;
     // gamma shares two tags with alpha and beta; cap the list at one.

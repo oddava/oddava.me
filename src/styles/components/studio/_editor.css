@@ -1,0 +1,877 @@
+/* --- Editor top bar --- */
+
+.studio-workbench .studio-bar__toggle {
+  display: none;
+}
+
+.studio-bar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+}
+
+.studio-bar__toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--studio-base) var(--studio-ease-soft),
+    color var(--studio-base) var(--studio-ease-soft);
+}
+
+.studio-bar__toggle:hover {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+}
+
+.studio-bar__toggle svg,
+.studio-bar__open svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.studio-bar__title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.studio-bar__title strong {
+  overflow: hidden;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-bar__title code {
+  overflow: hidden;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-bar__open {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-muted);
+  transition:
+    background var(--studio-base) var(--studio-ease-soft),
+    color var(--studio-base) var(--studio-ease-soft);
+}
+
+.studio-bar__open:hover {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+}
+
+/* --- Save indicator --- */
+
+/* The one part of the chrome a writer watches. It moves through grey, accent
+   and green as a save goes round, and switching those hard makes a background
+   task read as an alert — the colour eases so the state is there when you look
+   for it without ever having asked for your attention. */
+.studio-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 0;
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color var(--studio-slow) var(--studio-ease-soft);
+}
+
+.studio-save__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* The dot gives way to a tick the moment a save lands. The mark is the only
+   thing here that should announce itself, so it draws itself in rather than
+   swapping for the dot between one frame and the next. */
+.studio-save__check {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: studio-pop var(--studio-slow) var(--studio-ease);
+}
+
+.studio-save[data-tone='saving'] {
+  color: var(--admin-accent);
+}
+
+.studio-save[data-tone='saving'] .studio-save__dot {
+  animation: studio-pulse 1s ease-in-out infinite;
+}
+
+.studio-save[data-tone='dirty'] {
+  color: var(--admin-text-secondary);
+}
+
+.studio-save[data-tone='saved'] {
+  color: var(--admin-success);
+}
+
+.studio-save[data-tone='error'] {
+  color: var(--admin-danger);
+}
+
+@keyframes studio-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Save indicator, when it doubles as the manual Save button. It wears the same
+   chip as the autosave switch it sits beside — a filled accent block was the
+   one loud thing in a bar of quiet controls — and carries the accent in its
+   text and dot instead. */
+.content-workspace .studio-save--action {
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--admin-accent) 42%, transparent);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--admin-accent);
+  font-family: inherit;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  cursor: pointer;
+  transition:
+    color var(--studio-base) var(--studio-ease-soft),
+    border-color var(--studio-base) var(--studio-ease-soft),
+    background var(--studio-base) var(--studio-ease-soft);
+}
+
+.content-workspace .studio-save--action:hover {
+  border-color: var(--admin-accent);
+  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
+}
+
+.content-workspace .studio-save--action[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--admin-danger) 50%, transparent);
+  color: var(--admin-danger);
+}
+
+.content-workspace .studio-save--action[data-tone='error']:hover {
+  border-color: var(--admin-danger);
+  background: color-mix(in srgb, var(--admin-danger) 12%, transparent);
+}
+
+.content-workspace .studio-save--action .studio-save__dot {
+  background: currentColor;
+}
+
+/* Autosave toggle. */
+.content-workspace .studio-bar__autosave {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 0.66rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color var(--studio-base) var(--studio-ease-soft),
+    border-color var(--studio-base) var(--studio-ease-soft);
+}
+
+.content-workspace .studio-bar__autosave:hover {
+  color: var(--admin-text-primary);
+}
+
+.content-workspace .studio-bar__autosave[aria-checked='true'] {
+  color: var(--admin-text-secondary);
+  border-color: var(--admin-line-strong);
+}
+
+.studio-bar__autosave-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--admin-text-disabled);
+  transition: background var(--studio-base) var(--studio-ease-soft);
+}
+
+.studio-bar__autosave[aria-checked='true'] .studio-bar__autosave-dot {
+  background: var(--admin-success);
+}
+
+/* --- View switch --- */
+
+.studio-view-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: var(--radius-sm-2);
+  background: var(--admin-bg);
+}
+
+.content-workspace .studio-view-switch button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--studio-base) var(--studio-ease-soft),
+    color var(--studio-base) var(--studio-ease-soft);
+}
+
+.content-workspace .studio-view-switch button:hover {
+  color: var(--admin-text-primary);
+}
+
+.content-workspace .studio-view-switch button.is-active {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+}
+
+/* --- The writing surface --- */
+
+/* One column, one job. The permanent split view is gone: Visual already shows
+   rendered Markdown, so a second pane repeating it cost half the width to say
+   the same thing twice. Preview is a mode now, not a neighbour. */
+
+.studio-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* The reading measure, shared by every mode so a line does not change length
+     when the mode does. */
+  --studio-measure: 44rem;
+}
+
+.studio-surface.is-focused {
+  --studio-measure: 40rem;
+}
+
+/* Focus mode dims the chrome rather than removing it — the save state is the
+   one thing a writer must never have to go looking for, so it comes back on
+   hover and whenever anything inside it has keyboard focus. */
+.studio-editor:has(.studio-surface.is-focused)
+  :is(.studio-bar, .studio-status) {
+  opacity: 0.32;
+  transition: opacity var(--studio-slow) var(--studio-ease-soft);
+}
+
+.studio-editor:has(.studio-surface.is-focused)
+  :is(.studio-bar, .studio-status):is(:hover, :focus-within) {
+  opacity: 1;
+}
+
+@keyframes studio-drop-marker {
+  from {
+    opacity: 0;
+    transform: scaleX(0.55);
+  }
+}
+
+/* Everything the writing surface animates is an entrance a few frames long —
+   there to say "this appeared here", never to carry meaning of its own. Asked
+   for less motion, they are simply the end state.
+
+   The states themselves are untouched: the tint still tints, the ring still
+   rings, the drop marker still marks. Only the travel between them goes. */
+@media (prefers-reduced-motion: reduce) {
+  .content-workspace {
+    --studio-fast: 1ms;
+    --studio-base: 1ms;
+    --studio-slow: 1ms;
+  }
+
+  .studio-slashmenu__row,
+  .studio-wikimenu__row,
+  .studio-menu button,
+  .studio-inline-toolbar,
+  .studio-inline-tool {
+    transition: none;
+  }
+
+  .studio-inline-tool:active {
+    transform: none;
+  }
+
+  .studio-save {
+    transition: none;
+  }
+
+  .studio-slashmenu,
+  .studio-inline-toolbar,
+  .studio-wikimenu,
+  .studio-menu,
+  .studio-save__check,
+  .studio-vsurface__uploading {
+    animation: none;
+  }
+}
+
+/* The caret's own colour on the words it has picked out, so a selection made
+   to format reads as part of the editor rather than the operating system.
+   The rendered blocks are included: a selection dragged across them is copied
+   as Markdown by the surface, and it would otherwise change colour halfway
+   through — system blue over the rendered text, the accent inside the block
+   that happens to be open. */
+.studio-textarea::selection {
+  background: color-mix(in srgb, var(--admin-accent) 28%, transparent);
+}
+
+/* Rises into the bottom of the pane rather than appearing in it. An upload is
+   the one thing here that takes longer than a frame, and the only status the
+   surface ever shows — it should read as having come from somewhere. */
+.studio-vsurface__uploading {
+  position: sticky;
+  bottom: 12px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 5px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface-elevated);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 24%, transparent);
+  color: var(--admin-text-secondary);
+  font-size: 0.72rem;
+  animation: studio-rise var(--studio-slow) var(--studio-ease);
+}
+
+@keyframes studio-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* --- Markdown mode --- */
+
+.studio-source {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.studio-textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 40px max(24px, calc((100% - var(--studio-measure)) / 2));
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-primary);
+  caret-color: var(--admin-accent);
+  font-family: var(--font-mono);
+  font-size: 0.94rem;
+  line-height: 1.78;
+  tab-size: 2;
+  resize: none;
+  outline: none;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-textarea::placeholder {
+  color: var(--admin-text-disabled);
+}
+
+/* --- Slash menu --- */
+
+.studio-slashmenu {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  width: 248px;
+  max-height: 330px;
+  padding: 4px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 14px 38px color-mix(in srgb, #000 36%, transparent);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: studio-pop var(--studio-base) var(--studio-ease);
+}
+
+/* Every popover in the editor arrives the same way: from just under where it
+   is going, at nine-tenths of the way to full size. The scale is small enough
+   that it reads as depth rather than as a zoom, and it is the one gesture that
+   ties the slash menu, the note picker and the formatting bar together as
+   three faces of the same thing. */
+@keyframes studio-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+/* The group a run of rows belongs to. Only drawn while the whole menu is
+   showing: once a query narrows it, the ranking is the order that matters. */
+.studio-slashmenu__group {
+  margin: 6px 9px 2px;
+  color: var(--admin-text-disabled);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-slashmenu__group:first-child {
+  margin-top: 2px;
+}
+
+.studio-slashmenu__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  /* Short enough that arrowing down the list still feels like the highlight is
+     under the key, long enough that dragging the pointer across it does not
+     flicker. Below about 80ms the eye reads it as instant either way. */
+  transition:
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft);
+}
+
+.studio-slashmenu__row.is-active {
+  background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
+}
+
+/* The Markdown the row writes, as its icon. Two jobs in one glyph: it tells
+   the rows apart at a glance, and it teaches the shorthand that makes the
+   menu unnecessary. It takes on the accent with its row, on the row's timing,
+   so the highlight moves as one thing rather than as a box and a badge. */
+.studio-slashmenu__glyph {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  color: var(--admin-text-muted);
+  font: 0.62rem var(--font-mono);
+  letter-spacing: -0.04em;
+  transition:
+    border-color var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft);
+}
+
+.studio-slashmenu__row.is-active .studio-slashmenu__glyph {
+  border-color: color-mix(in srgb, var(--admin-accent) 45%, transparent);
+  color: var(--admin-accent);
+}
+
+.studio-slashmenu__title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* --- Selection toolbar --- */
+
+/* The formatting controls, only while there is something to format. */
+.studio-inline-toolbar {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 34%, transparent);
+  animation: studio-pop var(--studio-base) var(--studio-ease);
+  /* Extending a selection keeps the same bar on screen and moves it. Gliding
+     to the new anchor is what says it is following the words rather than being
+     torn down and rebuilt at each one — and because the element persists, the
+     entrance animation above still owns the first appearance. */
+  transition:
+    top var(--studio-base) var(--studio-ease),
+    left var(--studio-base) var(--studio-ease);
+}
+
+.studio-inline-tool {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft),
+    transform var(--studio-fast) var(--studio-ease-soft);
+}
+
+.studio-inline-tool:hover {
+  background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
+}
+
+.studio-inline-tool:active {
+  transform: scale(0.92);
+}
+
+.studio-inline-tool svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Docked: a full-width bar on the bottom edge, above the on-screen keyboard.
+   `--studio-vh` is the visual viewport height the workspace tracks, so the bar
+   rides the keyboard instead of hiding behind it. */
+.studio-inline-toolbar.is-docked {
+  top: var(--studio-vh, 100dvh);
+  right: 0;
+  bottom: auto;
+  left: 0;
+  transform: translateY(-100%);
+  justify-content: space-around;
+  padding: 6px max(6px, env(safe-area-inset-right))
+    max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  border: 0;
+  border-top: 1px solid var(--admin-line);
+  border-radius: 0;
+  background: var(--admin-surface);
+  box-shadow: 0 -6px 20px color-mix(in srgb, #000 22%, transparent);
+  animation: none;
+  /* Pinned to the viewport, not to a selection: it must ride the keyboard's
+     own animation exactly, and easing it again would leave it trailing the
+     edge it is supposed to be sitting on. */
+  transition: none;
+}
+
+.studio-inline-toolbar__divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--color-rule);
+}
+
+.studio-tool-glyph {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.studio-tool-glyph--bold {
+  font-weight: 800;
+}
+
+.studio-tool-glyph--italic {
+  font-family: Georgia, serif;
+  font-style: italic;
+}
+
+.studio-tool-glyph--strike {
+  text-decoration: line-through;
+}
+
+/* Named for a screen reader, out of the way of everyone else. */
+.studio-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The heading above a group of menu items. */
+.studio-menu__label {
+  margin: 4px 9px 2px;
+  color: var(--admin-text-disabled);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* --- Status line --- */
+
+.studio-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-top: 1px solid var(--admin-line);
+  color: var(--admin-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+
+.studio-status__spacer {
+  flex: 1 1 auto;
+}
+
+.studio-status__hint,
+.studio-status__busy {
+  color: var(--admin-text-disabled);
+}
+
+.studio-status__hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+  font: inherit;
+}
+
+/* --- Preview --- */
+
+.studio-preview {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--admin-bg);
+}
+
+/* Mirrors `garden-document-layout`: the reading column, and the contents rail
+   beside it when the note has enough headings to earn one. */
+.studio-preview__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 64rem);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (min-width: 1180px) {
+  .studio-preview__layout:has(.studio-preview__toc) {
+    grid-template-columns: minmax(0, 1fr) 13rem;
+    gap: 40px;
+  }
+}
+
+.studio-preview__page {
+  width: min(100%, 44rem);
+  margin: 0 auto;
+  padding: 40px 0 25vh;
+}
+
+.studio-preview__title {
+  margin: 0 0 0.6em;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.studio-preview__stub {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.studio-preview__toc {
+  position: sticky;
+  top: 40px;
+  align-self: start;
+  margin-top: 40px;
+  padding-left: 16px;
+  border-left: 1px solid var(--admin-line);
+}
+
+.studio-preview__toc-title {
+  margin: 0 0 8px;
+  color: var(--admin-text-disabled);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.studio-preview__toc ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-preview__toc li[data-depth='3'] {
+  padding-left: 10px;
+}
+
+.studio-preview__toc li[data-depth='4'] {
+  padding-left: 20px;
+}
+
+.studio-preview__toc a {
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.studio-preview__toc a:hover {
+  color: var(--admin-text-primary);
+}
+
+/* The rendered Markdown inside `.prose` is styled by
+   `src/styles/components/_note-prose.css`, the same stylesheet the published
+   note loads. Do not restyle it here — that is what the preview drifting from
+   the page looked like. */
+
+/* --- Blank state --- */
+
+.studio-blank {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+}
+
+.studio-blank__title {
+  margin: 0;
+  color: var(--admin-text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.studio-blank__hint {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.8rem;
+}
+
+/* The way back to the tree when the explorer is hidden — the only one a phone
+   has, where the shortcut in the hint above does not exist. */
+.content-workspace .studio-blank__action {
+  margin-top: 6px;
+  padding: 9px 18px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.content-workspace .studio-blank__action:hover {
+  border-color: var(--admin-accent);
+}
+
+.content-workspace kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+/* --- Toast --- */
+
+.studio-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 60;
+  max-width: min(90%, 460px);
+  padding: 8px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--admin-surface-elevated);
+  box-shadow: 0 10px 30px color-mix(in srgb, #000 32%, transparent);
+  color: var(--admin-text-primary);
+  font-size: 0.76rem;
+  animation: studio-toast-in 0.16s ease;
+}
+
+.studio-toast__error {
+  color: var(--admin-danger);
+}
+
+@keyframes studio-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

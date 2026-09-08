@@ -3,7 +3,7 @@ import type { TargetedDragEvent, TargetedKeyboardEvent } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 // `.sr-only` lives in the public site stylesheet, which AdminLayout does not
 // load — admin-side hidden text has to come from this component.
-import { VisuallyHidden } from './VisuallyHidden';
+import { VisuallyHidden } from '../ui/VisuallyHidden';
 import {
   FileIcon,
   FolderIcon,

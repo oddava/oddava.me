@@ -3,6 +3,8 @@ import type {
   PublicGuestbookEntry,
 } from '../../lib/contracts';
 
+import { isRecord } from '../../lib/records';
+
 interface GuestbookState {
   entries: PublicGuestbookEntry[];
   writable: boolean;
@@ -11,10 +13,6 @@ interface GuestbookState {
 interface SubmitGuestbookEntryInput {
   message: string;
   name: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isPublicGuestbookEntry(value: unknown): value is PublicGuestbookEntry {

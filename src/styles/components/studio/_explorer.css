@@ -1,0 +1,483 @@
+/* --- Folder tree --- */
+
+.studio-folder-tree {
+  display: block;
+  padding: 6px;
+}
+
+.studio-folder-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-tree-children {
+  margin-left: 11px !important;
+  padding-left: 6px !important;
+  border-left: 1px solid var(--admin-line);
+}
+
+.studio-tree-children--root {
+  margin-left: 10px !important;
+}
+
+.studio-tree-item {
+  position: relative;
+}
+
+/* The row itself is the tree item: it carries the role, the tab stop and every
+   gesture. The chevron and the label are spans inside it rather than buttons of
+   their own, so a keyboard walks rows — not three controls per row — and a
+   screen reader hears "treeitem" where the focus actually lands. */
+.studio-tree-row {
+  position: relative;
+  display: grid;
+  /* The last column is the ••• button; the padding keeps it off the row's edge
+     rather than shaving the button's own hit area down to make room. */
+  grid-template-columns: 18px minmax(0, 1fr) 24px;
+  align-items: center;
+  padding-right: 5px;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm-2);
+  cursor: default;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.studio-tree-row:hover {
+  background: var(--admin-surface-elevated);
+}
+
+.studio-tree-row:focus-visible {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--admin-accent) 45%, transparent);
+}
+
+.studio-tree-row.is-active {
+  border-color: var(--admin-line);
+  background: var(--color-overlay-strong);
+}
+
+/* What is moving is dimmed, so the row under the cursor is the only one that
+   looks like it is about to change. */
+.studio-tree-row.is-dragged {
+  opacity: 0.4;
+}
+
+.studio-tree-row.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.studio-tree-row.is-selected {
+  border-color: color-mix(in srgb, var(--admin-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
+}
+
+.studio-tree-row.is-drop-inside {
+  border-color: var(--admin-accent);
+  background: color-mix(in srgb, var(--admin-accent) 10%, transparent);
+}
+
+.studio-tree-row.is-drop-before::before,
+.studio-tree-row.is-drop-after::after {
+  position: absolute;
+  right: 3px;
+  left: 3px;
+  z-index: 2;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--admin-accent);
+  content: '';
+}
+
+.studio-tree-row.is-drop-before::before {
+  top: -2px;
+}
+
+.studio-tree-row.is-drop-after::after {
+  bottom: -2px;
+}
+
+.studio-tree-row__toggle,
+.studio-tree-row__actions {
+  display: grid;
+  width: 100%;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: var(--admin-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.studio-tree-row__chevron {
+  display: block;
+  font-size: 0.9rem;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.12s ease;
+}
+
+.studio-tree-row__chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.studio-tree-row__spacer {
+  width: 18px;
+}
+
+.studio-tree-row__label,
+.studio-tree-row__rename {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 26px;
+  padding: 0 2px;
+  border: 0;
+  color: var(--admin-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+/* Both live in the ••• column: the count is what the row says at rest, the
+   menu handle is what it offers once you reach for it. */
+.studio-tree-row__count,
+.studio-tree-row__actions {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.studio-tree-row__count {
+  justify-self: center;
+  color: var(--admin-text-disabled);
+  font: 0.55rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.12s ease;
+}
+
+.studio-tree-row:hover .studio-tree-row__count,
+.studio-tree-row:focus-visible .studio-tree-row__count,
+.studio-tree-row.is-menu-open .studio-tree-row__count {
+  opacity: 0;
+}
+
+.studio-tree-row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.studio-tree-row__text > span,
+.studio-tree-row__text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-tree-row__text small {
+  color: var(--admin-text-disabled);
+  font: 0.54rem var(--font-mono);
+}
+
+/* What the query matched, so a long result list can be read at a glance. */
+.studio-tree-row__text mark {
+  border-radius: 2px;
+  color: var(--color-text-accent);
+  background: color-mix(in srgb, var(--admin-accent) 22%, transparent);
+}
+
+.studio-tree-row__icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  color: var(--admin-text-muted);
+}
+
+.studio-tree-row__icon svg,
+.studio-library__search .studio-icon-button svg,
+.studio-explorer__actions svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.studio-library__search .studio-icon-button svg,
+.studio-explorer__actions svg {
+  width: 18px;
+  height: 18px;
+}
+
+.studio-tree-row__actions {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.studio-tree-row:hover .studio-tree-row__actions,
+.studio-tree-row:focus-visible .studio-tree-row__actions,
+.studio-tree-row__actions:focus-visible,
+.studio-tree-row__actions[aria-expanded='true'] {
+  opacity: 1;
+}
+
+/* A right-click leaves no cursor behind, so the row it acted on says so. */
+.studio-tree-row.is-menu-open {
+  border-color: var(--admin-line);
+  background: var(--admin-surface-elevated);
+}
+
+.studio-tree-row.is-menu-open .studio-tree-row__actions {
+  opacity: 1;
+}
+
+/* Same flat popup treatment as .studio-select__menu. Rendered through a portal
+   on `document.body`: the tree scrolls, the tab strip clips its overflow, and
+   on a phone the drawer is transformed — anchored inside any of them the menu
+   would be cut off or would drift away from what it points at. */
+.studio-menu {
+  max-height: calc(var(--studio-vh, 100dvh) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  min-width: 148px;
+  padding: 3px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  background: var(--color-surface-raised);
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 34%, transparent);
+  animation: studio-pop var(--studio-base) var(--studio-ease);
+}
+
+.studio-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.68rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--studio-fast) var(--studio-ease-soft),
+    color var(--studio-fast) var(--studio-ease-soft);
+}
+
+/* The shortcut that does the same thing, so the menu teaches its way out. */
+.studio-menu__hint {
+  color: var(--admin-text-disabled);
+  font: 0.6rem var(--font-mono);
+}
+
+.studio-menu button:hover,
+.studio-menu button:focus-visible {
+  background: var(--color-overlay-strong);
+  color: var(--color-text-primary);
+}
+
+.studio-menu button.is-danger {
+  color: var(--color-text-error);
+}
+
+.studio-menu > span {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--color-rule);
+}
+
+.studio-tree-row__rename input {
+  min-width: 0;
+  height: 22px;
+  padding: 1px 5px;
+  border: 1px solid var(--admin-accent);
+  border-radius: var(--radius-sm-2);
+  outline: none;
+  color: var(--admin-text-primary);
+  background: var(--admin-bg);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.studio-tree-row--inline {
+  grid-template-columns: 18px minmax(0, 1fr);
+}
+
+.studio-tree-inline-move {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 4px 18px;
+  padding: 6px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm-2);
+  background: var(--color-surface-raised);
+}
+
+.studio-tree-inline-move__select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.studio-tree-inline-move__select .studio-select__trigger {
+  border-color: var(--admin-line-strong);
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
+}
+
+.studio-tree-inline-move button {
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  color: var(--admin-text-muted);
+  background: transparent;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+/* --- Nothing to show --- */
+
+.studio-tree-empty {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 14px 10px;
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+}
+
+.studio-tree-empty p {
+  margin: 0;
+}
+
+.studio-tree-empty button {
+  padding: 4px 9px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.studio-tree-empty button:hover {
+  background: var(--color-overlay-strong);
+}
+
+/* The cursor's own label while several files move at once. Positioned off
+   screen because `setDragImage` only needs it rendered, not seen. */
+.studio-drag-ghost {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  padding: 5px 9px;
+  border: 1px solid var(--admin-accent);
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-primary);
+  background: var(--color-surface-raised);
+  font: 0.68rem var(--font-mono);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.content-workspace .studio-icon-button.is-spinning svg {
+  animation: studio-spin 0.8s linear infinite;
+}
+
+@keyframes studio-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-tree-row,
+  .studio-tree-row__chevron,
+  .studio-tree-row__count {
+    transition: none;
+  }
+
+  .content-workspace .studio-icon-button.is-spinning svg {
+    animation: none;
+  }
+}
+
+/* --- Bulk selection bar --- */
+
+.studio-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 9px;
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-surface-raised);
+}
+
+.studio-bulk-bar strong {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font: 0.58rem var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.studio-bulk-bar__move {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.studio-bulk-bar__move .studio-select__trigger {
+  border-color: var(--admin-line-strong);
+  background: var(--admin-bg);
+  color: var(--admin-text-primary);
+}
+
+.studio-bulk-bar button {
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  color: var(--admin-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+.studio-bulk-bar button:hover:not(:disabled) {
+  background: var(--color-overlay-strong);
+}
+
+.studio-bulk-bar button.is-danger {
+  color: var(--admin-danger);
+}
+
+.studio-bulk-bar :disabled {
+  opacity: 0.5;
+  cursor: default;
+}

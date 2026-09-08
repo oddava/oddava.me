@@ -67,7 +67,3 @@ src/components     Astro components and Preact islands
 Routes import a domain's barrel, not its internals. Underneath sits `core`: env,
 HTTP, signing, rate limiting, Redis primitives. Everything imports it and it
 imports nothing back.
-
-More detail in [docs/architecture.md](docs/architecture.md) and
-[docs/development.md](docs/development.md). Style and commit conventions are in
-[AGENTS.md](AGENTS.md).

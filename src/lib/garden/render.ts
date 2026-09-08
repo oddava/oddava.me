@@ -1,6 +1,6 @@
 import { readColumns } from './columns';
 import { marked, Renderer, type Token, type Tokens } from 'marked';
-import { slugifyHeading } from '../../components/mdx/headings';
+import { slugifyHeading } from './headings';
 import { normalizeWikiLinkTarget } from './utils';
 
 // Runtime Markdown -> HTML for garden notes. The ONLY note renderer.

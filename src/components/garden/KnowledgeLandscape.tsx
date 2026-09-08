@@ -16,7 +16,7 @@ import {
   type LandscapePlace as PositionedPlace,
   type LandscapeRegion,
 } from '@lib/garden/landscape-layout';
-import { scoreNote } from '@lib/garden';
+import { scoreNote } from '@lib/garden/search';
 
 export type KnowledgePlace = {
   id: string;

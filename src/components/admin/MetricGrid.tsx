@@ -1,5 +1,5 @@
 import type { OverviewResponse } from '../../lib/contracts';
-import { SkeletonGrid } from './Skeleton';
+import { SkeletonGrid } from '../ui/Skeleton';
 
 interface MetricGridProps {
   overview: OverviewResponse | null;
