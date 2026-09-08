@@ -1,4 +1,5 @@
 ---
+import DocumentTheme from './DocumentTheme.astro';
 import {
   SITE_AUTHOR_NAME,
   SITE_DESCRIPTION,
@@ -34,8 +35,7 @@ const socialImage = new URL(image, Astro.site ?? Astro.url).href;
 ---
 
 <meta charset="utf-8" />
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#0c0f18" />
+<DocumentTheme />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content={description} />
 <meta name="author" content={SITE_AUTHOR_NAME} />

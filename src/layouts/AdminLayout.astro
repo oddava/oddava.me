@@ -1,4 +1,5 @@
 ---
+import DocumentTheme from '../components/DocumentTheme.astro';
 import '../styles/_fonts.css';
 import '../styles/_variables.css';
 import '../styles/admin.css';
@@ -29,6 +30,7 @@ const viewport =
 <html lang="en" data-theme="dark" class="admin-page">
   <head>
     <meta charset="utf-8" />
+    <DocumentTheme />
     <meta name="viewport" content={viewport} />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content={description} />

@@ -1,0 +1,15 @@
+---
+import { createHash } from 'node:crypto';
+
+// Paint the canvas before external stylesheets arrive. Keep this inline and
+// register its exact bytes with CSP rather than allowing arbitrary inline CSS.
+const css =
+  'html{color-scheme:dark;background-color:#101421;background-color:var(--color-surface,#101421)}';
+Astro.csp?.insertStyleHash(
+  `sha256-${createHash('sha256').update(css).digest('base64')}`,
+);
+---
+
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#101421" />
+<style is:inline set:html={css}></style>
