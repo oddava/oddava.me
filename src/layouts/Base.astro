@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import LoadingIndicator from '../components/LoadingIndicator.astro';
 import Footer from '../components/Footer.astro';
 import PagePreview from '../components/PagePreview.astro';
 import ParticleField from '../components/ParticleField.astro';
@@ -44,6 +45,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
     </SiteHead>
   </head>
   <body>
+    {hideNav && <LoadingIndicator />}
     {particles !== false && <ParticleField preset={particles} />}
     <div class:list={['page', wide && 'page--wide']}>
       <a href="#main" class="skip-link">Skip to content</a>

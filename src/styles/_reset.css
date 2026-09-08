@@ -11,6 +11,9 @@
 }
 
 html {
+  color-scheme: dark;
+  background-color: var(--color-surface, #0c0f18);
+  scrollbar-gutter: stable;
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -20,4 +23,16 @@ html {
 ::selection {
   background: var(--color-selection);
   color: var(--color-text-primary);
+}
+
+/* Keep document changes opaque. Cross-document snapshots can expose the
+   browser canvas during navigation, producing a full-screen flash. */
+@view-transition {
+  navigation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

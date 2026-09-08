@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import LoadingIndicator from '../components/LoadingIndicator.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
@@ -17,6 +18,7 @@ const { title, description, image, type } = Astro.props;
     </SiteHead>
   </head>
   <body class="body--immersive">
+    <LoadingIndicator />
     <div class="page page--immersive">
       <a href="#main" class="skip-link">Skip to content</a>
       <main id="main">

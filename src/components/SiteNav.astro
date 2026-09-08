@@ -5,6 +5,7 @@
  */
 import '../styles/components/_site-nav.css';
 import '../styles/components/_note-search.css';
+import LoadingIndicator from './LoadingIndicator.astro';
 import NoteSearch from './garden/NoteSearch.tsx';
 
 const pathname = Astro.url.pathname;
@@ -13,5 +14,6 @@ const onNotes = pathname === '/notes' || pathname.startsWith('/notes/');
 
 <header class="site-nav">
   <a href="/" class="site-nav__wordmark" data-page-preview-ignore>oddava</a>
-  {onNotes && <NoteSearch client:idle />}
+  {onNotes && <NoteSearch client:load />}
+  <LoadingIndicator />
 </header>

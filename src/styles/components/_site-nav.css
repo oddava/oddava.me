@@ -3,6 +3,7 @@
    edge on wide pages. Narrow pages are already inside 44rem, so min() keeps
    them flush with their own content. */
 .site-nav {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 1rem;
