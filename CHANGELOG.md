@@ -35,31 +35,34 @@ Everything notable that has landed on this site, newest first.
 
 ## [2026-09-08]
 
-Navigation and note search now show when something is happening, without
-flashing for fast responses.
-
 ### Added
 
-- A thin progress line during same-origin navigations. Fast pages never flash
-  it; downloads, cancelled trips, Escape, and the back button clear it.
-- Live search status: searching, no matches, unavailable, and a result count,
-  with an underline on the input while a query is in flight.
-- Keyboard trapping in the search dialog, with Escape to close.
+- A loading indicator for same-origin navigations, delayed so fast pages never
+  flash it. Downloads, cancelled trips, Escape, and the back button clear it.
+- Search status in Find a note: searching, no matches, unavailable, and a
+  result count, with a loading underline on the input, keyboard trapping, and
+  Escape to close. The page does not scroll behind the dialog.
 
 ### Changed
 
-- The document declares a dark color scheme and ink background so the browser
-  chrome and first paint match the site.
+- The local note map is now a folder tree in the context rail: native
+  disclosure lists, folder and file icons, the path to the current note
+  expanded, and linked notes listed below. Overflow still opens the full graph.
+- Wider context rail and page shell on note pages, so the explorer has room.
+- Dark color-scheme and ink background on the document, matching the browser
+  chrome and first paint to the site.
+
+### Removed
+
+- The SVG strip map of nearby notes — stations, traces, and pulse.
 
 ### Fixed
 
-- Navigations no longer flash the browser canvas: cross-document view
-  transitions are off, and the page paints opaque from the first frame.
-- Typing a new query no longer leaves the previous results on screen.
-- Opening a notes page no longer jumps focus to Find a note.
-- Reduced-motion close of search restores focus without the exit animation.
-- Modifier-clicks on a search result (new tab, new window) are no longer
-  intercepted.
+- Page navigations no longer flash white: view transitions are off, and the
+  page paints opaque from the first frame.
+- Find a note drops stale results when the query changes, does not steal focus
+  on load, leaves modifier-clicks alone, and restores focus on reduced-motion
+  close without the exit animation.
 
 ## [2026-09-07]
 

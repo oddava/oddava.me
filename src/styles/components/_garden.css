@@ -406,10 +406,12 @@
 @media (min-width: 78rem) {
   /* Break out of the 70rem page shell: inside it the gutters are only ~13rem
      and the rail ends up pinned against the viewport edge. Scoped to pages
-     that actually have a rail — tag and listing pages keep the shell width. */
+     that actually have a rail — tag and listing pages keep the shell width.
+     Wider mirrored gutters give the explorer room on the left while the
+     article keeps the same centred 44rem column and 2.5rem gap. */
   .garden-page:has(.garden-document-layout) {
-    width: min(100vw - 2 * var(--page-padding), 80rem);
-    margin-left: calc(50% - min(50vw - var(--page-padding), 40rem));
+    width: min(100vw - 2 * var(--page-padding), 90rem);
+    margin-left: calc(50% - min(50vw - var(--page-padding), 45rem));
   }
 
   .garden-document-layout {
@@ -427,7 +429,7 @@
     top: 1.5rem;
     align-self: start;
     justify-self: end;
-    width: min(100%, 16rem);
+    width: min(100%, 21rem);
     max-height: calc(100dvh - 3rem);
     margin: 0;
     padding: 0;
