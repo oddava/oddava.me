@@ -23,9 +23,6 @@ export interface StudioSession {
   /** The tab that browsing reuses; '' when every open tab is a deliberate one. */
   previewId: string;
   expandedFolders: string[];
-  autosave: boolean;
-  /** Dim the workspace around the note and widen the writing column. */
-  focusMode: boolean;
 }
 
 export const DEFAULT_SESSION: StudioSession = {
@@ -36,8 +33,6 @@ export const DEFAULT_SESSION: StudioSession = {
   openIds: [],
   previewId: '',
   expandedFolders: [''],
-  autosave: true,
-  focusMode: false,
 };
 
 export const VIEW_MODES: { id: ViewMode; label: string; hint: string }[] = [
@@ -85,8 +80,6 @@ export function readSession(): StudioSession {
       expandedFolders: Array.isArray(parsed.expandedFolders)
         ? parsed.expandedFolders.filter((id) => typeof id === 'string')
         : DEFAULT_SESSION.expandedFolders,
-      autosave: parsed.autosave !== false,
-      focusMode: parsed.focusMode === true,
     };
   } catch {
     return DEFAULT_SESSION;

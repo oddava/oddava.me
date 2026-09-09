@@ -264,7 +264,7 @@ export interface SlashCommand {
   /** Caret position relative to the start of `insert`. */
   caret?: number;
   /** Opens a dialog instead of inserting text. */
-  action?: 'image' | 'link' | 'date';
+  action?: 'image' | 'link' | 'date' | 'youtube';
 }
 
 const SLASH_GROUP_ORDER: SlashGroup[] = ['Basic', 'Lists', 'Blocks', 'Insert'];
@@ -370,6 +370,15 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Insert',
     insert: '',
     action: 'image',
+  },
+  {
+    id: 'youtube',
+    title: 'YouTube video…',
+    hint: '▶',
+    keywords: 'youtube video embed link media watch shorts',
+    group: 'Insert',
+    insert: '',
+    action: 'youtube',
   },
   {
     id: 'wikilink',

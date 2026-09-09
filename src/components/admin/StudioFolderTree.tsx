@@ -34,7 +34,6 @@ import {
   nodeLabel,
   nodePath,
   nodeRef,
-  nodeSearchText,
   ROOT_KEY,
   ROOT_OPTION,
   sameItem,
@@ -185,15 +184,6 @@ export default function StudioFolderTree({
     [children, expandedFolders, searching],
   );
   const rowKeys = useMemo(() => rows.map((row) => row.key), [rows]);
-  // Rows and matches are not the same number: a search keeps the folders it had
-  // to open to reach a hit, and counting those as hits would report three finds
-  // for one file.
-  const matchCount = useMemo(() => {
-    if (!searching) return 0;
-    const needle = query.trim().toLowerCase();
-    return rows.filter((row) => nodeSearchText(row.node).includes(needle))
-      .length;
-  }, [rows, query, searching]);
   const rowByKey = useMemo(
     () => new Map(rows.map((row) => [row.key, row])),
     [rows],
@@ -1249,15 +1239,6 @@ export default function StudioFolderTree({
       <div className="studio-explorer__heading">
         <div>
           <strong>Files</strong>
-          <span
-            title={
-              searching
-                ? `${matchCount} of ${tree.itemCount} items match`
-                : `${tree.itemCount} items`
-            }
-          >
-            {searching ? `${matchCount} found` : String(tree.itemCount)}
-          </span>
         </div>
         <div className="studio-explorer__actions">
           <button
@@ -1274,31 +1255,6 @@ export default function StudioFolderTree({
           </button>
           <button
             type="button"
-            className="studio-icon-button"
-            aria-label="Collapse all folders"
-            title="Collapse all"
-            onClick={onCollapseAll}
-          >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="m6 8 4-4 4 4M6 12l4 4 4-4" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className={`studio-icon-button ${refreshing ? 'is-spinning' : ''}`}
-            aria-label="Refresh files"
-            title="Refresh files"
-            aria-busy={refreshing || undefined}
-            disabled={refreshing}
-            onClick={() => void refresh()}
-          >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M15.5 7A6 6 0 1 0 16 11" />
-              <path d="M15.5 3.5V7H12" />
-            </svg>
-          </button>
-          <button
-            type="button"
             className="studio-icon-button studio-sidebar-collapse"
             aria-label="Close Files explorer"
             title="Close explorer"
@@ -1310,49 +1266,29 @@ export default function StudioFolderTree({
           </button>
         </div>
       </div>
-      <div className="studio-library__search">
-        <div className="studio-search">
-          <input
-            className="admin-input"
-            type="search"
-            placeholder="Search files…"
-            aria-label="Find a file by name, title or path"
-            value={query}
-            onChange={(event) => onQueryChange(event.currentTarget.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                focusRow(rowKeys[0] ?? ROOT_KEY);
-              }
-              if (event.key === 'Escape' && query) {
-                event.preventDefault();
-                onQueryChange('');
-              }
-            }}
-          />
-          {query && (
-            <button
-              type="button"
-              className="studio-search__clear"
-              aria-label="Clear search"
-              title="Clear search"
-              onClick={() => onQueryChange('')}
-            >
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path d="m6.5 6.5 7 7M13.5 6.5l-7 7" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
       <div className="studio-library-actions">
         <button type="button" onClick={() => beginCreate('entry')}>
           <PlusIcon /> New note
         </button>
-        <button type="button" onClick={() => beginCreate('folder')}>
-          <FolderPlusIcon /> Folder
+        <button
+          type="button"
+          className="studio-library-actions__folder"
+          aria-label="New folder"
+          title="New folder"
+          onClick={() => beginCreate('folder')}
+        >
+          <FolderPlusIcon />
         </button>
       </div>
+      {query && (
+        <button
+          type="button"
+          className="studio-library-clear"
+          onClick={() => onQueryChange('')}
+        >
+          Clear filter “{query}”
+        </button>
+      )}
 
       <div
         className="studio-entry-list studio-folder-tree"
@@ -1491,6 +1427,16 @@ export default function StudioFolderTree({
               }}
             >
               Collapse all
+            </button>
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={() => {
+                menu.close();
+                void refresh();
+              }}
+            >
+              Refresh files
             </button>
           </StudioContextMenu>
         </div>

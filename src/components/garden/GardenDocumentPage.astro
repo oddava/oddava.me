@@ -2,7 +2,11 @@
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { hasLocalMap } from '@lib/garden/local-map';
 import { renderNote } from '@lib/garden/render';
-import { bodyProvidesTitleHeading, formatNoteDate } from '@lib/garden/utils';
+import {
+  bodyProvidesTitleHeading,
+  shouldShowNoteTitle,
+  formatNoteDate,
+} from '@lib/garden/utils';
 import LocalNoteMap from './LocalNoteMap.astro';
 import NoteTableOfContents from './NoteTableOfContents.astro';
 import RelatedNotes from './RelatedNotes.astro';
@@ -22,11 +26,11 @@ const tocHeadings = rendered.headings.length >= 2 ? rendered.headings : [];
 const isRoot = document.id === index.root.id;
 
 // A note whose body opens with its own `# h1` supplies the page title itself;
-// otherwise the shell provides it, so every note page has exactly one h1.
-const showShellTitle = !bodyProvidesTitleHeading(document.body);
+// otherwise the shell provides it only when there is content to introduce.
+const showShellTitle = shouldShowNoteTitle(document.body);
 let authoredTitleHtml = '';
 let bodyHtml = rendered.html;
-if (!showShellTitle) {
+if (bodyProvidesTitleHeading(document.body)) {
   const titleEnd = bodyHtml.indexOf('</h1>');
   if (titleEnd >= 0) {
     authoredTitleHtml = bodyHtml.slice(0, titleEnd + '</h1>'.length);

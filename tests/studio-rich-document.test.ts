@@ -15,6 +15,8 @@ import {
   makeColumns,
 } from '../src/components/admin/studioColumns';
 import { renderNote } from '../src/lib/garden/render';
+import { YoutubeVideo } from '../src/components/admin/studioYoutube';
+import { youtubeMarkup } from '../src/lib/garden/youtube';
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { EditorState } from '@tiptap/pm/state';
@@ -41,6 +43,7 @@ function open(body: string) {
       TaskItem,
       TableKit,
       Image,
+      YoutubeVideo,
       Columns,
       BlockSelectionExtension,
       Column,

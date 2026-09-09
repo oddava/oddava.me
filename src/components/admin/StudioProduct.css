@@ -31,13 +31,15 @@
   display: none;
 }
 .content-workspace .studio-explorer__heading {
-  padding: 16px 16px 8px;
+  padding: 12px;
   border: 0;
   min-height: 48px;
 }
 .studio-explorer__heading strong {
   font-size: 13px;
   color: var(--admin-text-primary);
+  text-transform: none;
+  letter-spacing: normal;
 }
 .content-workspace .studio-library__search {
   padding: 4px 12px 10px;
@@ -55,6 +57,14 @@
   display: flex;
   gap: 6px;
   padding: 0 12px 14px;
+}
+.studio-library-clear {
+  margin: 0 12px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-secondary);
+  text-align: left;
+  cursor: pointer;
 }
 .content-workspace .studio-library-actions button {
   display: flex;
@@ -76,6 +86,13 @@
 }
 .content-workspace .studio-library-actions button:first-child {
   color: var(--admin-accent);
+  justify-content: flex-start;
+  background: color-mix(in srgb, var(--admin-accent) 8%, transparent);
+  min-height: 34px;
+}
+.content-workspace .studio-library-actions .studio-library-actions__folder {
+  flex: 0 0 34px;
+  padding: 0;
 }
 .studio-library-actions svg {
   width: 15px;
@@ -267,13 +284,20 @@ form.studio-tree-row__rename {
 .content-workspace .studio-tree-row--inline {
   grid-template-columns: 18px minmax(0, 1fr) 24px 24px;
 }
-.studio-grid:has(.studio-surface.is-focused) .studio-sidebar {
-  opacity: 0.3;
-  transition: opacity var(--studio-slow);
+.studio-editor:has(> .studio-surface.is-visual) {
+  background: var(--color-surface);
 }
-.studio-grid:has(.studio-surface.is-focused) .studio-sidebar:hover,
-.studio-grid:has(.studio-surface.is-focused) .studio-sidebar:focus-within {
+.studio-bar {
   opacity: 1;
+  transition:
+    opacity 180ms ease,
+    visibility 0s;
+}
+.studio-bar.is-typing {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 180ms;
 }
 .content-workspace .studio-bar__focus {
   display: grid;
@@ -602,6 +626,10 @@ form.studio-tree-row__rename {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .studio-bar,
+  .studio-bar.is-typing {
+    transition: none;
+  }
   .studio-option__switch::after {
     transition: none;
   }

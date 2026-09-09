@@ -428,6 +428,17 @@
 }
 
 /* --- Tables --- */
+.prose .note-youtube {
+  margin: 1.5em 0;
+}
+.prose .note-youtube iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  margin: 0;
+  background: #000;
+}
 
 .prose table {
   width: 100%;

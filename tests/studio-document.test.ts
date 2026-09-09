@@ -44,17 +44,19 @@ function mount() {
     onSaved: vi.fn(),
     onError: vi.fn(),
   });
-  doc.setAutosave(false);
   return doc;
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
   vi.stubGlobal('window', { clearTimeout, setTimeout });
   vi.mocked(fetchContentEntry).mockImplementation(async (_collection, id) =>
     entry(id),
   );
 });
 afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
   vi.resetAllMocks();
   vi.unstubAllGlobals();
 });

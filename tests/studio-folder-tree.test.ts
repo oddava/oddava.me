@@ -138,10 +138,11 @@ describe('StudioFolderTree markup', () => {
     ]);
   });
 
-  it('counts the rows the tree can show, not the entries behind them', () => {
-    // Four entries and two folders, but the root index and the folder page are
-    // part of a row rather than rows of their own: 2 folders + 2 notes.
-    expect(draw(LIBRARY)).toContain('title="4 items"');
+  it('keeps the heading free of counts and duplicate search inputs', () => {
+    const html = draw(LIBRARY);
+    expect(html).toContain('<strong>Files</strong>');
+    expect(html).not.toContain('title="4 items"');
+    expect(html).not.toContain('type="search"');
   });
 
   it('shows a collapsed folder what it is holding', () => {
@@ -189,7 +190,7 @@ describe('StudioFolderTree search', () => {
       'folder:work/2024',
       'entry:roadmap',
     ]);
-    expect(html).toContain('1 found');
+    expect(html).not.toContain('1 found');
   });
 
   it('finds a note by its title and marks what matched', () => {
@@ -215,9 +216,9 @@ describe('StudioFolderTree search', () => {
 
   it('offers a way out of the query it is filtering by', () => {
     expect(draw({ ...LIBRARY, query: 'roadmap' })).toContain(
-      'studio-search__clear',
+      'studio-library-clear',
     );
-    expect(draw(LIBRARY)).not.toContain('studio-search__clear');
+    expect(draw(LIBRARY)).not.toContain('studio-library-clear');
   });
 });
 
