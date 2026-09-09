@@ -61,6 +61,7 @@ interface Props {
   onSetFolderExpansion: (ids: string[], expanded: boolean) => void;
   onRefresh: () => Promise<void>;
   onRequestClose: () => void;
+  onQuickOpen?: () => void;
   onNotice: (message: string) => void;
   onToggleFolder: (id: string) => void;
   onSelectFolder: (id: string) => void;
@@ -125,6 +126,7 @@ export default function StudioFolderTree({
   onSetFolderExpansion,
   onRefresh,
   onRequestClose,
+  onQuickOpen,
   onNotice,
   onToggleFolder,
   onSelectFolder,
@@ -1261,6 +1263,18 @@ export default function StudioFolderTree({
           <button
             type="button"
             className="studio-icon-button"
+            aria-label="Quick open file"
+            title="Find file (Ctrl+P)"
+            onClick={onQuickOpen}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="8.5" cy="8.5" r="5" />
+              <path d="m12.5 12.5 4 4" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="studio-icon-button"
             aria-label="Collapse all folders"
             title="Collapse all"
             onClick={onCollapseAll}
@@ -1285,13 +1299,13 @@ export default function StudioFolderTree({
           </button>
           <button
             type="button"
-            className="studio-icon-button studio-explorer__close"
+            className="studio-icon-button studio-sidebar-collapse"
             aria-label="Close Files explorer"
             title="Close explorer"
             onClick={onRequestClose}
           >
             <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="m6 6 8 8M14 6l-8 8" />
+              <path d="m10 5-5 5 5 5m5-10-5 5 5 5" />
             </svg>
           </button>
         </div>

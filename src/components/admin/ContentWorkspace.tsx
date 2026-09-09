@@ -20,7 +20,6 @@ import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
-import StudioTabs from './StudioTabs';
 import StudioEditorPane from './StudioEditorPane';
 import type { TabPlacement } from './studioTabStrip';
 import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
@@ -53,7 +52,6 @@ import {
   clamp,
   readSession,
   writeSession,
-  type SaveState,
   type StudioSession,
   type ViewMode,
 } from './studioSession';
@@ -105,8 +103,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const tabs = useStudioTabs();
   // The setters and commands below keep a stable identity across renders; the
   // hook objects themselves do not, so effects depend on these instead.
-  const { openIds, previewId, addTab, pinTab, restoreTabs, rememberHistory } =
-    tabs;
+  const { openIds, previewId, addTab, restoreTabs, rememberHistory } = tabs;
 
   // A save can change a note's title, folder or date, and with it the social
   // card the note's page points at. Redrawing trails the save rather than
@@ -364,19 +361,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     if (window.matchMedia(PHONE_QUERY).matches) setSidebarCollapsed(true);
   }
 
-  /** A file or folder dragged out of the explorer and dropped on the strip. */
-  function openDroppedItem(item: StudioTreeItemRef, index: number) {
-    if (item.kind === 'entry') {
-      const entry = entries.find((candidate) => candidate.id === item.id);
-      if (entry) editEntry(entry, { placement: 'permanent', index });
-      return;
-    }
-    const folder = folders.find((candidate) => candidate.id === item.id);
-    if (!folder) return;
-    setActiveFolder(folder.id);
-    void mutations.openFolderPage(folder, { placement: 'permanent', index });
-  }
-
   function goThroughHistory(direction: -1 | 1) {
     const id = tabs.stepHistory(direction, (candidate) =>
       entries.some((entry) => entry.id === candidate),
@@ -399,25 +383,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     } else {
       closeIfOpen(id);
     }
-  }
-
-  /** The way out of a workspace that has filled up: keep one file, drop the rest. */
-  async function closeOtherTabs(keepId: string) {
-    if (!openIds.includes(keepId)) return;
-    if (doc.docRef.current?.id !== keepId) {
-      await openNote(keepId);
-      // A save that refused to go through leaves the old note open — and its
-      // tab has to stay with it.
-      if (doc.docRef.current?.id !== keepId) return;
-    }
-    tabs.retainTabs([keepId]);
-  }
-
-  async function closeAllTabs() {
-    if (doc.hasUnsavedWork && !(await saveNow())) return;
-    const current = doc.docRef.current?.id;
-    tabs.retainTabs([]);
-    if (current) closeIfOpen(current);
   }
 
   // --- Editor helpers ------------------------------------------------------
@@ -742,8 +707,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           '--studio-sidebar-w': `${session.sidebar}px`,
         } satisfies CSSProperties);
   // One indicator per tab — only the file the editor has open has a state.
-  const tabStates = new Map<string, SaveState>();
-  if (openId) tabStates.set(openId, saveState);
 
   // As a drawer the sidebar stays mounted whether it is open or not, so it can
   // slide out as well as in — and follow a finger between the two.
@@ -823,6 +786,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 busyKey={busyKey}
                 onQueryChange={setQuery}
                 onCollapseAll={() => setExpandedFolders(new Set(['']))}
+                onQuickOpen={() => setPaletteOpen(true)}
                 onSetFolderExpansion={setFolderExpansion}
                 onRefresh={refreshFiles}
                 onRequestClose={() => setSidebarCollapsed(true)}
@@ -883,29 +847,17 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           inert={phone && sidebarVisible}
           aria-hidden={phone && sidebarVisible}
         >
-          <StudioTabs
-            entries={entries}
-            openIds={openIds}
-            activeId={openId}
-            previewId={previewId}
-            states={tabStates}
-            canGoBack={tabs.canGoBack}
-            canGoForward={tabs.canGoForward}
-            sidebarVisible={sidebarVisible}
-            onActivate={(id) => void openNote(id)}
-            onKeepOpen={pinTab}
-            onClose={(id) => void closeTab(id)}
-            onCloseOthers={(id) => void closeOtherTabs(id)}
-            onCloseAll={() => void closeAllTabs()}
-            onDropTreeItem={openDroppedItem}
-            onReorder={tabs.reorderTabs}
-            onGoBack={() => goThroughHistory(-1)}
-            onGoForward={() => goThroughHistory(1)}
-            onToggleSidebar={() =>
-              patchSession({ sidebarCollapsed: sidebarVisible })
-            }
-            onQuickOpen={() => setPaletteOpen(true)}
-          />
+          {!sidebarVisible && (
+            <button
+              type="button"
+              className="studio-sidebar-open studio-icon-button"
+              aria-label="Show Files explorer"
+              title="Show explorer (Ctrl+\\)"
+              onClick={() => setSidebarCollapsed(false)}
+            >
+              #
+            </button>
+          )}
           <div className="studio-editor-groups">
             <section
               className="studio-editor studio-editor--primary"

@@ -142,6 +142,7 @@ export default function StudioVisualEditor(props: Props) {
   } | null>(null);
   const handleRef = useRef(handle);
   handleRef.current = handle;
+  const hoveredBlock = useRef<HTMLElement | null>(null);
   const dragFrom = useRef<number | null>(null);
   const nativeDragFrom = useRef<number | null>(null);
   const nativeDragSources = useRef<number[]>([]);
@@ -192,7 +193,11 @@ export default function StudioVisualEditor(props: Props) {
   function updateHandle(editor: Editor, from: number) {
     const dom = editor.view.nodeDOM(from) as HTMLElement | null;
     const pane = scroller.current;
-    if (!dom || !pane) return;
+    if (!dom || !pane) {
+      setHandle(null);
+      return;
+    }
+    hoveredBlock.current = dom;
     const column = dom.parentElement?.matches('[data-note-column]') ?? false;
     setHandle({
       from,
@@ -217,6 +222,16 @@ export default function StudioVisualEditor(props: Props) {
     if (live.current.compact) {
       const block = topBlock(editor);
       if (block) updateHandle(editor, block.from);
+    } else if (hoveredBlock.current) {
+      const dom = hoveredBlock.current;
+      if (editor.view.dom.contains(dom)) {
+        const block = topBlock(editor, editor.view.posAtDOM(dom, 0));
+        if (block) updateHandle(editor, block.from);
+        else setHandle(null);
+      } else {
+        hoveredBlock.current = null;
+        setHandle(null);
+      }
     }
     const before = $from.parent.textBetween(
       0,
@@ -286,6 +301,15 @@ export default function StudioVisualEditor(props: Props) {
     );
   }
   refreshRef.current = refresh;
+
+  useEffect(() => {
+    const pane = scroller.current;
+    if (!pane) return;
+    const observer = new ResizeObserver(() => refreshRef.current());
+    observer.observe(pane);
+    if (host.current) observer.observe(host.current);
+    return () => observer.disconnect();
+  }, []);
 
   function insertMarkdown(markdown: string) {
     const editor = editorRef.current;
@@ -939,6 +963,7 @@ export default function StudioVisualEditor(props: Props) {
     emissions.current = emissionsFrom(props.body);
     setSlash(null);
     setWiki(null);
+    hoveredBlock.current = null;
     setHandle(null);
     setRawEdit(null);
     setLink(null);
@@ -956,6 +981,7 @@ export default function StudioVisualEditor(props: Props) {
       setSlash(null);
       setWiki(null);
       setSelectionPoint(null);
+      hoveredBlock.current = null;
       setHandle(null);
       setLink(null);
       setRawEdit(null);
@@ -1099,7 +1125,57 @@ export default function StudioVisualEditor(props: Props) {
         onPointerMove={marquee.move}
         onPointerUp={marquee.up}
         onPointerCancel={marquee.cancel}
-        onScroll={() => refreshRef.current()}
+        onMouseLeave={() => {
+          if (props.compact || menu.key !== null || pointerDrag.current) return;
+          hoveredBlock.current = null;
+          setHandle(null);
+        }}
+        onMouseMove={(event) => {
+          if (
+            props.compact ||
+            menu.key !== null ||
+            pointerDrag.current ||
+            !editor
+          )
+            return;
+          const target = event.target as HTMLElement;
+          if (target.closest('.studio-rich-handle')) return;
+          let element = target;
+          const root = editor.view.dom;
+          if (root.contains(element) && element !== root) {
+            while (
+              element.parentElement &&
+              element.parentElement !== root &&
+              !element.parentElement.matches('[data-note-column]')
+            )
+              element = element.parentElement;
+            const block = topBlock(editor, editor.view.posAtDOM(element, 0));
+            if (block) {
+              updateHandle(editor, block.from);
+              return;
+            }
+          }
+          // Keep the gutter reachable while moving from text to its buttons.
+          const rect = hoveredBlock.current?.getBoundingClientRect();
+          if (
+            rect &&
+            handle &&
+            event.clientY >= rect.top &&
+            event.clientY <= rect.bottom &&
+            event.clientX >= rect.left - 76 &&
+            event.clientX <= rect.right
+          )
+            return;
+          hoveredBlock.current = null;
+          setHandle(null);
+        }}
+        onScroll={() => {
+          if (!props.compact && menu.key === null && !pointerDrag.current) {
+            hoveredBlock.current = null;
+            setHandle(null);
+          }
+          refreshRef.current();
+        }}
         onDragOver={(event) => {
           const from = dragFrom.current ?? nativeDragFrom.current;
           if (from === null || !editor) return;
@@ -1146,30 +1222,7 @@ export default function StudioVisualEditor(props: Props) {
           );
         }}
       >
-        <div
-          className="studio-rich-page"
-          onMouseMove={(event) => {
-            if (menu.key !== null || dragFrom.current !== null || !editor)
-              return;
-            let element = event.target as HTMLElement;
-            const root = editor.view.dom;
-            while (
-              element.parentElement &&
-              element.parentElement !== root &&
-              !element.parentElement.matches('[data-note-column]')
-            )
-              element = element.parentElement;
-            if (
-              element.parentElement === root ||
-              element.parentElement?.matches('[data-note-column]')
-            ) {
-              editor.state.doc.descendants((_node, pos) => {
-                if (editor.view.nodeDOM(pos) === element)
-                  updateHandle(editor, pos);
-              });
-            }
-          }}
-        >
+        <div className="studio-rich-page">
           <div ref={host} />
           {marquee.box && (
             <div
