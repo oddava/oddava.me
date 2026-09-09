@@ -29,7 +29,7 @@ export function youtubeEmbedUrl(value: string): string | null {
       )
         id = parts[1]!;
     }
-    if (!id || !/^[a-zA-Z0-9_-]{11}$/.test(id)) return null;
+    if (!id || !/^[a-zA-Z0-9_-]{10,11}$/.test(id)) return null;
     const time =
       url.searchParams.get('start') ?? url.searchParams.get('t') ?? '';
     const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(time);
