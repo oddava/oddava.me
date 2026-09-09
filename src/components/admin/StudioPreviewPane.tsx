@@ -1,6 +1,6 @@
 import { useMemo } from 'preact/hooks';
 import { renderNote } from '../../lib/garden/render';
-import { bodyProvidesTitleHeading } from '../../lib/garden/utils';
+import { shouldShowNoteTitle } from '../../lib/garden/utils';
 
 interface Props {
   body: string;
@@ -37,7 +37,7 @@ export default function StudioPreviewPane({
     () => (body.trim() ? renderNote(body, { wikiLinkHrefs }) : null),
     [body, wikiLinkHrefs],
   );
-  const showShellTitle = !bodyProvidesTitleHeading(body);
+  const showShellTitle = shouldShowNoteTitle(body);
   const headings =
     rendered && rendered.headings.length >= 2 ? rendered.headings : [];
 
@@ -54,9 +54,7 @@ export default function StudioPreviewPane({
               dangerouslySetInnerHTML={{ __html: rendered.html }}
             />
           ) : (
-            <p className="studio-preview__stub">
-              this note is still a stub — nothing here yet.
-            </p>
+            <p className="studio-preview__stub"></p>
           )}
         </article>
         {headings.length > 0 && (

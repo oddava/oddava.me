@@ -22,6 +22,9 @@ import { Markdown } from '@tiptap/markdown';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { RichImage } from './studioRichImage';
+import { YoutubeVideo } from './studioYoutube';
+import { youtubeEmbedUrl } from '../../lib/garden/youtube';
+import StudioSheet from './StudioSheet';
 import type { ImageEditRequest } from './StudioImageDialog';
 import type { ImageMarkupOptions } from './studioEditorCommands';
 import { TableKit } from '@tiptap/extension-table';
@@ -168,6 +171,11 @@ export default function StudioVisualEditor(props: Props) {
     point: Point;
   } | null>(null);
   const [linkError, setLinkError] = useState('');
+  const [youtube, setYoutube] = useState<{ url: string; from: number } | null>(
+    null,
+  );
+  const [youtubeError, setYoutubeError] = useState('');
+  const youtubeInput = useRef<HTMLInputElement>(null);
   const [rawEdit, setRawEdit] = useState<{ from: number; raw: string } | null>(
     null,
   );
@@ -401,6 +409,10 @@ export default function StudioVisualEditor(props: Props) {
       table: commands.table,
       divider: commands.divider,
       image: () => live.current.onRequestImage(),
+      youtube: () => {
+        setYoutubeError('');
+        setYoutube({ url: '', from: editor.state.selection.from });
+      },
       link: showLink,
       wikilink: () => editor.commands.insertContent('[['),
       date: () =>
@@ -493,6 +505,7 @@ export default function StudioVisualEditor(props: Props) {
         TaskList,
         TaskItem.configure({ nested: true }),
         RichImage,
+        YoutubeVideo,
         BlockSelectionExtension,
         Columns,
         Column,
@@ -600,6 +613,26 @@ export default function StudioVisualEditor(props: Props) {
             return true;
           }
           const mod = event.metaKey || event.ctrlKey;
+          if (
+            mod &&
+            !event.altKey &&
+            !event.shiftKey &&
+            event.key.toLowerCase() === 'a'
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            const { $from } = editor.state.selection;
+            if ($from.parent.isTextblock) {
+              editor.commands.setTextSelection({
+                from: $from.start(),
+                to: $from.end(),
+              });
+            } else {
+              const block = topBlock(editor);
+              if (block) editor.commands.setNodeSelection(block.from);
+            }
+            return true;
+          }
           if (
             !mod &&
             (event.key === 'Backspace' || event.key === 'Delete') &&
@@ -966,6 +999,7 @@ export default function StudioVisualEditor(props: Props) {
     hoveredBlock.current = null;
     setHandle(null);
     setRawEdit(null);
+    setYoutube(null);
     setLink(null);
   }, [props.body]);
 
@@ -985,6 +1019,7 @@ export default function StudioVisualEditor(props: Props) {
       setHandle(null);
       setLink(null);
       setRawEdit(null);
+      setYoutube(null);
       menu.close();
     }
   }, [props.visible]);
@@ -1118,6 +1153,75 @@ export default function StudioVisualEditor(props: Props) {
 
   return (
     <div className="studio-rich-shell">
+      <StudioSheet
+        open={youtube !== null}
+        title="Embed YouTube video"
+        initialFocus={youtubeInput}
+        onClose={() => {
+          setYoutube(null);
+          editor?.commands.focus();
+        }}
+      >
+        <form
+          className="studio-youtube-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!youtube || !editor) return;
+            const src = youtubeEmbedUrl(youtube.url);
+            if (!src) {
+              setYoutubeError(
+                'Enter a valid YouTube video link (watch, share, Shorts, or live).',
+              );
+              return;
+            }
+            editor
+              .chain()
+              .focus()
+              .setTextSelection(youtube.from)
+              .insertContent([
+                { type: 'youtubeVideo', attrs: { src } },
+                { type: 'paragraph' },
+              ])
+              .run();
+            setYoutube(null);
+          }}
+        >
+          <label for="studio-youtube-url">YouTube link</label>
+          <input
+            ref={youtubeInput}
+            id="studio-youtube-url"
+            className="admin-input"
+            type="url"
+            required
+            placeholder="https://www.youtube.com/watch?v=…"
+            value={youtube?.url ?? ''}
+            aria-invalid={Boolean(youtubeError)}
+            aria-describedby={youtubeError ? 'studio-youtube-error' : undefined}
+            onInput={(event) => {
+              if (youtube)
+                setYoutube({ ...youtube, url: event.currentTarget.value });
+              setYoutubeError('');
+            }}
+          />
+          {youtubeError && (
+            <p id="studio-youtube-error" role="alert">
+              {youtubeError}
+            </p>
+          )}
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                setYoutube(null);
+                editor?.commands.focus();
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit">Embed video</button>
+          </div>
+        </form>
+      </StudioSheet>
       <div
         className="studio-rich-scroll"
         ref={scroller}

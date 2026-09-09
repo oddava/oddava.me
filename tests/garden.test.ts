@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bodyProvidesTitleHeading,
+  shouldShowNoteTitle,
   buildWikiLinkHrefLookup,
   deriveNoteSocialImage,
   deriveSummary,
@@ -98,6 +99,14 @@ describe('notes helpers', () => {
     expect(bodyProvidesTitleHeading('Just a paragraph, no headings.')).toBe(
       false,
     );
+  });
+
+  it('does not create a heading for a cleared note', () => {
+    expect(shouldShowNoteTitle('')).toBe(false);
+    expect(shouldShowNoteTitle(' \n\t\n')).toBe(false);
+    expect(shouldShowNoteTitle('# Authored title')).toBe(false);
+    expect(shouldShowNoteTitle('A paragraph.')).toBe(true);
+    expect(shouldShowNoteTitle('## A section')).toBe(true);
   });
 
   it('uses the first real paragraph as the summary', () => {

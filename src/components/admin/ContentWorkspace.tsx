@@ -132,14 +132,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     body,
     saveState,
     saveNow,
-    setAutosave,
     closeIfOpen,
     open: openDocument,
   } = doc;
-
-  useEffect(() => {
-    setAutosave(session.autosave);
-  }, [setAutosave, session.autosave]);
 
   const hasBody = collection?.body ?? true;
   const view: ViewMode = session.view;
@@ -555,10 +550,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         cycleView();
         return;
       }
-      if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
-        event.preventDefault();
-        patchSession({ focusMode: !session.focusMode });
-      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -566,7 +557,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     // listener is re-bound whenever one of them changes.
   }, [
     session.sidebarCollapsed,
-    session.focusMode,
     openId,
     openIds,
     phone,
@@ -650,12 +640,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       title: session.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar',
       hint: '⌘\\',
       run: () => patchSession({ sidebarCollapsed: !session.sidebarCollapsed }),
-    },
-    {
-      id: 'toggle-focus',
-      title: session.focusMode ? 'Leave focus mode' : 'Focus mode',
-      hint: '⌘⇧F',
-      run: () => patchSession({ focusMode: !session.focusMode }),
     },
   ];
   if (openId) {
@@ -910,8 +894,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   compact={phone}
                   keyboardOpen={keyboardOpen}
                   sidebarVisible={sidebarVisible}
-                  autosave={session.autosave}
-                  focusMode={session.focusMode}
                   saveState={saveState}
                   savedAt={doc.savedAt}
                   uploading={busyKey === 'upload-body'}
@@ -920,21 +902,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   focusRef={focusRef}
                   commands={editorCommands}
                   wikiMenu={wikiMenu}
-                  onToggleSidebar={() =>
-                    patchSession({ sidebarCollapsed: sidebarVisible })
-                  }
                   onOpenFiles={() => setSidebarCollapsed(false)}
                   onSetView={(next) => patchSession({ view: next })}
-                  onToggleAutosave={() => {
-                    const autosave = !session.autosave;
-                    doc.setAutosave(autosave);
-                    patchSession({ autosave });
-                    if (!autosave) doc.clearScheduledSave();
-                    else if (doc.hasPendingWrites()) void doc.saveNow();
-                  }}
-                  onToggleFocusMode={() =>
-                    patchSession({ focusMode: !session.focusMode })
-                  }
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {
                     doc.setBody(value);

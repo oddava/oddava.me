@@ -28,7 +28,7 @@ export default defineConfig({
         "connect-src 'self'",
         "font-src 'self'",
         "form-action 'self'",
-        "frame-src 'none'",
+        'frame-src https://www.youtube-nocookie.com',
         "img-src 'self' data: https:",
         "object-src 'none'",
       ],

@@ -292,24 +292,6 @@
   --studio-measure: 44rem;
 }
 
-.studio-surface.is-focused {
-  --studio-measure: 40rem;
-}
-
-/* Focus mode dims the chrome rather than removing it — the save state is the
-   one thing a writer must never have to go looking for, so it comes back on
-   hover and whenever anything inside it has keyboard focus. */
-.studio-editor:has(.studio-surface.is-focused)
-  :is(.studio-bar, .studio-status) {
-  opacity: 0.32;
-  transition: opacity var(--studio-slow) var(--studio-ease-soft);
-}
-
-.studio-editor:has(.studio-surface.is-focused)
-  :is(.studio-bar, .studio-status):is(:hover, :focus-within) {
-  opacity: 1;
-}
-
 @keyframes studio-drop-marker {
   from {
     opacity: 0;

@@ -1,4 +1,22 @@
 /* A continuous page. ProseMirror owns the descendants of .studio-rich-content. */
+.studio-youtube-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+.studio-youtube-form > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.studio-youtube-form button {
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+  cursor: pointer;
+}
 .studio-visual-host {
   display: flex;
   flex: 1;

@@ -4,7 +4,6 @@ import type { SaveState } from './studioSession';
 interface Props {
   state: SaveState;
   savedAt: number | null;
-  manual: boolean;
   onSave: () => void;
 }
 
@@ -21,12 +20,7 @@ function SavedIcon() {
   );
 }
 
-export default function StudioSaveIndicator({
-  state,
-  savedAt,
-  manual,
-  onSave,
-}: Props) {
+export default function StudioSaveIndicator({ state, savedAt, onSave }: Props) {
   const [, force] = useState(0);
   // Re-render occasionally so "saved 2m ago" stays honest.
   useEffect(() => {
@@ -35,9 +29,7 @@ export default function StudioSaveIndicator({
     return () => window.clearInterval(timer);
   }, [state, savedAt]);
 
-  // In manual mode, the indicator doubles as the Save button once there are
-  // unsaved changes — one control, no extra chrome.
-  if (manual && (state === 'dirty' || state === 'error')) {
+  if (state === 'error') {
     return (
       <button
         type="button"
@@ -47,22 +39,19 @@ export default function StudioSaveIndicator({
         title="Save now (⌘S)"
       >
         <span className="studio-save__dot" aria-hidden="true" />
-        {state === 'error' ? 'Retry save' : 'Save'}
+        Retry save
       </button>
     );
   }
 
-  let label = manual ? 'Manual save' : 'Saved';
-  let tone = manual ? 'idle' : 'saved';
+  let label = 'Saved';
+  let tone = 'saved';
   if (state === 'saving') {
     label = 'Saving…';
     tone = 'saving';
   } else if (state === 'dirty') {
     label = 'Unsaved';
     tone = 'dirty';
-  } else if (state === 'error') {
-    label = 'Save failed';
-    tone = 'error';
   } else if (state === 'saved') {
     tone = 'saved';
     const seconds = savedAt ? Math.round((Date.now() - savedAt) / 1000) : 0;

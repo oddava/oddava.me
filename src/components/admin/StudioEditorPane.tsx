@@ -1,6 +1,5 @@
 import type { ImageEditRequest } from './StudioImageDialog';
-import StudioControlMenu from './StudioControlMenu';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import type { TargetedClipboardEvent, TargetedKeyboardEvent } from 'preact';
 import StudioSaveIndicator from './StudioSaveIndicator';
@@ -30,8 +29,6 @@ interface Props {
   compact: boolean;
   keyboardOpen: boolean;
   sidebarVisible: boolean;
-  autosave: boolean;
-  focusMode: boolean;
   saveState: SaveState;
   savedAt: number | null;
   uploading: boolean;
@@ -40,12 +37,9 @@ interface Props {
   focusRef: MutableRef<(() => void) | null>;
   commands: EditorCommands;
   wikiMenu: ReturnType<typeof useWikiLinkAutocomplete>;
-  onToggleSidebar: () => void;
   /** The dock's way back to Files. Phone layout only. */
   onOpenFiles: () => void;
   onSetView: (view: ViewMode) => void;
-  onToggleAutosave: () => void;
-  onToggleFocusMode: () => void;
   onSave: () => void;
   onBodyChange: (value: string) => void;
   onShortcut: (event: TargetedKeyboardEvent<HTMLTextAreaElement>) => boolean;
@@ -123,8 +117,6 @@ export default function StudioEditorPane({
   compact,
   keyboardOpen,
   sidebarVisible,
-  autosave,
-  focusMode,
   saveState,
   savedAt,
   uploading,
@@ -133,11 +125,8 @@ export default function StudioEditorPane({
   focusRef,
   commands,
   wikiMenu,
-  onToggleSidebar,
   onOpenFiles,
   onSetView,
-  onToggleAutosave,
-  onToggleFocusMode,
   onSave,
   onBodyChange,
   onShortcut,
@@ -147,6 +136,25 @@ export default function StudioEditorPane({
   onNotice,
 }: Props) {
   const sourceRef = useRef<HTMLTextAreaElement | null>(null);
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const reveal = () => setTyping(false);
+    const keyboardReveal = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' || event.key === 'Escape') reveal();
+    };
+    window.addEventListener('pointermove', reveal);
+    window.addEventListener('pointerdown', reveal);
+    window.addEventListener('keydown', keyboardReveal, true);
+    return () => {
+      window.removeEventListener('pointermove', reveal);
+      window.removeEventListener('pointerdown', reveal);
+      window.removeEventListener('keydown', keyboardReveal, true);
+    };
+  }, []);
+  useEffect(() => setTyping(false), [view, publishedUrl, sidebarVisible]);
+  useEffect(() => {
+    if (saveState === 'error') setTyping(false);
+  }, [saveState]);
   useEffect(() => {
     if (compact && sidebarVisible) wikiMenu.close();
   }, [compact, sidebarVisible]);
@@ -190,22 +198,13 @@ export default function StudioEditorPane({
 
   return (
     <>
-      <header className="studio-bar">
-        <button
-          type="button"
-          className="studio-bar__toggle"
-          aria-label={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
-          title="Toggle sidebar (⌘\\)"
-          onClick={onToggleSidebar}
-        >
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" />
-            <path d="M7.75 3.75v12.5" />
-          </svg>
-        </button>
+      <header
+        className={`studio-bar${typing ? ' is-typing' : ''}`}
+        inert={typing}
+        aria-hidden={typing}
+      >
         <div className="studio-bar__title">
           <strong>{title}</strong>
-          <code>{publishedUrl}</code>
         </div>
         {!compact && viewSwitch}
         {compact && keyboardOpen && (
@@ -228,39 +227,8 @@ export default function StudioEditorPane({
           <StudioSaveIndicator
             state={saveState}
             savedAt={savedAt}
-            manual={!autosave}
             onSave={onSave}
           />
-          <StudioControlMenu label="Editor options" settings>
-            <button
-              type="button"
-              className="studio-option"
-              role="switch"
-              aria-checked={autosave}
-              aria-label="Autosave"
-              onClick={onToggleAutosave}
-            >
-              <span>
-                Autosave<small>Save changes as you write</small>
-              </span>
-              <span className="studio-option__switch" aria-hidden="true" />
-            </button>
-            {view !== 'preview' && (
-              <button
-                type="button"
-                className="studio-option"
-                role="switch"
-                aria-checked={focusMode}
-                aria-label="Focus mode"
-                onClick={onToggleFocusMode}
-              >
-                <span>
-                  Focus mode<small>Dim the file sidebar</small>
-                </span>
-                <span className="studio-option__switch" aria-hidden="true" />
-              </button>
-            )}
-          </StudioControlMenu>
           {publishedUrl && (
             <a
               className="studio-bar__open"
@@ -281,7 +249,16 @@ export default function StudioEditorPane({
       </header>
 
       <div
-        className={`studio-surface is-${view} ${focusMode ? 'is-focused' : ''}`}
+        className={`studio-surface is-${view}`}
+        onInput={(event) => {
+          if (
+            (event.target as HTMLElement).matches(
+              '.studio-rich-content, .studio-textarea',
+            )
+          )
+            setTyping(true);
+        }}
+        onFocusOut={() => setTyping(false)}
       >
         <div hidden={view !== 'visual'} className="studio-visual-host">
           <StudioVisualEditor
@@ -407,9 +384,7 @@ export default function StudioEditorPane({
 
       {compact && (
         <footer className="studio-dock">
-          {/* Navigation belongs at the bottom of a phone, not in the top-left
-              corner — the one place a thumb cannot reach. The title bar keeps
-              its toggle for anyone already up there. */}
+          {/* Keep Files within thumb reach, including while typing. */}
           <button
             type="button"
             className="studio-dock__files"

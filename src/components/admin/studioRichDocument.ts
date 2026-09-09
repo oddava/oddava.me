@@ -1,5 +1,6 @@
 import { readColumns } from '../../lib/garden/columns';
 import { parseImageMarkup } from './studioRichImage';
+import { parseYoutubeMarkup } from './studioYoutube';
 import {
   Node,
   nodeInputRule,
@@ -136,6 +137,11 @@ export class RichDocument {
         continue;
       }
       const image = parseImageMarkup(block.raw);
+      const youtube = parseYoutubeMarkup(block.raw);
+      if (youtube) {
+        content.push({ type: 'youtubeVideo', attrs: youtube });
+        continue;
+      }
       if (image) {
         content.push({ type: 'image', attrs: image });
         continue;

@@ -41,7 +41,6 @@ export interface StudioDocument {
   closeIfOpen: (id: string) => void;
   saveNow: () => Promise<boolean>;
   clearScheduledSave: () => void;
-  setAutosave: (enabled: boolean) => void;
   hasPendingWrites: () => boolean;
 }
 
@@ -69,10 +68,7 @@ export function useStudioDocument({
   const openRequestRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const saveNowRef = useRef<() => Promise<boolean>>(async () => true);
-  // Mirror the autosave preference in a ref so the save loop reads the latest
-  // value without re-subscribing.
-  const autosaveRef = useRef(true);
-  // Same for the callbacks, so `saveNow` keeps a stable identity.
+  // Mirror callbacks so `saveNow` keeps a stable identity.
   const onSavedRef = useRef(onSaved);
   const onErrorRef = useRef(onError);
   onSavedRef.current = onSaved;
@@ -149,10 +145,7 @@ export function useStudioDocument({
       } catch (caught) {
         saved = false;
         if (docRef.current?.id === snapshot.id) {
-          if (
-            (caught as Error & { code?: string }).code === 'content_busy' &&
-            autosaveRef.current
-          ) {
+          if ((caught as Error & { code?: string }).code === 'content_busy') {
             setSaveState('dirty');
             onErrorRef.current(null);
             scheduleSave();
@@ -185,11 +178,7 @@ export function useStudioDocument({
   // on hide too — otherwise closing the tab after a save error loses them silently.
   useEffect(() => {
     function onVisibilityChange() {
-      if (
-        document.visibilityState === 'hidden' &&
-        autosaveRef.current &&
-        hasUnsavedWork
-      ) {
+      if (document.visibilityState === 'hidden' && hasUnsavedWork) {
         void saveNow();
       }
     }
@@ -214,7 +203,7 @@ export function useStudioDocument({
       docRef.current = { ...doc, ...next };
       documentVersionRef.current += 1;
       setSaveState('dirty');
-      if (autosaveRef.current) scheduleSave();
+      scheduleSave();
     },
     [scheduleSave],
   );
@@ -304,10 +293,6 @@ export function useStudioDocument({
     [clearScheduledSave],
   );
 
-  const setAutosave = useCallback((enabled: boolean) => {
-    autosaveRef.current = enabled;
-  }, []);
-
   const hasPendingWrites = useCallback(
     () => documentVersionRef.current > persistedVersionRef.current,
     [],
@@ -328,7 +313,6 @@ export function useStudioDocument({
     closeIfOpen,
     saveNow,
     clearScheduledSave,
-    setAutosave,
     hasPendingWrites,
   };
 }
