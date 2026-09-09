@@ -111,6 +111,64 @@ async function openNote(page: Page) {
   ).toBeVisible();
 }
 
+test('block controls follow hovered text and sidebar controls replace the header', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'desktop',
+    'Pointer hover uses the desktop layout',
+  );
+  await setup(page);
+  await openNote(page);
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const grip = page.getByRole('button', { name: 'Block actions', exact: true });
+  await page.mouse.move(0, 0);
+  await expect(grip).toBeHidden();
+  const paragraph = editor.locator('p').last();
+  await paragraph.hover();
+  await expect(grip).toBeVisible();
+  const aligned = async () => {
+    const block = await paragraph.boundingBox();
+    const button = await grip.boundingBox();
+    return Boolean(
+      block && button && Math.abs(block.y - button.y) < 6 && button.x < block.x,
+    );
+  };
+  await expect.poll(aligned).toBe(true);
+  const surface = await page.locator('.studio-rich-scroll').boundingBox();
+  await page.mouse.move(
+    surface!.x + surface!.width / 2,
+    surface!.y + surface!.height - 15,
+  );
+  await expect(grip).toBeHidden();
+  await paragraph.hover();
+  await page.keyboard.press('Control+\\');
+  await expect(
+    page.getByRole('button', { name: 'Show Files explorer' }),
+  ).toHaveText('#');
+  await expect.poll(aligned).toBe(true);
+  await paragraph.hover();
+  await grip.hover();
+  await expect(grip).toBeVisible();
+  await grip.click();
+  await expect(
+    page.getByRole('menu', { name: /Actions for this/ }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.mouse.move(0, 0);
+  await expect(grip).toBeHidden();
+  await page.getByRole('button', { name: 'Show Files explorer' }).click();
+  const sidebar = page.getByRole('region', { name: 'Files explorer' });
+  await sidebar.getByRole('button', { name: 'Quick open file' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.studio-workbench-nav')).toHaveCount(0);
+  await sidebar.getByRole('button', { name: 'Close Files explorer' }).click();
+  await page.getByRole('button', { name: 'Show Files explorer' }).click();
+  await paragraph.hover();
+  await page.screenshot({ path: 'test-results/studio-sidebar-hover.png' });
+});
+
 test('continuous typing, slash blocks, formatting, undo and Markdown round trip', async ({
   page,
 }, info) => {
@@ -452,15 +510,9 @@ test('editor controls preserve settings and keyboard focus', async ({
     'data-tone',
     'saved',
   );
-  await page.getByRole('button', { name: 'Workspace menu' }).click();
-  await expect(
-    page.getByRole('link', { name: 'Admin', exact: true }),
-  ).toHaveAttribute('href', '/admin');
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
-  await editor.click();
   await expect(
     page.getByRole('button', { name: 'Workspace menu' }),
-  ).toHaveAttribute('aria-expanded', 'false');
+  ).toHaveCount(0);
 });
 
 test('phone typing keeps the page spacious and Files covers editor controls', async ({
@@ -507,7 +559,9 @@ test('phone typing keeps the page spacious and Files covers editor controls', as
   await page.keyboard.press('Control+Home');
   await page.keyboard.press('Control+Shift+ArrowRight');
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
-  await page.getByRole('button', { name: 'Show sidebar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Show Files explorer', exact: true })
+    .click();
   await expect(
     page.getByRole('toolbar', { name: 'Formatting' }),
   ).not.toBeVisible();

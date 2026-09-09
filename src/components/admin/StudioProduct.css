@@ -17,6 +17,19 @@
 .studio-sidebar {
   background: var(--admin-surface);
 }
+.studio-sidebar-open {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 5;
+  font-size: 22px;
+}
+.content-workspace .studio-grid--collapsed .studio-bar {
+  padding-left: 50px;
+}
+.content-workspace .studio-workbench .studio-bar__toggle {
+  display: none;
+}
 .content-workspace .studio-explorer__heading {
   padding: 16px 16px 8px;
   border: 0;
