@@ -2,6 +2,7 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import LinkIcon from '../components/LinkIcon.astro';
+import LivingFolio from '../components/LivingFolio.astro';
 import '../styles/components/_home.css';
 ---
 
@@ -10,6 +11,7 @@ import '../styles/components/_home.css';
   description="the notebook i keep out in the open — things i'm making, reading, and thinking about."
   hideNav
 >
+  <LivingFolio slot="background" />
   <section class="home-hero home-hero--intro">
     {
       /* Business card: name, then one breath of who, then the three stations.

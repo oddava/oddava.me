@@ -1,9 +1,9 @@
 /* The notes landscape is the page, not a component placed inside one. */
 
 .knowledge-landscape {
-  --landscape-ground: #0c0e11;
-  --landscape-ink: #e4e8ee;
-  --landscape-panel: #13161b;
+  --landscape-ground: var(--color-surface);
+  --landscape-ink: var(--color-text-primary);
+  --landscape-panel: var(--color-surface-elevated);
   --landscape-line: color-mix(in srgb, var(--landscape-ink) 11%, transparent);
   --landscape-line-strong: color-mix(
     in srgb,
@@ -290,11 +290,7 @@
 }
 
 .knowledge-landscape__region-count {
-  fill: color-mix(
-    in srgb,
-    var(--landscape-tone) 58%,
-    var(--color-text-disabled)
-  );
+  fill: color-mix(in srgb, var(--landscape-tone) 58%, var(--color-text-muted));
   stroke-width: 5px;
   font: 7.5px var(--font-mono);
   letter-spacing: 0.05em;
@@ -439,7 +435,7 @@
   align-items: center;
   gap: 0.35rem;
   min-height: 2.6rem;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   font: 0.66rem var(--font-mono);
 }
 
@@ -519,7 +515,7 @@
   align-items: center;
   gap: 0.1rem;
   overflow: hidden;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   font: 0.59rem var(--font-mono);
   transform: translateX(-50%);
   white-space: nowrap;
@@ -580,7 +576,7 @@
   place-items: center;
   border: 0;
   border-bottom: 1px solid var(--landscape-line);
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   background: transparent;
   font: 0.9rem var(--font-mono);
   cursor: pointer;
@@ -601,7 +597,7 @@
   left: 50%;
   margin: 0;
   padding: 0.45rem 0.7rem;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   background: color-mix(in srgb, var(--landscape-ground) 92%, transparent);
   font: 0.55rem var(--font-mono);
   pointer-events: none;
@@ -650,7 +646,7 @@
   place-items: center;
   border: 0;
   border-radius: 0.4rem;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   background: transparent;
   cursor: pointer;
   transition:
@@ -865,7 +861,7 @@
   height: 2.4rem;
   place-items: center;
   border: 0;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   background: transparent;
   cursor: pointer;
 }
@@ -920,7 +916,7 @@
 
 .knowledge-landscape__search-panel li.is-empty {
   padding: 2rem 1rem;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   font-size: 0.72rem;
   text-align: center;
 }

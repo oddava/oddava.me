@@ -63,9 +63,7 @@
   flex-direction: column;
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-lg);
-  /* Terminal-dark: darker than the page surface (#0c0e11) so the palette reads
-     as a sunk-in panel rather than another card on the page. */
-  background: #06070a;
+  background: var(--color-surface-elevated);
   overflow: hidden;
   animation: note-search-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transform-origin: top center;

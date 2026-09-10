@@ -3,12 +3,10 @@ import '../styles/global.css';
 import LoadingIndicator from '../components/LoadingIndicator.astro';
 import Footer from '../components/Footer.astro';
 import PagePreview from '../components/PagePreview.astro';
-import ParticleField from '../components/ParticleField.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
 import SiteNav from '../components/SiteNav.astro';
-import type { ParticlePresetName } from '../lib/particles/presets';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
 export interface Props extends SiteHeadProps {
@@ -16,9 +14,6 @@ export interface Props extends SiteHeadProps {
   /** The homepage hero is its own navigation; every other page shows the nav. */
   hideNav?: boolean;
   wide?: boolean;
-  /** Overrides the drift field the route would choose, or removes it entirely
-   *  for a page that composes its own full-bleed canvas. */
-  particles?: ParticlePresetName | false;
 }
 
 const {
@@ -31,7 +26,6 @@ const {
   hideFooter = false,
   hideNav = false,
   wide = false,
-  particles,
 } = Astro.props;
 
 const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
@@ -46,7 +40,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
   </head>
   <body>
     {hideNav && <LoadingIndicator />}
-    {particles !== false && <ParticleField preset={particles} />}
+    <slot name="background" />
     <div class:list={['page', wide && 'page--wide']}>
       <a href="#main" class="skip-link">Skip to content</a>
 
