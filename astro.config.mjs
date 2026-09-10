@@ -12,7 +12,22 @@ const spotifyWidgetEnabled =
   'false';
 
 export default defineConfig({
-  integrations: [preact()],
+  integrations: [
+    preact(),
+    {
+      name: 'isolated-vite-cache',
+      hooks: {
+        'astro:config:setup': ({ command, updateConfig }) => {
+          // Sync/check disables server optimization, while dev enables it.
+          // Sharing a cache lets either process replace the other's chunks.
+          // Browser tests also use Vite's default cache, outside these folders.
+          updateConfig({
+            vite: { cacheDir: `node_modules/.vite/astro-${command}` },
+          });
+        },
+      },
+    },
+  ],
   compressHTML: true,
   devToolbar: { enabled: false },
   // Notes render at runtime through `marked`, so Astro's own Markdown pipeline
@@ -60,18 +75,9 @@ export default defineConfig({
     define: {
       __SPOTIFY_WIDGET_ENABLED__: JSON.stringify(spotifyWidgetEnabled),
     },
-    // Vite's SSR optimizer is partial by default: after a config change or a
-    // lazy discovery pass it may re-hash and leave `deps_ssr/*` files missing
-    // until a cold re-scan, which surfaces as "file does not exist … optimize
-    // deps directory" on the first hit (often under the Cloudflare workerd
-    // runner). Pin the full surface used in dev SSR so the prebundle is
-    // complete up front.
-    // - Preact islands (Guestbook, Studio, Spotify): several entry points;
-    //   `preact/compat` is required by Studio (createPortal, memo) even without
-    //   `compat: true` React aliases.
-    // - `astro/zod` (and its `zod/v4` re-export) is imported by content schemas
-    //   and garden; without a pin it is discovered mid-request and can leave a
-    //   stale `astro_zod.js` reference after optimizer reloads.
+    // Preact islands use several entry points; keeping their client bundles
+    // explicit avoids discovery reloads while leaving Cloudflare's SSR runner
+    // modules to the plugin's native handling.
     optimizeDeps: {
       include: [
         'preact',
@@ -83,20 +89,18 @@ export default defineConfig({
         'preact/devtools',
       ],
     },
-    ssr: {
-      optimizeDeps: {
-        include: [
-          'preact',
-          'preact/hooks',
-          'preact/compat',
-          'preact/jsx-runtime',
-          'preact/jsx-dev-runtime',
-          'preact/debug',
-          'preact/devtools',
-          'preact-render-to-string',
-          'astro/zod',
-          'zod/v4',
-        ],
+    environments: {
+      ssr: {
+        optimizeDeps: {
+          // These entry points are loaded by the Worker at startup, after
+          // Astro's dependency scan. Prebundle them before the runner starts
+          // so discovery cannot replace chunks it is still importing.
+          include: [
+            'astro/app/manifest',
+            'astro/logger/json',
+            '@astrojs/preact/server.js',
+          ],
+        },
       },
     },
     server: {
@@ -112,3 +116,4 @@ export default defineConfig({
     plugins: [localRedisDevProxy()],
   },
 });
+  

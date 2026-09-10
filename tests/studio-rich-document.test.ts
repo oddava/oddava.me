@@ -68,6 +68,22 @@ function open(body: string) {
 afterEach(() => editors.splice(0).forEach((editor) => editor.destroy()));
 
 describe('rich Markdown document boundary', () => {
+  it('preserves YouTube blocks through edits and Markdown reloads', () => {
+    const markup = youtubeMarkup('https://youtu.be/dQw4w9WgXc?t=90');
+    const { editor, document } = open(markup);
+    expect(editor.state.doc.firstChild?.type.name).toBe('youtubeVideo');
+    editor.commands.insertContentAt(editor.state.doc.content.size, {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'After the video' }],
+    });
+    const saved = document.serialize(editor);
+    const reloaded = open(saved);
+    expect(reloaded.editor.state.doc.firstChild?.attrs.src).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXc?start=90',
+    );
+    expect(saved).toContain(markup);
+    expect(saved).toContain('After the video');
+  });
   it('retains exact Markdown and separators in unedited siblings', () => {
     const body =
       '# Title\n\nFirst paragraph.\n\n\n* one\n* two\n\n<div style="text-align:center">\n\n**Keep this**\n\n</div>\n';

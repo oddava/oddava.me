@@ -134,6 +134,17 @@ test('YouTube slash command validates links and survives mode changes', async ({
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Embed YouTube video' });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('YouTube link')).toBeFocused();
+  await expect(
+    page.locator('.studio-sheet-scrim, .studio-imgdlg-overlay'),
+  ).toHaveCount(0);
+  const block = await editor.locator('p').boundingBox();
+  const popover = await dialog.boundingBox();
+  expect(popover!.width).toBeLessThanOrEqual(360);
+  expect(Math.abs(popover!.y - (block!.y + block!.height))).toBeLessThan(60);
+  await page.screenshot({
+    path: `test-results/youtube-popover-${page.viewportSize()!.width}.png`,
+  });
   await dialog.getByLabel('YouTube link').fill('https://example.com/video');
   await dialog
     .getByRole('button', { name: 'Embed video', exact: true })
@@ -758,25 +769,53 @@ test('local images and captions render and reopen for adjustment', async ({
     await target.tap();
     await target.tap();
   } else await target.dblclick();
-  const dialog = page.getByRole('dialog', { name: 'Edit image' });
+  const dialog = page.getByRole('dialog', { name: 'Replace image' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel('Image URL or path')).toHaveValue(
-    '/images/test.svg',
-  );
+  await expect(dialog.getByLabel('Image link')).toHaveValue('/images/test.svg');
   await expect(dialog.getByRole('tab', { name: 'Upload' })).toHaveCount(0);
-  await dialog.getByLabel('Caption (optional)').fill('Updated caption');
-  await dialog.getByRole('button', { name: 'Center', exact: true }).click();
-  await dialog.getByRole('slider', { name: 'Image width' }).fill('50');
-  await expect(dialog.locator('img')).toHaveAttribute(
-    'src',
-    '/images/test.svg',
-  );
+  await expect(dialog.locator('input')).toHaveCount(1);
+  await expect(dialog.locator('img')).toHaveCount(0);
   await page.screenshot({
     path: `test-results/image-dialog-${info.project.name}.png`,
   });
-  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await dialog.getByLabel('Image link').fill('/images/test.svg?replacement');
+  await dialog
+    .getByRole('button', { name: 'Replace image', exact: true })
+    .click();
+  await expect(target).toHaveAttribute('src', '/images/test.svg?replacement');
+  await expect(target).toHaveClass(/note-image--width-75/);
+  await expect(
+    editor.locator('figcaption').filter({ visible: true }),
+  ).toHaveText('Original caption');
+  const figure = editor.locator('[data-rich-image]').last();
+  await target.hover();
+  await figure.getByRole('button', { name: 'Image actions' }).click();
+  const actions = page.getByRole('menu', {
+    name: 'Image actions',
+    exact: true,
+  });
+  await actions.getByRole('menuitem', { name: 'Caption', exact: true }).click();
+  const captionDialog = page.getByRole('dialog', { name: 'Image caption' });
+  await captionDialog
+    .getByLabel('Caption', { exact: true })
+    .fill('Updated caption');
+  await captionDialog
+    .getByRole('button', { name: 'Save', exact: true })
+    .click();
+  await target.hover();
+  await figure.getByRole('button', { name: 'Image actions' }).click();
+  await actions
+    .getByRole('menuitemradio', { name: 'Center', exact: true })
+    .click();
+  const resize = figure.getByRole('button', {
+    name: 'Resize image from right',
+  });
+  await resize.focus();
+  for (let step = 0; step < 5; step++) await page.keyboard.press('ArrowLeft');
   await expect(editor.locator('img')).toHaveCount(2);
-  await expect(editor.locator('figcaption')).toHaveText('Updated caption');
+  await expect(
+    editor.locator('figcaption').filter({ visible: true }),
+  ).toHaveText('Updated caption');
   await expect(
     editor.getByRole('img', { name: 'Captioned image' }),
   ).toHaveClass(/note-image--width-50/);

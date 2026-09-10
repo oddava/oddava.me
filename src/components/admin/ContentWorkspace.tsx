@@ -946,7 +946,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       />
       <StudioImageDialog
         open={imageDialogOpen}
-        entries={entries}
         // The note gets the keyboard back when the dialog gives it up —
         // otherwise the block that opened the dialog is left open with the
         // focus nowhere, and the next keystroke goes to the page.

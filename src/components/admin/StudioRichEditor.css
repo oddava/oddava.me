@@ -1,4 +1,119 @@
 /* A continuous page. ProseMirror owns the descendants of .studio-rich-content. */
+.studio-editor-popover {
+  position: fixed;
+  z-index: 400;
+  width: 360px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--admin-surface, #202838);
+  color: var(--admin-text-primary, #e5e7eb);
+  border: 1px solid var(--admin-line, #354054);
+  border-radius: 12px;
+  box-shadow:
+    0 12px 36px #0005,
+    0 2px 8px #0003;
+  font: 13px/1.5 var(--font-body);
+  animation: studio-popover-in 140ms ease-out;
+}
+.studio-editor-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--admin-line, #354054);
+}
+.studio-editor-popover__head > button {
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+.studio-editor-popover__body {
+  padding: 14px;
+}
+.studio-editor-popover :is(form, .studio-editor-popover__body > div) {
+  display: grid;
+  gap: 10px;
+}
+.studio-editor-popover input:not([type='range']),
+.studio-editor-popover textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-line, #354054);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--admin-bg, #151b28);
+  font: inherit;
+}
+.studio-editor-popover textarea {
+  min-height: 150px;
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+.studio-editor-popover :is(input, textarea, button):focus-visible {
+  outline: 2px solid var(--admin-accent, #6495f5);
+  outline-offset: 2px;
+}
+.studio-editor-popover :is(form > div, footer) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.studio-editor-popover :is(form, footer) button {
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+  background: transparent;
+}
+.studio-editor-popover :is(form, footer) button:last-child {
+  background: var(--admin-accent, #6495f5);
+  color: var(--color-surface, #101522);
+}
+.studio-editor-popover button:hover {
+  filter: brightness(1.12);
+}
+.studio-editor-popover .studio-youtube-form {
+  padding: 0;
+}
+.studio-editor-popover .studio-youtube-form button[type='submit'] {
+  width: 100%;
+}
+.studio-editor-popover .studio-imgdlg__body {
+  padding: 0;
+  overflow: visible;
+}
+.studio-editor-popover .studio-imgdlg__foot {
+  padding: 12px 0 0;
+  margin-top: 12px;
+}
+.studio-editor-popover .studio-imgdlg__preview {
+  max-height: 120px;
+  overflow: hidden;
+}
+@keyframes studio-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-editor-popover {
+    animation: none;
+  }
+}
 .studio-youtube-form {
   display: grid;
   gap: 12px;
@@ -411,9 +526,81 @@
 
 /* Images occupy a whole document row; alignment never floats text beside them. */
 .studio-rich-content [data-rich-image] {
+  position: relative;
   display: flow-root;
   clear: both;
   width: 100%;
+}
+.studio-rich-content [data-image-control] {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-surface);
+  color: var(--admin-text-primary);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.studio-rich-content
+  [data-rich-image]:is(
+    :hover,
+    :focus-within,
+    .ProseMirror-selectednode,
+    .is-resizing
+  )
+  [data-image-control] {
+  opacity: 1;
+}
+.studio-image-more {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  font: 700 20px/1 sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0002;
+}
+.studio-rich-content .studio-image-resize {
+  width: 16px;
+  height: 42px;
+  padding: 0;
+  border: 5px solid transparent;
+  border-radius: 9px;
+  background-clip: padding-box;
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.studio-rich-content [data-image-control]:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.studio-image-align {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+}
+.studio-image-align button {
+  flex: 1;
+  text-align: center;
+}
+.studio-menu .studio-image-align [aria-checked='true'] {
+  background: var(--color-overlay-strong);
+}
+.studio-menu-separator {
+  height: 1px;
+  margin: 4px;
+  background: var(--color-rule);
+}
+@media (hover: none) {
+  .studio-rich-content .studio-image-more {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-rich-content [data-image-control] {
+    transition: none;
+  }
 }
 .studio-rich-content [data-rich-image] > img {
   display: block;

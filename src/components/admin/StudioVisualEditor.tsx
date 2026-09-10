@@ -24,7 +24,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import { RichImage } from './studioRichImage';
 import { YoutubeVideo } from './studioYoutube';
 import { youtubeEmbedUrl } from '../../lib/garden/youtube';
-import StudioSheet from './StudioSheet';
+import StudioEditorPopover from './StudioEditorPopover';
 import type { ImageEditRequest } from './StudioImageDialog';
 import type { ImageMarkupOptions } from './studioEditorCommands';
 import { TableKit } from '@tiptap/extension-table';
@@ -41,6 +41,7 @@ import StudioSlashMenu, {
 } from './StudioSlashMenu';
 import StudioInlineToolbar from './StudioInlineToolbar';
 import StudioBlockMenu from './StudioBlockMenu';
+import StudioContextMenu from './StudioContextMenu';
 import WikiLinkAutocomplete from './WikiLinkAutocomplete';
 import { useStudioMenu } from './useStudioMenu';
 import {
@@ -164,6 +165,14 @@ export default function StudioVisualEditor(props: Props) {
     width: number;
   } | null>(null);
   const menu = useStudioMenu<number>();
+  const imageMenu = useStudioMenu<import('@tiptap/pm/model').Node>();
+  const imageMenuRef = useRef(imageMenu);
+  imageMenuRef.current = imageMenu;
+  const [imageDetail, setImageDetail] = useState<{
+    node: import('@tiptap/pm/model').Node;
+    field: 'caption' | 'alt';
+    value: string;
+  } | null>(null);
   const [link, setLink] = useState<{
     from: number;
     to: number;
@@ -342,6 +351,34 @@ export default function StudioVisualEditor(props: Props) {
   }
 
   const imageTap = useRef({ pos: -1, time: 0 });
+  function changeImage(
+    node: import('@tiptap/pm/model').Node,
+    attrs: Record<string, unknown> | null,
+  ) {
+    const editor = editorRef.current;
+    if (!editor || editor.isDestroyed) return;
+    let position: number | null = null;
+    editor.state.doc.descendants((candidate, pos) => {
+      if (candidate === node) position = pos;
+    });
+    if (position === null) {
+      live.current.onNotice('This image is no longer in the document.');
+      return;
+    }
+    if (attrs)
+      editor.view.dispatch(
+        editor.state.tr.setNodeMarkup(position, undefined, {
+          ...node.attrs,
+          ...attrs,
+        }),
+      );
+    else
+      editor.commands.deleteRange({
+        from: position,
+        to: position + node.nodeSize,
+      });
+    editor.commands.focus();
+  }
   function editImage(node: import('@tiptap/pm/model').Node) {
     const editor = editorRef.current;
     if (!editor) return;
@@ -504,7 +541,10 @@ export default function StudioVisualEditor(props: Props) {
         }),
         TaskList,
         TaskItem.configure({ nested: true }),
-        RichImage,
+        RichImage.configure({
+          onActions: (node, trigger) =>
+            imageMenuRef.current.toggleUnder(node, trigger),
+        }),
         YoutubeVideo,
         BlockSelectionExtension,
         Columns,
@@ -1153,75 +1193,68 @@ export default function StudioVisualEditor(props: Props) {
 
   return (
     <div className="studio-rich-shell">
-      <StudioSheet
-        open={youtube !== null}
-        title="Embed YouTube video"
-        initialFocus={youtubeInput}
-        onClose={() => {
-          setYoutube(null);
-          editor?.commands.focus();
-        }}
-      >
-        <form
-          className="studio-youtube-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!youtube || !editor) return;
-            const src = youtubeEmbedUrl(youtube.url);
-            if (!src) {
-              setYoutubeError(
-                'Enter a valid YouTube video link (watch, share, Shorts, or live).',
-              );
-              return;
-            }
-            editor
-              .chain()
-              .focus()
-              .setTextSelection(youtube.from)
-              .insertContent([
-                { type: 'youtubeVideo', attrs: { src } },
-                { type: 'paragraph' },
-              ])
-              .run();
+      {youtube && (
+        <StudioEditorPopover
+          title="Embed YouTube video"
+          onClose={() => {
             setYoutube(null);
+            editor?.commands.focus();
           }}
         >
-          <label for="studio-youtube-url">YouTube link</label>
-          <input
-            ref={youtubeInput}
-            id="studio-youtube-url"
-            className="admin-input"
-            type="url"
-            required
-            placeholder="https://www.youtube.com/watch?v=…"
-            value={youtube?.url ?? ''}
-            aria-invalid={Boolean(youtubeError)}
-            aria-describedby={youtubeError ? 'studio-youtube-error' : undefined}
-            onInput={(event) => {
-              if (youtube)
-                setYoutube({ ...youtube, url: event.currentTarget.value });
-              setYoutubeError('');
+          <form
+            className="studio-youtube-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!youtube || !editor) return;
+              const src = youtubeEmbedUrl(youtube.url);
+              if (!src) {
+                setYoutubeError(
+                  'Enter a valid YouTube video link (watch, share, Shorts, or live).',
+                );
+                return;
+              }
+              editor
+                .chain()
+                .focus()
+                .setTextSelection(youtube.from)
+                .insertContent([
+                  { type: 'youtubeVideo', attrs: { src } },
+                  { type: 'paragraph' },
+                ])
+                .run();
+              setYoutube(null);
             }}
-          />
-          {youtubeError && (
-            <p id="studio-youtube-error" role="alert">
-              {youtubeError}
-            </p>
-          )}
-          <div>
-            <button
-              type="button"
-              onClick={() => {
-                setYoutube(null);
-                editor?.commands.focus();
+          >
+            <label for="studio-youtube-url">YouTube link</label>
+            <input
+              ref={youtubeInput}
+              id="studio-youtube-url"
+              className="admin-input"
+              type="url"
+              required
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={youtube?.url ?? ''}
+              aria-invalid={Boolean(youtubeError)}
+              aria-describedby={
+                youtubeError ? 'studio-youtube-error' : undefined
+              }
+              onInput={(event) => {
+                if (youtube)
+                  setYoutube({ ...youtube, url: event.currentTarget.value });
+                setYoutubeError('');
               }}
-            >
-              Cancel
-            </button>
-            <button type="submit">Embed video</button>
-          </div>
-        </form>
-      </StudioSheet>
+            />
+            {youtubeError && (
+              <p id="studio-youtube-error" role="alert">
+                {youtubeError}
+              </p>
+            )}
+            <div>
+              <button type="submit">Embed video</button>
+            </div>
+          </form>
+        </StudioEditorPopover>
+      )}
       <div
         className="studio-rich-scroll"
         ref={scroller}
@@ -1686,98 +1719,205 @@ export default function StudioVisualEditor(props: Props) {
           </button>
         </div>
       )}
-      {link && (
-        <form
-          className="studio-rich-popover studio-link-form"
-          style={{ top: link.point.top, left: link.point.left }}
-          role="dialog"
-          aria-label="Edit link"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const url = link.url.trim();
-            if (url && !/^(https?:\/\/|mailto:|\/|#)/i.test(url)) {
-              setLinkError('Use an https:// URL, email link, or local path.');
-              return;
-            }
-            if (!editor) return;
-            const chain = editor
-              .chain()
-              .focus()
-              .setTextSelection({ from: link.from, to: link.to });
-            if (!url) chain.extendMarkRange('link').unsetLink().run();
-            else if (link.from === link.to)
-              chain
-                .insertContent({
-                  type: 'text',
-                  text: url,
-                  marks: [{ type: 'link', attrs: { href: url } }],
-                })
-                .run();
-            else chain.setLink({ href: url }).run();
-            setLink(null);
+      <StudioContextMenu
+        open={imageMenu.key !== null}
+        label="Image actions"
+        menuRef={imageMenu.ref}
+        position={imageMenu.position}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            const node = imageMenu.key;
+            imageMenu.close();
+            if (node) editImage(node);
           }}
         >
-          <label for="studio-link-url">Link destination</label>
-          <input
-            id="studio-link-url"
-            autoFocus
-            placeholder="https://example.com"
-            value={link.url}
-            onInput={(event) =>
-              setLink({ ...link, url: event.currentTarget.value })
-            }
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setLink(null);
-                editor?.commands.focus();
-              }
+          Replace image
+        </button>
+        {(['caption', 'alt'] as const).map((field) => (
+          <button
+            type="button"
+            role="menuitem"
+            key={field}
+            onClick={() => {
+              const node = imageMenu.key;
+              imageMenu.close();
+              if (node)
+                setImageDetail({ node, field, value: node.attrs[field] ?? '' });
             }}
-          />
-          {linkError && <p role="alert">{linkError}</p>}
-          <div>
+          >
+            {field === 'caption' ? 'Caption' : 'Alt text'}
+          </button>
+        ))}
+        <div
+          className="studio-image-align"
+          role="group"
+          aria-label="Image alignment"
+        >
+          {(['left', 'center', 'right'] as const).map((align) => (
             <button
               type="button"
+              role="menuitemradio"
+              aria-checked={
+                (imageMenu.key?.attrs.align === 'inline'
+                  ? 'left'
+                  : imageMenu.key?.attrs.align) === align
+              }
               onClick={() => {
-                setLink(null);
-                editor?.commands.focus();
+                const node = imageMenu.key;
+                imageMenu.close();
+                if (node) changeImage(node, { align });
               }}
             >
-              Cancel
+              {align.charAt(0).toUpperCase() + align.slice(1)}
             </button>
-            <button type="submit">Apply link</button>
-          </div>
-        </form>
+          ))}
+        </div>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            const node = imageMenu.key;
+            imageMenu.close();
+            if (node) changeImage(node, { widthPercent: 100 });
+          }}
+        >
+          Full width
+        </button>
+        <div className="studio-menu-separator" role="separator" />
+        <button
+          type="button"
+          role="menuitem"
+          className="is-danger"
+          onClick={() => {
+            const node = imageMenu.key;
+            imageMenu.close();
+            if (node) changeImage(node, null);
+          }}
+        >
+          Delete image
+        </button>
+      </StudioContextMenu>
+      {imageDetail && (
+        <StudioEditorPopover
+          title={
+            imageDetail.field === 'caption' ? 'Image caption' : 'Image alt text'
+          }
+          onClose={() => setImageDetail(null)}
+        >
+          <form
+            className="studio-editor-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              changeImage(imageDetail.node, {
+                [imageDetail.field]: imageDetail.value,
+              });
+              setImageDetail(null);
+            }}
+          >
+            <label for="studio-image-detail">
+              {imageDetail.field === 'caption' ? 'Caption' : 'Alt text'}
+            </label>
+            <input
+              id="studio-image-detail"
+              autoFocus
+              value={imageDetail.value}
+              placeholder={
+                imageDetail.field === 'caption'
+                  ? 'Add a caption…'
+                  : 'Describe the image for screen readers…'
+              }
+              onInput={(event) =>
+                setImageDetail({
+                  ...imageDetail,
+                  value: event.currentTarget.value,
+                })
+              }
+            />
+            <div>
+              <button type="submit">Save</button>
+            </div>
+          </form>
+        </StudioEditorPopover>
+      )}
+      {link && (
+        <StudioEditorPopover
+          title="Edit link"
+          onClose={() => {
+            setLink(null);
+            editor?.commands.focus();
+          }}
+        >
+          <form
+            className="studio-editor-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const url = link.url.trim();
+              if (url && !/^(https?:\/\/|mailto:|\/|#)/i.test(url)) {
+                setLinkError('Use an https:// URL, email link, or local path.');
+                return;
+              }
+              if (!editor) return;
+              const chain = editor
+                .chain()
+                .focus()
+                .setTextSelection({ from: link.from, to: link.to });
+              if (!url) chain.extendMarkRange('link').unsetLink().run();
+              else if (link.from === link.to)
+                chain
+                  .insertContent({
+                    type: 'text',
+                    text: url,
+                    marks: [{ type: 'link', attrs: { href: url } }],
+                  })
+                  .run();
+              else chain.setLink({ href: url }).run();
+              setLink(null);
+            }}
+          >
+            <label for="studio-link-url">Link destination</label>
+            <input
+              id="studio-link-url"
+              autoFocus
+              placeholder="https://example.com"
+              value={link.url}
+              onInput={(event) =>
+                setLink({ ...link, url: event.currentTarget.value })
+              }
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setLink(null);
+                  editor?.commands.focus();
+                }
+              }}
+            />
+            {linkError && <p role="alert">{linkError}</p>}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLink(null);
+                  editor?.commands.focus();
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit">Apply link</button>
+            </div>
+          </form>
+        </StudioEditorPopover>
       )}
       {rawEdit && (
-        <div
-          className="studio-source-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit custom Markdown"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              setRawEdit(null);
-              editor?.commands.focus();
-            }
-            if (event.key === 'Tab') {
-              const controls = Array.from(
-                event.currentTarget.querySelectorAll<HTMLElement>(
-                  'textarea, button',
-                ),
-              );
-              const index = controls.indexOf(
-                document.activeElement as HTMLElement,
-              );
-              event.preventDefault();
-              controls[
-                (index + (event.shiftKey ? -1 : 1) + controls.length) %
-                  controls.length
-              ]?.focus();
-            }
+        <StudioEditorPopover
+          title="Edit custom Markdown"
+          onClose={() => {
+            setRawEdit(null);
+            editor?.commands.focus();
           }}
         >
           <div>
-            <h2>Custom Markdown</h2>
             <p>Edit this block’s source.</p>
             <textarea
               aria-label="Custom Markdown source"
@@ -1813,7 +1953,7 @@ export default function StudioVisualEditor(props: Props) {
               </button>
             </footer>
           </div>
-        </div>
+        </StudioEditorPopover>
       )}
     </div>
   );
