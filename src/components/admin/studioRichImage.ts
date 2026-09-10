@@ -1,5 +1,6 @@
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import Image from '@tiptap/extension-image';
+import Image, { type ImageOptions } from '@tiptap/extension-image';
+import { imageNodeView } from './studioImageNodeView';
 import {
   buildImageMarkup,
   type ImageMarkupOptions,
@@ -42,7 +43,30 @@ export function parseImageMarkup(raw: string): ImageMarkupOptions | null {
   };
 }
 
-export const RichImage = Image.extend({
+export const RichImage = Image.extend<
+  ImageOptions & {
+    onActions: (
+      node: import('@tiptap/pm/model').Node,
+      trigger: HTMLButtonElement,
+    ) => void;
+  }
+>({
+  addOptions() {
+    return {
+      inline: false,
+      allowBase64: false,
+      HTMLAttributes: {},
+      resize: false,
+      ...this.parent?.(),
+      onActions: (
+        _node: import('@tiptap/pm/model').Node,
+        _trigger: HTMLButtonElement,
+      ) => {},
+    };
+  },
+  addNodeView() {
+    return (props) => imageNodeView(props, this.options.onActions);
+  },
   parseHTML() {
     return [
       {
