@@ -41,7 +41,7 @@
 }
 
 .prose {
-  color: color-mix(in srgb, var(--color-text-primary) 94%, transparent);
+  color: var(--color-text-primary);
   font-family: var(--font-prose);
   font-size: clamp(1.0625rem, 1.7vw, 1.125rem);
   font-weight: 400;

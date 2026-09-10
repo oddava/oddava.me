@@ -1,0 +1,61 @@
+/* One continuous printing surface, with a quiet center for the introduction. */
+.living-folio {
+  --folio-ink: #8f9aa9;
+  --folio-edge: #9dbbdf;
+  pointer-events: none;
+}
+
+.living-folio__surface {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  contain: strict;
+}
+
+.living-folio__canvas,
+.living-folio__still {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.living-folio__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.living-folio__still {
+  fill: none;
+  stroke: var(--folio-ink);
+  stroke-width: 0.6;
+  opacity: 0.22;
+}
+
+.living-folio[data-ready] .living-folio__still {
+  visibility: hidden;
+}
+
+body:has([data-folio]) .home-hero--intro {
+  padding-block: 5rem;
+}
+
+@media (forced-colors: active) {
+  .living-folio {
+    display: none;
+  }
+}
+
+/* Gestures belong to the sheet only; links and selectable copy stay native. */
+.living-folio__surface {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+body:has([data-folio]) .page {
+  pointer-events: none;
+}
+
+body:has([data-folio]) .home-hero > *,
+body:has([data-folio]) .skip-link {
+  pointer-events: auto;
+}

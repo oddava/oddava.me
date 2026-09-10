@@ -1,0 +1,38 @@
+---
+import { folioPath } from '../lib/folio/geometry';
+import '../styles/components/_living-folio.css';
+
+const stillView = {
+  width: 1440,
+  height: 1000,
+  centerX: 720,
+  centerY: 500,
+  quietWidth: 490,
+  quietHeight: 260,
+};
+---
+
+<div class="living-folio" data-folio>
+  <div class="living-folio__surface" aria-hidden="true">
+    <svg
+      class="living-folio__still"
+      viewBox="0 0 1440 1000"
+      preserveAspectRatio="xMidYMid slice"
+      focusable="false"
+    >
+      {
+        Array.from({ length: 52 }, (_, i) => (
+          <path d={folioPath(i / 51, stillView)} />
+        ))
+      }
+    </svg>
+    <canvas class="living-folio__canvas"></canvas>
+  </div>
+</div>
+
+<script>
+  import { mountFolio } from '../lib/folio/mount';
+
+  const root = document.querySelector<HTMLElement>('[data-folio]');
+  if (root) mountFolio(root);
+</script>
