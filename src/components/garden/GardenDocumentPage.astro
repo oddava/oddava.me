@@ -61,19 +61,6 @@ const isStub = !rendered.html && document.childIds.length === 0;
   </aside>
 
   <article class="garden-document">
-    {
-      /* Sits at the top right of the reading column, where the old header kept
-         it — the breadcrumb that used to share that line is gone, so the date
-         holds the corner alone. */
-      !isRoot && (
-        <p class="garden-document__tended">
-          edited{' '}
-          <time datetime={document.updated}>
-            {formatNoteDate(document.updated)}
-          </time>
-        </p>
-      )
-    }
     {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
     {
       authoredTitleHtml && (
@@ -100,6 +87,16 @@ const isStub = !rendered.html && document.childIds.length === 0;
       isStub && (
         <p class="garden-document__stub">
           this note is still a stub — nothing here yet.
+        </p>
+      )
+    }
+    {
+      !isRoot && (
+        <p class="garden-document__tended">
+          edited{' '}
+          <time datetime={document.updated}>
+            {formatNoteDate(document.updated)}
+          </time>
         </p>
       )
     }
