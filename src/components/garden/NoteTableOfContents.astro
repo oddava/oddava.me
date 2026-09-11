@@ -14,10 +14,10 @@ const { headings, variant } = Astro.props;
   headings.length >= 2 && variant === 'rail' && (
     <nav
       class="note-toc note-toc--rail note-context__section"
-      aria-label="On this page"
+      aria-label="In this note"
       data-toc-spy
     >
-      <h2 class="note-context__label">On this page</h2>
+      <h2 class="note-context__label">In this note</h2>
       <ol class="note-toc__list">
         {headings.map((heading) => (
           <li class={`note-toc__item note-toc__item--depth-${heading.depth}`}>
@@ -34,8 +34,8 @@ const { headings, variant } = Astro.props;
 {
   headings.length >= 2 && variant === 'mobile' && (
     <details class="note-toc note-toc--mobile" data-toc-spy>
-      <summary class="note-toc__summary">On this page</summary>
-      <nav aria-label="On this page">
+      <summary class="note-toc__summary">In this note</summary>
+      <nav aria-label="In this note">
         <ol class="note-toc__list">
           {headings.map((heading) => (
             <li class={`note-toc__item note-toc__item--depth-${heading.depth}`}>
