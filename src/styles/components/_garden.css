@@ -162,6 +162,17 @@
   color: var(--color-text-muted);
 }
 
+@media (min-width: 78rem) {
+  .garden-document {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .garden-document__tended {
+    order: -1;
+  }
+}
+
 /* The reading column stays centred; the rail sits in the left gutter. Named
    areas keep that true regardless of source order — on narrow screens the
    article stacks above the rail; from 78rem the rail is left of the prose. */
