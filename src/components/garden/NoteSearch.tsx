@@ -286,6 +286,8 @@ export default function NoteSearch() {
                 ref={inputRef}
                 id="note-search-input"
                 type="search"
+                placeholder="Search notes…"
+                aria-label="Search notes"
                 value={query}
                 autoComplete="off"
                 spellcheck={false}
