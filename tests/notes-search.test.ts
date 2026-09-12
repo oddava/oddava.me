@@ -4,6 +4,7 @@ import {
   normalizeQuery,
   scoreNote,
   searchNotes,
+  searchExcerpt,
   type SearchableNote,
 } from '../src/lib/garden/search';
 
@@ -60,6 +61,81 @@ describe('scoreNote', () => {
 });
 
 describe('searchNotes', () => {
+  it.each([
+    ['## A **matching** heading ##', 'A matching heading'],
+    ['> > A *matching* quote', 'A matching quote'],
+    ['- [x] A matching task', 'A matching task'],
+    ['1. A matching list item', 'A matching list item'],
+    ['+ A matching bullet', 'A matching bullet'],
+    ['| matching | table cell |', 'matching · table cell'],
+    ['A [matching reference][source]', 'A matching reference'],
+    ['A matching C# comparison: 5 > 3.', 'A matching C# comparison: 5 > 3.'],
+  ])('removes formatting from the matching line: %s', (body, expected) => {
+    const note = { ...NOTE('one', 'Note'), body };
+    expect(searchExcerpt(note, 'matching')).toBe(expected);
+  });
+
+  it('does not index code-fence labels or link-reference definitions', () => {
+    const note = {
+      ...NOTE('one', 'Note'),
+      body: '```typescript\nActual content\n```\n[source]: https://example.com\n---\n| --- | :---: |',
+    };
+    expect(searchNotes([note], 'typescript')).toEqual([]);
+    expect(searchNotes([note], 'example')).toEqual([]);
+    expect(searchExcerpt(note, 'actual')).toBe('Actual content');
+  });
+
+  it('finds text deep in a body across markup, punctuation, and line breaks', () => {
+    const note = {
+      ...NOTE('deep', 'Reading'),
+      body: `${'Introduction. '.repeat(200)}\nThe **café** is\na quiet place.`,
+    };
+    expect(searchNotes([note], 'CAFE is a quiet')).toEqual([note]);
+    expect(searchNotes([note], 'quiet café')).toEqual([note]);
+    expect(searchNotes([note], 'quiet missing')).toEqual([]);
+  });
+
+  it('matches words across fields and keeps title matches ahead of body hits', () => {
+    const body = {
+      ...NOTE('body', 'Habits', '', ['reading']),
+      body: 'Shape your environment to make repetition easier.',
+    };
+    const title = NOTE('title', 'Environment');
+    expect(searchNotes([body, title], 'environment')).toEqual([title, body]);
+    expect(searchNotes([body], 'reading repetition')).toEqual([body]);
+    expect(searchNotes([body], 'repet')).toEqual([body]);
+  });
+
+  it('uses fresh content when the garden replaces a document version', () => {
+    const original = { ...NOTE('one', 'Note'), body: 'old text' };
+    expect(searchNotes([original], 'old')).toEqual([original]);
+    const updated = { ...original, body: 'new text' };
+    expect(searchNotes([updated], 'old')).toEqual([]);
+    expect(searchNotes([updated], 'new')).toEqual([updated]);
+  });
+
+  it('returns a bounded excerpt around a deep match', () => {
+    const note = {
+      ...NOTE('deep', 'Reading'),
+      body: `${'Opening sentence. '.repeat(100)}A **hidden phrase** to discover. ${'Closing sentence. '.repeat(100)}`,
+    };
+    const excerpt = searchExcerpt(note, 'hidden phrase');
+    expect(excerpt).toContain('hidden phrase');
+    expect(excerpt).not.toContain('**');
+    expect(excerpt.length).toBeLessThanOrEqual(182);
+  });
+
+  it('returns just the matching line, including accent-insensitive matches', () => {
+    const note = {
+      ...NOTE('one', 'Reading'),
+      body: 'Unrelated opening.\nVisit the **café** for a quiet afternoon.\nUnrelated ending.',
+    };
+    expect(searchExcerpt(note, 'cafe quiet')).toBe(
+      'Visit the café for a quiet afternoon.',
+    );
+    expect(searchExcerpt(note, 'reading')).toBe('');
+  });
+
   const notes: SearchableNote[] = [
     NOTE('systems', 'Systems'),
     NOTE('systems-thinking', 'Systems thinking', 'first principles'),

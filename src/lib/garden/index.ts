@@ -19,6 +19,7 @@ export {
 export {
   normalizeQuery,
   searchNotes,
+  searchExcerpt,
   scoreNote,
   type SearchableNote,
 } from './search';

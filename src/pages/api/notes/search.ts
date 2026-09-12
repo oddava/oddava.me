@@ -1,7 +1,13 @@
 /// <reference types="astro/client" />
 import type { APIRoute } from 'astro';
 
-import { getGardenIndexOrUnavailable, searchNotes } from '@lib/garden';
+import {
+  getGardenIndexOrUnavailable,
+  searchNotes,
+  searchExcerpt,
+  normalizeQuery,
+  type GardenDocument,
+} from '@lib/garden';
 import { json } from '@lib/server/core';
 
 export const prerender = false;
@@ -29,11 +35,11 @@ type SearchResult = {
   updated: string;
 };
 
-function projectResult(note: SearchResult): SearchResult {
+function projectResult(note: GardenDocument, query: string): SearchResult {
   return {
     id: note.id,
     title: note.title,
-    summary: note.summary,
+    summary: searchExcerpt(note, query),
     href: note.href,
     tags: note.tags,
     updated: note.updated,
@@ -42,7 +48,7 @@ function projectResult(note: SearchResult): SearchResult {
 
 export const GET: APIRoute = async ({ url }) => {
   const query = readQuery(url);
-  if (!query) {
+  if (!normalizeQuery(query)) {
     return json({ results: [] }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
@@ -50,7 +56,7 @@ export const GET: APIRoute = async ({ url }) => {
   if (!guard.ok) return guard.response;
 
   const results = searchNotes(guard.index.documents, query, RESULT_LIMIT).map(
-    projectResult,
+    (note) => projectResult(note, query),
   );
 
   return json({ results }, { headers: { 'Cache-Control': CACHE_CONTROL } });

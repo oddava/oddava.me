@@ -7,6 +7,7 @@ import type {
 
 import '@styles/components/_note-search.css';
 import { beginNavigationFeedback } from '../../lib/loading-feedback';
+import { normalizeQuery } from '../../lib/garden/search';
 
 type SearchResult = {
   id: string;
@@ -186,12 +187,21 @@ export default function NoteSearch() {
   }
 
   function onInputKeyDown(event: TargetedKeyboardEvent<HTMLInputElement>) {
+    function select(index: number) {
+      setActiveIndex(index);
+      const result = results[index];
+      if (result) {
+        document
+          .getElementById(`note-search-${result.id}`)
+          ?.scrollIntoView({ block: 'nearest' });
+      }
+    }
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((c) => Math.min(c + 1, Math.max(results.length - 1, 0)));
+      select(Math.min(activeIndex + 1, Math.max(results.length - 1, 0)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActiveIndex((c) => Math.max(c - 1, 0));
+      select(Math.max(activeIndex - 1, 0));
     } else if (event.key === 'Enter' && results[activeIndex]) {
       event.preventDefault();
       chooseResult(results[activeIndex]);
@@ -224,6 +234,18 @@ export default function NoteSearch() {
   }
 
   const activeResult = results[activeIndex];
+  const terms = normalizeQuery(query).split(' ').filter(Boolean);
+  function highlight(text: string) {
+    return text
+      .split(/([\p{L}\p{N}\p{M}]+)/u)
+      .map((part, index) =>
+        terms.some((term) => normalizeQuery(part).includes(term)) ? (
+          <mark key={index}>{part}</mark>
+        ) : (
+          part
+        ),
+      );
+  }
 
   return (
     <>
@@ -327,7 +349,11 @@ export default function NoteSearch() {
                 className="note-search__results"
               >
                 {results.map((result, index) => (
-                  <li key={result.id} role="presentation">
+                  <li
+                    key={result.id}
+                    role="presentation"
+                    style={{ animationDelay: `${index * 25}ms` }}
+                  >
                     <a
                       id={`note-search-${result.id}`}
                       href={result.href}
@@ -354,12 +380,11 @@ export default function NoteSearch() {
                       <span className="note-search__result-title">
                         {result.title}
                       </span>
-                      <span
-                        className="note-search__result-arrow"
-                        aria-hidden="true"
-                      >
-                        →
-                      </span>
+                      {result.summary && (
+                        <span className="note-search__result-summary">
+                          {highlight(result.summary)}
+                        </span>
+                      )}
                     </a>
                   </li>
                 ))}
