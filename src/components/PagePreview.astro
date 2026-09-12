@@ -111,13 +111,18 @@ import '../styles/components/_page-preview.css';
     let isOpen = false;
 
     const eligibleLink = (target: EventTarget | null) => {
-      if (previewsDisabled.matches) return null;
+      if (
+        previewsDisabled.matches ||
+        document.body.classList.contains('note-search-open')
+      )
+        return null;
       if (!(target instanceof Element)) return null;
       const link = target.closest<HTMLAnchorElement>('a[href]');
       if (
         !link ||
         link.hasAttribute('download') ||
         link.hasAttribute('data-page-preview-ignore') ||
+        link.closest('[role="dialog"], dialog') ||
         (link.target && link.target !== '_self')
       ) {
         return null;
@@ -170,6 +175,8 @@ import '../styles/components/_page-preview.css';
       const anchor = anchorRect(activeLink);
       if (
         !anchor ||
+        !activeLink.isConnected ||
+        eligibleLink(activeLink) !== activeLink ||
         anchor.bottom < VISIBLE_SLACK ||
         anchor.top > window.innerHeight - VISIBLE_SLACK
       ) {
@@ -243,6 +250,8 @@ import '../styles/components/_page-preview.css';
       titleEl.textContent = 'no preview for this page';
       excerptEl.textContent = '';
       excerptEl.hidden = true;
+      metaEl.textContent = '';
+      metaEl.hidden = true;
     };
 
     const firstParagraph = (root: ParentNode) => {
@@ -289,6 +298,7 @@ import '../styles/components/_page-preview.css';
 
       const entry: CacheEntry = {
         promise: fetch(url, {
+          signal: AbortSignal.timeout(5000),
           credentials: 'same-origin',
           headers: { Accept: 'text/html' },
         })
@@ -364,6 +374,7 @@ import '../styles/components/_page-preview.css';
     };
 
     const show = async (link: HTMLAnchorElement, resolved: string) => {
+      if (!link.isConnected || eligibleLink(link) !== link) return;
       const wasOpen = isOpen;
       if (activeLink && activeLink !== link) {
         activeLink.classList.remove('page-preview-link');
@@ -422,6 +433,24 @@ import '../styles/components/_page-preview.css';
 
     /* --- Events --------------------------------------------------------- */
 
+    const dismiss = () => {
+      hoveredLink = null;
+      suppressedLink = null;
+      closePanel();
+    };
+
+    // Opening search by keyboard need not produce a pointerout. Its overlay
+    // also cannot cover a popover in the browser's top layer.
+    new MutationObserver(() => {
+      if (document.body.classList.contains('note-search-open')) dismiss();
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    window.addEventListener('blur', dismiss);
+    window.addEventListener('pagehide', dismiss);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) dismiss();
+    });
+
     previewsDisabled.addEventListener('change', () => {
       if (previewsDisabled.matches) closePanel();
     });
@@ -432,6 +461,10 @@ import '../styles/components/_page-preview.css';
         // Bound to an active hover, so this is a pair of assignments while the
         // pointer is over a previewable link and nothing at all otherwise.
         if (!hoveredLink) return;
+        if (eligibleLink(event.target) !== hoveredLink) {
+          dismiss();
+          return;
+        }
         pointerX = event.clientX;
         pointerY = event.clientY;
       },
@@ -458,6 +491,10 @@ import '../styles/components/_page-preview.css';
     });
 
     document.addEventListener('pointerout', (event) => {
+      if (!event.relatedTarget) {
+        dismiss();
+        return;
+      }
       const link = eligibleLink(event.target);
       if (!link || link.contains(event.relatedTarget as Node | null)) return;
       if (link === hoveredLink) hoveredLink = null;
@@ -471,7 +508,12 @@ import '../styles/components/_page-preview.css';
     document.addEventListener('focusin', (event) => {
       const link = eligibleLink(event.target);
       if (!link) {
-        if (activeLink && !hoveredLink) closePanel();
+        if (
+          !hoveredLink ||
+          (event.target instanceof Element &&
+            event.target.closest('[role="dialog"], dialog'))
+        )
+          dismiss();
         return;
       }
       // Only keyboard focus opens a preview; a click's focus would otherwise
@@ -496,18 +538,12 @@ import '../styles/components/_page-preview.css';
     });
 
     document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || !activeLink) return;
-      suppressedLink = activeLink;
+      if (event.key !== 'Escape') return;
+      suppressedLink = activeLink ?? hoveredLink;
       closePanel();
     });
 
-    document.addEventListener(
-      'pointerdown',
-      () => {
-        if (activeLink) closePanel();
-      },
-      { passive: true },
-    );
+    document.addEventListener('pointerdown', dismiss, { passive: true });
 
     const trackPlacement = () => {
       if (!activeLink || placementFrame) return;
@@ -517,7 +553,7 @@ import '../styles/components/_page-preview.css';
       });
     };
 
-    window.addEventListener('scroll', trackPlacement, {
+    window.addEventListener('scroll', dismiss, {
       passive: true,
       capture: true,
     });

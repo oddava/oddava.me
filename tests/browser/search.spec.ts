@@ -75,3 +75,43 @@ test('changing a query removes stale results and traps focus; reduced-motion clo
   await expect(page.getByRole('button', { name: 'Find a note' })).toBeFocused();
   await expect(page.locator('body')).not.toHaveClass(/note-search-open/);
 });
+
+test('search displays a matching line with safe keyword highlights', async ({
+  page,
+}) => {
+  await page.route('**/api/notes/search?*', (route) =>
+    route.fulfill({
+      json: {
+        results: [
+          {
+            id: 'cafe',
+            title: 'Quiet places',
+            href: '/notes/cafe',
+            summary: 'Visit the café for a quiet afternoon. <b>Plain text</b>',
+            tags: [],
+            updated: '',
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto('/tests/browser/search.html');
+  await page.getByRole('button', { name: 'Find a note' }).click();
+  await page.getByRole('combobox').fill('cafe quiet');
+  const result = page.getByRole('option');
+  await expect(result.locator('.note-search__result-summary mark')).toHaveText([
+    'café',
+    'quiet',
+  ]);
+  await expect(result.locator('.note-search__result-title')).toHaveText(
+    'Quiet places',
+  );
+  await expect(result.locator('.note-search__result-title mark')).toHaveCount(
+    0,
+  );
+  await expect(result.locator('b')).toHaveCount(0);
+  await expect(result.locator('.note-search__result-arrow')).toHaveCount(0);
+  await page.screenshot({
+    path: test.info().outputPath('search.png'),
+  });
+});

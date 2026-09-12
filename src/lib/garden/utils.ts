@@ -169,7 +169,7 @@ export function getNoteTags(note: NoteTagSource): string[] {
 
 // Strip inline markdown so a heading or paragraph reads as plain text when it
 // stands in for a title or meta description.
-function stripInlineMarkdown(value: string): string {
+export function stripInlineMarkdown(value: string): string {
   return value
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[\[[^\]|\n]+\|([^\]\n]+)\]\]/g, '$1')
