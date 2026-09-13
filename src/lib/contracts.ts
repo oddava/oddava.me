@@ -131,6 +131,7 @@ export interface ContentEntryMove {
 }
 
 export interface ContentEntryListItem {
+  icon?: string;
   id: string;
   title: string;
   folder: string;

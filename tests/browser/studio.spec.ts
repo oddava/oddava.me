@@ -1520,10 +1520,45 @@ test('deeply nested notes keep their labels and actions inside the sidebar', asy
   expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(
     first!.x + first!.width,
   );
-  await expect(last).toHaveCSS('padding-left', '12px');
-  await expect(rows.first()).toHaveCSS('padding-left', '2px');
+  await expect(last).toHaveCSS('padding-left', '36px');
+  await expect(rows.first()).toHaveCSS('padding-left', '12px');
   await page.screenshot({
     path: 'test-results/compact-nested-notes.png',
     fullPage: true,
   });
+});
+
+test('file icon picker separates emoji and upload choices with readable emojis', async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Change file icon' }).click();
+  const picker = page.getByRole('dialog', { name: 'File icon' });
+  await expect(picker).toBeVisible();
+  await expect(
+    picker.getByRole('tab', { name: 'Emoji', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  const emoji = picker.getByRole('button', { name: 'Use 🌱 as file icon' });
+  await expect(emoji).toHaveCSS('font-size', '32px');
+  await expect(picker.locator('.studio-icon-grid button').last()).toHaveCSS(
+    'background-color',
+    'rgba(0, 0, 0, 0)',
+  );
+  await expect(picker.getByLabel('Upload custom icon')).toHaveCount(0);
+  await picker.screenshot({ path: testInfo.outputPath('icon-emoji.png') });
+  await picker.getByRole('tab', { name: 'Upload', exact: true }).click();
+  await expect(picker.getByLabel('Upload custom icon')).toBeAttached();
+  await expect(emoji).toHaveCount(0);
+  await picker.screenshot({ path: testInfo.outputPath('icon-upload.png') });
+  await picker
+    .getByRole('tab', { name: 'Upload', exact: true })
+    .press('ArrowLeft');
+  await expect(
+    picker.getByRole('tab', { name: 'Emoji', exact: true }),
+  ).toBeFocused();
+  const save = page.waitForRequest((request) => request.method() === 'PUT');
+  await emoji.click();
+  await expect(picker).toHaveCount(0);
+  expect((await save).postDataJSON().fields.icon).toBe('🌱');
 });

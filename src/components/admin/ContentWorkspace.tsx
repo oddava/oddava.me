@@ -111,10 +111,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const syncSocialCards = useSocialCardSync(Boolean(collection));
 
   const onEntrySaved = useCallback(
-    (id: string, revision: string, title: string) => {
+    (id: string, revision: string, title: string, icon?: string) => {
       setEntries((items) =>
         items.map((entry) =>
-          entry.id === id ? { ...entry, title, revision } : entry,
+          entry.id === id ? { ...entry, title, revision, icon } : entry,
         ),
       );
       syncSocialCards();
@@ -872,6 +872,21 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 <StudioEditorPane
                   key={openId}
                   title={currentTitle}
+                  icon={
+                    typeof doc.docRef.current?.fields.icon === 'string'
+                      ? doc.docRef.current.fields.icon
+                      : undefined
+                  }
+                  onIconChange={(icon) => {
+                    const current = doc.docRef.current;
+                    if (!current || current.id !== openId) return;
+                    doc.markDirty({ fields: { ...current.fields, icon } });
+                    setEntries((items) =>
+                      items.map((entry) =>
+                        entry.id === openId ? { ...entry, icon } : entry,
+                      ),
+                    );
+                  }}
                   publishedUrl={publishedUrl}
                   body={body}
                   wikiLinkHrefs={wikiLinkHrefs}

@@ -1,3 +1,4 @@
+import StudioIconPicker from './StudioIconPicker';
 import { FileIcon } from './studioFileIcons';
 import type { ImageEditRequest } from './StudioImageDialog';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -17,6 +18,8 @@ import { VIEW_MODES, type SaveState, type ViewMode } from './studioSession';
 
 interface Props {
   title: string;
+  icon?: string;
+  onIconChange: (icon: string | undefined) => void;
   publishedUrl: string;
   body: string;
   wikiLinkHrefs: ReadonlyMap<string, string>;
@@ -107,6 +110,8 @@ function onSourcePaste(
 /** The note: its title bar, the surface it is edited on, and the status line. */
 export default function StudioEditorPane({
   title,
+  icon,
+  onIconChange,
   publishedUrl,
   body,
   wikiLinkHrefs,
@@ -136,6 +141,7 @@ export default function StudioEditorPane({
   onRequestImage,
   onNotice,
 }: Props) {
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const sourceRef = useRef<HTMLTextAreaElement | null>(null);
   const [typing, setTyping] = useState(false);
   useEffect(() => {
@@ -205,6 +211,16 @@ export default function StudioEditorPane({
         aria-hidden={typing}
       >
         <div className="studio-bar__title">
+          <button
+            type="button"
+            className="studio-icon-button studio-note-icon"
+            aria-label="Change file icon"
+            title="Change file icon"
+            aria-haspopup="dialog"
+            onClick={() => setIconPickerOpen(true)}
+          >
+            <FileIcon icon={icon} />
+          </button>
           <strong>{title}</strong>
         </div>
         {!compact && viewSwitch}
@@ -249,6 +265,14 @@ export default function StudioEditorPane({
         </div>
       </header>
 
+      {iconPickerOpen && (
+        <StudioIconPicker
+          icon={icon}
+          onChange={onIconChange}
+          uploadImage={uploadImage}
+          onClose={() => setIconPickerOpen(false)}
+        />
+      )}
       <div
         className={`studio-surface is-${view}`}
         onInput={(event) => {

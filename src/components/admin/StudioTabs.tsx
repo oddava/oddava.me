@@ -323,7 +323,7 @@ export default function StudioTabs({
                 }}
               >
                 <span className="studio-tab__icon">
-                  <FileIcon />
+                  <FileIcon icon={entry?.icon} />
                 </span>
                 <span className="studio-tab__title">{label}</span>
                 {state !== 'idle' && (

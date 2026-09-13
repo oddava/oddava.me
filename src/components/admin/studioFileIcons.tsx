@@ -1,6 +1,15 @@
+import { isEmojiIcon, isImageIcon } from '../../lib/content/noteIcon';
 // Shared note glyphs for the desktop tree, mobile browser, and editor tabs.
 
-export function FileIcon() {
+export function FileIcon({ icon }: { icon?: string }) {
+  if (icon && isImageIcon(icon))
+    return <img className="studio-file-icon" src={icon} alt="" />;
+  if (icon && isEmojiIcon(icon))
+    return (
+      <span className="studio-file-icon" aria-hidden="true">
+        {icon}
+      </span>
+    );
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
       <path d="M5 2.75h6l4 4v10.5H5V2.75Z" />

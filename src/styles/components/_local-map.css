@@ -3,6 +3,7 @@
 .note-explorer {
   min-width: 0;
   font-size: 0.875rem;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -19,10 +20,11 @@
 .note-explorer__row {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.375rem;
   min-height: 2rem;
-  padding: 0.3rem 0.45rem;
-  padding-left: calc(0.45rem + var(--note-indent, 0px));
+  padding: 0.25rem 0.375rem;
+  margin-block: 1px;
+  padding-left: calc(0.375rem + var(--note-indent, 0px));
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   text-decoration: none;
@@ -46,6 +48,7 @@ summary.note-explorer__row::-webkit-details-marker {
 }
 
 .note-explorer__row.is-current {
+  background: var(--color-overlay-soft);
   color: var(--color-text-interactive);
 }
 
@@ -92,7 +95,7 @@ summary.note-explorer__row::-webkit-details-marker {
 }
 
 .note-explorer__file {
-  padding-left: calc(1.65rem + var(--note-indent, 0px));
+  padding-left: calc(1.5rem + var(--note-indent, 0px));
 }
 
 .note-explorer__references {
@@ -113,4 +116,77 @@ summary.note-explorer__row::-webkit-details-marker {
   padding: 0.4rem;
   color: var(--color-text-muted);
   font-size: var(--text-xs);
+}
+
+.note-explorer__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 4px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Reading comes first; the full tree is available on demand. */
+.note-explorer__browser {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule) transparent;
+}
+.note-explorer__summary {
+  padding: 0.375rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  list-style: none;
+}
+.note-explorer__summary::-webkit-details-marker {
+  display: none;
+}
+.note-explorer__summary:hover {
+  background: var(--color-overlay-soft);
+}
+.note-explorer__summary:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+.note-explorer__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--color-text-secondary);
+}
+.note-explorer__heading svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.note-explorer__browser[open] > summary svg {
+  transform: rotate(90deg);
+}
+.note-explorer__current {
+  display: block;
+  margin: 0.25rem 0 0 1.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+.note-explorer__scroll {
+  max-height: min(24rem, 45dvh);
+  margin-top: 0.5rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule) transparent;
 }

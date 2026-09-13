@@ -681,3 +681,124 @@
 .studio-rich-content.ProseMirror-hideselection ::selection {
   background: transparent;
 }
+
+/* The icon chooser shares the editor dialogs' surface, with larger visual choices. */
+.studio-editor-popover.studio-icon-picker {
+  width: 360px;
+  border-radius: 6px 18px 18px;
+}
+.studio-editor-popover.studio-icon-picker .studio-icon-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: 9px;
+  background: var(--admin-bg);
+}
+.studio-icon-picker .studio-icon-tabs button {
+  flex: 1;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.studio-icon-picker .studio-icon-tabs [aria-selected='true'] {
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-primary);
+  box-shadow: 0 1px 4px #0003;
+}
+.studio-icon-picker form > .studio-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+.studio-icon-picker .studio-icon-grid button,
+.studio-icon-picker .studio-icon-grid button:last-child {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 48px;
+  padding: 4px;
+  background: transparent;
+  color: inherit;
+  font:
+    32px/1 'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Noto Color Emoji',
+    sans-serif;
+}
+.studio-icon-picker .studio-icon-grid button:hover,
+.studio-icon-picker .studio-icon-grid button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--admin-accent) 18%, transparent);
+}
+.studio-icon-picker .studio-icon-custom {
+  align-items: center;
+}
+.studio-icon-picker .studio-icon-custom input {
+  flex: 1;
+  min-width: 0;
+  font-size: 24px;
+}
+.studio-icon-picker .studio-icon-custom button {
+  flex-shrink: 0;
+}
+.studio-icon-upload__target {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 12px;
+  border: 1px dashed var(--admin-line-strong);
+  border-radius: 12px;
+  background: var(--admin-bg);
+  text-align: center;
+  cursor: pointer;
+}
+.studio-icon-upload__target:focus-within {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.studio-icon-upload__target > span:last-of-type {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+}
+.studio-icon-upload__preview {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: var(--admin-surface-elevated);
+  font-size: 30px;
+}
+.studio-icon-upload__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.studio-icon-picker .studio-icon-upload__target input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.studio-icon-picker footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--admin-line);
+}
+.studio-icon-picker footer button.studio-icon-remove:last-child {
+  background: transparent;
+  color: var(--admin-text-muted);
+}
+.studio-icon-picker button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
