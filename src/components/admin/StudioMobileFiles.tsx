@@ -401,7 +401,11 @@ export default function StudioMobileFiles({
                 className={`studio-mfiles__check ${picked ? 'is-on' : ''}`}
               />
             ) : (
-              <FileIcon />
+              <FileIcon
+                icon={
+                  (node.kind === 'entry' ? node.entry : node.document)?.icon
+                }
+              />
             )}
           </span>
           <span className="studio-mfiles__text">

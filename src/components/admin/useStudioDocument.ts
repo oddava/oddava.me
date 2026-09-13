@@ -17,7 +17,7 @@ export interface OpenDoc {
 interface Options {
   collectionId: string | null;
   /** A successful write — the workspace refreshes the entry's row from this. */
-  onSaved: (id: string, revision: string, title: string) => void;
+  onSaved: (id: string, revision: string, title: string, icon?: string) => void;
   onError: (message: string | null) => void;
 }
 
@@ -131,6 +131,9 @@ export function useStudioDocument({
           snapshot.id,
           nextRevision,
           titleFromBody(snapshot.body, snapshot.id),
+          typeof snapshot.fields.icon === 'string'
+            ? snapshot.fields.icon
+            : undefined,
         );
         if (docRef.current?.id === snapshot.id) {
           docRef.current = { ...docRef.current, revision: nextRevision };

@@ -33,15 +33,23 @@ export default function StudioEditorPopover({
   title,
   onClose,
   children,
+  anchorSelector,
+  className = '',
 }: {
   title: string;
   onClose: () => void;
   children: ComponentChildren;
+  anchorSelector?: string;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
-  const [anchor] = useState(textAnchor);
+  const [anchor] = useState(() =>
+    anchorSelector
+      ? () => document.querySelector(anchorSelector)?.getBoundingClientRect()
+      : textAnchor(),
+  );
   const [position, setPosition] = useState({ top: 0, left: 0, ready: false });
   useLayoutEffect(() => {
     const panel = ref.current!;
@@ -76,7 +84,9 @@ export default function StudioEditorPopover({
     place();
     const focusFrame = requestAnimationFrame(() => {
       panel
-        .querySelector<HTMLElement>('input, textarea, button[type="submit"]')
+        .querySelector<HTMLElement>(
+          '[role="tab"][aria-selected="true"], input, textarea, button[type="submit"]',
+        )
         ?.focus({ preventScroll: true });
     });
     const outside = (event: PointerEvent) => {
@@ -117,7 +127,7 @@ export default function StudioEditorPopover({
   return createPortal(
     <div
       ref={ref}
-      className="studio-editor-popover"
+      className={`studio-editor-popover ${className}`}
       role="dialog"
       aria-label={title}
       style={{

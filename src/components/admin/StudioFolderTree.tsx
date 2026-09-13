@@ -972,7 +972,7 @@ export default function StudioFolderTree({
             .filter(Boolean)
             .join(' ')}
           role="treeitem"
-          style={{ paddingLeft: `${Math.min(depth - 1, 6) * 2}px` }}
+          style={{ paddingLeft: `${4 + Math.min(depth - 1, 4) * 8}px` }}
           title={nodeLabel(node)}
           data-tree-key={key}
           tabIndex={tabbableKey === key ? 0 : -1}
@@ -1071,7 +1071,11 @@ export default function StudioFolderTree({
               }}
             >
               <span className="studio-tree-row__icon">
-                <FileIcon />
+                <FileIcon
+                  icon={
+                    (node.kind === 'entry' ? node.entry : node.document)?.icon
+                  }
+                />
               </span>
               <input
                 ref={inlineInputRef}
@@ -1110,7 +1114,11 @@ export default function StudioFolderTree({
           ) : (
             <span className="studio-tree-row__label">
               <span className="studio-tree-row__icon">
-                <FileIcon />
+                <FileIcon
+                  icon={
+                    (node.kind === 'entry' ? node.entry : node.document)?.icon
+                  }
+                />
               </span>
               <span className="studio-tree-row__text">
                 <span>{renderLabel(node)}</span>
@@ -1171,7 +1179,7 @@ export default function StudioFolderTree({
         <form
           className="studio-tree-row studio-tree-row--inline"
           style={{
-            paddingLeft: `${Math.min(parent.split('/').filter(Boolean).length + 1, 6) * 2}px`,
+            paddingLeft: `${4 + Math.min(parent.split('/').filter(Boolean).length + 1, 4) * 8}px`,
           }}
           onSubmit={(event) => {
             event.preventDefault();

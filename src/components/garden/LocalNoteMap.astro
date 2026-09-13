@@ -29,47 +29,71 @@ const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.i
   class="note-explorer note-context__section"
   aria-label="Notes explorer"
 >
-  <ul class="note-explorer__root" role="list">
-    <NoteExplorerNode
-      node={index.root}
-      {index}
-      currentId={document.id}
-      {expanded}
-    />
-  </ul>
-  {
-    map && (map.references.length > 0 || hiddenReferences > 0) && (
-      <div class="note-explorer__references">
-        <h2 class="note-context__label">Linked notes</h2>
-        <ul role="list">
-          {map.references.map((stop) => (
-            <li>
-              <a
-                class="note-explorer__row note-explorer__reference"
-                href={stop.document.href}
-                aria-label={`${stop.relationship === 'backlink' ? 'Links to this note' : 'Linked from this note'}: ${stop.document.title}`}
-                title={stop.document.title}
-                data-page-preview-ignore
-              >
-                <span
-                  class="note-explorer__reference-direction"
-                  aria-hidden="true"
-                >
-                  {stop.relationship === 'backlink' ? '↙' : '↗'}
-                </span>
-                <span>{stop.document.title}</span>
-              </a>
-            </li>
-          ))}
-          {hiddenReferences > 0 && (
-            <li>
-              <a class="note-explorer__more" href={landscapeHref}>
-                View {hiddenReferences} more linked notes
-              </a>
-            </li>
-          )}
-        </ul>
-      </div>
-    )
-  }
+  <details class="note-explorer__browser" open={document.id === index.root.id}>
+    <summary class="note-explorer__summary">
+      <span class="note-explorer__heading">
+        <svg viewBox="0 0 16 16" aria-hidden="true"
+          ><path d="m6 4 4 4-4 4"></path></svg
+        >
+        Browse notes
+      </span>
+      <span class="note-explorer__current" title={document.title}
+        >{document.title}</span
+      >
+    </summary>
+    <div class="note-explorer__scroll">
+      <ul class="note-explorer__root" role="list">
+        <NoteExplorerNode
+          node={index.root}
+          {index}
+          currentId={document.id}
+          {expanded}
+        />
+      </ul>
+      {
+        map && (map.references.length > 0 || hiddenReferences > 0) && (
+          <div class="note-explorer__references">
+            <h2 class="note-context__label">Linked notes</h2>
+            <ul role="list">
+              {map.references.map((stop) => (
+                <li>
+                  <a
+                    class="note-explorer__row note-explorer__reference"
+                    href={stop.document.href}
+                    aria-label={`${stop.relationship === 'backlink' ? 'Links to this note' : 'Linked from this note'}: ${stop.document.title}`}
+                    title={stop.document.title}
+                    data-page-preview-ignore
+                  >
+                    <span
+                      class="note-explorer__reference-direction"
+                      aria-hidden="true"
+                    >
+                      {stop.relationship === 'backlink' ? '↙' : '↗'}
+                    </span>
+                    <span>{stop.document.title}</span>
+                  </a>
+                </li>
+              ))}
+              {hiddenReferences > 0 && (
+                <li>
+                  <a class="note-explorer__more" href={landscapeHref}>
+                    View {hiddenReferences} more linked notes
+                  </a>
+                </li>
+              )}
+            </ul>
+          </div>
+        )
+      }
+    </div>
+  </details>
 </nav>
+
+<script>
+  import { restoreNoteExplorerState } from '@lib/note-explorer-state';
+
+  const browser = document.querySelector<HTMLDetailsElement>(
+    '.note-explorer__browser',
+  );
+  if (browser) restoreNoteExplorerState(browser);
+</script>

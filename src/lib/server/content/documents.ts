@@ -1,3 +1,4 @@
+import { isNoteIcon } from '../../content/noteIcon';
 import {
   entryFolderFromPath,
   entryIdFromPath,
@@ -68,6 +69,7 @@ function toListItem(
   return {
     id,
     title: titleFromDocument(id, fields, body),
+    ...(isNoteIcon(fields.icon) ? { icon: fields.icon } : {}),
     folder,
     path: file.path,
     href: noteHref(folder, id),
