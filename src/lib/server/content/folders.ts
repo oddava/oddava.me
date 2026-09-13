@@ -228,7 +228,12 @@ export async function handleContentFolders(
     return adminJson({ folders: await readFolders(store, collection) });
   }
 
-  let body: { path?: unknown; nextPath?: unknown; copyFrom?: unknown };
+  let body: {
+    path?: unknown;
+    nextPath?: unknown;
+    copyFrom?: unknown;
+    ensure?: unknown;
+  };
   try {
     body = await readJsonBody(request);
   } catch (error) {
@@ -240,6 +245,8 @@ export async function handleContentFolders(
 
   if (request.method === 'POST') {
     if (await folderExists(store, collection, folder)) {
+      if (body.ensure === true)
+        return adminJson({ folders: await readFolders(store, collection) });
       return adminJson(
         { error: 'That folder already exists.', code: 'folder_exists' },
         { status: 409 },
@@ -250,7 +257,13 @@ export async function handleContentFolders(
     }
 
     const entries = await readEntries(store, collection);
-    if (entries.some((entry) => entry.id === folderName(folder))) {
+    if (
+      entries.some(
+        (entry) =>
+          entry.id === folderName(folder) &&
+          (body.copyFrom || entry.folder !== parentFolder(folder)),
+      )
+    ) {
       return adminJson(
         { error: 'A note already uses that folder name.', code: 'slug_exists' },
         { status: 409 },

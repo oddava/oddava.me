@@ -121,9 +121,6 @@
 .studio-tree-row__icon {
   color: var(--admin-text-muted);
 }
-.studio-tree-children {
-  border-left-color: var(--admin-line);
-}
 .studio-workbench-nav {
   height: 40px;
   background: var(--admin-bg);

@@ -61,7 +61,6 @@ function draw(overrides: Record<string, unknown> = {}): string {
       onEditEntry: NOOP,
       onOpenFolder: OK,
       onCreateEntry: OK,
-      onCreateFolder: OK,
       onRenameEntry: OK,
       onRenameFolder: OK,
       onDuplicateEntry: OK,
@@ -140,7 +139,7 @@ describe('StudioFolderTree markup', () => {
 
   it('keeps the heading free of counts and duplicate search inputs', () => {
     const html = draw(LIBRARY);
-    expect(html).toContain('<strong>Files</strong>');
+    expect(html).toContain('<strong>Notes</strong>');
     expect(html).not.toContain('title="4 items"');
     expect(html).not.toContain('type="search"');
   });
@@ -226,8 +225,10 @@ describe('StudioFolderTree empty library', () => {
   it('invites a first file rather than reporting an empty folder', () => {
     const html = draw();
 
-    expect(html).toContain('No files yet.');
-    expect(html).toContain('New file');
+    expect(html).toContain('No notes yet.');
+    expect(html).toContain('New note');
+    expect(html).not.toContain('New folder');
+    expect(html).not.toContain('New file');
   });
 
   it('stays quiet when the root is merely collapsed', () => {

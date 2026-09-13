@@ -128,7 +128,7 @@ export default function StudioSelect({
               className={option.value === value ? 'is-selected' : ''}
               style={
                 option.depth
-                  ? { paddingLeft: `${9 + option.depth * 11}px` }
+                  ? { paddingLeft: `${9 + Math.min(option.depth, 6) * 2}px` }
                   : undefined
               }
               onClick={() => {

@@ -4,12 +4,7 @@ import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 // `.sr-only` lives in the public site stylesheet, which AdminLayout does not
 // load — admin-side hidden text has to come from this component.
 import { VisuallyHidden } from '../ui/VisuallyHidden';
-import {
-  FileIcon,
-  FolderIcon,
-  FolderPlusIcon,
-  PlusIcon,
-} from './studioFileIcons';
+import { FileIcon, PlusIcon } from './studioFileIcons';
 import StudioSelect from './StudioSelect';
 import StudioContextMenu from './StudioContextMenu';
 import { MENU_TRIGGER_PROPS, useStudioMenu } from './useStudioMenu';
@@ -26,6 +21,8 @@ import {
   flattenRows,
   folderAndDescendants,
   folderOptions,
+  noteDestinations,
+  noteContainerPath,
   highlightParts,
   isInsideFolder,
   itemKey,
@@ -70,7 +67,6 @@ interface Props {
     options?: OpenOptions,
   ) => Promise<boolean>;
   onCreateEntry: (folder: string, name: string) => Promise<boolean>;
-  onCreateFolder: (parent: string, name: string) => Promise<boolean>;
   onRenameEntry: (
     entry: ContentEntryListItem,
     name: string,
@@ -92,7 +88,6 @@ interface Props {
 }
 
 type InlineCreate = {
-  kind: 'entry' | 'folder';
   parent: string;
   value: string;
 };
@@ -132,7 +127,6 @@ export default function StudioFolderTree({
   onEditEntry,
   onOpenFolder,
   onCreateEntry,
-  onCreateFolder,
   onRenameEntry,
   onRenameFolder,
   onDuplicateEntry,
@@ -292,10 +286,12 @@ export default function StudioFolderTree({
   /** Folders a bulk move can target — never one that is itself being moved. */
   function bulkDestinations() {
     return folderOptions(
-      folders,
-      selectedItems
-        .filter((item) => item.kind === 'folder')
-        .map((item) => item.id),
+      noteDestinations(folders, entries),
+      selectedItems.map((item) =>
+        item.kind === 'folder'
+          ? item.id
+          : noteContainerPath(entries.find((entry) => entry.id === item.id)!),
+      ),
     );
   }
 
@@ -353,16 +349,17 @@ export default function StudioFolderTree({
 
   // --- Inline create and rename --------------------------------------------
 
-  function beginCreate(kind: 'entry' | 'folder', parent = activeFolder) {
+  function beginCreate(parent = activeFolder) {
     const safeParent =
-      parent === '' || folders.some((folder) => folder.id === parent)
+      parent === '' ||
+      noteDestinations(folders, entries).some((folder) => folder.id === parent)
         ? parent
         : '';
     // The inline row lives inside the tree, so it only appears where the tree
     // does: a filtered-out or collapsed branch would swallow it silently.
     if (searching) onQueryChange('');
     onSetFolderExpansion(ancestorPaths(safeParent), true);
-    setCreating({ kind, parent: safeParent, value: '' });
+    setCreating({ parent: safeParent, value: '' });
     setRenaming(null);
     setMoving(null);
     menu.close();
@@ -379,7 +376,7 @@ export default function StudioFolderTree({
   useEffect(() => {
     if (!creating) return;
     inlineInputRef.current?.focus();
-  }, [creating?.kind, creating?.parent]);
+  }, [creating?.parent]);
 
   useEffect(() => {
     if (!renaming) return;
@@ -391,10 +388,7 @@ export default function StudioFolderTree({
   async function submitCreate() {
     if (!creating || !creating.value.trim() || inlineBusy) return;
     setInlineBusy(true);
-    const ok =
-      creating.kind === 'entry'
-        ? await onCreateEntry(creating.parent, creating.value)
-        : await onCreateFolder(creating.parent, creating.value);
+    const ok = await onCreateEntry(creating.parent, creating.value);
     setInlineBusy(false);
     if (ok) setCreating(null);
   }
@@ -671,13 +665,11 @@ export default function StudioFolderTree({
 
   function dropPositionFor(
     event: TargetedDragEvent<HTMLElement>,
-    node: TreeNode,
   ): DropPosition | null {
-    const isFolder = node.kind === 'folder';
-    if (!canReorder) return isFolder ? 'inside' : null;
+    if (!canReorder) return 'inside';
     const bounds = event.currentTarget.getBoundingClientRect();
     const ratio = (event.clientY - bounds.top) / Math.max(bounds.height, 1);
-    if (isFolder && ratio >= 0.25 && ratio <= 0.75) return 'inside';
+    if (ratio >= 0.25 && ratio <= 0.75) return 'inside';
     return ratio < 0.5 ? 'before' : 'after';
   }
 
@@ -686,13 +678,19 @@ export default function StudioFolderTree({
     position: DropPosition,
     parent: string,
   ): string {
-    return position === 'inside' && node.kind === 'folder'
-      ? node.folder.id
+    return position === 'inside'
+      ? node.kind === 'folder'
+        ? node.folder.id
+        : noteContainerPath(node.entry)
       : parent;
   }
 
   function refusesDrop(item: StudioTreeItemRef, destination: string): boolean {
-    return item.kind === 'folder' && isInsideFolder(destination, item.id);
+    const path =
+      item.kind === 'folder'
+        ? item.id
+        : noteContainerPath(entries.find((entry) => entry.id === item.id)!);
+    return isInsideFolder(destination, path);
   }
 
   async function moveDraggedItem(
@@ -732,7 +730,7 @@ export default function StudioFolderTree({
   ) {
     const dragged = readDraggedItem(event.dataTransfer) ?? dragging;
     if (!dragged || sameItem(dragged, nodeRef(target))) return;
-    const position = dropPositionFor(event, target);
+    const position = dropPositionFor(event);
     if (!position) return;
     event.preventDefault();
 
@@ -792,7 +790,7 @@ export default function StudioFolderTree({
     // Only a row with a page of its own has a link to copy.
     const page = node.kind === 'entry' ? node.entry : node.document;
     const folderForNew =
-      node.kind === 'folder' ? node.folder.id : node.entry.folder;
+      node.kind === 'folder' ? node.folder.id : noteContainerPath(node.entry);
     return (
       <StudioContextMenu
         open={menu.key === key}
@@ -810,17 +808,8 @@ export default function StudioFolderTree({
           Open in new tab
         </button>
         <span />
-        <button
-          type="button"
-          onClick={() => beginCreate('entry', folderForNew)}
-        >
-          New file
-        </button>
-        <button
-          type="button"
-          onClick={() => beginCreate('folder', folderForNew)}
-        >
-          New folder
+        <button type="button" onClick={() => beginCreate(folderForNew)}>
+          New child note
         </button>
         <span />
         <button type="button" onClick={() => beginRename(node)}>
@@ -918,10 +907,11 @@ export default function StudioFolderTree({
           label={`Move ${nodeLabel(node)} to`}
           align="start"
           value={currentParent === '' ? ROOT_OPTION : currentParent}
-          options={folderOptions(
-            folders,
-            node.kind === 'folder' ? [node.folder.id] : [],
-          )}
+          options={folderOptions(noteDestinations(folders, entries), [
+            node.kind === 'folder'
+              ? node.folder.id
+              : noteContainerPath(node.entry),
+          ])}
           onChange={(value) => {
             const parent = value === ROOT_OPTION ? '' : value;
             void (
@@ -982,6 +972,8 @@ export default function StudioFolderTree({
             .filter(Boolean)
             .join(' ')}
           role="treeitem"
+          style={{ paddingLeft: `${Math.min(depth - 1, 6) * 2}px` }}
+          title={nodeLabel(node)}
           data-tree-key={key}
           tabIndex={tabbableKey === key ? 0 : -1}
           aria-level={depth}
@@ -1020,7 +1012,7 @@ export default function StudioFolderTree({
           onDragEnd={endDrag}
           onDragOver={(event) => {
             if (!dragging || sameItem(dragging, nodeRef(node))) return;
-            const dropAt = dropPositionFor(event, node);
+            const dropAt = dropPositionFor(event);
             if (!dropAt) {
               showMarker(null);
               return;
@@ -1079,7 +1071,7 @@ export default function StudioFolderTree({
               }}
             >
               <span className="studio-tree-row__icon">
-                {isFolder ? <FolderIcon open={expanded} /> : <FileIcon />}
+                <FileIcon />
               </span>
               <input
                 ref={inlineInputRef}
@@ -1118,7 +1110,7 @@ export default function StudioFolderTree({
           ) : (
             <span className="studio-tree-row__label">
               <span className="studio-tree-row__icon">
-                {isFolder ? <FolderIcon open={expanded} /> : <FileIcon />}
+                <FileIcon />
               </span>
               <span className="studio-tree-row__text">
                 <span>{renderLabel(node)}</span>
@@ -1158,9 +1150,14 @@ export default function StudioFolderTree({
 
         {renderMove(node)}
 
-        {isFolder && expanded && (
+        {((isFolder && expanded) ||
+          creating?.parent ===
+            (isFolder ? folderId : noteContainerPath(node.entry))) && (
           <ul className="studio-tree-children" role="group">
-            {renderChildren(folderId, depth + 1)}
+            {renderChildren(
+              isFolder ? folderId : noteContainerPath(node.entry),
+              depth + 1,
+            )}
           </ul>
         )}
       </li>
@@ -1173,6 +1170,9 @@ export default function StudioFolderTree({
       <li className="studio-tree-item studio-tree-item--creating" role="none">
         <form
           className="studio-tree-row studio-tree-row--inline"
+          style={{
+            paddingLeft: `${Math.min(parent.split('/').filter(Boolean).length + 1, 6) * 2}px`,
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             void submitCreate();
@@ -1181,16 +1181,14 @@ export default function StudioFolderTree({
           <span className="studio-tree-row__spacer" />
           <span className="studio-tree-row__rename">
             <span className="studio-tree-row__icon">
-              {creating.kind === 'folder' ? <FolderIcon /> : <FileIcon />}
+              <FileIcon />
             </span>
             <input
               ref={inlineInputRef}
               value={creating.value}
               disabled={inlineBusy}
-              placeholder={
-                creating.kind === 'folder' ? 'new folder' : 'new note'
-              }
-              aria-label={`New ${creating.kind} name`}
+              placeholder="new note"
+              aria-label="New note name"
               onInput={(event) =>
                 setCreating({ ...creating, value: event.currentTarget.value })
               }
@@ -1238,14 +1236,14 @@ export default function StudioFolderTree({
     <>
       <div className="studio-explorer__heading">
         <div>
-          <strong>Files</strong>
+          <strong>Notes</strong>
         </div>
         <div className="studio-explorer__actions">
           <button
             type="button"
             className="studio-icon-button"
-            aria-label="Quick open file"
-            title="Find file (Ctrl+P)"
+            aria-label="Quick open note"
+            title="Find note (Ctrl+P)"
             onClick={onQuickOpen}
           >
             <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -1256,7 +1254,7 @@ export default function StudioFolderTree({
           <button
             type="button"
             className="studio-icon-button studio-sidebar-collapse"
-            aria-label="Close Files explorer"
+            aria-label="Close Notes explorer"
             title="Close explorer"
             onClick={onRequestClose}
           >
@@ -1267,17 +1265,8 @@ export default function StudioFolderTree({
         </div>
       </div>
       <div className="studio-library-actions">
-        <button type="button" onClick={() => beginCreate('entry')}>
+        <button type="button" onClick={() => beginCreate()}>
           <PlusIcon /> New note
-        </button>
-        <button
-          type="button"
-          className="studio-library-actions__folder"
-          aria-label="New folder"
-          title="New folder"
-          onClick={() => beginCreate('folder')}
-        >
-          <FolderPlusIcon />
         </button>
       </div>
       {query && (
@@ -1294,7 +1283,7 @@ export default function StudioFolderTree({
         className="studio-entry-list studio-folder-tree"
         ref={treeRef}
         role="tree"
-        aria-label="Files"
+        aria-label="Notes"
         aria-multiselectable="true"
         onDragOver={(event) => {
           if (!dragging) return;
@@ -1372,7 +1361,7 @@ export default function StudioFolderTree({
           </span>
           <span className="studio-tree-row__label">
             <span className="studio-tree-row__icon">
-              <FolderIcon open={rootExpanded} />
+              <FileIcon />
             </span>
             <span className="studio-tree-row__text">
               <span>Notes</span>
@@ -1382,7 +1371,7 @@ export default function StudioFolderTree({
             type="button"
             className="studio-tree-row__actions"
             tabIndex={-1}
-            aria-label="Notes folder actions"
+            aria-label="Notes actions"
             aria-haspopup="menu"
             aria-expanded={menu.key === ROOT_KEY}
             {...MENU_TRIGGER_PROPS}
@@ -1400,11 +1389,8 @@ export default function StudioFolderTree({
             position={menu.position}
           >
             {renderRootPageActions(tree.rootDocument)}
-            <button type="button" onClick={() => beginCreate('entry', '')}>
-              New file
-            </button>
-            <button type="button" onClick={() => beginCreate('folder', '')}>
-              New folder
+            <button type="button" onClick={() => beginCreate('')}>
+              New note
             </button>
             <span />
             <button
@@ -1436,7 +1422,7 @@ export default function StudioFolderTree({
                 void refresh();
               }}
             >
-              Refresh files
+              Refresh notes
             </button>
           </StudioContextMenu>
         </div>
@@ -1452,7 +1438,7 @@ export default function StudioFolderTree({
 
         {rows.length === 0 && !creating && searching && (
           <div className="studio-tree-empty">
-            <p>No file matches “{query.trim()}”.</p>
+            <p>No note matches “{query.trim()}”.</p>
             <button type="button" onClick={() => onQueryChange('')}>
               Clear search
             </button>
@@ -1460,9 +1446,9 @@ export default function StudioFolderTree({
         )}
         {tree.itemCount === 0 && !creating && !searching && (
           <div className="studio-tree-empty">
-            <p>No files yet.</p>
-            <button type="button" onClick={() => beginCreate('entry', '')}>
-              New file
+            <p>No notes yet.</p>
+            <button type="button" onClick={() => beginCreate('')}>
+              New note
             </button>
           </div>
         )}

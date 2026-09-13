@@ -1,3 +1,4 @@
+import { FileIcon } from './studioFileIcons';
 import type { ImageEditRequest } from './StudioImageDialog';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
@@ -390,9 +391,7 @@ export default function StudioEditorPane({
             className="studio-dock__files"
             onClick={onOpenFiles}
           >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M2.75 5.5c0-.97.78-1.75 1.75-1.75h3l1.5 1.5h6.5c.97 0 1.75.78 1.75 1.75v7c0 1.24-1.01 2.25-2.25 2.25H5A2.25 2.25 0 0 1 2.75 14V5.5Z" />
-            </svg>
+            <FileIcon />
             Files
           </button>
           {viewSwitch}

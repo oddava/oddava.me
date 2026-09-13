@@ -621,15 +621,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         ),
     },
     {
-      id: 'new-folder',
-      title: 'New folder',
-      run: () =>
-        void mutations.createFolderInParent(
-          activeFolder,
-          mutations.uniqueItemId('folder'),
-        ),
-    },
-    {
       id: 'toggle-view',
       title: `Switch to ${nextViewLabel}`,
       hint: '⌘E',
@@ -746,7 +737,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onEditEntry={editEntry}
                 onOpenFolder={mutations.openFolderPage}
                 onCreateEntry={mutations.createEntryInFolder}
-                onCreateFolder={mutations.createFolderInParent}
                 onRenameEntry={mutations.renameEntryInline}
                 onRenameFolder={mutations.renameFolderInline}
                 onDuplicateEntry={mutations.duplicateEntryInline}
@@ -780,7 +770,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onEditEntry={editEntry}
                 onOpenFolder={mutations.openFolderPage}
                 onCreateEntry={mutations.createEntryInFolder}
-                onCreateFolder={mutations.createFolderInParent}
                 onRenameEntry={mutations.renameEntryInline}
                 onRenameFolder={mutations.renameFolderInline}
                 onDuplicateEntry={mutations.duplicateEntryInline}
