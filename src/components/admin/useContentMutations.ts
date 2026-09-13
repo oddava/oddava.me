@@ -62,7 +62,6 @@ export interface ContentMutations {
   uniqueItemId: (base: string) => string;
   toggleFolder: (id: string) => void;
   createEntryInFolder: (folder: string, name: string) => Promise<boolean>;
-  createFolderInParent: (parent: string, name: string) => Promise<boolean>;
   openFolderPage: (
     folder: ContentFolder,
     options?: OpenOptions,
@@ -170,6 +169,7 @@ export function useContentMutations({
     setBusyKey(`create-${id}`);
     setError(null);
     try {
+      await ensureNoteContainer(folder);
       await createContentEntry(collection.id, {
         slug: id,
         folder,
@@ -193,42 +193,10 @@ export function useContentMutations({
     }
   }
 
-  async function createFolderInParent(
-    parent: string,
-    name: string,
-  ): Promise<boolean> {
-    if (!collection) return false;
-    const folderName = gardenSlug(name);
-    if (!folderName) {
-      setError('Give the folder a short name first.');
-      return false;
-    }
-    const path = [parent, folderName].filter(Boolean).join('/');
-    setBusyKey(`create-folder-${path}`);
-    setError(null);
-    try {
-      await createContentFolder(collection.id, path);
-      setActiveFolder(path);
-      setExpandedFolders((current) => {
-        const next = new Set(current);
-        next.add(parent);
-        next.add(path);
-        return next;
-      });
-      await refreshTree();
-      // The server creates a folder page; open it so the folder has a home.
-      await openNote(folderName, parent, { placement: 'permanent' });
-      return true;
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Could not create the folder.',
-      );
-      return false;
-    } finally {
-      setBusyKey(null);
-    }
+  async function ensureNoteContainer(path: string) {
+    if (!collection || !path || folders.some((folder) => folder.id === path))
+      return;
+    await createContentFolder(collection.id, path, true);
   }
 
   async function openFolderPage(
@@ -255,9 +223,7 @@ export function useContentMutations({
       return true;
     } catch (caught) {
       setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Could not open the folder page.',
+        caught instanceof Error ? caught.message : 'Could not open the note.',
       );
       return false;
     } finally {
@@ -382,11 +348,16 @@ export function useContentMutations({
     const source = entries.find((entry) => entry.id === id);
     if (!source) return false;
     if (source.folder === folder) return true;
+    if (folder === [source.folder, source.id].filter(Boolean).join('/')) {
+      setError('A note cannot be moved inside itself.');
+      return false;
+    }
     setBusyKey(`move-${id}`);
     setError(null);
     try {
       const revision = await revisionAfterSaving(source);
       if (!revision) return false;
+      await ensureNoteContainer(folder);
       const response = await moveContentEntry(
         collection.id,
         id,
@@ -442,6 +413,7 @@ export function useContentMutations({
         return false;
       }
 
+      await ensureNoteContainer(parent);
       const response = await updateContentFolder(
         collection.id,
         folder.id,
@@ -468,7 +440,7 @@ export function useContentMutations({
       return true;
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : 'Could not move the folder.',
+        caught instanceof Error ? caught.message : 'Could not move the note.',
       );
       return false;
     } finally {
@@ -519,7 +491,7 @@ export function useContentMutations({
       setError(
         caught instanceof Error
           ? caught.message
-          : 'Could not duplicate the folder.',
+          : 'Could not duplicate the note.',
       );
       return false;
     } finally {
@@ -534,14 +506,14 @@ export function useContentMutations({
   ): Promise<boolean> {
     if (!collection) return false;
     if (!options.skipConfirm && folder.totalNoteCount > 0) {
-      setError('Move the notes out of this folder before removing it.');
+      setError('Move the notes out of this note before removing it.');
       return false;
     }
     if (!options.skipConfirm) {
       const ok = await confirm({
-        title: 'Remove folder',
+        title: 'Remove note',
         message: `Remove “${folder.name.replaceAll('-', ' ')}”?`,
-        confirmLabel: 'Remove folder',
+        confirmLabel: 'Remove note',
         danger: true,
       });
       if (!ok) return false;
@@ -564,14 +536,12 @@ export function useContentMutations({
       );
       if (!options.skipRefresh) {
         await refreshTree();
-        setNotice('Folder removed.');
+        setNotice('Note removed.');
       }
       return true;
     } catch (caught) {
       setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Could not remove the folder.',
+        caught instanceof Error ? caught.message : 'Could not remove the note.',
       );
       return false;
     } finally {
@@ -688,7 +658,7 @@ export function useContentMutations({
         const folder = folders.find((candidate) => candidate.id === item.id);
         if (!folder) continue;
         const parent = folder.parentId ?? '';
-        // A parent already in the selection takes this folder with it.
+        // A parent already in the selection takes this note with it.
         if (parent === destination || isInsideAny(parent, selectedFolders)) {
           continue;
         }
@@ -795,7 +765,6 @@ export function useContentMutations({
     uniqueItemId,
     toggleFolder,
     createEntryInFolder,
-    createFolderInParent,
     openFolderPage,
     renameEntryInline,
     renameFolderInline,

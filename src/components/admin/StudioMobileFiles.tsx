@@ -8,13 +8,15 @@ import {
 import type { ComponentChildren } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 import { VisuallyHidden } from '../ui/VisuallyHidden';
-import { FileIcon, FolderIcon } from './studioFileIcons';
+import { FileIcon } from './studioFileIcons';
 import StudioSheet from './StudioSheet';
 import { useLongPress } from './useLongPress';
 import type { StudioTreeItemRef } from './studioDragItems';
 import {
   buildTree,
   folderOptions,
+  noteDestinations,
+  noteContainerPath,
   highlightParts,
   itemKey,
   keyToItem,
@@ -54,8 +56,9 @@ type SheetState =
   | { kind: 'new' }
   | {
       kind: 'name';
-      mode: 'file' | 'folder' | 'rename';
+      mode: 'file' | 'rename';
       item?: StudioTreeItemRef;
+      parent?: string;
     }
   | { kind: 'move'; items: StudioTreeItemRef[] };
 
@@ -74,7 +77,6 @@ interface Props {
   onEditEntry: (entry: ContentEntryListItem) => void;
   onOpenFolder: (folder: ContentFolder) => Promise<boolean>;
   onCreateEntry: (folder: string, name: string) => Promise<boolean>;
-  onCreateFolder: (parent: string, name: string) => Promise<boolean>;
   onRenameEntry: (
     entry: ContentEntryListItem,
     name: string,
@@ -110,7 +112,6 @@ export default function StudioMobileFiles({
   onEditEntry,
   onOpenFolder,
   onCreateEntry,
-  onCreateFolder,
   onRenameEntry,
   onRenameFolder,
   onDuplicateEntry,
@@ -214,7 +215,7 @@ export default function StudioMobileFiles({
     setSheetOpen(true);
   }
 
-  function openNameSheet(mode: 'file' | 'folder' | 'rename', node?: TreeNode) {
+  function openNameSheet(mode: 'file' | 'rename', node?: TreeNode) {
     setName(node ? nodeLabel(node) : '');
     openSheet({ kind: 'name', mode, item: node ? nodeRef(node) : undefined });
   }
@@ -265,8 +266,8 @@ export default function StudioMobileFiles({
     if (!value || busy || sheet?.kind !== 'name') return;
     const target = sheet.item && nodeByKey.get(itemKey(sheet.item));
     const ok = await run(() => {
-      if (sheet.mode === 'file') return onCreateEntry(folderId, value);
-      if (sheet.mode === 'folder') return onCreateFolder(folderId, value);
+      if (sheet.mode === 'file')
+        return onCreateEntry(sheet.parent ?? folderId, value);
       if (!target) return Promise.resolve(false);
       return target.kind === 'entry'
         ? onRenameEntry(target.entry, value)
@@ -399,8 +400,6 @@ export default function StudioMobileFiles({
               <span
                 className={`studio-mfiles__check ${picked ? 'is-on' : ''}`}
               />
-            ) : isFolder ? (
-              <FolderIcon />
             ) : (
               <FileIcon />
             )}
@@ -471,14 +470,27 @@ export default function StudioMobileFiles({
             act(() => (isFolder ? goTo(node.folder.id) : openNode(node)))
           }
         >
-          {isFolder ? 'Open folder' : 'Open'}
+          {isFolder ? 'Browse child notes' : 'Open'}
         </button>
         {isFolder && (
           <button type="button" onClick={() => act(() => openNode(node))}>
-            Open folder page
+            Open note
           </button>
         )}
         <span />
+        <button
+          type="button"
+          onClick={() => {
+            setName('');
+            openSheet({
+              kind: 'name',
+              mode: 'file',
+              parent: isFolder ? node.folder.id : noteContainerPath(node.entry),
+            });
+          }}
+        >
+          New child note
+        </button>
         <button type="button" onClick={() => openNameSheet('rename', node)}>
           Rename
         </button>
@@ -579,7 +591,7 @@ export default function StudioMobileFiles({
             type="button"
             onClick={() => act(() => onEditEntry(herePage))}
           >
-            Open this folder’s page
+            Open this note
           </button>
         )}
         <button
@@ -595,10 +607,10 @@ export default function StudioMobileFiles({
           disabled={refreshing}
           onClick={() => act(() => void refresh())}
         >
-          {refreshing ? 'Refreshing…' : 'Refresh files'}
+          {refreshing ? 'Refreshing…' : 'Refresh notes'}
         </button>
         <button type="button" onClick={() => act(onRequestClose)}>
-          Close files
+          Close notes
         </button>
       </>
     );
@@ -610,14 +622,11 @@ export default function StudioMobileFiles({
         <button type="button" onClick={() => openNameSheet('file')}>
           New note
         </button>
-        <button type="button" onClick={() => openNameSheet('folder')}>
-          New folder
-        </button>
       </>
     );
   }
 
-  function nameSheet(mode: 'file' | 'folder' | 'rename'): ComponentChildren {
+  function nameSheet(mode: 'file' | 'rename'): ComponentChildren {
     return (
       <form
         className="studio-sheet__form"
@@ -636,7 +645,7 @@ export default function StudioMobileFiles({
           autocorrect="off"
           spellcheck={false}
           aria-label={mode === 'rename' ? 'New name' : 'Name'}
-          placeholder={mode === 'folder' ? 'new folder' : 'new note'}
+          placeholder="new note"
           onInput={(event) => setName(event.currentTarget.value)}
         />
         <button
@@ -651,9 +660,11 @@ export default function StudioMobileFiles({
   }
 
   function moveSheet(items: StudioTreeItemRef[]): ComponentChildren {
-    const excluded = items
-      .filter((item) => item.kind === 'folder')
-      .map((item) => item.id);
+    const excluded = items.map((item) =>
+      item.kind === 'folder'
+        ? item.id
+        : noteContainerPath(entries.find((entry) => entry.id === item.id)!),
+    );
     const only = items.length === 1 ? items[0] : undefined;
     const from =
       only?.kind === 'entry'
@@ -664,24 +675,31 @@ export default function StudioMobileFiles({
 
     return (
       <>
-        {folderOptions(folders, excluded).map((option) => {
-          const destination = option.value === ROOT_OPTION ? '' : option.value;
-          const current = from !== undefined && from === destination;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              className="studio-sheet__folder"
-              disabled={busy || current}
-              style={{ paddingLeft: `${12 + (option.depth ?? 0) * 14}px` }}
-              onClick={() => void moveTo(items, destination)}
-            >
-              <FolderIcon />
-              {option.label}
-              {current && <span className="studio-sheet__hint">Here now</span>}
-            </button>
-          );
-        })}
+        {folderOptions(noteDestinations(folders, entries), excluded).map(
+          (option) => {
+            const destination =
+              option.value === ROOT_OPTION ? '' : option.value;
+            const current = from !== undefined && from === destination;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className="studio-sheet__folder"
+                disabled={busy || current}
+                style={{
+                  paddingLeft: `${12 + Math.min(option.depth ?? 0, 6) * 2}px`,
+                }}
+                onClick={() => void moveTo(items, destination)}
+              >
+                <FileIcon />
+                {option.label}
+                {current && (
+                  <span className="studio-sheet__hint">Here now</span>
+                )}
+              </button>
+            );
+          },
+        )}
       </>
     );
   }
@@ -726,18 +744,18 @@ export default function StudioMobileFiles({
         title:
           sheet.mode === 'rename'
             ? `Rename ${node ? nodeLabel(node) : ''}`
-            : sheet.mode === 'folder'
-              ? 'New folder'
-              : 'New note',
+            : 'New note',
         detail:
-          sheet.mode === 'rename' ? undefined : `in ${locationLabel(folderId)}`,
+          sheet.mode === 'rename'
+            ? undefined
+            : `in ${locationLabel(sheet.parent ?? folderId)}`,
         content: nameSheet(sheet.mode),
       };
     }
     return {
       title:
         sheet.items.length > 1 ? `Move ${sheet.items.length} items` : 'Move to',
-      detail: 'Pick a destination folder',
+      detail: 'Pick a parent note',
       content: moveSheet(sheet.items),
     };
   }
@@ -776,7 +794,7 @@ export default function StudioMobileFiles({
               type="button"
               className="studio-mfiles__icon"
               aria-label={
-                folderId === '' ? 'Close files' : 'Back to parent folder'
+                folderId === '' ? 'Close notes' : 'Back to parent note'
               }
               onClick={() =>
                 folderId === ''
@@ -809,7 +827,7 @@ export default function StudioMobileFiles({
       </header>
 
       {!searching && !selecting && crumbs.length > 1 && (
-        <nav className="studio-mfiles__crumbs" aria-label="Folder path">
+        <nav className="studio-mfiles__crumbs" aria-label="Note path">
           {crumbs.map((crumb, index) =>
             index === crumbs.length - 1 ? (
               <span key={crumb.id} aria-current="location">
@@ -832,8 +850,8 @@ export default function StudioMobileFiles({
         <input
           className="admin-input"
           type="search"
-          placeholder="Search all files"
-          aria-label="Search every file by name, title or path"
+          placeholder="Search all notes"
+          aria-label="Search every note by name, title or path"
           value={query}
           enterkeyhint="search"
           onInput={(event) => onQueryChange(event.currentTarget.value)}
@@ -865,16 +883,14 @@ export default function StudioMobileFiles({
         <div className="studio-mfiles__empty">
           {searching ? (
             <>
-              <p>No file matches “{query.trim()}”.</p>
+              <p>No note matches “{query.trim()}”.</p>
               <button type="button" onClick={() => onQueryChange('')}>
                 Clear search
               </button>
             </>
           ) : (
             <>
-              <p>
-                {folderId === '' ? 'No files yet.' : 'This folder is empty.'}
-              </p>
+              <p>{folderId === '' ? 'No notes yet.' : 'No child notes yet.'}</p>
               <button type="button" onClick={() => openNameSheet('file')}>
                 New note
               </button>

@@ -67,10 +67,11 @@ export interface ContentFoldersResponse {
 export function createContentFolder(
   collection: string,
   path: string,
+  ensure = false,
 ): Promise<ContentFoldersResponse> {
   return readContentJson<ContentFoldersResponse>(
     contentPath(collection, 'folders'),
-    jsonBody('POST', { path }),
+    jsonBody('POST', { path, ensure }),
   );
 }
 

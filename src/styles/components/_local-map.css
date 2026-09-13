@@ -1,4 +1,4 @@
-/* A native disclosure list: folder chevrons expand, names open documents.
+/* A native disclosure list: note chevrons expand, names open documents.
    It stays in the existing context rail and works before JavaScript loads. */
 .note-explorer {
   min-width: 0;
@@ -16,18 +16,13 @@
   overflow-x: auto;
 }
 
-.note-explorer .note-explorer__children {
-  margin-left: 0.75rem;
-  padding-left: 0.35rem;
-  border-left: 1px solid var(--color-rule);
-}
-
 .note-explorer__row {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   min-height: 2rem;
   padding: 0.3rem 0.45rem;
+  padding-left: calc(0.45rem + var(--note-indent, 0px));
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   text-decoration: none;
@@ -87,10 +82,6 @@ summary.note-explorer__row::-webkit-details-marker {
   color: var(--color-text-muted);
 }
 
-.note-explorer__icon--folder {
-  color: var(--color-brand);
-}
-
 .note-explorer__chevron {
   width: 0.75rem;
   height: 0.75rem;
@@ -101,7 +92,7 @@ summary.note-explorer__row::-webkit-details-marker {
 }
 
 .note-explorer__file {
-  padding-left: 1.65rem;
+  padding-left: calc(1.65rem + var(--note-indent, 0px));
 }
 
 .note-explorer__references {

@@ -444,6 +444,42 @@ describe('content HTTP handlers', () => {
     ).toBe(false);
   });
 
+  it('lets an existing note contain children without rewriting its document', async () => {
+    const provider = new MemoryContentProvider();
+    await provider.writeTextFile(
+      'src/content/notes/parent.md',
+      '# Parent\n\nKeep this body.',
+      'seed',
+    );
+    const before = await provider.readFile('src/content/notes/parent.md');
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await handleContentFolders(
+        provider,
+        'notes',
+        jsonRequest(
+          'POST',
+          'https://oddava.me/api/admin/content/notes/folders',
+          { path: 'parent', ensure: true },
+        ),
+      );
+      expect(response.ok).toBe(true);
+    }
+    expect(await provider.readFile('src/content/notes/parent.md')).toEqual(
+      before,
+    );
+    const child = await handleContentFolders(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/folders', {
+        path: 'parent/child',
+      }),
+    );
+    expect(child.status).toBe(201);
+    expect(
+      await provider.readFile('src/content/notes/parent/child.md'),
+    ).not.toBeNull();
+  });
+
   it('does not create a folder whose page would duplicate a note id', async () => {
     const provider = new MemoryContentProvider();
     await provider.writeTextFile(

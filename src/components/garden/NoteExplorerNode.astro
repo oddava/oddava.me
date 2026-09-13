@@ -6,9 +6,10 @@ interface Props {
   index: GardenIndex;
   currentId: string;
   expanded: Set<string>;
+  depth?: number;
 }
 
-const { node, index, currentId, expanded } = Astro.props;
+const { node, index, currentId, expanded, depth = 0 } = Astro.props;
 const children = node.childIds.flatMap((id) => {
   const child = index.byId.get(id);
   return child ? [child] : [];
@@ -17,7 +18,10 @@ const folder = children.length > 0 || node.id === index.root.id;
 const current = node.id === currentId;
 ---
 
-<li class="note-explorer__item">
+<li
+  class="note-explorer__item"
+  style={`--note-indent: ${Math.min(depth, 6) * 2}px`}
+>
   {
     folder ? (
       <details class="note-explorer__folder" open={expanded.has(node.id)}>
@@ -30,11 +34,11 @@ const current = node.id === currentId;
             <path d="m6 4 4 4-4 4" />
           </svg>
           <svg
-            class="note-explorer__icon note-explorer__icon--folder"
+            class="note-explorer__icon"
             viewBox="0 0 20 20"
             aria-hidden="true"
           >
-            <path d="M2.5 6V4.5h5l2 2h8v10h-15Z" />
+            <path d="M5 2.5h6l4 4v11H5Z M11 2.5v4h4 M7.5 10h5 M7.5 13h5" />
           </svg>
           <a
             href={node.href}
@@ -48,7 +52,13 @@ const current = node.id === currentId;
         {children.length > 0 && (
           <ul class="note-explorer__children" role="list">
             {children.map((child) => (
-              <Astro.self node={child} {index} {currentId} {expanded} />
+              <Astro.self
+                node={child}
+                {index}
+                {currentId}
+                {expanded}
+                depth={depth + 1}
+              />
             ))}
           </ul>
         )}

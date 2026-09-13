@@ -1,3 +1,4 @@
+import { FileIcon } from './studioFileIcons';
 import StudioControlMenu, { StudioWorkspaceLinks } from './StudioControlMenu';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
@@ -37,15 +38,6 @@ interface Props {
   onGoForward: () => void;
   onToggleSidebar: () => void;
   onQuickOpen: () => void;
-}
-
-function FileIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M5 2.75h6l4 4v10.5H5V2.75Z" />
-      <path d="M11 2.75v4h4" />
-    </svg>
-  );
 }
 
 function labelFor(entries: ContentEntryListItem[], id: string): string {

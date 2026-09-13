@@ -11,16 +11,7 @@
   list-style: none;
 }
 
-.studio-tree-children {
-  margin-left: 11px !important;
-  padding-left: 6px !important;
-  border-left: 1px solid var(--admin-line);
-}
-
-.studio-tree-children--root {
-  margin-left: 10px !important;
-}
-
+/* Rows own a capped indent, so deeply nested lists never shrink the sidebar. */
 .studio-tree-item {
   position: relative;
 }

@@ -57,6 +57,7 @@ async function setup(page: Page) {
         ...entries[0]!,
         id: data.slug,
         title: data.slug,
+        folder: data.folder ?? '',
         path: `${data.slug}.md`,
         body: data.body ?? '',
         revision: 'new',
@@ -65,6 +66,21 @@ async function setup(page: Page) {
       return route.fulfill({
         json: { entry, result: { revision: 'new', message: 'Created' } },
       });
+    }
+    if (path.endsWith('/folders') && request.method() === 'POST') {
+      const { path: folderPath } = request.postDataJSON();
+      if (!folders.some((folder) => folder.id === folderPath)) {
+        const parts = folderPath.split('/');
+        folders.push({
+          id: folderPath,
+          name: parts.at(-1),
+          parentId: parts.length > 1 ? parts.slice(0, -1).join('/') : null,
+          depth: parts.length - 1,
+          noteCount: 0,
+          totalNoteCount: 0,
+        });
+      }
+      return route.fulfill({ json: { folders } });
     }
     if (path.endsWith('/move')) {
       const data = request.postDataJSON();
@@ -244,11 +260,11 @@ test('block controls follow hovered text and sidebar controls replace the header
   await expect(grip).toBeHidden();
   await page.getByRole('button', { name: 'Show Files explorer' }).click();
   const sidebar = page.getByRole('region', { name: 'Files explorer' });
-  await sidebar.getByRole('button', { name: 'Quick open file' }).click();
+  await sidebar.getByRole('button', { name: 'Quick open note' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('.studio-workbench-nav')).toHaveCount(0);
-  await sidebar.getByRole('button', { name: 'Close Files explorer' }).click();
+  await sidebar.getByRole('button', { name: 'Close Notes explorer' }).click();
   await page.getByRole('button', { name: 'Show Files explorer' }).click();
   await paragraph.hover();
   await page.screenshot({ path: 'test-results/studio-sidebar-hover.png' });
@@ -314,9 +330,9 @@ test('browsing, searching, creation and responsive layout', async ({
     const sidebar = page.getByRole('region', { name: 'Files explorer' });
     await expect(sidebar.getByRole('searchbox')).toHaveCount(0);
     await expect(sidebar.locator('.studio-explorer__heading')).toHaveText(
-      'Files',
+      'Notes',
     );
-    await sidebar.getByRole('button', { name: 'Quick open file' }).click();
+    await sidebar.getByRole('button', { name: 'Quick open note' }).click();
   }
   const search =
     info.project.name === 'desktop'
@@ -406,7 +422,7 @@ test('create, rename and move a file without losing the open document', async ({
     await page.getByRole('button', { name: 'Move to…', exact: true }).click();
     await page
       .getByRole('dialog', { name: 'Move to', exact: true })
-      .getByRole('button', { name: 'projects', exact: true })
+      .getByRole('button', { name: 'welcome', exact: true })
       .click();
     await expect
       .poll(
@@ -414,14 +430,14 @@ test('create, rename and move a file without losing the open document', async ({
           store.entries().find((entry) => entry.id === 'better-thought')
             ?.folder,
       )
-      .toBe('projects');
+      .toBe('welcome');
     return;
   }
   await page
     .getByRole('button', { name: 'New note', exact: true })
     .first()
     .click();
-  const name = page.getByRole('textbox', { name: 'New entry name' });
+  const name = page.getByRole('textbox', { name: 'New note name' });
   await name.fill('Fresh thought');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(
@@ -441,13 +457,13 @@ test('create, rename and move a file without losing the open document', async ({
     .getByRole('button', { name: 'Move to…', exact: true })
     .click();
   await page.getByRole('button', { name: 'Move better thought to' }).click();
-  await page.getByRole('option', { name: 'projects', exact: true }).click();
+  await page.getByRole('option', { name: 'welcome', exact: true }).click();
   await expect
     .poll(
       () =>
         store.entries().find((entry) => entry.id === 'better-thought')?.folder,
     )
-    .toBe('projects');
+    .toBe('welcome');
   await expect(
     page.getByRole('textbox', { name: 'Note editor' }),
   ).toContainText('fresh thought');
@@ -1399,4 +1415,115 @@ test('marquee selects blocks for copy, cut, undo and moving together', async ({
   await expect(editor.locator('p')).toHaveText(['Gamma', 'Alpha', 'Beta']);
   await page.keyboard.press('Escape');
   await expect(editor.locator('.studio-block-selected')).toHaveCount(0);
+});
+
+test('existing notes accept child notes through one creation action', async ({
+  page,
+}, info) => {
+  const store = await setup(page);
+  if (info.project.name === 'desktop') {
+    await page
+      .locator('[data-tree-key="entry:welcome"]')
+      .click({ button: 'right' });
+  } else {
+    await page
+      .getByRole('button', { name: 'Actions for welcome', exact: true })
+      .click();
+  }
+  await expect(
+    page.getByRole('button', { name: 'New folder', exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'New child note', exact: true })
+    .click();
+  const input =
+    info.project.name === 'desktop'
+      ? page.getByRole('textbox', { name: 'New note name' })
+      : page.getByRole('dialog').getByRole('textbox');
+  await input.fill('Child thought');
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect
+    .poll(
+      () =>
+        store.entries().find((entry) => entry.id === 'child-thought')?.folder,
+    )
+    .toBe('welcome');
+  expect(store.entries().find((entry) => entry.id === 'welcome')?.body).toBe(
+    seed,
+  );
+  await page.screenshot({
+    path: `test-results/nested-notes-${info.project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test('deeply nested notes keep their labels and actions inside the sidebar', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'desktop',
+    'Mobile browses one level at a time.',
+  );
+  await setup(page);
+  const entries = Array.from({ length: 20 }, (_, depth) => {
+    const id = `level-${depth + 1}`;
+    const folder = Array.from(
+      { length: depth },
+      (_, n) => `level-${n + 1}`,
+    ).join('/');
+    return {
+      id,
+      title: id,
+      folder,
+      path: `${folder}/${id}.md`,
+      href: `/notes/${id}`,
+      revision: 'r1',
+    };
+  });
+  const folders = entries.map((entry, depth) => ({
+    id: [entry.folder, entry.id].filter(Boolean).join('/'),
+    name: entry.id,
+    parentId: entry.folder || null,
+    depth,
+    documentId: entry.id,
+    noteCount: depth < 19 ? 1 : 0,
+    totalNoteCount: 19 - depth,
+  }));
+  await page.route('**/api/admin/content/notes', (route) =>
+    route.fulfill({
+      json: {
+        collection: {
+          id: 'notes',
+          label: 'Notes',
+          singularLabel: 'Note',
+          body: true,
+          count: entries.length,
+        },
+        entries,
+        folders,
+      },
+    }),
+  );
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Notes actions', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Expand all', exact: true }).click();
+  const rows = page.locator('.studio-tree-row[data-tree-key^="folder:"]');
+  await expect(rows).toHaveCount(20);
+  const first = await rows.first().boundingBox();
+  const last = rows.last();
+  const label = last.locator('.studio-tree-row__text');
+  const labelBox = await label.boundingBox();
+  const actionBox = await last.getByRole('button').boundingBox();
+  expect(labelBox!.width).toBeGreaterThan(120);
+  expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(
+    first!.x + first!.width,
+  );
+  await expect(last).toHaveCSS('padding-left', '12px');
+  await expect(rows.first()).toHaveCSS('padding-left', '2px');
+  await page.screenshot({
+    path: 'test-results/compact-nested-notes.png',
+    fullPage: true,
+  });
 });

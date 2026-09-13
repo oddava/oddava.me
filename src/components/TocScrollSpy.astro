@@ -4,9 +4,8 @@
  *
  * Include it once beside any index of `#fragment` links, and give that index a
  * `data-toc-spy` attribute; every matching link gets `aria-current="location"`
- * as its heading passes the top of the viewport. Both the note table of
- * contents and the changelog's release index use it, which is why it is a
- * component rather than a script inside either of them.
+ * as its heading passes the top of the viewport. It stays separate from the
+ * note table of contents so Astro can bundle the script independently.
  *
  * Astro bundles this script once no matter how many indexes are on the page.
  */

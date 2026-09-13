@@ -82,7 +82,7 @@ export function nodePath(node: TreeNode): string {
 export function nodeSearchText(node: TreeNode): string {
   return (
     node.kind === 'folder'
-      ? `${nodeLabel(node)} ${node.folder.id}`
+      ? `${nodeLabel(node)} ${node.document?.title ?? ''} ${node.folder.id}`
       : `${nodeLabel(node)} ${node.entry.title} ${node.entry.path}`
   ).toLowerCase();
 }
@@ -294,6 +294,35 @@ export function folderAndDescendants(
  * Folders a move can land in. `excluded` names folders that are themselves
  * moving: a folder cannot become its own descendant.
  */
+export function noteContainerPath(entry: ContentEntryListItem): string {
+  return [entry.folder, entry.id].filter(Boolean).join('/');
+}
+
+/** Existing leaf notes are also valid parents; storage is created on first use. */
+export function noteDestinations(
+  folders: ContentFolder[],
+  entries: ContentEntryListItem[],
+): ContentFolder[] {
+  return [
+    ...folders,
+    ...entries
+      .filter(
+        (entry) =>
+          entry.id !== 'index' &&
+          !folders.some((folder) => folder.id === noteContainerPath(entry)),
+      )
+      .map((entry) => ({
+        id: noteContainerPath(entry),
+        name: entry.id,
+        parentId: entry.folder || null,
+        depth: entry.folder.split('/').filter(Boolean).length,
+        noteCount: 0,
+        totalNoteCount: 0,
+        documentId: entry.id,
+      })),
+  ];
+}
+
 export function folderOptions(
   folders: ContentFolder[],
   excluded: string[] = [],
