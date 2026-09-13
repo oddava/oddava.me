@@ -19,10 +19,7 @@ const folder = children.length > 0 || node.id === index.root.id;
 const current = node.id === currentId;
 ---
 
-<li
-  class="note-explorer__item"
-  style={`--note-indent: ${Math.min(depth, 4) * 8}px`}
->
+<li class="note-explorer__item" data-depth={Math.min(depth, 4)}>
   {
     folder ? (
       <details class="note-explorer__folder" open={expanded.has(node.id)}>

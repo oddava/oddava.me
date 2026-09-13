@@ -17,6 +17,23 @@
   overflow-x: auto;
 }
 
+/* Public HTML uses depth attributes: production CSP blocks inline styles. */
+.note-explorer__item[data-depth='0'] {
+  --note-indent: 0px;
+}
+.note-explorer__item[data-depth='1'] {
+  --note-indent: 8px;
+}
+.note-explorer__item[data-depth='2'] {
+  --note-indent: 16px;
+}
+.note-explorer__item[data-depth='3'] {
+  --note-indent: 24px;
+}
+.note-explorer__item[data-depth='4'] {
+  --note-indent: 32px;
+}
+
 .note-explorer__row {
   display: flex;
   align-items: center;
