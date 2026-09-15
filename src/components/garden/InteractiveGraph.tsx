@@ -172,17 +172,14 @@ export default function InteractiveGraph({
                   <button
                     ref={globalButton}
                     disabled={!ready}
-                    class="interactive-graph__button"
+                    class="interactive-graph__button interactive-graph__button--global"
                     aria-label="Open global graph"
                     title="Open global graph"
                     type="button"
                     onClick={openGlobal}
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <circle cx="6" cy="6" r="2.5" />
-                      <circle cx="18" cy="6" r="2.5" />
-                      <circle cx="12" cy="18" r="2.5" />
-                      <path d="M8.5 6h7M7.5 8l3 7M16.5 8l-3 7M6 8.5v4.5h12V8.5" />
+                      <path d="M8 16V8h8M8 8l8 8" />
                     </svg>
                   </button>
                 )}
@@ -201,7 +198,7 @@ export default function InteractiveGraph({
                     {expanded ? (
                       <path d="m7 7 10 10M17 7 7 17" />
                     ) : (
-                      <path d="M5 19 19 5m-9 0h9v9" />
+                      <path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4" />
                     )}
                   </svg>
                 </button>
