@@ -324,6 +324,10 @@
   border: 0;
 }
 
+.note-context .interactive-graph.note-context__section {
+  margin-bottom: 0.9rem;
+}
+
 .note-context__section + .note-context__section {
   margin-top: clamp(1.25rem, 3vw, 1.6rem);
   padding-top: clamp(1.25rem, 3vw, 1.6rem);
@@ -490,7 +494,7 @@
 
   /* List sections may shrink to fit the cap; their lists become the
      scroll surface. Labels and the map never shrink. */
-  .note-context__section:not(.local-map) {
+  .note-context__section:not(.local-map):not(.interactive-graph) {
     display: flex;
     flex-direction: column;
     flex: 0 1 auto;
@@ -544,8 +548,6 @@
   }
 }
 
-/* The full-page notes landscape lives in _atlas.css. */
-
 @media (max-width: 640px) {
   .note-card__link {
     gap: 1rem;
@@ -562,5 +564,24 @@
 @media (max-width: 420px) {
   .garden-topic-header h1 {
     font-size: clamp(2.8rem, 14.5vw, 3.65rem);
+  }
+}
+
+/* Islands render through display:contents; give the graph/outline boundary an
+   explicit divider rather than relying on element-sibling adjacency. */
+.note-context__inner:has(.interactive-graph) > .note-toc--rail {
+  margin-top: 1.4rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-rule);
+}
+@media (min-width: 78rem) {
+  .note-context:has(.interactive-graph) {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .note-context__inner:has(.interactive-graph) {
+    max-height: none;
+    overflow: visible;
   }
 }
