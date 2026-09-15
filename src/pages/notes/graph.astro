@@ -1,108 +1,31 @@
 ---
 import Immersive from '../../layouts/Immersive.astro';
-import KnowledgeLandscape, {
-  type KnowledgePath,
-  type KnowledgePlace,
-} from '../../components/garden/KnowledgeLandscape';
+import InteractiveGraph from '../../components/garden/InteractiveGraph';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
-import { hasLocalMap } from '@lib/garden/local-map';
-import '../../styles/components/_atlas.css';
+import { deriveNoteGraph } from '@lib/garden/graph';
 
 export const prerender = false;
-
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
-const index = garden.index;
-const pairKey = (left: string, right: string) =>
-  [left, right].toSorted().join('::');
-const paths: KnowledgePath[] = [];
-const pathKindsByPair = new Map<string, Set<KnowledgePath['kind']>>();
-
-const addPath = (path: KnowledgePath) => {
-  if (path.sourceId === path.targetId) return;
-  const key = pairKey(path.sourceId, path.targetId);
-  const kinds = pathKindsByPair.get(key) ?? new Set();
-  if (kinds.has(path.kind)) return;
-  kinds.add(path.kind);
-  pathKindsByPair.set(key, kinds);
-  paths.push(path);
-};
-
-for (const note of index.documents) {
-  for (const link of note.outbound) {
-    if (!link.resolvedId) continue;
-    addPath({
-      sourceId: note.id,
-      targetId: link.resolvedId,
-      kind: 'reference',
-    });
-  }
-}
-
-// Shared themes are discovery paths, not structure. They appear only when at
-// least two specific themes overlap, so generic tags never redraw the terrain.
-// The O(n²) pair scan runs once per content version inside `buildGardenIndex`
-// and is cached on the garden index; the request path only walks the edges.
-for (const edge of index.affinityPaths) {
-  addPath({
-    sourceId: edge.sourceId,
-    targetId: edge.targetId,
-    kind: 'affinity',
-  });
-}
-
-const linkCount = new Map(index.documents.map((note) => [note.id, 0]));
-const countedPairs = new Set<string>();
-for (const path of paths) {
-  const key = pairKey(path.sourceId, path.targetId);
-  if (countedPairs.has(key)) continue;
-  countedPairs.add(key);
-  linkCount.set(path.sourceId, (linkCount.get(path.sourceId) ?? 0) + 1);
-  linkCount.set(path.targetId, (linkCount.get(path.targetId) ?? 0) + 1);
-}
-
-const places: KnowledgePlace[] = index.documents.map((note) => ({
-  id: note.id,
-  title: note.title,
-  summary: note.summary,
-  href: note.href,
-  parentId: note.parentId,
-  childIds: note.childIds,
-  tags: note.tags,
-  linkCount: linkCount.get(note.id) ?? 0,
-  localMapHref: hasLocalMap(note, index) ? `${note.href}#local-map` : null,
-}));
-
-// With JavaScript off, the SSR-rendered map is decorative; every note it shows
-// gets a plain link instead.
-const noscriptNotes = index.documents.filter(
-  (note) => note.id !== index.root.id,
-);
+const data = deriveNoteGraph(garden.index);
 ---
 
 <Immersive
-  title="thought landscape"
-  description="a living landscape shaped by notes, folders, and the paths between them."
+  title="graph of notes"
+  description="Explore the connections between notes."
 >
-  <h1 class="sr-only">map of notes</h1>
-  <KnowledgeLandscape client:load places={places} paths={paths} />
+  <h1 class="sr-only">Graph of notes</h1>
+  <InteractiveGraph client:load data={data} fullPage />
   <noscript>
-    <div class="landscape-noscript">
-      <div class="landscape-noscript__inner">
-        <p>
-          the interactive map needs javascript — here is everything it shows.
-        </p>
-        <ul>
-          {
-            noscriptNotes.map((note) => (
-              <li>
-                <a href={note.href}>{note.title}</a>
-              </li>
-            ))
-          }
-        </ul>
-        <p><a href="/notes">back to notes</a></p>
-      </div>
-    </div>
+    <p>The interactive graph needs JavaScript. Browse the notes:</p>
+    <ul>
+      {
+        data.nodes.map((note) => (
+          <li>
+            <a href={note.href}>{note.title}</a>
+          </li>
+        ))
+      }
+    </ul>
   </noscript>
 </Immersive>

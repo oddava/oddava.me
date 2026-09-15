@@ -10,6 +10,8 @@ import {
 import LocalNoteMap from './LocalNoteMap.astro';
 import NoteTableOfContents from './NoteTableOfContents.astro';
 import RelatedNotes from './RelatedNotes.astro';
+import InteractiveGraph from './InteractiveGraph';
+import { deriveNoteGraph } from '@lib/garden/graph';
 import '../../styles/components/_note-prose.css';
 
 interface Props {
@@ -48,6 +50,12 @@ const isStub = !rendered.html && document.childIds.length === 0;
   }
   <aside class="note-context" aria-label={`Context for ${document.title}`}>
     <div class="note-context__inner">
+      <InteractiveGraph
+        client:visible
+        data={deriveNoteGraph(index, document.id)}
+        globalData={deriveNoteGraph(index)}
+        currentId={document.id}
+      />
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
       <RelatedNotes document={document} index={index} />
       {
