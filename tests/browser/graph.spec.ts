@@ -438,3 +438,10 @@ test('dragging a node along fractional-resolution edges leaves no pixels behind'
     await context.close();
   }
 });
+
+test('full-page graph returns to its source note', async ({ page }) => {
+  await setup(page, '?full#place=note-0');
+  await expect(
+    page.getByRole('link', { name: 'Back to notes' }),
+  ).toHaveAttribute('href', '#note-0');
+});

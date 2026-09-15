@@ -1,9 +1,14 @@
 const STORAGE_KEY = 'notes-explorer-open';
 
 /** Keep the reader's choice across page loads; leave first-visit defaults alone. */
-export function restoreNoteExplorerState(details: HTMLDetailsElement): void {
+export function restoreNoteExplorerState(
+  details: HTMLDetailsElement,
+  compact = false,
+): void {
+  const storageKey = compact ? `${STORAGE_KEY}-mobile` : STORAGE_KEY;
+  if (compact) details.open = false;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     if (saved === 'true' || saved === 'false') details.open = saved === 'true';
   } catch {
     // Storage can be disabled; the native disclosure still works.
@@ -15,7 +20,7 @@ export function restoreNoteExplorerState(details: HTMLDetailsElement): void {
     if (details.open === previous) return;
     previous = details.open;
     try {
-      localStorage.setItem(STORAGE_KEY, String(details.open));
+      localStorage.setItem(storageKey, String(details.open));
     } catch {
       // A blocked preference write must not interrupt navigation.
     }

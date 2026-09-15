@@ -42,3 +42,17 @@ it('leaves the disclosure usable when storage is blocked', () => {
     storage.mockRestore();
   }
 });
+
+it('starts compact browsing closed and remembers its choice separately from desktop', () => {
+  localStorage.setItem('notes-explorer-open', 'true');
+  const compact = document.createElement('details');
+  compact.open = true;
+  restoreNoteExplorerState(compact, true);
+  expect(compact.open).toBe(false);
+  compact.open = true;
+  compact.dispatchEvent(new Event('toggle'));
+  const next = document.createElement('details');
+  restoreNoteExplorerState(next, true);
+  expect(next.open).toBe(true);
+  expect(page().open).toBe(true);
+});

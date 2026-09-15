@@ -50,12 +50,20 @@ const isStub = !rendered.html && document.childIds.length === 0;
   }
   <aside class="note-context" aria-label={`Context for ${document.title}`}>
     <div class="note-context__inner">
-      <InteractiveGraph
-        client:visible
-        data={deriveNoteGraph(index, document.id)}
-        globalData={deriveNoteGraph(index)}
-        currentId={document.id}
-      />
+      <div class="note-context__graph">
+        <InteractiveGraph
+          client:visible
+          data={deriveNoteGraph(index, document.id)}
+          globalData={deriveNoteGraph(index)}
+          currentId={document.id}
+        />
+      </div>
+      <a
+        class="note-context__graph-link"
+        href={`/notes/graph#place=${encodeURIComponent(document.id)}`}
+      >
+        Explore connections <span aria-hidden="true">↗</span>
+      </a>
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
       <RelatedNotes document={document} index={index} />
       {
