@@ -88,3 +88,13 @@ frame preserves the miniature while its interactive canvas is in the top layer;
 following sections keep their exact positions. Canvas focus no longer lights the
 miniature's border. A small one-shot velocity impulse on graph arrival settles
 through the existing springs; reduced motion bypasses the impulse.
+
+The native visual treatment uses an open black canvas with a fine bottom rule,
+borderless controls, and a blue open-center current-note marker. Labels retain
+the site's rounded face. Physics, camera response, and return motion are unchanged.
+
+Below the 78rem sidebar breakpoint, note pages replace the inline graph with an
+“Explore connections” link to the full graph, which returns to the source note.
+The notes browser starts collapsed and remembers a separate narrow-screen choice.
+Its expanded tree scrolls with the page instead of trapping touch gestures in a
+height-capped inner scroller. Wide screens retain the graph and bounded explorer.

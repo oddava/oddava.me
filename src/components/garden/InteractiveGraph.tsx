@@ -29,6 +29,7 @@ export default function InteractiveGraph({
   const globalEngine = useRef<ReturnType<typeof mountGraph>>();
   const [expanded, setExpanded] = useState(false);
   const [ready, setReady] = useState(false);
+  const [returnHref, setReturnHref] = useState('/notes');
   const [focused, setFocused] = useState<string | null>(null);
 
   function closeModal(element: HTMLDialogElement, after: () => void) {
@@ -100,7 +101,7 @@ export default function InteractiveGraph({
       globalEngine.current = mountGraph(
         globalCanvas.current,
         globalData,
-        undefined,
+        currentId,
         setFocused,
       );
     globalEngine.current?.expand(true);
@@ -118,16 +119,16 @@ export default function InteractiveGraph({
   }
 
   useEffect(() => {
-    engine.current = mountGraph(
-      canvas.current!,
-      data,
+    const originId =
       currentId ??
-        (fullPage
-          ? (new URLSearchParams(location.hash.slice(1)).get('place') ??
-            undefined)
-          : undefined),
-      setFocused,
+      (fullPage
+        ? (new URLSearchParams(location.hash.slice(1)).get('place') ??
+          undefined)
+        : undefined);
+    setReturnHref(
+      data.nodes.find((node) => node.id === originId)?.href ?? '/notes',
     );
+    engine.current = mountGraph(canvas.current!, data, originId, setFocused);
     setReady(true);
     return () => engine.current?.destroy();
   }, [data, currentId]);
@@ -137,7 +138,7 @@ export default function InteractiveGraph({
       globalEngine.current?.destroy();
       globalEngine.current = undefined;
     },
-    [globalData],
+    [globalData, currentId],
   );
   useEffect(
     () => () => {
@@ -208,7 +209,7 @@ export default function InteractiveGraph({
               <div class="interactive-graph__actions">
                 <a
                   class="interactive-graph__button"
-                  href="/notes"
+                  href={returnHref}
                   aria-label="Back to notes"
                   title="Back to notes"
                 >

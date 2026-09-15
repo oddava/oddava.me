@@ -585,3 +585,33 @@
     overflow: visible;
   }
 }
+
+/* Narrow layouts keep reading first; the full graph is one deliberate tap away. */
+.note-context__graph-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-half);
+  min-height: 44px;
+  color: var(--color-text-interactive);
+  font: 500 var(--text-xs) var(--font-mono);
+  text-decoration: none;
+}
+.note-context__graph-link:hover {
+  color: var(--color-text-interactive-hover);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+@media (width < 78rem) {
+  .note-context__graph {
+    display: none;
+  }
+}
+@media (width >= 78rem) {
+  .note-context__graph {
+    flex: 0 0 auto;
+  }
+  .note-context__graph-link {
+    display: none;
+  }
+}

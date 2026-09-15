@@ -14,7 +14,7 @@
 }
 
 .note-explorer__root {
-  overflow-x: auto;
+  overflow: visible;
 }
 
 /* Public HTML uses depth attributes: production CSP blocks inline styles. */
@@ -48,6 +48,13 @@
   transition:
     background-color 120ms ease,
     color 120ms ease;
+  touch-action: pan-y;
+}
+
+.note-explorer__folder,
+.note-explorer__children,
+.note-explorer__row a {
+  touch-action: pan-y;
 }
 
 summary.note-explorer__row {
@@ -149,7 +156,7 @@ summary.note-explorer__row::-webkit-details-marker {
 /* Reading comes first; the full tree is available on demand. */
 .note-explorer__browser {
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--color-rule) transparent;
@@ -202,8 +209,28 @@ summary.note-explorer__row::-webkit-details-marker {
 .note-explorer__scroll {
   max-height: min(24rem, 45dvh);
   margin-top: 0.5rem;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--color-rule) transparent;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* The page owns scrolling on narrow screens: no nested swipe trap. */
+@media (width < 78rem) {
+  .note-explorer__scroll {
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+  }
+  .note-explorer__row,
+  .note-explorer__summary {
+    min-height: 44px;
+  }
+  .note-explorer__summary {
+    display: flex;
+    align-items: center;
+  }
 }

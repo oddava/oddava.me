@@ -92,5 +92,6 @@ const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.i
   const browser = document.querySelector<HTMLDetailsElement>(
     '.note-explorer__browser',
   );
-  if (browser) restoreNoteExplorerState(browser);
+  if (browser)
+    restoreNoteExplorerState(browser, matchMedia('(width < 78rem)').matches);
 </script>
