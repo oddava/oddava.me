@@ -84,7 +84,7 @@ export function mountGraph(
     const styles = getComputedStyle(canvas);
     const value = (name: string) => styles.getPropertyValue(name).trim();
     palette = {
-      node: value('--color-text-secondary'),
+      node: value('--color-text-muted'),
       accent: value('--color-brand-strong'),
       text: value('--color-text-secondary'),
       background: value('--color-surface'),
@@ -216,13 +216,21 @@ export function mountGraph(
         continue;
       const state = appearance.get(node.id)!;
       ctx.globalAlpha = state.opacity * reveal;
-      ctx.fillStyle = palette.node;
+      ctx.fillStyle = node.id === currentId ? palette.accent : palette.node;
       ctx.beginPath();
       ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = state.focus * 0.85 * reveal;
       ctx.fillStyle = palette.accent;
       ctx.fill();
+      if (node.id === currentId) {
+        // An open blue seed marks this note, echoing the site's link accent.
+        ctx.globalAlpha = state.opacity * reveal;
+        ctx.fillStyle = palette.background;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.font = `12px ${palette.font}`;
     ctx.textAlign = 'center';
@@ -279,7 +287,7 @@ export function mountGraph(
       ctx.lineWidth = 4;
       ctx.lineJoin = 'round';
       ctx.strokeText(title, x, y);
-      ctx.fillStyle = palette.text;
+      ctx.fillStyle = node.id === currentId ? palette.accent : palette.text;
       ctx.fillText(title, x, y);
     }
     ctx.globalAlpha = 1;
