@@ -1748,13 +1748,11 @@ test('icon crop cancels locally, handles invalid images and keeps the original u
   await page.getByRole('button', { name: 'Change file icon' }).click();
   const picker = page.getByRole('dialog', { name: 'File icon' });
   await picker.getByRole('tab', { name: 'Upload', exact: true }).click();
-  await picker
-    .getByLabel('Upload custom icon')
-    .setInputFiles({
-      name: 'broken.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('broken'),
-    });
+  await picker.getByLabel('Upload custom icon').setInputFiles({
+    name: 'broken.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('broken'),
+  });
   await expect(picker.getByRole('alert')).toContainText('could not be opened');
   await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
   const file = await iconCropFile(page);
