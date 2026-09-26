@@ -141,7 +141,7 @@ export default function StudioEditorPopover({
         if (event.key !== 'Tab') return;
         const controls = Array.from(
           event.currentTarget.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])',
+            'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]',
           ),
         );
         const index = controls.indexOf(document.activeElement as HTMLElement);
