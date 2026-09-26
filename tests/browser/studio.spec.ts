@@ -1637,3 +1637,137 @@ test('file icons fall back to native emoji when the image host is unavailable', 
   await expect(emoji.locator('span')).toHaveText('🌱');
   await expect(emoji.locator('img')).toHaveCount(0);
 });
+
+async function iconCropFile(page: Page) {
+  const base64 = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 100;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = '#ff0000';
+    context.fillRect(0, 0, 100, 100);
+    context.fillStyle = '#0000ff';
+    context.fillRect(100, 0, 100, 100);
+    return canvas.toDataURL('image/png').split(',')[1]!;
+  });
+  return {
+    name: 'two-colors.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(base64, 'base64'),
+  };
+}
+
+test('icon crop zooms, repositions, resets and uploads the preview pixels', async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  await openNote(page);
+  let uploaded: Buffer | undefined;
+  await page.route('**/api/admin/content/media', async (route) => {
+    const request = route.request();
+    const form = await new Response(new Uint8Array(request.postDataBuffer()!), {
+      headers: { 'Content-Type': request.headers()['content-type']! },
+    }).formData();
+    const file = form.get('file') as File;
+    expect(file.type).toBe('image/png');
+    expect(file.name).toBe('two-colors-icon.png');
+    uploaded = Buffer.from(await file.arrayBuffer());
+    await route.fulfill({
+      json: { media: { url: '/images/notes/welcome/cropped.png' } },
+    });
+  });
+  await page.getByRole('button', { name: 'Change file icon' }).click();
+  const picker = page.getByRole('dialog', { name: 'File icon' });
+  await picker.getByRole('tab', { name: 'Upload', exact: true }).click();
+  await picker
+    .getByLabel('Upload custom icon')
+    .setInputFiles(await iconCropFile(page));
+  const preview = picker.getByRole('img', { name: 'Icon crop preview' });
+  await expect(preview).toBeVisible();
+  expect(uploaded).toBeUndefined();
+  const original = await preview.evaluate((canvas) =>
+    (canvas as HTMLCanvasElement).toDataURL(),
+  );
+  await picker.getByLabel('Zoom').fill('2');
+  await preview.focus();
+  await preview.press('Shift+ArrowLeft');
+  await expect
+    .poll(() =>
+      preview.evaluate((canvas) => (canvas as HTMLCanvasElement).toDataURL()),
+    )
+    .not.toBe(original);
+  await picker.getByRole('button', { name: 'Reset framing' }).click();
+  await expect(picker.getByLabel('Zoom')).toHaveValue('1');
+  await expect
+    .poll(() =>
+      preview.evaluate((canvas) => (canvas as HTMLCanvasElement).toDataURL()),
+    )
+    .toBe(original);
+  await picker.getByLabel('Zoom').fill('2');
+  const box = (await preview.boundingBox())!;
+  // Pointer events cover both mouse and touch without scrolling the crop surface.
+  await preview.dispatchEvent('pointerdown', {
+    pointerId: 1,
+    clientX: box.x + box.width / 2,
+    clientY: box.y + box.height / 2,
+  });
+  await preview.dispatchEvent('pointermove', {
+    pointerId: 1,
+    clientX: box.x + box.width,
+    clientY: box.y + box.height / 2,
+  });
+  await preview.dispatchEvent('pointerup', { pointerId: 1 });
+  const cropped = await preview.evaluate(
+    (canvas) => (canvas as HTMLCanvasElement).toDataURL().split(',')[1]!,
+  );
+  expect(cropped).not.toBe(original.split(',')[1]);
+  await picker.screenshot({ path: testInfo.outputPath('icon-crop.png') });
+  await picker.getByRole('button', { name: 'Use crop', exact: true }).click();
+  await expect(picker).toHaveCount(0);
+  expect(uploaded!.readUInt32BE(16)).toBe(512);
+  expect(uploaded!.readUInt32BE(20)).toBe(512);
+  expect(uploaded!.toString('base64')).toBe(cropped);
+});
+
+test('icon crop cancels locally, handles invalid images and keeps the original upload', async ({
+  page,
+}) => {
+  await setup(page);
+  await openNote(page);
+  let uploaded: Buffer | undefined;
+  await page.route('**/api/admin/content/media', async (route) => {
+    const request = route.request();
+    const form = await new Response(new Uint8Array(request.postDataBuffer()!), {
+      headers: { 'Content-Type': request.headers()['content-type']! },
+    }).formData();
+    uploaded = Buffer.from(await (form.get('file') as File).arrayBuffer());
+    await route.fulfill({
+      json: { media: { url: '/images/notes/welcome/original.png' } },
+    });
+  });
+  await page.getByRole('button', { name: 'Change file icon' }).click();
+  const picker = page.getByRole('dialog', { name: 'File icon' });
+  await picker.getByRole('tab', { name: 'Upload', exact: true }).click();
+  await picker
+    .getByLabel('Upload custom icon')
+    .setInputFiles({
+      name: 'broken.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('broken'),
+    });
+  await expect(picker.getByRole('alert')).toContainText('could not be opened');
+  await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+  const file = await iconCropFile(page);
+  await picker.getByLabel('Upload custom icon').setInputFiles(file);
+  await expect(
+    picker.getByRole('img', { name: 'Icon crop preview' }),
+  ).toBeVisible();
+  await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(uploaded).toBeUndefined();
+  await picker.getByLabel('Upload custom icon').setInputFiles(file);
+  await picker
+    .getByRole('button', { name: 'Use original', exact: true })
+    .click();
+  await expect(picker).toHaveCount(0);
+  expect(uploaded).toEqual(file.buffer);
+});

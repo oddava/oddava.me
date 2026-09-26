@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { isEmojiIcon } from '../../lib/content/noteIcon';
 import StudioEditorPopover from './StudioEditorPopover';
 import SamsungEmoji from '../SamsungEmoji';
+import StudioIconCropper from './StudioIconCropper';
 
 const EMOJIS = [
   '📄',
@@ -46,6 +47,8 @@ export default function StudioIconPicker({
     icon && !isEmojiIcon(icon) ? 'upload' : 'emoji',
   );
   const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState('');
   const mounted = useRef(true);
   useEffect(
     () => () => {
@@ -56,6 +59,20 @@ export default function StudioIconPicker({
   function choose(value: string | undefined) {
     onChange(value);
     onClose();
+  }
+  async function saveImage(image: File) {
+    setUploading(true);
+    setUploadError('');
+    try {
+      const url = await uploadImage(image);
+      if (!mounted.current) return;
+      if (url) choose(url);
+      else setUploadError('Upload failed. Your crop is still here; try again.');
+    } catch {
+      if (mounted.current) setUploadError('Upload failed. Try again.');
+    } finally {
+      if (mounted.current) setUploading(false);
+    }
   }
   return (
     <StudioEditorPopover
@@ -143,29 +160,53 @@ export default function StudioIconPicker({
           aria-labelledby="studio-icon-tab-upload"
           className="studio-icon-upload"
         >
-          <label className="studio-icon-upload__target">
-            <span aria-hidden="true" className="studio-icon-upload__preview">
-              {icon && !isEmojiIcon(icon) ? <img src={icon} alt="" /> : '↑'}
-            </span>
-            <strong>{uploading ? 'Uploading…' : 'Choose an image'}</strong>
-            <span>PNG, JPEG, GIF or WebP · up to 5 MB</span>
-            <input
-              aria-label="Upload custom icon"
-              type="file"
-              disabled={uploading}
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              onChange={async (event) => {
-                const file = event.currentTarget.files?.[0];
-                event.currentTarget.value = '';
-                if (!file) return;
-                setUploading(true);
-                const url = await uploadImage(file);
-                if (!mounted.current) return;
-                setUploading(false);
-                if (url) choose(url);
+          {file ? (
+            <StudioIconCropper
+              file={file}
+              busy={uploading}
+              onApply={saveImage}
+              onCancel={() => {
+                setFile(null);
+                setUploadError('');
               }}
             />
-          </label>
+          ) : (
+            <label className="studio-icon-upload__target">
+              <span aria-hidden="true" className="studio-icon-upload__preview">
+                {icon && !isEmojiIcon(icon) ? <img src={icon} alt="" /> : '↑'}
+              </span>
+              <strong>{uploading ? 'Uploading…' : 'Choose an image'}</strong>
+              <span>PNG, JPEG, GIF or WebP · up to 5 MB</span>
+              <input
+                aria-label="Upload custom icon"
+                type="file"
+                disabled={uploading}
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                onChange={(event) => {
+                  const selected = event.currentTarget.files?.[0];
+                  event.currentTarget.value = '';
+                  if (!selected) return;
+                  if (
+                    ![
+                      'image/png',
+                      'image/jpeg',
+                      'image/gif',
+                      'image/webp',
+                    ].includes(selected.type) ||
+                    selected.size > 5 * 1024 * 1024
+                  ) {
+                    setUploadError(
+                      'Choose a PNG, JPEG, GIF or WebP image up to 5 MB.',
+                    );
+                    return;
+                  }
+                  setUploadError('');
+                  setFile(selected);
+                }}
+              />
+            </label>
+          )}
+          {uploadError && <p role="alert">{uploadError}</p>}
           {uploading && <p role="status">Uploading your icon…</p>}
         </div>
       )}
