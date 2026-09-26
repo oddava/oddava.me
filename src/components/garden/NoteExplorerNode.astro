@@ -1,5 +1,6 @@
 ---
 import { isEmojiIcon, isImageIcon } from '@lib/content/noteIcon';
+import SamsungEmoji from '../SamsungEmoji';
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 
 interface Props {
@@ -34,9 +35,10 @@ const current = node.id === currentId;
           {isImageIcon(node.data.icon ?? '') ? (
             <img class="note-explorer__icon" src={node.data.icon} alt="" />
           ) : isEmojiIcon(node.data.icon ?? '') ? (
-            <span class="note-explorer__icon" aria-hidden="true">
-              {node.data.icon}
-            </span>
+            <SamsungEmoji
+              className="note-explorer__icon"
+              emoji={node.data.icon!}
+            />
           ) : (
             <svg
               class="note-explorer__icon"
@@ -84,9 +86,10 @@ const current = node.id === currentId;
         {isImageIcon(node.data.icon ?? '') ? (
           <img class="note-explorer__icon" src={node.data.icon} alt="" />
         ) : isEmojiIcon(node.data.icon ?? '') ? (
-          <span class="note-explorer__icon" aria-hidden="true">
-            {node.data.icon}
-          </span>
+          <SamsungEmoji
+            className="note-explorer__icon"
+            emoji={node.data.icon!}
+          />
         ) : (
           <svg
             class="note-explorer__icon"

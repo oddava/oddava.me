@@ -737,6 +737,16 @@
 .studio-icon-picker .studio-icon-custom {
   align-items: center;
 }
+.studio-icon-grid img,
+.studio-icon-custom > img,
+.studio-icon-custom > span {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  object-fit: contain;
+  font-size: 32px;
+  line-height: 1;
+}
 .studio-icon-picker .studio-icon-custom input {
   flex: 1;
   min-width: 0;

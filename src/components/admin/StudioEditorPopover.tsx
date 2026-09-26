@@ -35,12 +35,14 @@ export default function StudioEditorPopover({
   children,
   anchorSelector,
   className = '',
+  showHeader = true,
 }: {
   title: string;
   onClose: () => void;
   children: ComponentChildren;
   anchorSelector?: string;
   className?: string;
+  showHeader?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -152,12 +154,14 @@ export default function StudioEditorPopover({
         }
       }}
     >
-      <header className="studio-editor-popover__head">
-        <strong>{title}</strong>
-        <button type="button" aria-label="Close" onClick={onClose}>
-          ×
-        </button>
-      </header>
+      {showHeader && (
+        <header className="studio-editor-popover__head">
+          <strong>{title}</strong>
+          <button type="button" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </header>
+      )}
       <div className="studio-editor-popover__body">{children}</div>
     </div>,
     document.body,

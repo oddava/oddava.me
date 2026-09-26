@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { isEmojiIcon } from '../../lib/content/noteIcon';
 import StudioEditorPopover from './StudioEditorPopover';
+import SamsungEmoji from '../SamsungEmoji';
 
 const EMOJIS = [
   '📄',
@@ -59,6 +60,7 @@ export default function StudioIconPicker({
   return (
     <StudioEditorPopover
       title="File icon"
+      showHeader={false}
       onClose={onClose}
       anchorSelector=".studio-note-icon"
       className="studio-icon-picker"
@@ -115,12 +117,13 @@ export default function StudioIconPicker({
                 aria-pressed={icon === value}
                 onClick={() => choose(value)}
               >
-                {value}
+                <SamsungEmoji emoji={value} />
               </button>
             ))}
           </div>
           <label for="studio-icon-emoji">Or paste your own emoji</label>
           <div className="studio-icon-custom">
+            <SamsungEmoji emoji={isEmojiIcon(emoji) ? emoji : '😊'} />
             <input
               id="studio-icon-emoji"
               value={emoji}
