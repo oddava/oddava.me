@@ -1536,11 +1536,39 @@ test('file icon picker separates emoji and upload choices with readable emojis',
   await page.getByRole('button', { name: 'Change file icon' }).click();
   const picker = page.getByRole('dialog', { name: 'File icon' });
   await expect(picker).toBeVisible();
+  await expect(picker.locator('header')).toHaveCount(0);
+  await expect(
+    picker.getByRole('button', { name: 'Close', exact: true }),
+  ).toHaveCount(0);
   await expect(
     picker.getByRole('tab', { name: 'Emoji', exact: true }),
   ).toHaveAttribute('aria-selected', 'true');
   const emoji = picker.getByRole('button', { name: 'Use 🌱 as file icon' });
   await expect(emoji).toHaveCSS('font-size', '32px');
+  await expect(emoji.locator('img')).toHaveAttribute(
+    'src',
+    /\/png\/112\/1f331\.png$/,
+  );
+  await expect
+    .poll(() =>
+      picker
+        .locator('.studio-icon-grid img')
+        .evaluateAll(
+          (images) =>
+            images.filter(
+              (image) => (image as HTMLImageElement).naturalWidth > 0,
+            ).length,
+        ),
+    )
+    .toBe(24);
+  await picker.getByLabel('Or paste your own emoji').fill('👩🏽‍💻');
+  await expect(picker.locator('.studio-icon-custom > img')).toHaveAttribute(
+    'src',
+    /1f469-1f3fd-200d-1f4bb\.png$/,
+  );
+  await picker
+    .locator('.studio-icon-custom > img')
+    .evaluate((image) => (image as HTMLImageElement).decode());
   await expect(picker.locator('.studio-icon-grid button').last()).toHaveCSS(
     'background-color',
     'rgba(0, 0, 0, 0)',
@@ -1561,4 +1589,30 @@ test('file icon picker separates emoji and upload choices with readable emojis',
   await emoji.click();
   await expect(picker).toHaveCount(0);
   expect((await save).postDataJSON().fields.icon).toBe('🌱');
+  await expect(
+    page.getByRole('button', { name: 'Change file icon' }).locator('img'),
+  ).toHaveAttribute('src', /\/png\/112\/1f331\.png$/);
+  await page.getByRole('button', { name: 'Change file icon' }).click();
+  await page.keyboard.press('Escape');
+  await expect(picker).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Change file icon' }),
+  ).toBeFocused();
+  await page.getByRole('button', { name: 'Change file icon' }).click();
+  await picker.getByRole('button', { name: 'Remove icon' }).click();
+});
+
+test('file icons fall back to native emoji when the image host is unavailable', async ({
+  page,
+}) => {
+  await page.route(
+    'https://cdn.jsdelivr.net/gh/RealityRipple/oneui-emoji@**',
+    (route) => route.abort(),
+  );
+  await setup(page);
+  await openNote(page);
+  await page.getByRole('button', { name: 'Change file icon' }).click();
+  const emoji = page.getByRole('button', { name: 'Use 🌱 as file icon' });
+  await expect(emoji.locator('span')).toHaveText('🌱');
+  await expect(emoji.locator('img')).toHaveCount(0);
 });
