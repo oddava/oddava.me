@@ -1538,6 +1538,9 @@ test('file icon picker separates emoji and upload choices with readable emojis',
   await expect(picker).toBeVisible();
   await expect(picker.locator('header')).toHaveCount(0);
   await expect(
+    picker.getByRole('group', { name: 'Icon placement' }),
+  ).toHaveCount(0);
+  await expect(
     picker.getByRole('button', { name: 'Close', exact: true }),
   ).toHaveCount(0);
   await expect(
@@ -1592,6 +1595,23 @@ test('file icon picker separates emoji and upload choices with readable emojis',
   await expect(
     page.getByRole('button', { name: 'Change file icon' }).locator('img'),
   ).toHaveAttribute('src', /\/png\/112\/1f331\.png$/);
+  for (const view of ['Visual', 'Preview'] as const) {
+    await setView(page, view);
+    const pageRoot = page.locator(
+      view === 'Visual' ? '.studio-rich-page' : '.studio-preview__page',
+    );
+    const icon = pageRoot.locator('> .note-page-icon');
+    await expect(icon).toBeVisible();
+    await icon.evaluate((image) => (image as HTMLImageElement).decode());
+    const iconBox = (await icon.boundingBox())!;
+    const titleBox = (await pageRoot.locator('h1').boundingBox())!;
+    expect(iconBox.width).toBeGreaterThanOrEqual(64);
+    expect(iconBox.y + iconBox.height).toBeLessThan(titleBox.y);
+    expect(Math.abs(iconBox.x - titleBox.x)).toBeLessThan(2);
+    await pageRoot.screenshot({
+      path: testInfo.outputPath(`note-icon-${view}.png`),
+    });
+  }
   await page.getByRole('button', { name: 'Change file icon' }).click();
   await page.keyboard.press('Escape');
   await expect(picker).toHaveCount(0);
@@ -1600,6 +1620,7 @@ test('file icon picker separates emoji and upload choices with readable emojis',
   ).toBeFocused();
   await page.getByRole('button', { name: 'Change file icon' }).click();
   await picker.getByRole('button', { name: 'Remove icon' }).click();
+  await expect(page.locator('.note-page-icon')).toHaveCount(0);
 });
 
 test('file icons fall back to native emoji when the image host is unavailable', async ({

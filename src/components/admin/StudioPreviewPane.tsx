@@ -1,10 +1,12 @@
 import { useMemo } from 'preact/hooks';
 import { renderNote } from '../../lib/garden/render';
 import { shouldShowNoteTitle } from '../../lib/garden/utils';
+import NotePageIcon from '../NotePageIcon';
 
 interface Props {
   body: string;
   title: string;
+  icon?: string;
   wikiLinkHrefs: ReadonlyMap<string, string>;
 }
 
@@ -31,6 +33,7 @@ interface Props {
 export default function StudioPreviewPane({
   body,
   title,
+  icon,
   wikiLinkHrefs,
 }: Props) {
   const rendered = useMemo(
@@ -45,6 +48,7 @@ export default function StudioPreviewPane({
     <div className="studio-preview" aria-label="Preview">
       <div className="studio-preview__layout">
         <article className="studio-preview__page">
+          <NotePageIcon icon={icon} />
           {showShellTitle && <h1 className="studio-preview__title">{title}</h1>}
           {rendered ? (
             <div

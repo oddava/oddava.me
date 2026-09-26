@@ -287,6 +287,7 @@ export default function StudioEditorPane({
       >
         <div hidden={view !== 'visual'} className="studio-visual-host">
           <StudioVisualEditor
+            icon={icon}
             body={body}
             renderMarkdown={renderMarkdown}
             editorRef={editorRef}
@@ -380,6 +381,7 @@ export default function StudioEditorPane({
 
         {view === 'preview' && (
           <StudioPreviewPane
+            icon={icon}
             body={body}
             title={title}
             wikiLinkHrefs={wikiLinkHrefs}
