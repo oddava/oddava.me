@@ -13,6 +13,7 @@ import RelatedNotes from './RelatedNotes.astro';
 import InteractiveGraph from './InteractiveGraph';
 import { deriveNoteGraph } from '@lib/garden/graph';
 import '../../styles/components/_note-prose.css';
+import NotePageIcon from '../NotePageIcon';
 
 interface Props {
   document: GardenDocument;
@@ -77,6 +78,7 @@ const isStub = !rendered.html && document.childIds.length === 0;
   </aside>
 
   <article class="garden-document">
+    <NotePageIcon icon={document.data.icon} />
     {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
     {
       authoredTitleHtml && (

@@ -60,8 +60,10 @@ import type {
 import { emissionsFrom, isOurs, remember } from './studioEmissions';
 import { markdownFromClipboard } from './studioPaste';
 import './StudioRichEditor.css';
+import NotePageIcon from '../NotePageIcon';
 
 interface Props {
+  icon?: string;
   body: string;
   renderMarkdown: (raw: string) => string;
   editorRef: MutableRef<HTMLTextAreaElement | null>;
@@ -1360,6 +1362,7 @@ export default function StudioVisualEditor(props: Props) {
         }}
       >
         <div className="studio-rich-page">
+          <NotePageIcon icon={props.icon} />
           <div ref={host} />
           {marquee.box && (
             <div
