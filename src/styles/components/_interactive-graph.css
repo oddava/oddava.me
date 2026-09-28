@@ -123,11 +123,7 @@
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-lg);
   box-sizing: border-box;
-}
-
-.interactive-graph__panel--expanded {
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 0.2);
 }
 
 .interactive-graph__panel::backdrop {
@@ -187,16 +183,31 @@ body:has(.interactive-graph__panel:modal) {
   outline-color: var(--color-focus-ring);
   outline-offset: 2px;
 }
+/* Presence comes from the same spring as the graph, never a second clock. */
 .interactive-graph__panel:modal::backdrop {
-  animation: graph-backdrop 220ms ease both;
-  transition: opacity 150ms ease;
+  opacity: var(--graph-presence, 1);
+  backdrop-filter: blur(4px);
 }
-.interactive-graph__panel[data-closing] {
+.interactive-graph__panel[data-morphing] .interactive-graph__viewport > canvas {
+  visibility: hidden;
+}
+.interactive-graph__panel[data-morphing] .interactive-graph__actions {
+  z-index: 2;
+  opacity: var(--graph-controls, 0);
+  top: calc(var(--space-quarter) + var(--graph-inset-top, 0px));
+  right: calc(var(--space-quarter) + var(--graph-inset-right, 0px));
+  left: calc(var(--space-quarter) + var(--graph-inset-left, 0px));
+}
+.interactive-graph__slot[data-morphing] > .interactive-graph__snapshot,
+.interactive-graph__slot[data-morphing]
+  > .interactive-graph__panel:not(:modal) {
+  visibility: hidden;
+}
+.interactive-graph .interactive-graph__transition {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   pointer-events: none;
-}
-.interactive-graph__panel[data-closing]::backdrop {
-  animation: none;
-  opacity: 0;
 }
 .interactive-graph__empty {
   position: absolute;
@@ -209,18 +220,11 @@ body:has(.interactive-graph__panel:modal) {
   text-align: center;
   pointer-events: none;
 }
-@keyframes graph-backdrop {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .interactive-graph__panel:modal,
   .interactive-graph__panel:modal::backdrop {
     animation: none;
+    transition: none;
   }
   .interactive-graph__button,
   .interactive-graph__viewport {

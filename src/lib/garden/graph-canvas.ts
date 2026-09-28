@@ -1,5 +1,10 @@
 import type { NoteGraphData } from './graph';
-import { createGraphSimulation, type GraphParticle } from './graph-simulation';
+import type { GraphFrame } from './graph-transition-frame';
+import {
+  createGraphSimulation,
+  startGraphFormation,
+  type GraphParticle,
+} from './graph-simulation';
 
 type Camera = { x: number; y: number; scale: number };
 const clamp = (n: number, min: number, max: number) =>
@@ -14,6 +19,7 @@ export function mountGraph(
 ) {
   const ctx = canvas.getContext('2d')!;
   const { nodes, links, simulation } = createGraphSimulation(data, currentId);
+  const particlesById = new Map(nodes.map((node) => [node.id, node]));
   const neighbors = new Map(nodes.map((node) => [node.id, new Set<string>()]));
   for (const { source, target } of links) {
     neighbors.get(source.id)!.add(target.id);
@@ -26,8 +32,34 @@ export function mountGraph(
   let targetCamera = { ...camera };
   let cameraEase = 85;
   let lastFrame = 0;
+  let suspended = false;
+  let formation:
+    | {
+        started: number;
+        released: boolean;
+        pausedAt?: number;
+        physics: ReturnType<typeof startGraphFormation>;
+      }
+    | undefined;
+  let settlement:
+    | {
+        started: number;
+        ticks: number;
+        scale: number;
+        origins: Map<string, { x: number; y: number }>;
+      }
+    | undefined;
+  let painted: GraphFrame | undefined;
+  let paintedCamera = { ...camera };
+  const projections = new WeakMap<
+    GraphFrame,
+    {
+      camera: Camera;
+      points: Map<string, GraphFrame['nodes'][number]>;
+      offsets: { x: number; y: number }[];
+    }
+  >();
   let reveal = 0;
-  let arrival = 1;
   let emphasis = 0;
   let moving = false;
   let panVelocity = { x: 0, y: 0 };
@@ -77,7 +109,14 @@ export function mountGraph(
   const listen = <K extends keyof HTMLElementEventMap>(
     type: K,
     handler: (event: HTMLElementEventMap[K]) => void,
-  ) => canvas.addEventListener(type, handler, { signal: abort.signal });
+  ) =>
+    canvas.addEventListener(
+      type,
+      (event) => {
+        if (!suspended) handler(event);
+      },
+      { signal: abort.signal },
+    );
 
   function readPalette() {
     labelCache.clear();
@@ -111,31 +150,41 @@ export function mountGraph(
     invalidate();
   }
   function invalidate() {
-    if (!frame && visible && !disposed) frame = requestAnimationFrame(draw);
+    if (!frame && visible && !disposed && !suspended)
+      frame = requestAnimationFrame(draw);
   }
-  function draw(now: number) {
+  function draw(now: number, still = false) {
     frame = 0;
     const elapsed = now - lastFrame;
     const dt = lastFrame && elapsed < 100 ? Math.min(32, elapsed) : 16;
     lastFrame = now;
     moving = false;
+    if (!still) {
+      advanceSettlement(now);
+      advanceFormation(now);
+    }
+    const captured: GraphFrame = {
+      width,
+      height,
+      nodes: [],
+      edges: [],
+      labels: [],
+    };
     const approach = (
       value: number,
       target: number,
       duration = 90,
       tolerance = 0.002,
     ) => {
+      if (still) return value;
       if (reduced || Math.abs(target - value) < tolerance) return target;
       moving = true;
       return value + (target - value) * (1 - Math.exp(-dt / duration));
     };
     reveal = approach(reveal, 1, 70);
-    arrival = reduced ? 1 : Math.min(1, arrival + dt / 260);
-    if (arrival < 1) moving = true;
-    const t = arrival - 1;
-    const pop = 0.65 + 0.35 * (1 + 2.7 * t * t * t + 1.7 * t * t);
     emphasis = approach(emphasis, selected ? 1 : 0, selected ? 65 : 110);
     if (
+      !still &&
       !gesture &&
       !reduced &&
       Math.hypot(panVelocity.x, panVelocity.y) > 0.015
@@ -183,6 +232,20 @@ export function mountGraph(
         b = project(target);
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
+      captured.edges.push({
+        source: source.id,
+        target: target.id,
+        color: palette.edge,
+        opacity: (0.43 - emphasis * 0.28) * reveal,
+        accent: palette.accent,
+        focus:
+          Math.max(
+            appearance.get(source.id)!.focus,
+            appearance.get(target.id)!.focus,
+          ) *
+          0.62 *
+          reveal,
+      });
     }
     ctx.strokeStyle = palette.edge;
     ctx.globalAlpha = (0.43 - emphasis * 0.28) * reveal;
@@ -210,11 +273,21 @@ export function mountGraph(
           node.radius *
           Math.sqrt(camera.scale) *
           (node.id === currentId ? 1.5 : 1) *
-          (1 + appearance.get(node.id)!.focus * 0.1) *
-          pop;
+          (1 + appearance.get(node.id)!.focus * 0.1);
+      const state = appearance.get(node.id)!;
+      captured.nodes.push({
+        id: node.id,
+        x: p.x,
+        y: p.y,
+        radius,
+        color: node.id === currentId ? palette.accent : palette.node,
+        opacity: state.opacity * reveal,
+        focus: state.focus * 0.85 * reveal,
+        accent: palette.accent,
+        hole: node.id === currentId ? palette.background : undefined,
+      });
       if (p.x < -20 || p.y < -20 || p.x > width + 20 || p.y > height + 20)
         continue;
-      const state = appearance.get(node.id)!;
       ctx.globalAlpha = state.opacity * reveal;
       ctx.fillStyle = node.id === currentId ? palette.accent : palette.node;
       ctx.beginPath();
@@ -289,8 +362,20 @@ export function mountGraph(
       ctx.strokeText(title, x, y);
       ctx.fillStyle = node.id === currentId ? palette.accent : palette.text;
       ctx.fillText(title, x, y);
+      captured.labels.push({
+        id: node.id,
+        title,
+        x,
+        y,
+        color: node.id === currentId ? palette.accent : palette.text,
+        background: palette.background,
+        opacity: state.label * reveal,
+        font: ctx.font,
+      });
     }
     ctx.globalAlpha = 1;
+    painted = captured;
+    paintedCamera = { ...camera };
     if (moving) invalidate();
   }
   function moveCamera(next: Camera, immediate = false) {
@@ -303,6 +388,7 @@ export function mountGraph(
     panVelocity = { x: 0, y: 0 };
   }
   function fit(animate = true) {
+    stopSettlement();
     if (!nodes.length) return;
     const xs = nodes.map((n) => n.x),
       ys = nodes.map((n) => n.y);
@@ -331,6 +417,7 @@ export function mountGraph(
     invalidate();
   }
   function zoom(factor: number, x = width / 2, y = height / 2, direct = false) {
+    stopSettlement();
     const base = direct ? camera : targetCamera;
     const next = clamp(base.scale * factor, 0.08, 5);
     panVelocity = { x: 0, y: 0 };
@@ -369,8 +456,146 @@ export function mountGraph(
     }
     return nearest;
   }
+  function stopFormation() {
+    formation?.physics.stop();
+    formation = undefined;
+  }
+  function startFormation() {
+    stopSettlement();
+    stopFormation();
+    if (reduced || disposed || !nodes.length) return;
+    formation = {
+      started: performance.now(),
+      released: false,
+      physics: startGraphFormation(nodes, links, simulation, 14 / camera.scale),
+    };
+  }
+  function pauseFormation(value: boolean) {
+    if (!formation) return;
+    if (value) formation.pausedAt ??= performance.now();
+    else if (formation.pausedAt !== undefined) {
+      formation.started += performance.now() - formation.pausedAt;
+      formation.pausedAt = undefined;
+    }
+  }
+  function advanceFormation(now: number, snapshot?: GraphFrame, aperture = 1) {
+    if (!formation || formation.pausedAt !== undefined) return;
+    if (!formation.released) {
+      // Release the compressed network once there is room to see its forces.
+      // Geometry drives this threshold (~95ms), not a separate delayed timer.
+      if (aperture < 0.9) return;
+      formation.released = true;
+      formation.started = now;
+    }
+    formation.physics.advance(now - formation.started);
+    if (snapshot) {
+      const projection = projections.get(snapshot);
+      const view = projection?.camera ?? camera;
+      for (const point of snapshot.nodes) {
+        const node = particlesById.get(point.id);
+        if (!node) continue;
+        point.x = view.x + node.x * view.scale;
+        point.y = view.y + node.y * view.scale;
+      }
+      if (projection)
+        snapshot.labels.forEach((label, i) => {
+          const point = projection.points.get(label.id);
+          if (point) {
+            label.x = point.x + projection.offsets[i].x;
+            label.y = point.y + projection.offsets[i].y;
+          }
+        });
+      delete snapshot.bitmap;
+    }
+    if (!formation.physics.active) formation = undefined;
+    else moving = true;
+  }
+  function stopSettlement() {
+    stopFormation();
+    if (!settlement) return;
+    settlement = undefined;
+    simulation.stop().alpha(0);
+    for (const node of nodes) node.vx = node.vy = 0;
+  }
+  function settle(momentum: ReadonlyMap<string, { x: number; y: number }>) {
+    if (disposed || suspended || reduced || !nodes.length || document.hidden)
+      return;
+    const rect = canvas.getBoundingClientRect();
+    if (
+      !canvas.isConnected ||
+      !rect.width ||
+      !rect.height ||
+      rect.bottom <= 0 ||
+      rect.top >= innerHeight
+    )
+      return;
+    stopSettlement();
+    simulation.stop().alphaTarget(0).alpha(0);
+    let hasMomentum = false;
+    // Convert each arriving node's screen velocity to D3's per-tick velocity.
+    // The first tick applies existing damping; handoff never moves positions.
+    const conversion =
+      1 / (60 * (1 - simulation.velocityDecay()) * camera.scale);
+    for (const node of nodes) {
+      node.vx = node.vy = 0;
+      const velocity = momentum.get(node.id);
+      if (
+        !velocity ||
+        !Number.isFinite(velocity.x) ||
+        !Number.isFinite(velocity.y)
+      )
+        continue;
+      const speed = Math.hypot(velocity.x, velocity.y);
+      if (speed < 0.5) continue;
+      const limit = Math.min(1, 60 / speed);
+      node.vx = velocity.x * conversion * limit;
+      node.vy = velocity.y * conversion * limit;
+      hasMomentum = true;
+    }
+    if (!hasMomentum) return;
+    settlement = {
+      started: performance.now(),
+      ticks: 0,
+      scale: camera.scale,
+      origins: new Map(
+        nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
+      ),
+    };
+    // The existing paint loop advances this release at 60 physics ticks/sec,
+    // so a 120Hz display does not double its speed or halve its lifetime.
+    simulation.alpha(
+      simulation.alphaMin() / Math.pow(1 - simulation.alphaDecay(), 15),
+    );
+    invalidate();
+  }
+  function advanceSettlement(now: number) {
+    if (!settlement) return;
+    const elapsed = Math.max(0, now - settlement.started);
+    const due = Math.min(15, Math.floor((elapsed * 60) / 1000));
+    // At most three catch-up ticks after a delayed frame; the 250ms wall-clock
+    // budget still wins, so a stalled tab cannot replay old landing motion.
+    const count = Math.min(3, due - settlement.ticks);
+    if (count > 0) {
+      simulation.tick(count);
+      settlement.ticks += count;
+      const limit = 3 / settlement.scale;
+      for (const node of nodes) {
+        const origin = settlement.origins.get(node.id)!;
+        const dx = node.x - origin.x,
+          dy = node.y - origin.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance > limit) {
+          node.x = origin.x + (dx * limit) / distance;
+          node.y = origin.y + (dy * limit) / distance;
+          node.vx = node.vy = 0;
+        }
+      }
+    }
+    if (elapsed >= 250) stopSettlement();
+    else moving = true;
+  }
   function wake() {
-    if (reduced || !nodes.length) return;
+    if (reduced || suspended || !nodes.length) return;
     // One small impulse on arrival, resolved by the existing springs/damping.
     // No looping wobble or position reset: the constellation keeps its shape.
     nodes.forEach((node, i) => {
@@ -390,6 +615,7 @@ export function mountGraph(
   }
   listen('pointerdown', (event) => {
     if (event.button !== 0) return;
+    stopSettlement();
     stopCamera();
     panTime = performance.now();
     const p = point(event);
@@ -451,7 +677,7 @@ export function mountGraph(
       // The grabbed particle follows the hand exactly; only its neighbors spring.
       gesture.node.x = gesture.node.fx;
       gesture.node.y = gesture.node.fy;
-      if (!reduced)
+      if (!reduced && !suspended)
         simulation
           .alphaTarget(0.12)
           .alpha(Math.max(0.12, simulation.alpha()))
@@ -517,6 +743,8 @@ export function mountGraph(
     'wheel',
     (event) => {
       event.preventDefault();
+      if (suspended) return;
+      stopSettlement();
       const p = point(event);
       zoom(
         Math.exp(
@@ -530,6 +758,7 @@ export function mountGraph(
     { passive: false, signal: abort.signal },
   );
   listen('keydown', (event) => {
+    stopSettlement();
     if (event.key === 'Escape') {
       focus();
       return;
@@ -594,15 +823,30 @@ export function mountGraph(
   listen('blur', () => {
     if (!gesture) focus();
   });
-  function resize() {
+  function resize(force = false) {
+    if (suspended && !force) return;
+    const nextWidth = Math.max(1, canvas.clientWidth);
+    const nextHeight = Math.max(1, canvas.clientHeight);
+    const nextDpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (
+      width === nextWidth &&
+      height === nextHeight &&
+      dpr === nextDpr &&
+      canvas.width === Math.round(width * dpr) &&
+      canvas.height === Math.round(height * dpr)
+    )
+      return;
+    if (!formation) stopSettlement();
     const oldWidth = width,
       oldHeight = height;
     width = Math.max(1, canvas.clientWidth);
     height = Math.max(1, canvas.clientHeight);
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    if (!manipulated) fit(false);
+    if (canvas.width !== Math.round(width * dpr))
+      canvas.width = Math.round(width * dpr);
+    if (canvas.height !== Math.round(height * dpr))
+      canvas.height = Math.round(height * dpr);
+    if (!manipulated && !formation) fit(false);
     else {
       camera.x += (width - oldWidth) / 2;
       camera.y += (height - oldHeight) / 2;
@@ -611,15 +855,22 @@ export function mountGraph(
     }
     invalidate();
   }
-  const resizeObserver = new ResizeObserver(resize);
+  const resizeObserver = new ResizeObserver(() => resize());
   resizeObserver.observe(canvas);
   const visibility = new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting && !document.hidden;
     if (visible) {
-      if (!reduced && simulation.alpha() > simulation.alphaMin())
+      if (
+        !reduced &&
+        !suspended &&
+        !settlement &&
+        !formation &&
+        simulation.alpha() > simulation.alphaMin()
+      )
         simulation.restart();
       invalidate();
     } else {
+      stopSettlement();
       simulation.stop();
       stopCamera();
     }
@@ -627,12 +878,20 @@ export function mountGraph(
   visibility.observe(canvas);
   function visibilityChange() {
     if (document.hidden) {
+      stopSettlement();
       simulation.stop();
       visible = false;
     } else {
       const rect = canvas.getBoundingClientRect();
       visible = rect.bottom > 0 && rect.top < window.innerHeight;
-      if (!reduced && visible && simulation.alpha() > simulation.alphaMin())
+      if (
+        !reduced &&
+        !suspended &&
+        !settlement &&
+        !formation &&
+        visible &&
+        simulation.alpha() > simulation.alphaMin()
+      )
         simulation.restart();
       invalidate();
     }
@@ -646,6 +905,7 @@ export function mountGraph(
     () => {
       reduced = motion.matches;
       if (reduced) {
+        stopSettlement();
         simulation.stop();
         stopCamera();
         invalidate();
@@ -669,25 +929,145 @@ export function mountGraph(
   void document.fonts.ready.then(() => {
     if (!disposed) readPalette();
   });
+  function paint() {
+    if (disposed) return;
+    cancelAnimationFrame(frame);
+    frame = 0;
+    reveal = 1;
+    draw(performance.now(), suspended);
+    cancelAnimationFrame(frame);
+    frame = 0;
+  }
+  function capture(): GraphFrame {
+    if (!painted) paint();
+    const captured = { ...painted! };
+    const points = new Map(captured.nodes.map((point) => [point.id, point]));
+    projections.set(captured, {
+      camera: { ...paintedCamera },
+      points,
+      offsets: captured.labels.map((label) => {
+        const point = points.get(label.id)!;
+        return { x: label.x - point.x, y: label.y - point.y };
+      }),
+    });
+    if (captured.width === width && captured.height === height) {
+      const bitmap = document.createElement('canvas');
+      bitmap.width = canvas.width;
+      bitmap.height = canvas.height;
+      bitmap.getContext('2d')?.drawImage(canvas, 0, 0);
+      captured.bitmap = bitmap;
+    }
+    return captured;
+  }
+  function captureAt(
+    nextWidth: number,
+    nextHeight: number,
+    mini = false,
+  ): GraphFrame {
+    const previous = {
+      width,
+      height,
+      camera,
+      targetCamera,
+      painted,
+      lastFrame,
+      manipulated,
+    };
+    width = Math.max(1, nextWidth);
+    height = Math.max(1, nextHeight);
+    if (mini && savedCamera) {
+      camera = {
+        scale: savedCamera.scale,
+        x: savedCamera.x + (width - savedCamera.width) / 2,
+        y: savedCamera.y + (height - savedCamera.height) / 2,
+      };
+    } else if (manipulated || formation) {
+      camera = {
+        ...camera,
+        x: camera.x + (width - previous.width) / 2,
+        y: camera.y + (height - previous.height) / 2,
+      };
+    } else {
+      fit(false);
+    }
+    targetCamera = { ...camera };
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    draw(performance.now(), true);
+    const result = capture();
+    ({ width, height, camera, targetCamera, painted, lastFrame, manipulated } =
+      previous);
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    draw(performance.now(), true);
+    cancelAnimationFrame(frame);
+    frame = 0;
+    return result;
+  }
   return {
-    arrive() {
-      arrival = reduced ? 1 : 0;
-      wake();
-      invalidate();
+    startFormation,
+    stopFormation,
+    pauseFormation,
+    advanceFormation,
+    formationActive: () => !!formation,
+    settle,
+    paint,
+    capture,
+    captureAt,
+    captureMini: (width: number, height: number) =>
+      captureAt(width, height, true),
+    resize() {
+      resize(true);
+    },
+    suspend(value: boolean) {
+      suspended = value;
+      if (value) {
+        stopSettlement();
+        releaseNode();
+        gesture = undefined;
+        pinch = undefined;
+        for (const pointerId of pointers.keys()) {
+          if (canvas.hasPointerCapture(pointerId))
+            canvas.releasePointerCapture(pointerId);
+        }
+        pointers.clear();
+        simulation.stop();
+        cancelAnimationFrame(frame);
+        frame = 0;
+        stopCamera();
+      } else {
+        suspended = true;
+        resize(true);
+        paint();
+        suspended = false;
+        lastFrame = 0;
+        if (
+          !reduced &&
+          !settlement &&
+          !formation &&
+          visible &&
+          simulation.alpha() > simulation.alphaMin()
+        )
+          simulation.restart();
+        invalidate();
+      }
     },
     fit,
     zoom,
     expand(value: boolean) {
-      if (expanded === value) return;
+      if (expanded === value) {
+        resize(true);
+        return;
+      }
       stopCamera();
       expanded = value;
       if (value) {
         savedCamera = { ...camera, width, height };
-        resize();
+        resize(true);
         fit(false);
         wake();
       } else {
-        resize();
+        resize(true);
         if (savedCamera) {
           camera = {
             scale: savedCamera.scale,
@@ -706,6 +1086,7 @@ export function mountGraph(
     },
     destroy() {
       disposed = true;
+      stopSettlement();
       abort.abort();
       simulation.stop();
       cancelAnimationFrame(frame);

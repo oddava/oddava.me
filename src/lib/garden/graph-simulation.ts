@@ -62,3 +62,97 @@ export function createGraphSimulation(data: NoteGraphData, currentId?: string) {
   simulation.alpha(nodes.length > 300 ? 0.4 : 0.12);
   return { nodes, links: links as unknown as GraphSpring[], simulation };
 }
+
+/** A bounded release of the existing network, with no independent animation. */
+export function startGraphFormation(
+  nodes: GraphParticle[],
+  links: GraphSpring[],
+  simulation: ReturnType<typeof createGraphSimulation>['simulation'],
+  maxStep: number,
+) {
+  const degree = new Map(nodes.map((node) => [node.id, 0]));
+  const centers = new Map(nodes.map((node) => [node.id, { x: 0, y: 0 }]));
+  for (const { source, target } of links) {
+    for (const [node, neighbor] of [
+      [source, target],
+      [target, source],
+    ]) {
+      degree.set(node.id, degree.get(node.id)! + 1);
+      const center = centers.get(node.id)!;
+      center.x += neighbor.x;
+      center.y += neighbor.y;
+    }
+  }
+  const inertia = nodes.map(
+    (node) => 1 / Math.sqrt(1 + degree.get(node.id)! * 0.22),
+  );
+  nodes.forEach((node, i) => {
+    const count = degree.get(node.id)!;
+    if (count) {
+      const center = centers.get(node.id)!;
+      const compression = 0.48 * inertia[i];
+      node.x += (center.x / count - node.x) * compression;
+      node.y += (center.y / count - node.y) * compression;
+    }
+    node.vx = node.vy = 0;
+  });
+  const damping = simulation.velocityDecay();
+  simulation.stop().alphaTarget(0);
+  let ticks = 0;
+  let active = true;
+  const previous = nodes.map((node) => ({ x: node.x, y: node.y }));
+  function stop() {
+    if (!active) return;
+    active = false;
+    simulation.stop().alpha(0).velocityDecay(damping);
+    for (const node of nodes) node.vx = node.vy = 0;
+  }
+  return {
+    get active() {
+      return active;
+    },
+    stop,
+    advance(elapsed: number) {
+      if (!active) return;
+      const due = Math.min(60, Math.floor((Math.max(0, elapsed) * 120) / 1000));
+      // Bound missed-frame work instead of replaying a hidden tab's formation.
+      const count = Math.min(6, due - ticks);
+      for (let step = 0; step < count; step++) {
+        nodes.forEach((node, i) => {
+          previous[i].x = node.x;
+          previous[i].y = node.y;
+        });
+        // Release energy as the expanding aperture reveals the network.
+        // Peak force arrives at ~80ms; the visible graph then resolves itself.
+        // Half-size time steps: forces scale with dt² and damping with dt.
+        simulation
+          .alpha(
+            0.145 *
+              (0.25 + 0.75 * Math.min(1, ticks / 10)) *
+              Math.exp(-Math.max(0, ticks - 10) / 14),
+          )
+          .velocityDecay(
+            1 -
+              Math.sqrt(
+                1 - (0.14 + 0.48 * Math.min(1, Math.max(0, ticks - 8) / 34)),
+              ),
+          )
+          .tick();
+        nodes.forEach((node, i) => {
+          const dx = node.x - previous[i].x,
+            dy = node.y - previous[i].y;
+          const amount = Math.min(
+            1,
+            maxStep / (2 * Math.max(0.0001, Math.hypot(dx, dy))),
+          );
+          node.x = previous[i].x + dx * amount;
+          node.y = previous[i].y + dy * amount;
+          node.vx = (node.vx ?? 0) * amount;
+          node.vy = (node.vy ?? 0) * amount;
+        });
+        ticks++;
+      }
+      if (elapsed >= 500) stop();
+    },
+  };
+}
