@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type { NoteGraphData } from '../../lib/garden/graph';
 import { mountGraph } from '../../lib/garden/graph-canvas';
+import { morphGraph } from '../../lib/garden/graph-morph';
 import '../../styles/components/_interactive-graph.css';
 
 type Props = {
@@ -17,10 +18,11 @@ export default function InteractiveGraph({
   fullPage = false,
 }: Props) {
   const helpId = useId();
+  const slot = useRef<HTMLDivElement>(null);
   const snapshot = useRef<HTMLCanvasElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
   const globalButton = useRef<HTMLButtonElement>(null);
-  const exits = useRef(new Map<HTMLDialogElement, Animation>());
+  const flight = useRef<ReturnType<typeof morphGraph>>();
   const canvas = useRef<HTMLCanvasElement>(null);
   const globalCanvas = useRef<HTMLCanvasElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -32,91 +34,126 @@ export default function InteractiveGraph({
   const [returnHref, setReturnHref] = useState('/notes');
   const [focused, setFocused] = useState<string | null>(null);
 
-  function closeModal(element: HTMLDialogElement, after: () => void) {
-    if (!element.matches(':modal') || exits.current.has(element)) return;
-    const finish = () => {
-      element.close();
-      after();
-      delete element.dataset.closing;
-    };
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      finish();
+  function move(open: boolean, global: boolean) {
+    // A second command redirects the running spring without replacing its
+    // geometry, node frames or velocity.
+    if (flight.current) {
+      flight.current.setOpen(open);
       return;
     }
-    element.dataset.closing = 'true';
-    const animation = element.animate([{ opacity: 1 }, { opacity: 0 }], {
-      duration: 120,
-      easing: 'ease-out',
-      fill: 'forwards',
-    });
-    animation.startTime = document.timeline.currentTime;
-    exits.current.set(element, animation);
-    void animation.finished.then(
-      () => {
-        if (element.isConnected) finish();
-        exits.current.delete(element);
-        animation.cancel();
-      },
-      () => {},
-    );
-  }
-
-  function expand() {
-    const element = dialog.current;
-    if (!element) return;
-
-    // Keep the last local frame in its permanent slot while the real canvas
-    // visits the top layer. Neither the frame nor the outline below can jump.
-    if (snapshot.current && canvas.current) {
-      snapshot.current.width = canvas.current.width;
-      snapshot.current.height = canvas.current.height;
-      snapshot.current.getContext('2d')?.drawImage(canvas.current, 0, 0);
+    const element = global ? globalDialog.current : dialog.current;
+    const local = engine.current;
+    if (!element || !local || !slot.current) return;
+    if (!open && !element.matches(':modal')) return;
+    local.suspend(true);
+    const miniBounds = slot.current.getBoundingClientRect();
+    const mini =
+      open || global
+        ? local.capture()
+        : local.captureMini(
+            miniBounds.width,
+            Math.max(1, miniBounds.height - 1),
+          );
+    if (open) {
+      if (!global && snapshot.current && canvas.current) {
+        snapshot.current.width = canvas.current.width;
+        snapshot.current.height = canvas.current.height;
+        snapshot.current.getContext('2d')?.drawImage(canvas.current, 0, 0);
+      }
+      element.close();
+      element.showModal();
+      if (global && !globalEngine.current && globalCanvas.current && globalData)
+        globalEngine.current = mountGraph(
+          globalCanvas.current,
+          globalData,
+          currentId,
+          setFocused,
+        );
+      if (!global) setExpanded(true);
     }
-    element.close();
-    element.showModal();
-    setExpanded(true);
-    engine.current?.expand(true);
-  }
-
-  function collapse() {
-    const element = dialog.current;
-    if (!element) return;
-
-    closeModal(element, () => {
-      element.show();
-      setExpanded(false);
-      engine.current?.expand(false);
-      engine.current?.arrive();
-      expandButton.current?.focus({ preventScroll: true });
+    const active = global ? globalEngine.current : local;
+    if (!active) {
+      local.suspend(false);
+      return;
+    }
+    active.suspend(true);
+    if (open) {
+      active.expand(true);
+      active.startFormation();
+    }
+    active.paint();
+    const full = active.capture();
+    const finish = (
+      isOpen: boolean,
+      momentum?: ReadonlyMap<string, { x: number; y: number }>,
+    ) => {
+      flight.current = undefined;
+      if (!isOpen) {
+        active.stopFormation();
+        element.close();
+        if (!global) {
+          element.show();
+          setExpanded(false);
+          local.expand(false);
+        }
+      }
+      if (global && isOpen) active.suspend(false);
+      local.suspend(false);
+      if (momentum && !isOpen) local.settle(momentum);
+      if (!isOpen) {
+        const button = global ? globalButton.current : expandButton.current;
+        if (button?.getClientRects().length)
+          button.focus({ preventScroll: true });
+        else
+          slot.current
+            ?.closest('.note-context')
+            ?.querySelector<HTMLAnchorElement>('.note-context__graph-link')
+            ?.focus({ preventScroll: true });
+      }
+    };
+    if (
+      matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      !miniBounds.width ||
+      !miniBounds.height
+    ) {
+      finish(open);
+      return;
+    }
+    flight.current = morphGraph({
+      panel: element,
+      slot: slot.current,
+      mini,
+      full,
+      opening: open,
+      onRest: finish,
+      advanceFrame: active.advanceFormation,
+      onDirection: (isOpen) => active.pauseFormation(!isOpen),
+      refreshFrames: (miniWidth, miniHeight, fullWidth, fullHeight) => ({
+        mini: global
+          ? local.captureAt(miniWidth, miniHeight)
+          : local.captureMini(miniWidth, miniHeight),
+        full: active.captureAt(fullWidth, fullHeight),
+      }),
     });
   }
 
-  function openGlobal() {
-    const element = globalDialog.current;
-    if (!element || !globalData) return;
+  const expand = () => move(true, false);
+  const collapse = () => move(false, false);
+  const openGlobal = () => move(true, true);
+  const closeGlobal = () => move(false, true);
 
-    element.showModal();
-    // The global graph does no layout or drawing until someone opens it.
-    if (!globalEngine.current && globalCanvas.current)
-      globalEngine.current = mountGraph(
-        globalCanvas.current,
-        globalData,
-        currentId,
-        setFocused,
-      );
-    globalEngine.current?.expand(true);
-  }
-
-  function closeGlobal() {
-    const element = globalDialog.current;
-    if (!element) return;
-
-    closeModal(element, () => {
-      globalEngine.current?.expand(false);
-      engine.current?.arrive();
-      globalButton.current?.focus({ preventScroll: true });
+  useEffect(() => {
+    if (!slot.current) return;
+    // At the sidebar breakpoint an ancestor becomes display:none. A native
+    // dialog there is still modal but invisible, so release its focus trap.
+    const observer = new ResizeObserver(() => {
+      if (slot.current?.getBoundingClientRect().width) return;
+      if (globalDialog.current?.matches(':modal')) closeGlobal();
+      else if (dialog.current?.matches(':modal')) collapse();
     });
-  }
+    observer.observe(slot.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const originId =
@@ -142,7 +179,7 @@ export default function InteractiveGraph({
   );
   useEffect(
     () => () => {
-      exits.current.forEach((animation) => animation.cancel());
+      flight.current?.destroy();
     },
     [],
   );
@@ -152,7 +189,7 @@ export default function InteractiveGraph({
       class={`interactive-graph note-context__section${fullPage ? ' interactive-graph--page' : ''}`}
       aria-label="Interactive graph"
     >
-      <div class="interactive-graph__slot">
+      <div ref={slot} class="interactive-graph__slot">
         <dialog
           ref={dialog}
           open

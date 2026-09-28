@@ -28,6 +28,26 @@ const data: NoteGraphData = {
     target: `note-${i + 1}`,
   })),
 };
+const globalData: NoteGraphData = params.has('global')
+  ? {
+      nodes: [
+        ...data.nodes,
+        ...Array.from({ length: 7 }, (_, i) => ({
+          id: `global-${i}`,
+          title: `Further connection ${i}`,
+          href: `#global-${i}`,
+          incoming: 1,
+        })),
+      ],
+      edges: [
+        ...data.edges,
+        ...Array.from({ length: 7 }, (_, i) => ({
+          source: `note-${i % count}`,
+          target: `global-${i}`,
+        })),
+      ],
+    }
+  : data;
 const fullPage = params.has('full');
 render(
   fullPage ? (
@@ -39,7 +59,7 @@ render(
           <div class="note-context__inner">
             <InteractiveGraph
               data={data}
-              globalData={data}
+              globalData={globalData}
               currentId="note-0"
             />
             <nav class="note-toc note-toc--rail note-context__section">

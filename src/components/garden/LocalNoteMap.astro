@@ -29,13 +29,13 @@ const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.i
   class="note-explorer note-context__section"
   aria-label="Notes explorer"
 >
-  <details class="note-explorer__browser" open={document.id === index.root.id}>
-    <summary class="note-explorer__summary">
+  <details class="note-explorer__browser">
+    <summary class="note-explorer__summary" title="Browse notes by folder">
       <span class="note-explorer__heading">
-        <svg viewBox="0 0 16 16" aria-hidden="true"
-          ><path d="m6 4 4 4-4 4"></path></svg
-        >
-        Browse notes
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M2.5 5h6l2 2h7v9h-15Z M2.5 5V3.5h6l2 2"></path>
+        </svg>
+        Folders
       </span>
     </summary>
     <div class="note-explorer__scroll">
@@ -85,13 +85,3 @@ const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.i
     </div>
   </details>
 </nav>
-
-<script>
-  import { restoreNoteExplorerState } from '@lib/note-explorer-state';
-
-  const browser = document.querySelector<HTMLDetailsElement>(
-    '.note-explorer__browser',
-  );
-  if (browser)
-    restoreNoteExplorerState(browser, matchMedia('(width < 78rem)').matches);
-</script>

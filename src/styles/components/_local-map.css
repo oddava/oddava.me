@@ -162,7 +162,13 @@ summary.note-explorer__row::-webkit-details-marker {
   scrollbar-color: var(--color-rule) transparent;
 }
 .note-explorer__summary {
-  padding: 0.375rem;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  padding: 0.375rem 0.5rem;
+  font: 500 var(--text-xs) var(--font-mono);
+  color: var(--color-text-muted);
   border-radius: var(--radius-sm);
   cursor: pointer;
   list-style: none;
@@ -181,11 +187,11 @@ summary.note-explorer__row::-webkit-details-marker {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  color: var(--color-text-secondary);
+  color: inherit;
 }
 .note-explorer__heading svg {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   fill: none;
   stroke: currentColor;
@@ -193,18 +199,9 @@ summary.note-explorer__row::-webkit-details-marker {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.note-explorer__browser[open] > summary svg {
-  transform: rotate(90deg);
-}
-.note-explorer__current {
-  display: block;
-  margin: 0.25rem 0 0 1.125rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--color-text-muted);
+.note-explorer__browser[open] > summary {
+  color: var(--color-text-primary);
+  background: var(--color-overlay-soft);
 }
 .note-explorer__scroll {
   max-height: min(24rem, 45dvh);
@@ -228,9 +225,5 @@ summary.note-explorer__row::-webkit-details-marker {
   .note-explorer__row,
   .note-explorer__summary {
     min-height: 44px;
-  }
-  .note-explorer__summary {
-    display: flex;
-    align-items: center;
   }
 }

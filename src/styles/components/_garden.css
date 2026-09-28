@@ -615,3 +615,11 @@
     display: none;
   }
 }
+
+/* The optional folder browser is a quiet rail footer, not another section. */
+.note-context .note-explorer {
+  margin-top: 0.75rem;
+  padding-top: 0;
+  border-top: 0;
+  flex-shrink: 0;
+}
