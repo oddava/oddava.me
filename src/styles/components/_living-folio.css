@@ -155,6 +155,15 @@
 body:has([data-folio]) .home-hero--intro {
   padding-block: 5rem;
 }
+body:has([data-folio]) .page {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+@media (width < 640px) {
+  body:has([data-folio]) .home-hero--intro {
+    padding-block: clamp(1.5rem, 5svh, 2.75rem);
+  }
+}
 @keyframes folio-float {
   from {
     transform: translateY(-3px) rotate(-2deg);
