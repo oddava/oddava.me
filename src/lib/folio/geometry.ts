@@ -1,5 +1,4 @@
-/** An engraved sheet: each curve is one continuous edge of the same folio.
- * Coordinates are CSS pixels; the renderer alone deals with device pixels. */
+/** The island is fixed geometry; interaction moves only its surrounding accents. */
 export interface FolioView {
   width: number;
   height: number;
@@ -9,76 +8,69 @@ export interface FolioView {
   quietHeight: number;
 }
 
-export interface FolioPointer {
-  x: number;
-  y: number;
-  strength: number;
-}
-
-export const FOLIO_PAGE_COUNT = 3;
-
 export const TAU = Math.PI * 2;
 
-/** Rounded cheeks and two soft pointed ears frame the measured copy.
- * The fold grows outwards, so even the most energetic sheet stays outside it. */
-export function folioPoint(
-  angle: number,
-  layer: number,
-  time: number,
-  page: number,
-  view: FolioView,
-  pointer: FolioPointer,
-): [number, number] {
-  const { width, height, centerX, centerY, quietWidth, quietHeight } = view;
-  const phase = page * (TAU / FOLIO_PAGE_COUNT);
+export function folioPoint(angle: number, view: FolioView): [number, number] {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
-  const fold = Math.sin(angle * 3 + phase + layer * 2.2 + time * 0.075);
-  const reach = Math.min(width, height) * layer;
-  const rx = quietWidth / 2 + 60 + reach * (0.48 + fold * 0.05);
-  const ry = quietHeight / 2 + 70 + reach * (0.42 + fold * 0.06);
-  // Exponent < 1 makes the inner edge a superellipse, protecting text corners.
-  let x = centerX + Math.sign(c) * Math.abs(c) ** 0.9 * rx;
-  let y = centerY + Math.sign(s) * Math.abs(s) ** 0.9 * ry;
-  x += Math.sin(angle * 2 + phase + time * 0.055) * reach * 0.045;
-  y += Math.cos(angle * 2 - phase + layer * 2.5) * reach * 0.035;
-
-  // Only the first contour is a cat; surrounding lines keep their flowing shape.
-  if (layer === 0) {
-    // Two compact peaks grow out of the forehead; the center stays low between
-    // them. A softened triangular profile reads as ears rather than round bumps.
-    const ear = (tip: number) => {
-      const distance =
-        Math.sqrt((angle - tip) ** 2 + 0.0008) - Math.sqrt(0.0008);
-      return Math.max(0, 1 - distance / 0.43) ** 1.35;
-    };
-    const ears =
-      ear(4.02 + Math.sin(time * 0.12 + phase) * 0.018) +
-      ear(5.405 + Math.sin(time * 0.11 + phase) * 0.018);
-    y -= ears * ry * 0.64;
-    x += ears * Math.sign(c) * rx * 0.035;
-  }
-
-  const dx = x - pointer.x;
-  const dy = y - pointer.y;
-  const distance = Math.hypot(dx, dy);
-  const influence = Math.exp(-(distance * distance) / (145 * 145));
-  const lift = influence * pointer.strength * (16 + 18 * layer);
-  // Tangential displacement feels like lifting a leaf instead of blowing dust.
-  x += c * lift * 0.45;
-  y += s * lift - lift * 0.65;
-  return [x, y];
+  const rx = view.quietWidth / 2 + 48;
+  const ry = view.quietHeight / 2 + 60;
+  const ear = (tip: number) => {
+    const distance = Math.sqrt((angle - tip) ** 2 + 0.0016) - 0.04;
+    const profile = Math.max(0, 1 - distance / 0.43);
+    return profile * profile * (3 - 2 * profile);
+  };
+  const ears = ear(4.02) + ear(5.405);
+  return [
+    view.centerX + c * (1 + 0.14 * s * s) * rx + ears * c * 7,
+    view.centerY + s * (1 + 0.14 * c * c) * ry - ears * ry * 0.64,
+  ];
 }
 
-export function folioPath(layer: number, view: FolioView): string {
-  const points: string[] = [];
-  for (let step = 0; step <= 160; step++) {
-    const [x, y] = folioPoint((step / 160) * TAU, layer, 0, 0, view, {
-      x: -1000,
-      y: -1000,
-      strength: 0,
-    });
-    points.push(`${step ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`);
-  }
-  return points.join(' ');
+export function folioPath(view: FolioView): string {
+  const points = Array.from({ length: 160 }, (_, i) =>
+    folioPoint((i / 160) * TAU, view),
+  );
+  const midpoint = (a: number[], b: number[]) =>
+    `${((a[0]! + b[0]!) / 2).toFixed(2)},${((a[1]! + b[1]!) / 2).toFixed(2)}`;
+  return `M${midpoint(points.at(-1)!, points[0]!)} ${points
+    .map(
+      (point, i) =>
+        `Q${point[0].toFixed(2)},${point[1].toFixed(2)} ${midpoint(point, points[(i + 1) % points.length]!)}`,
+    )
+    .join(' ')} Z`;
+}
+
+/** One shared, tilted orbit supplies both the thread and the authored placements. */
+function orbitPoint(angle: number, view: FolioView): [number, number] {
+  const x = Math.cos(angle) * (view.quietWidth / 2 + 200);
+  const y = Math.sin(angle) * (view.quietHeight / 2 + 205);
+  return [
+    view.centerX + x * Math.cos(-0.22) - y * Math.sin(-0.22),
+    view.centerY + x * Math.sin(-0.22) + y * Math.cos(-0.22),
+  ];
+}
+
+export function folioOrbit(view: FolioView): string {
+  return Array.from({ length: 129 }, (_, i) => {
+    const [x, y] = orbitPoint((i / 128) * TAU, view);
+    return `${i ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(' ');
+}
+
+export function folioAccents(view: FolioView): [number, number][] {
+  const { width, height, centerY, quietHeight } = view;
+  const ry = quietHeight / 2 + 60;
+  if (width < 900)
+    return [
+      [-80, centerY - ry * 0.5],
+      [width * 0.79, centerY - ry * 1.45 - 65],
+      [width * 0.22, Math.min(height - 65, centerY + ry + 85)],
+      [width + 80, centerY + ry * 0.4],
+      [width * 0.26, centerY - ry * 1.45 - 42],
+      [width * 0.75, Math.min(height - 40, centerY + ry + 105)],
+    ];
+  return [3.4, 5.65, 2.2, 0.15, 4.5, 1.18].map((angle) =>
+    orbitPoint(angle, view),
+  );
 }
