@@ -143,25 +143,6 @@ export default function StudioEditorPane({
 }: Props) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const sourceRef = useRef<HTMLTextAreaElement | null>(null);
-  const [typing, setTyping] = useState(false);
-  useEffect(() => {
-    const reveal = () => setTyping(false);
-    const keyboardReveal = (event: KeyboardEvent) => {
-      if (event.key === 'Tab' || event.key === 'Escape') reveal();
-    };
-    window.addEventListener('pointermove', reveal);
-    window.addEventListener('pointerdown', reveal);
-    window.addEventListener('keydown', keyboardReveal, true);
-    return () => {
-      window.removeEventListener('pointermove', reveal);
-      window.removeEventListener('pointerdown', reveal);
-      window.removeEventListener('keydown', keyboardReveal, true);
-    };
-  }, []);
-  useEffect(() => setTyping(false), [view, publishedUrl, sidebarVisible]);
-  useEffect(() => {
-    if (saveState === 'error') setTyping(false);
-  }, [saveState]);
   useEffect(() => {
     if (compact && sidebarVisible) wikiMenu.close();
   }, [compact, sidebarVisible]);
@@ -205,11 +186,7 @@ export default function StudioEditorPane({
 
   return (
     <>
-      <header
-        className={`studio-bar${typing ? ' is-typing' : ''}`}
-        inert={typing}
-        aria-hidden={typing}
-      >
+      <header className="studio-bar">
         <div className="studio-bar__title">
           <button
             type="button"
@@ -221,7 +198,7 @@ export default function StudioEditorPane({
           >
             <FileIcon icon={icon} />
           </button>
-          <strong>{title}</strong>
+          <strong title={title}>{title}</strong>
         </div>
         {!compact && viewSwitch}
         {compact && keyboardOpen && (
@@ -273,18 +250,7 @@ export default function StudioEditorPane({
           onClose={() => setIconPickerOpen(false)}
         />
       )}
-      <div
-        className={`studio-surface is-${view}`}
-        onInput={(event) => {
-          if (
-            (event.target as HTMLElement).matches(
-              '.studio-rich-content, .studio-textarea',
-            )
-          )
-            setTyping(true);
-        }}
-        onFocusOut={() => setTyping(false)}
-      >
+      <div className={`studio-surface is-${view}`}>
         <div hidden={view !== 'visual'} className="studio-visual-host">
           <StudioVisualEditor
             icon={icon}
@@ -332,10 +298,6 @@ export default function StudioEditorPane({
                   event.key.toLowerCase() === 'v';
                 if (wikiMenu.onKeyDown(event)) return;
                 if (onShortcut(event)) return;
-                if (event.key === 'Tab') {
-                  event.preventDefault();
-                  commands.insertInline('  ');
-                }
               }}
               onInput={(event) => {
                 onBodyChange(event.currentTarget.value);

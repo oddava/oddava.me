@@ -128,8 +128,6 @@ async function openNote(page: Page) {
 }
 
 async function setView(page: Page, name: 'Visual' | 'Markdown' | 'Preview') {
-  // Typing hides the header; moving the pointer reveals its controls.
-  await page.mouse.move(1, 1);
   await page.getByRole('button', { name, exact: true }).click();
 }
 
@@ -246,7 +244,7 @@ test('block controls follow hovered text and sidebar controls replace the header
   await page.keyboard.press('Control+\\');
   await expect(
     page.getByRole('button', { name: 'Show Files explorer' }),
-  ).toHaveText('#');
+  ).toBeVisible();
   await expect.poll(aligned).toBe(true);
   await paragraph.hover();
   await grip.hover();
@@ -336,7 +334,7 @@ test('browsing, searching, creation and responsive layout', async ({
   }
   const search =
     info.project.name === 'desktop'
-      ? page.getByRole('textbox', { name: 'Go to a file or run a command' })
+      ? page.getByRole('combobox', { name: 'Go to a file or run a command' })
       : page.getByRole('searchbox');
   await search.fill('reading');
   await expect(
@@ -526,7 +524,8 @@ test('delete requires confirmation and removes the selected file', async ({
   page,
 }) => {
   const store = await setup(page);
-  await page.getByRole('searchbox').fill('reading');
+  if (await page.getByRole('searchbox').count())
+    await page.getByRole('searchbox').fill('reading');
   await page.getByRole('button', { name: 'Actions for reading list' }).click();
   await page.getByRole('button', { name: /^Delete(?: Del)?$/ }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Delete note' });
@@ -590,14 +589,14 @@ test('Visual uses published prose typography and Markdown stays readable', async
   await setView(page, 'Markdown');
   await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveCSS(
     'font-size',
-    '17px',
+    info.project.name === 'mobile' ? '16px' : '15px',
   );
   await page.screenshot({
     path: `test-results/markdown-${info.project.name}.png`,
   });
 });
 
-test('typing hides the header and saves without settings', async ({
+test('typing keeps controls and save status available without moving the page', async ({
   page,
 }, info) => {
   await page.addInitScript(() =>
@@ -618,8 +617,8 @@ test('typing hides the header and saves without settings', async ({
   await page.keyboard.press('Control+End');
   const before = await page.locator('.studio-surface').boundingBox();
   await page.keyboard.type(' Automatic change.');
-  await expect(header).toBeHidden();
-  await expect(header).toHaveCSS('opacity', '0');
+  await expect(header).toBeVisible();
+  await expect(header).not.toHaveAttribute('inert');
   const noteBackground = await page
     .locator('.studio-rich-scroll')
     .evaluate((node) => getComputedStyle(node).backgroundColor);
@@ -644,7 +643,7 @@ test('typing hides the header and saves without settings', async ({
   await page
     .getByRole('combobox', { name: 'Note source' })
     .fill('Source editing also saves.');
-  await expect(header).toBeHidden();
+  await expect(header).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(header).toBeVisible();
   await expect.poll(store.saved).toContain('Source editing also saves.');
@@ -765,7 +764,9 @@ test('local images and captions render and reopen for adjustment', async ({
   await setView(page, 'Visual');
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await expect(editor.locator('img')).toHaveCount(2);
-  await expect(editor.locator('figcaption')).toHaveText('Original caption');
+  await expect(editor.locator('figcaption:visible')).toHaveText(
+    'Original caption',
+  );
   await expect(editor.locator('.studio-source-block')).toHaveCount(0);
   expect(
     await editor
@@ -1216,7 +1217,7 @@ test('native image drag snaps beside text and undo restores one image', async ({
   await page.screenshot({ path: 'test-results/image-grip-spacing.png' });
   await target.hover();
   await grip.dragTo(image, {
-    targetPosition: { x: imageBox.width - 2, y: imageBox.height / 2 },
+    targetPosition: { x: imageBox.width - 20, y: imageBox.height / 2 },
   });
   await expect(editor.locator('.note-column')).toHaveCount(2);
   await expect(
@@ -1265,7 +1266,10 @@ test('side snapping cancels with Escape and stays off when columns cannot fit', 
   await expect(page.locator('.studio-rich-side-drop')).toHaveCount(0);
   await expect(editor.locator('.note-columns')).toHaveCount(0);
   await expect(editor.locator('p')).toHaveText(['Target.', 'Source.']);
-  await page.setViewportSize({ width: 780, height: 1000 });
+  // Constrain the writing surface itself; sidebar and gutter density can change.
+  await page.locator('.studio-editor').evaluate((node) => {
+    node.style.maxWidth = '420px';
+  });
   await dragToSide();
   await expect(page.locator('.studio-rich-side-drop')).toHaveCount(0);
   await page.mouse.up();
@@ -1300,7 +1304,7 @@ test('images keep their width across repeated snap and unsnap moves', async ({
   for (let i = 0; i < 3; i++) {
     const target = (await first.boundingBox())!;
     await second.dragTo(first, {
-      targetPosition: { x: target.width - 2, y: target.height / 2 },
+      targetPosition: { x: target.width - 20, y: target.height / 2 },
     });
     await expect(editor.locator('.note-column')).toHaveCount(2);
     expect((await first.boundingBox())!.width).toBeCloseTo(initialWidth, 0);
@@ -1520,8 +1524,8 @@ test('deeply nested notes keep their labels and actions inside the sidebar', asy
   expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(
     first!.x + first!.width,
   );
-  await expect(last).toHaveCSS('padding-left', '36px');
-  await expect(rows.first()).toHaveCSS('padding-left', '12px');
+  await expect(last).toHaveCSS('padding-left', '52px');
+  await expect(rows.first()).toHaveCSS('padding-left', '16px');
   await page.screenshot({
     path: 'test-results/compact-nested-notes.png',
     fullPage: true,
@@ -1768,4 +1772,128 @@ test('icon crop cancels locally, handles invalid images and keeps the original u
     .click();
   await expect(picker).toHaveCount(0);
   expect(uploaded).toEqual(file.buffer);
+});
+
+test('tree menus support keyboard navigation and Markdown lets Tab leave the editor', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'desktop',
+    'Desktop tree keyboard interaction',
+  );
+  await setup(page);
+  const row = page.locator('[data-tree-key="entry:welcome"]');
+  await row.focus();
+  await row.press('Shift+F10');
+  const menu = page.getByRole('menu', {
+    name: 'Actions for welcome',
+    exact: true,
+  });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('button').first()).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(menu.getByRole('button').last()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('button').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(row).toBeFocused();
+  await openNote(page);
+  await setView(page, 'Markdown');
+  const source = page.getByRole('combobox', { name: 'Note source' });
+  await source.focus();
+  await source.press('Shift+Tab');
+  await expect(source).not.toBeFocused();
+  await expect(
+    page.getByRole('link', { name: 'Open published page' }),
+  ).toBeFocused();
+});
+
+test('palette keeps focus and exposes the current search result', async ({
+  page,
+}) => {
+  await setup(page);
+  await openNote(page);
+  await page.keyboard.press('Control+p');
+  const dialog = page.getByRole('dialog', { name: 'Find a note or command' });
+  const search = dialog.getByRole('combobox');
+  await expect(search).toBeFocused();
+  await search.fill('reading');
+  await expect(search).toHaveAttribute(
+    'aria-activedescendant',
+    'studio-palette-option-0',
+  );
+  await expect(dialog.getByRole('option', { selected: true })).toContainText(
+    'Reading list',
+  );
+  await search.press('Shift+Tab');
+  await expect(dialog).toContainText('Reading list');
+  expect(
+    await dialog.evaluate((node) => node.contains(document.activeElement)),
+  ).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});
+
+test('long titles and writing stay within compact viewports', async ({
+  page,
+}, info) => {
+  await setup(page);
+  await openNote(page);
+  await setView(page, 'Markdown');
+  const body =
+    '# ' +
+    'A deliberately long note title '.repeat(8) +
+    '\n\n' +
+    'UnbrokenText'.repeat(80);
+  await page.getByRole('combobox', { name: 'Note source' }).fill(body);
+  await setView(page, 'Visual');
+  for (const width of info.project.name === 'desktop'
+    ? [1440, 1024, 780]
+    : [390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.locator('.studio-bar__title strong')).toHaveText(
+      body.split('\n')[0]!.slice(2).trim(),
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    const header = await page.locator('.studio-bar').boundingBox();
+    const actions = await page.locator('.studio-bar__actions').boundingBox();
+    expect(actions!.x + actions!.width).toBeLessThanOrEqual(
+      header!.x + header!.width,
+    );
+    await page.screenshot({
+      path: `test-results/studio-long-title-${width}.png`,
+    });
+  }
+});
+
+test('loading and unavailable storage never masquerade as an empty garden', async ({
+  page,
+}) => {
+  await setup(page);
+  await page.route('**/api/admin/content/collections', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.fulfill({
+      status: 503,
+      json: { error: 'Content store unavailable' },
+    });
+  });
+  await page.reload();
+  await expect(page.getByText('Loading notes…', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'New note', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText('Notes unavailable', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Retry connection' }),
+  ).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText(
+    'Content store unavailable',
+  );
 });

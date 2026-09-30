@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'preact/hooks';
 import type { SaveState } from './studioSession';
 
 interface Props {
@@ -21,14 +20,6 @@ function SavedIcon() {
 }
 
 export default function StudioSaveIndicator({ state, savedAt, onSave }: Props) {
-  const [, force] = useState(0);
-  // Re-render occasionally so "saved 2m ago" stays honest.
-  useEffect(() => {
-    if (state !== 'saved') return;
-    const timer = window.setInterval(() => force((n) => n + 1), 30_000);
-    return () => window.clearInterval(timer);
-  }, [state, savedAt]);
-
   if (state === 'error') {
     return (
       <button
@@ -52,24 +43,18 @@ export default function StudioSaveIndicator({ state, savedAt, onSave }: Props) {
   } else if (state === 'dirty') {
     label = 'Unsaved';
     tone = 'dirty';
-  } else if (state === 'saved') {
-    tone = 'saved';
-    const seconds = savedAt ? Math.round((Date.now() - savedAt) / 1000) : 0;
-    label =
-      seconds < 5
-        ? 'Saved'
-        : seconds < 60
-          ? `Saved ${seconds}s ago`
-          : `Saved ${Math.round(seconds / 60)}m ago`;
   }
-  if (!label) return <span className="studio-save" data-tone="idle" />;
   return (
     <span
       className="studio-save"
       data-tone={tone}
       role="status"
       aria-live="polite"
-      title={label}
+      title={
+        tone === 'saved' && savedAt
+          ? `Saved at ${new Date(savedAt).toLocaleTimeString()}`
+          : label
+      }
     >
       {tone === 'saved' ? (
         <SavedIcon />

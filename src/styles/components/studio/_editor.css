@@ -289,7 +289,7 @@
   min-height: 0;
   /* The reading measure, shared by every mode so a line does not change length
      when the mode does. */
-  --studio-measure: 44rem;
+  --studio-measure: var(--max-width);
 }
 
 @keyframes studio-drop-marker {
@@ -697,7 +697,7 @@
 .studio-preview__page {
   width: min(100%, 44rem);
   margin: 0 auto;
-  padding: 40px 0 25vh;
+  padding: var(--studio-page-top) 0 25vh;
 }
 
 .studio-preview__title {

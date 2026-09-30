@@ -18,8 +18,9 @@
   max-height: 60vh;
   overflow: hidden;
   border: 1px solid var(--admin-line-strong);
-  border-radius: var(--radius-lg);
-  background: var(--admin-surface-elevated);
+  border-radius: var(--studio-popup-radius);
+  background: var(--admin-surface);
+  font-family: var(--studio-font-ui);
   box-shadow: 0 24px 60px color-mix(in srgb, #000 46%, transparent);
 }
 
@@ -208,7 +209,6 @@
   place-items: center;
   padding: 20px;
   background: color-mix(in srgb, var(--admin-bg) 72%, transparent);
-  backdrop-filter: blur(3px);
 }
 
 .studio-imgdlg {

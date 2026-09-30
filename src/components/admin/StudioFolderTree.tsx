@@ -479,6 +479,15 @@ export default function StudioFolderTree({
     const expanded =
       folderId !== null && (searching || expandedFolders.has(folderId));
 
+    if (
+      event.key === 'ContextMenu' ||
+      (event.shiftKey && event.key === 'F10')
+    ) {
+      event.preventDefault();
+      if (!selectedKeys.includes(key)) clearSelection();
+      menu.openUnder(key, event.currentTarget);
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       stepFocus(key, event.key === 'ArrowDown' ? 1 : -1, event.shiftKey);
@@ -972,10 +981,16 @@ export default function StudioFolderTree({
             .filter(Boolean)
             .join(' ')}
           role="treeitem"
-          style={{ paddingLeft: `${4 + Math.min(depth - 1, 4) * 8}px` }}
-          title={nodeLabel(node)}
+          style={{ paddingLeft: `${4 + Math.min(depth - 1, 4) * 12}px` }}
+          title={nodePath(node)}
           data-tree-key={key}
           tabIndex={tabbableKey === key ? 0 : -1}
+          aria-label={nodeLabel(node)}
+          aria-owns={
+            expanded
+              ? `studio-tree-group-${encodeURIComponent(key)}`
+              : undefined
+          }
           aria-level={depth}
           aria-posinset={position}
           aria-setsize={siblings}
@@ -1161,7 +1176,11 @@ export default function StudioFolderTree({
         {((isFolder && expanded) ||
           creating?.parent ===
             (isFolder ? folderId : noteContainerPath(node.entry))) && (
-          <ul className="studio-tree-children" role="group">
+          <ul
+            className="studio-tree-children"
+            role="group"
+            id={`studio-tree-group-${encodeURIComponent(key)}`}
+          >
             {renderChildren(
               isFolder ? folderId : noteContainerPath(node.entry),
               depth + 1,
@@ -1179,7 +1198,7 @@ export default function StudioFolderTree({
         <form
           className="studio-tree-row studio-tree-row--inline"
           style={{
-            paddingLeft: `${4 + Math.min(parent.split('/').filter(Boolean).length + 1, 4) * 8}px`,
+            paddingLeft: `${4 + Math.min(parent.split('/').filter(Boolean).length + 1, 4) * 12}px`,
           }}
           onSubmit={(event) => {
             event.preventDefault();
@@ -1319,6 +1338,8 @@ export default function StudioFolderTree({
           role="treeitem"
           data-tree-key={ROOT_KEY}
           tabIndex={tabbableKey === ROOT_KEY ? 0 : -1}
+          aria-label="Notes"
+          aria-owns={rootExpanded ? 'studio-tree-root-children' : undefined}
           aria-level={1}
           aria-posinset={1}
           aria-setsize={1}
@@ -1437,6 +1458,7 @@ export default function StudioFolderTree({
 
         {rootExpanded && (
           <ul
+            id="studio-tree-root-children"
             className="studio-tree-children studio-tree-children--root"
             role="group"
           >

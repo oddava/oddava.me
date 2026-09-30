@@ -58,7 +58,9 @@ export default function StudioPreviewPane({
               dangerouslySetInnerHTML={{ __html: rendered.html }}
             />
           ) : (
-            <p className="studio-preview__stub"></p>
+            <p className="studio-preview__stub">
+              Nothing to preview yet. Start writing in Visual or Markdown.
+            </p>
           )}
         </article>
         {headings.length > 0 && (
