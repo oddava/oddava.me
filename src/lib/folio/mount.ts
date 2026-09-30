@@ -1,5 +1,6 @@
 import {
   folioAccents,
+  folioStars,
   folioPath,
   folioOrbit,
   type FolioView,
@@ -15,7 +16,7 @@ import {
 
 const mounted = new WeakMap<HTMLElement, () => void>();
 
-/** Six rigid motifs share one bounded gesture loop. Native CSS handles ambient
+/** Six rigid motifs and sparse dust share one bounded gesture loop. Native CSS handles ambient
  * breathing; the JS loop sleeps as soon as the interaction has settled. */
 export function mountFolio(root: HTMLElement): (() => void) | null {
   mounted.get(root)?.();
@@ -27,6 +28,17 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   );
   const trail = root.querySelector<SVGPathElement>('[data-folio-trail]');
   const states = accents.map(stillAccent);
+  const stars = Array.from(
+    root.querySelectorAll<SVGGElement>('[data-folio-star]'),
+    (element) => ({
+      element,
+      x: 0,
+      y: 0,
+      shiftX: 0,
+      shiftY: 0,
+      light: 0,
+    }),
+  );
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const contrast = matchMedia('(forced-colors: active)');
   const controller = new AbortController();
@@ -71,6 +83,10 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     cancelAnimationFrame(frame);
     frame = 0;
     states.forEach((state) => Object.assign(state, stillAccent()));
+    stars.forEach((star) => {
+      star.shiftX = star.shiftY = star.light = 0;
+      star.element.removeAttribute('style');
+    });
     paint();
     trace!.style.opacity = '0';
     if (trail) trail.style.opacity = '0';
@@ -141,6 +157,14 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     accents.forEach((accent, i) =>
       accent.setAttribute('transform', `translate(${positions[i]!.join(' ')})`),
     );
+    folioStars(view).forEach(([x, y, size], i) => {
+      const star = stars[i];
+      if (!star) return;
+      star.x = x;
+      star.y = y;
+      star.element.setAttribute('transform', `translate(${x} ${y})`);
+      star.element.setAttribute('visibility', size ? 'visible' : 'hidden');
+    });
     // Cache uniformly spaced edge samples once; pointer frames never measure SVG.
     const length = trace!.getTotalLength();
     edge = Array.from({ length: 256 }, (_, i) => {
@@ -184,6 +208,28 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
           dt,
         ) || moving;
     });
+    for (const star of stars) {
+      const dx = pointer ? star.x - pointer.x : 0;
+      const dy = pointer ? star.y - pointer.y : 0;
+      const near = pointer ? Math.max(0, 1 - Math.hypot(dx, dy) / 150) ** 2 : 0;
+      const follow = 1 - Math.exp(-dt * 5);
+      const x = dx * near * 0.06;
+      const y = dy * near * 0.06;
+      if (
+        Math.abs(x - star.shiftX) +
+          Math.abs(y - star.shiftY) +
+          Math.abs(near - star.light) <
+        0.005
+      )
+        continue;
+      moving = true;
+      star.shiftX += (x - star.shiftX) * follow;
+      star.shiftY += (y - star.shiftY) * follow;
+      star.light += (near - star.light) * follow;
+      star.element.style.setProperty('--dust-x', `${star.shiftX.toFixed(2)}px`);
+      star.element.style.setProperty('--dust-y', `${star.shiftY.toFixed(2)}px`);
+      star.element.style.opacity = (0.72 + star.light * 0.28).toFixed(3);
+    }
     paint();
     if (pointer && edgeDirty) {
       distance = Infinity;
