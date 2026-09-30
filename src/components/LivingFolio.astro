@@ -1,7 +1,6 @@
 ---
-import { folioPath } from '../lib/folio/geometry';
+import { folioAccents, folioOrbit, folioPath } from '../lib/folio/geometry';
 import '../styles/components/_living-folio.css';
-
 const stillView = {
   width: 1440,
   height: 1000,
@@ -10,29 +9,203 @@ const stillView = {
   quietWidth: 490,
   quietHeight: 260,
 };
+const island = folioPath(stillView);
+const orbit = folioOrbit(stillView);
+const positions = folioAccents(stillView);
+const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
 ---
 
 <div class="living-folio" data-folio>
-  <div class="living-folio__surface" aria-hidden="true">
-    <svg
-      class="living-folio__still"
-      viewBox="0 0 1440 1000"
-      preserveAspectRatio="xMidYMid slice"
-      focusable="false"
-    >
-      {
-        Array.from({ length: 52 }, (_, i) => (
-          <path d={folioPath(i / 51, stillView)} />
-        ))
-      }
-    </svg>
-    <canvas class="living-folio__canvas"></canvas>
-  </div>
+  <div class="living-folio__atmosphere" aria-hidden="true"></div>
+  <svg
+    class="living-folio__surface"
+    viewBox="0 0 1440 1000"
+    preserveAspectRatio="xMidYMid slice"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <defs>
+      <linearGradient id="folio-face" x1="0" y1="0" x2="0.8" y2="1">
+        <stop stop-color="color-mix(in srgb, var(--color-accent) 8%, black)"
+        ></stop><stop offset="0.55" stop-color="#050608"></stop><stop
+          offset="1"
+          stop-color="#07090d"></stop>
+      </linearGradient>
+      <linearGradient id="folio-rim" x1="0" y1="0" x2="0.75" y2="1">
+        <stop stop-color="var(--color-accent)" stop-opacity="0.65"></stop><stop
+          offset="0.45"
+          stop-color="var(--color-accent)"
+          stop-opacity="0.2"></stop><stop
+          offset="1"
+          stop-color="var(--color-accent)"
+          stop-opacity="0.4"></stop>
+      </linearGradient>
+      <linearGradient id="folio-thread" x1="0" y1="0" x2="1" y2="1">
+        <stop stop-color="var(--color-accent)" stop-opacity="0.05"></stop><stop
+          offset="0.3"
+          stop-color="var(--color-accent)"
+          stop-opacity="0.45"></stop><stop
+          offset="0.65"
+          stop-color="var(--color-accent)"
+          stop-opacity="0.3"></stop><stop
+          offset="1"
+          stop-color="var(--color-accent)"
+          stop-opacity="0.08"></stop>
+      </linearGradient>
+    </defs>
+    <g>
+      <path
+        class="living-folio__thread"
+        data-folio-orbit
+        d={orbit}
+        pathLength="1000"></path>
+      <path
+        class="living-folio__traveler"
+        data-folio-orbit
+        d={orbit}
+        pathLength="1000"></path>
+      <g
+        class="folio-accent folio-accent--whisker"
+        data-folio-accent
+        transform={position(0)}
+      >
+        <g class="folio-accent__float"
+          ><g class="folio-accent__response">
+            <g class="folio-accent__piece" data-piece="0"
+              ><path
+                class="folio-accent__ribbon"
+                d="M-66-14Q-12-14 46-35L34-22Q-8-5-66-14Z"></path></g
+            >
+            <g class="folio-accent__piece" data-piece="1"
+              ><path d="M-69 1Q-9 5 54-7"></path><path
+                class="folio-accent__tip"
+                d="M22 0L56-7"></path></g
+            >
+            <g class="folio-accent__piece" data-piece="2"
+              ><path
+                class="folio-accent__ribbon folio-accent__muted"
+                d="M-54 15Q1 30 49 20L29 28Q-9 33-54 15Z"></path></g
+            >
+          </g></g
+        >
+      </g>
+      <g
+        class="folio-accent folio-accent--crescent"
+        data-folio-accent
+        transform={position(1)}
+      >
+        <g class="folio-accent__float"
+          ><g class="folio-accent__response">
+            <g class="folio-accent__turn"
+              ><path
+                class="folio-accent__ribbon"
+                d="M-54 15A60 60 0 0 1 43-42A68 68 0 0 0-54 15Z"></path><path
+                d="M-42 30A53 53 0 0 0 48-18"></path></g
+            >
+            <g class="folio-accent__secondary"
+              ><path class="folio-accent__tip" d="M-37 38A54 54 0 0 0-12 50"
+              ></path><path class="folio-accent__muted" d="M35-55L51-43"
+              ></path></g
+            >
+          </g></g
+        >
+      </g>
+      <g
+        class="folio-accent folio-accent--fold"
+        data-folio-accent
+        transform={position(2)}
+      >
+        <g class="folio-accent__float"
+          ><g class="folio-accent__response">
+            <g class="folio-accent__turn"
+              ><path class="folio-accent__paper" d="M-39 14L-4-31 35-18 0 31Z"
+              ></path><path class="folio-accent__crease" d="M-4-31L0 31 35-18Z"
+              ></path></g
+            >
+            <g class="folio-accent__secondary"
+              ><path d="M-28 23L4 41 44-10"></path><path
+                class="folio-accent__tip"
+                d="M-48 18L-41 9"></path></g
+            >
+          </g></g
+        >
+      </g>
+      <g
+        class="folio-accent folio-accent--fan"
+        data-folio-accent
+        transform={position(3)}
+      >
+        <g class="folio-accent__float"
+          ><g class="folio-accent__response">
+            {
+              [0, 1, 2, 3].map((i) => (
+                <g class="folio-accent__blade" data-piece={i}>
+                  <path
+                    class="folio-accent__ribbon"
+                    d="M-24 0Q5-9 57-2L48 4Q7 0-24 0Z"
+                  />
+                </g>
+              ))
+            }
+          </g></g
+        >
+      </g>
+      <g
+        class="folio-accent folio-accent--spark"
+        data-folio-accent
+        transform={position(4)}
+      >
+        <g class="folio-accent__float"
+          ><g class="folio-accent__response">
+            <g class="folio-accent__turn"
+              ><path
+                class="folio-accent__spark"
+                d="M0-14Q2-2 14 0Q2 2 0 14Q-2 2-14 0Q-2-2 0-14Z"></path></g
+            >
+            <g class="folio-accent__secondary"
+              ><path class="folio-accent__muted" d="M23-16L29-10 23-4 17-10Z"
+              ></path></g
+            >
+          </g></g
+        >
+      </g>
+      <g
+        class="folio-accent folio-accent--stitch"
+        data-folio-accent
+        transform={position(5)}
+      >
+        <g class="folio-accent__float"
+          ><g class="folio-accent__response">
+            <g class="folio-accent__piece" data-piece="0"
+              ><path d="M-37 0Q-20 9-1 8"></path></g
+            >
+            <g class="folio-accent__piece" data-piece="1"
+              ><path class="folio-accent__tip" d="M8 8Q23 5 33-4"></path></g
+            >
+            <g class="folio-accent__piece" data-piece="2"
+              ><path class="folio-accent__muted" d="M-4 20L9 18"></path></g
+            >
+          </g></g
+        >
+      </g>
+    </g>
+    <path class="living-folio__island" data-folio-island d={island}></path>
+    <path
+      class="living-folio__trace living-folio__trace--echo"
+      data-folio-island
+      data-folio-trail
+      d={island}
+      pathLength="1000"></path>
+    <path
+      class="living-folio__trace"
+      data-folio-island
+      data-folio-trace
+      d={island}
+      pathLength="1000"></path>
+  </svg>
 </div>
-
 <script>
   import { mountFolio } from '../lib/folio/mount';
-
   const root = document.querySelector<HTMLElement>('[data-folio]');
   if (root) mountFolio(root);
 </script>

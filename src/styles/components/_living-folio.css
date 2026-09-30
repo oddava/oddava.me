@@ -1,61 +1,203 @@
-/* One continuous printing surface, with a quiet center for the introduction. */
+/* Folded ribbons, a shared thread, and the site’s blue around a quiet center. */
 .living-folio {
-  --folio-ink: #8f9aa9;
-  --folio-edge: #9dbbdf;
+  --folio-muted: color-mix(in srgb, var(--color-accent) 64%, #586576);
+  --folio-bright: color-mix(in srgb, var(--color-accent) 70%, white);
   pointer-events: none;
 }
-
-.living-folio__surface {
+.living-folio__surface,
+.living-folio__atmosphere {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: -1;
   contain: strict;
 }
-
-.living-folio__canvas,
-.living-folio__still {
-  display: block;
-  width: 100%;
-  height: 100%;
+.living-folio__atmosphere {
+  background:
+    radial-gradient(
+      ellipse at 32% 36%,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 49%
+    ),
+    radial-gradient(
+      ellipse at 73% 64%,
+      color-mix(in srgb, var(--color-accent) 6%, transparent),
+      transparent 46%
+    );
 }
-
-.living-folio__canvas {
-  position: absolute;
-  inset: 0;
-}
-
-.living-folio__still {
+.living-folio__surface {
   fill: none;
-  stroke: var(--folio-ink);
-  stroke-width: 0.6;
-  opacity: 0.22;
+  stroke-width: 1;
 }
-
-.living-folio[data-ready] .living-folio__still {
-  visibility: hidden;
+.living-folio__island {
+  fill: url(#folio-face);
+  stroke: url(#folio-rim);
 }
-
+.living-folio__thread {
+  stroke: url(#folio-thread);
+  stroke-dasharray: 210 40 130 105 225 290;
+  stroke-width: 0.85;
+}
+.living-folio__traveler {
+  stroke: var(--folio-bright);
+  stroke-width: 1.2;
+  stroke-dasharray: 9 991;
+  opacity: 0.35;
+  animation: folio-travel 42s linear infinite;
+}
+.living-folio__trace {
+  stroke: var(--folio-bright);
+  stroke-width: 1.5;
+  stroke-dasharray: 34 966;
+  opacity: 0;
+}
+.living-folio__trace--echo {
+  stroke: var(--folio-muted);
+  stroke-width: 1;
+}
+.folio-accent {
+  --turn: 0deg;
+  --open: 0;
+  --echo: 0;
+  --shift-x: 0px;
+  --shift-y: 0px;
+  --piece: 0;
+  stroke: var(--color-accent);
+  opacity: 0.65;
+}
+.folio-accent__response {
+  transform: translate(var(--shift-x), var(--shift-y));
+}
+.folio-accent__float {
+  animation: folio-float 9s ease-in-out infinite alternate;
+}
+.folio-accent--crescent .folio-accent__float {
+  animation-delay: -5s;
+  animation-duration: 11s;
+}
+.folio-accent--fold .folio-accent__float {
+  animation-delay: -3s;
+  animation-duration: 12s;
+}
+.folio-accent--fan .folio-accent__float {
+  animation-delay: -7s;
+}
+.folio-accent--spark .folio-accent__float {
+  animation-delay: -2s;
+  animation-duration: 8s;
+}
+.folio-accent--stitch .folio-accent__float {
+  animation-delay: -6s;
+  animation-duration: 10s;
+}
+.folio-accent__turn {
+  transform: rotate(var(--turn));
+}
+.folio-accent__secondary {
+  transform: rotate(calc(var(--turn) * -0.45))
+    translate(calc(var(--echo) * 13px), calc(var(--echo) * -9px));
+  opacity: calc(0.45 + var(--echo) * 0.3);
+}
+.folio-accent__ribbon {
+  fill: var(--color-accent);
+  fill-opacity: 0.18;
+  stroke-opacity: 0.75;
+}
+.folio-accent__muted {
+  stroke: var(--folio-muted);
+}
+.folio-accent__tip {
+  stroke: var(--folio-bright);
+  stroke-width: 1.7;
+}
+.folio-accent__paper {
+  fill: var(--color-accent);
+  fill-opacity: 0.08;
+}
+.folio-accent__crease {
+  fill: var(--color-accent);
+  fill-opacity: 0.12;
+  stroke-opacity: 0.4;
+}
+.folio-accent__spark {
+  fill: var(--color-accent);
+  fill-opacity: 0.35;
+  stroke: var(--folio-bright);
+}
+.folio-accent [data-piece='0'] {
+  --piece: -1;
+}
+.folio-accent [data-piece='1'] {
+  --piece: 0;
+}
+.folio-accent [data-piece='2'] {
+  --piece: 1;
+}
+.folio-accent [data-piece='3'] {
+  --piece: 2;
+}
+.folio-accent__piece {
+  transform: translate(
+      calc(var(--echo) * var(--piece) * 14px),
+      calc(var(--open) * var(--piece) * 16px)
+    )
+    rotate(calc(var(--turn) * var(--piece) * 0.4));
+}
+.folio-accent__blade {
+  transform: rotate(
+      calc(
+        var(--piece) * 18deg + var(--turn) + var(--echo) * var(--piece) * 16deg
+      )
+    )
+    translateX(calc(var(--open) * 9px));
+}
 body:has([data-folio]) .home-hero--intro {
   padding-block: 5rem;
 }
-
+@keyframes folio-float {
+  from {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+  to {
+    transform: translateY(3px) rotate(2deg);
+  }
+}
+@keyframes folio-travel {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+.living-folio[data-sleep] * {
+  animation-play-state: paused;
+}
+@media (width < 900px) {
+  .folio-accent--whisker,
+  .folio-accent--fan {
+    display: none;
+  }
+  .folio-accent__response {
+    scale: 0.65;
+  }
+  .living-folio__thread,
+  .living-folio__traveler {
+    opacity: 0.16;
+  }
+}
+@media (width < 900px) and (height < 700px) {
+  .folio-accent--crescent,
+  .folio-accent--spark,
+  .folio-accent--fold {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .living-folio * {
+    animation: none !important;
+  }
+}
 @media (forced-colors: active) {
   .living-folio {
     display: none;
   }
-}
-
-/* Gestures belong to the sheet only; links and selectable copy stay native. */
-.living-folio__surface {
-  pointer-events: auto;
-  touch-action: none;
-}
-
-body:has([data-folio]) .page {
-  pointer-events: none;
-}
-
-body:has([data-folio]) .home-hero > *,
-body:has([data-folio]) .skip-link {
-  pointer-events: auto;
 }
