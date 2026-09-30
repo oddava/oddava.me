@@ -14,6 +14,7 @@ let now: number;
 beforeEach(() => {
   document.body.innerHTML = `<div data-folio><svg>
     ${Array.from({ length: 6 }, () => '<g data-folio-accent></g>').join('')}
+    <g data-folio-star></g><g data-folio-star></g>
     <path data-folio-island></path><path data-folio-island data-folio-trace></path>
   </svg></div><a href='/notes'>notes</a>`;
   root = document.querySelector('[data-folio]')!;
@@ -127,6 +128,27 @@ describe('folio composition lifecycle', () => {
     expect(
       root.querySelector<SVGGElement>('g')!.style.getPropertyValue('--open'),
     ).toBe('0.000');
+  });
+
+  it('nudges nearby dust gently, settles, and leaves no idle animation loop', () => {
+    destroy = mountFolio(root);
+    const star = root.querySelector<SVGGElement>('[data-folio-star]')!;
+    expect(raf).not.toHaveBeenCalled();
+    move(100, 160);
+    settle();
+    const shift = Number.parseFloat(star.style.getPropertyValue('--dust-x'));
+    expect(shift).toBeGreaterThan(0.1);
+    expect(shift).toBeLessThan(2);
+    expect(pending).toBeUndefined();
+    document.documentElement.dispatchEvent(new Event('pointerleave'));
+    settle();
+    expect(
+      Math.abs(Number.parseFloat(star.style.getPropertyValue('--dust-x'))),
+    ).toBeLessThan(0.01);
+    expect(pending).toBeUndefined();
+    Object.assign(reduced, { matches: true });
+    reduced.dispatchEvent(new Event('change'));
+    expect(star.getAttribute('style')).toBeNull();
   });
 
   it('honors reduced motion and forced colors, including preference changes', () => {

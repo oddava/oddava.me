@@ -201,3 +201,64 @@ body:has([data-folio]) .home-hero--intro {
     display: none;
   }
 }
+
+/* Warm pinpricks, far below the contrast of the surrounding blue motifs. */
+.folio-dust {
+  fill: #bdb8ad;
+  fill-opacity: 0.24;
+  stroke: none;
+  pointer-events: none;
+}
+[data-folio-star] {
+  opacity: 0.72;
+}
+.folio-dust__response {
+  transform: translate(var(--dust-x, 0px), var(--dust-y, 0px));
+}
+.folio-dust__drift {
+  animation: folio-dust-drift 31s ease-in-out infinite alternate;
+}
+.folio-dust__drift--1 {
+  animation-duration: 43s;
+  animation-delay: -13s;
+}
+.folio-dust__drift--2 {
+  animation-duration: 53s;
+  animation-delay: -29s;
+}
+.folio-dust__spark {
+  fill-opacity: 0.5;
+  animation: folio-dust-twinkle 37s linear infinite;
+}
+.folio-dust__drift--1 .folio-dust__spark {
+  animation-duration: 47s;
+  animation-delay: -19s;
+}
+.folio-dust__drift--2 .folio-dust__spark {
+  animation-duration: 59s;
+  animation-delay: -7s;
+}
+@keyframes folio-dust-drift {
+  from {
+    transform: translate(-0.7px, 0.8px);
+  }
+  to {
+    transform: translate(1px, -1.2px);
+  }
+}
+@keyframes folio-dust-twinkle {
+  0%,
+  42%,
+  48%,
+  100% {
+    opacity: 0.5;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+[data-folio-star]:nth-child(12) .folio-dust__spark {
+  animation-duration: 43s;
+  animation-delay: -31s;
+}

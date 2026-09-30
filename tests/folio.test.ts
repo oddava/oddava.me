@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   folioAccents,
+  folioStars,
   folioPath,
   folioOrbit,
   folioPoint,
@@ -39,6 +40,22 @@ describe('the composed cat island', () => {
       expect(folioPath(view)).toMatch(/^M.* Z$/);
       expect(folioAccents(view)).toHaveLength(6);
       expect(folioOrbit(view)).not.toContain('NaN');
+      const stars = folioStars(view);
+      expect(stars).toHaveLength(24);
+      expect(stars.filter(([, , size]) => size > 1).length).toBeLessThanOrEqual(
+        3,
+      );
+      for (const [x, y, size] of stars) {
+        if (!size) continue;
+        expect(x).toBeGreaterThan(0);
+        expect(x).toBeLessThan(width);
+        expect(y).toBeGreaterThan(0);
+        expect(y).toBeLessThan(height);
+        expect(
+          Math.abs(x - view.centerX) < copyWidth / 2 + 40 &&
+            Math.abs(y - view.centerY) < copyHeight / 2 + 40,
+        ).toBe(false);
+      }
       for (const [x, y] of folioAccents(view)) {
         expect(
           Math.abs(x - view.centerX) < copyWidth / 2 &&

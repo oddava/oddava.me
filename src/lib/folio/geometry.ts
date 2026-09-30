@@ -74,3 +74,44 @@ export function folioAccents(view: FolioView): [number, number][] {
     orbitPoint(angle, view),
   );
 }
+
+/** Authored pockets of dust, with generous gaps rather than a random starfield. */
+export function folioStars(view: FolioView): [number, number, number][] {
+  const placements = [
+    [0.08, 0.18, 0.6],
+    [0.115, 0.205, 0.4],
+    [0.17, 0.12, 2.2],
+    [0.24, 0.24, 0.55],
+    [0.29, 0.09, 0.4],
+    [0.39, 0.17, 0.55],
+    [0.56, 0.08, 0.45],
+    [0.64, 0.23, 0.55],
+    [0.79, 0.13, 0.65],
+    [0.835, 0.165, 0.4],
+    [0.92, 0.27, 0.55],
+    [0.88, 0.43, 2],
+    [0.13, 0.42, 0.45],
+    [0.055, 0.57, 0.6],
+    [0.2, 0.66, 0.5],
+    [0.09, 0.83, 0.4],
+    [0.28, 0.88, 2.4],
+    [0.325, 0.84, 0.5],
+    [0.43, 0.93, 0.4],
+    [0.58, 0.81, 0.55],
+    [0.68, 0.9, 0.45],
+    [0.78, 0.72, 0.6],
+    [0.82, 0.755, 0.4],
+    [0.94, 0.86, 0.55],
+  ];
+  return placements.map(([u, v, size]) => {
+    const x = u! * view.width;
+    const y = v! * view.height;
+    // Includes drift and pointer displacement, even on a narrow phone.
+    if (
+      Math.abs(x - view.centerX) < view.quietWidth / 2 + 40 &&
+      Math.abs(y - view.centerY) < view.quietHeight / 2 + 40
+    )
+      return [x, y, 0];
+    return [x, y, size!];
+  });
+}
