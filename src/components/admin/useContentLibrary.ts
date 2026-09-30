@@ -14,6 +14,7 @@ export interface ContentLibrary {
   setEntries: Dispatch<StateUpdater<ContentEntryListItem[]>>;
   folders: ContentFolder[];
   loading: boolean;
+  loadError: boolean;
   refreshTree: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ export function useContentLibrary(
   const [entries, setEntries] = useState<ContentEntryListItem[]>([]);
   const [folders, setFolders] = useState<ContentFolder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
@@ -53,6 +55,7 @@ export function useContentLibrary(
       })
       .catch((caught) => {
         if (!active) return;
+        setLoadError(true);
         onErrorRef.current(
           contentRequestError(caught, 'Could not load Files.'),
         );
@@ -65,5 +68,13 @@ export function useContentLibrary(
     };
   }, []);
 
-  return { collection, entries, setEntries, folders, loading, refreshTree };
+  return {
+    collection,
+    entries,
+    setEntries,
+    folders,
+    loading,
+    loadError,
+    refreshTree,
+  };
 }

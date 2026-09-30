@@ -12,7 +12,7 @@
   box-shadow:
     0 12px 36px #0005,
     0 2px 8px #0003;
-  font: 13px/1.5 var(--font-body);
+  font: 13px/1.5 var(--studio-font-ui);
   animation: studio-popover-in 140ms ease-out;
 }
 .studio-editor-popover__head {
@@ -149,7 +149,8 @@
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  padding: 54px max(84px, calc((100% - var(--max-width)) / 2)) 90px;
+  padding: var(--studio-page-top) max(56px, calc((100% - var(--max-width)) / 2))
+    90px;
 }
 .studio-rich-page {
   min-height: 320px;
@@ -317,7 +318,7 @@
   background: var(--admin-surface-elevated);
   box-shadow: 0 16px 50px #0006;
   color: var(--admin-text-primary);
-  font: 13px/1.5 var(--font-body);
+  font: 13px/1.5 var(--studio-font-ui);
 }
 .studio-link-form label {
   display: block;
@@ -363,7 +364,6 @@
   place-items: center;
   padding: 20px;
   background: #0009;
-  backdrop-filter: blur(6px);
 }
 .studio-source-dialog > div {
   width: min(720px, 100%);
@@ -685,7 +685,7 @@
 /* The icon chooser shares the editor dialogs' surface, with larger visual choices. */
 .studio-editor-popover.studio-icon-picker {
   width: 360px;
-  border-radius: 6px 18px 18px;
+  border-radius: var(--studio-popup-radius);
 }
 .studio-editor-popover.studio-icon-picker .studio-icon-tabs {
   display: flex;

@@ -717,6 +717,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
               <p className="admin-empty" role="status">
                 Indexing files…
               </p>
+            ) : library.loadError ? (
+              <div className="studio-tree-empty">
+                <p>Could not load notes.</p>
+                <button type="button" onClick={() => window.location.reload()}>
+                  Retry connection
+                </button>
+              </div>
             ) : phone ? (
               // A phone gets its own file manager rather than the tree at a
               // smaller size: one folder at a time, press-and-hold for
@@ -790,9 +797,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Resize sidebar"
+                aria-valuemin={SIDEBAR_BOUNDS.min}
+                aria-valuemax={SIDEBAR_BOUNDS.max}
+                aria-valuenow={session.sidebar}
                 tabIndex={0}
                 onPointerDown={startResize}
                 onKeyDown={(event) => {
+                  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+                    event.preventDefault();
                   if (event.key === 'ArrowLeft')
                     patchSession({
                       sidebar: clamp(
@@ -828,7 +840,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
               title="Show explorer (Ctrl+\\)"
               onClick={() => setSidebarCollapsed(false)}
             >
-              #
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <rect x="3" y="4" width="14" height="12" rx="2" />
+                <path d="M8 4v12" />
+              </svg>
             </button>
           )}
           <div className="studio-editor-groups">
@@ -838,35 +853,53 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             >
               {!openId || !collection ? (
                 <div className="studio-blank">
-                  <p className="studio-blank__title">No file open</p>
-                  <p className="studio-blank__hint">
-                    Select a file or create a note.
+                  <p
+                    className="studio-blank__title"
+                    role={loading ? 'status' : undefined}
+                  >
+                    {loading
+                      ? 'Loading notes…'
+                      : library.loadError
+                        ? 'Notes unavailable'
+                        : 'No file open'}
                   </p>
-                  <div className="studio-blank__actions">
-                    <button
-                      type="button"
-                      disabled={busyKey !== null || !collection}
-                      onClick={() =>
-                        void mutations.createEntryInFolder(
-                          activeFolder,
-                          mutations.uniqueItemId('untitled'),
-                        )
-                      }
-                    >
-                      + New note
-                    </button>
-                    <button type="button" onClick={() => setPaletteOpen(true)}>
-                      Find a file
-                    </button>
-                    {phone && (
+                  <p className="studio-blank__hint">
+                    {loading
+                      ? 'Connecting to your garden.'
+                      : library.loadError
+                        ? 'Your notes could not be reached. Retry the connection from Files.'
+                        : 'Select a file or create a note.'}
+                  </p>
+                  {!loading && !library.loadError && (
+                    <div className="studio-blank__actions">
                       <button
                         type="button"
-                        onClick={() => setSidebarCollapsed(false)}
+                        disabled={busyKey !== null || !collection}
+                        onClick={() =>
+                          void mutations.createEntryInFolder(
+                            activeFolder,
+                            mutations.uniqueItemId('untitled'),
+                          )
+                        }
                       >
-                        Browse files
+                        + New note
                       </button>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => setPaletteOpen(true)}
+                      >
+                        Find a file
+                      </button>
+                      {phone && (
+                        <button
+                          type="button"
+                          onClick={() => setSidebarCollapsed(false)}
+                        >
+                          Browse files
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <StudioEditorPane
@@ -929,7 +962,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       </div>
 
       {(error || notice) && (
-        <div className="studio-toast" role="status">
+        <div className="studio-toast" role={error ? 'alert' : 'status'}>
           {error ? (
             <span className="studio-toast__error">{error}</span>
           ) : (

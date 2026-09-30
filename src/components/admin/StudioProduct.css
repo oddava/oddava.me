@@ -5,14 +5,44 @@
     var(--color-surface) 35%,
     var(--color-surface-raised)
   );
+  --studio-font-ui:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --studio-control-size: 30px;
+  --studio-row-height: 28px;
+  --studio-radius: var(--radius-sm);
+  --studio-popup-radius: var(--radius-md);
+  --studio-page-top: 40px;
 }
 .admin-page:has(.studio) .admin-header--compact {
   border-bottom: 1px solid var(--admin-line);
   min-height: 42px;
   padding-inline: 18px;
 }
+
 .studio {
-  font-family: var(--font-body);
+  font-family: var(--studio-font-ui);
+}
+/* Portals inherit the same control language as the workspace. */
+.studio :is(button, input, select),
+.studio-menu,
+.studio-slashmenu,
+.studio-inline-toolbar {
+  font-family: var(--studio-font-ui);
+}
+.studio :is(button, a, summary):focus-visible,
+.studio-menu :is(button, summary):focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+.studio :is(button, input):disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.studio :is(.studio-entry-list, .studio-rich-scroll, .studio-preview, textarea),
+.studio-menu {
+  scrollbar-width: thin;
+  scrollbar-color: var(--admin-line-strong) transparent;
 }
 .studio-sidebar {
   background: var(--admin-surface);
@@ -22,7 +52,6 @@
   top: 8px;
   left: 10px;
   z-index: 5;
-  font-size: 22px;
 }
 .content-workspace .studio-grid--collapsed .studio-bar {
   padding-left: 50px;
@@ -31,11 +60,12 @@
   display: none;
 }
 .content-workspace .studio-explorer__heading {
-  padding: 12px;
+  padding: 8px 12px;
   border: 0;
   min-height: 48px;
 }
 .studio-explorer__heading strong {
+  font-family: inherit;
   font-size: 13px;
   color: var(--admin-text-primary);
   text-transform: none;
@@ -56,7 +86,7 @@
 .studio-library-actions {
   display: flex;
   gap: 6px;
-  padding: 0 12px 14px;
+  padding: 0 12px 8px;
 }
 .studio-library-clear {
   margin: 0 12px 10px;
@@ -73,8 +103,8 @@
   gap: 7px;
   flex: 1;
   padding: 6px 9px;
-  border: 1px solid var(--admin-line);
-  border-radius: 6px;
+  border: 0;
+  border-radius: var(--studio-radius);
   background: transparent;
   color: var(--admin-text-secondary);
   font-size: 12px;
@@ -87,8 +117,7 @@
 .content-workspace .studio-library-actions button:first-child {
   color: var(--admin-accent);
   justify-content: flex-start;
-  background: color-mix(in srgb, var(--admin-accent) 8%, transparent);
-  min-height: 34px;
+  min-height: var(--studio-control-size);
 }
 .content-workspace .studio-library-actions .studio-library-actions__folder {
   flex: 0 0 34px;
@@ -104,14 +133,14 @@
   padding: 0 8px 16px;
 }
 .content-workspace .studio-tree-row {
-  min-height: 32px;
-  border-radius: 6px;
-  margin-block: 1px;
+  min-height: var(--studio-row-height);
+  border-radius: var(--studio-radius);
+  margin-block: 0;
   font-size: 13px;
 }
 .content-workspace .studio-tree-row.is-active {
   background: color-mix(in srgb, var(--admin-accent) 8%, transparent);
-  color: var(--admin-accent);
+  color: var(--admin-text-primary);
   box-shadow: none;
   border-color: transparent;
 }
@@ -132,20 +161,6 @@
 .studio-tab.is-active {
   background: var(--admin-surface);
 }
-.content-workspace .studio-bar {
-  min-height: 58px;
-  padding: 10px 20px;
-  background: var(--admin-bg);
-}
-.studio-bar__title strong {
-  font-size: 12px;
-  font-weight: 500;
-}
-.admin-page .studio-bar__title code {
-  font-size: 10px;
-  background: transparent;
-  padding: 0;
-}
 .studio-view-switch {
   border: 1px solid var(--admin-line);
   border-radius: 6px;
@@ -164,9 +179,10 @@
 }
 .studio-status {
   min-height: 30px;
-  border-top: 1px solid var(--admin-line);
+  border-top: 0;
   padding-inline: 20px;
-  font-size: 10px;
+  font: 11px var(--studio-font-ui);
+  letter-spacing: 0;
 }
 .studio-blank {
   align-items: center;
@@ -192,7 +208,7 @@
   justify-content: center;
   gap: 8px;
 }
-.studio-blank__actions button {
+.content-workspace .studio-blank__actions button {
   border: 1px solid var(--admin-line);
   border-radius: 6px;
   background: transparent;
@@ -201,18 +217,18 @@
   font-size: 12px;
   cursor: pointer;
 }
-.studio-blank__actions button:first-child {
+.content-workspace .studio-blank__actions button:first-child {
   color: var(--admin-accent);
 }
-.studio-blank__actions button:hover {
+.content-workspace .studio-blank__actions button:hover {
   background: var(--admin-surface-elevated);
 }
 .studio-menu,
 .studio-slashmenu,
 .studio-wikimenu,
 .studio-inline-toolbar {
-  font-family: var(--font-body);
-  border-radius: 8px;
+  font-family: var(--studio-font-ui);
+  border-radius: var(--studio-popup-radius);
   border-color: var(--admin-line-strong);
   box-shadow: 0 12px 32px #0005;
 }
@@ -252,9 +268,9 @@
   background: var(--admin-bg);
 }
 .content-workspace .studio-textarea {
-  padding: 40px max(30px, calc((100% - 820px) / 2));
+  padding: var(--studio-page-top) max(32px, calc((100% - var(--max-width)) / 2));
   font-family: var(--font-mono);
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.8;
 }
 .content-workspace .studio-inline-confirm {
@@ -284,18 +300,6 @@ form.studio-tree-row__rename {
 .studio-editor:has(> .studio-surface.is-visual) {
   background: var(--color-surface);
 }
-.studio-bar {
-  opacity: 1;
-  transition:
-    opacity 180ms ease,
-    visibility 0s;
-}
-.studio-bar.is-typing {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition-delay: 0s, 180ms;
-}
 .content-workspace .studio-bar__focus {
   display: grid;
   place-items: center;
@@ -321,11 +325,6 @@ form.studio-tree-row__rename {
   color: var(--admin-accent);
 }
 @media (max-width: 720px) {
-  .content-workspace .studio-bar {
-    min-height: 52px;
-    padding: 8px 12px;
-    gap: 8px;
-  }
   .studio-bar__title code {
     display: none;
   }
@@ -399,30 +398,33 @@ form.studio-tree-row__rename {
 .content-workspace .studio-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 18px;
-  min-height: 68px;
-  padding: 12px 20px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 7px 16px;
+  background: var(--admin-bg);
 }
 .studio-bar__title {
   margin: 0;
   gap: 3px;
 }
 .content-workspace .studio-bar__title strong {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
 }
 .admin-page .studio-bar__title code {
+  background: transparent;
+  padding: 0;
   color: var(--admin-text-muted);
   font-size: 11px;
 }
 .content-workspace .studio-bar > .studio-view-switch {
   justify-self: center;
   border: 0;
-  background: var(--admin-surface);
+  background: transparent;
 }
 .content-workspace .studio-view-switch button {
-  min-height: 32px;
-  padding: 5px 12px;
+  min-height: var(--studio-control-size);
+  padding: 4px 10px;
   font-size: 12px;
 }
 .studio-bar__actions {
@@ -433,7 +435,7 @@ form.studio-tree-row__rename {
   min-width: 0;
 }
 .studio-bar__actions .studio-save {
-  font-family: var(--font-body);
+  font-family: var(--studio-font-ui);
   font-size: 11px;
   letter-spacing: 0;
 }
@@ -445,7 +447,7 @@ form.studio-tree-row__rename {
   width: auto;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--admin-line-strong);
+  border: 0;
   font-size: 12px;
   white-space: nowrap;
 }
@@ -562,16 +564,18 @@ form.studio-tree-row__rename {
 }
 @media (min-width: 721px) and (max-width: 1100px) {
   .content-workspace .studio-bar {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+  }
+  .studio-bar__open span {
+    display: none;
+  }
+  .content-workspace .studio-bar__open {
+    width: 30px;
+    padding: 0;
   }
   .studio-bar__actions {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .content-workspace .studio-bar > .studio-view-switch {
-    grid-column: 1 / -1;
-    justify-self: start;
+    gap: 8px;
   }
 }
 @media (max-width: 720px) {
@@ -623,10 +627,6 @@ form.studio-tree-row__rename {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .studio-bar,
-  .studio-bar.is-typing {
-    transition: none;
-  }
   .studio-option__switch::after {
     transition: none;
   }
@@ -668,6 +668,7 @@ form.studio-tree-row__rename {
   }
   .content-workspace .studio-textarea {
     padding: 24px 20px 40px;
+    font-size: 16px;
   }
   .studio-rich-shell > .studio-inline-toolbar.is-docked {
     min-height: 40px;
@@ -783,18 +784,18 @@ form.studio-tree-row__rename {
 
 .studio-tree-row__label,
 .studio-tree-row__rename {
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr);
   gap: 6px;
   min-height: 26px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
 }
 .studio-tree-row__icon,
 .studio-tree-row__icon .studio-file-icon,
 .studio-mfiles__mark .studio-file-icon {
-  width: 20px;
-  height: 20px;
-  font-size: 18px;
+  width: 16px;
+  height: 16px;
+  font-size: 15px;
   border-radius: 4px;
 }
 .studio-mfiles__mark {
@@ -804,4 +805,72 @@ form.studio-tree-row__rename {
 
 .studio-mfiles__name {
   font-weight: 500;
+}
+
+.studio-sidebar-open svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.content-workspace .studio-tree-row:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: -2px;
+}
+.studio-tree-row.is-active .studio-tree-row__label {
+  color: inherit;
+}
+.studio-tree-row__text {
+  line-height: 1.4;
+}
+.studio-tree-row__text small {
+  font-size: 10px;
+}
+.content-workspace .studio-tree-row:has(.studio-tree-row__text small) {
+  min-height: 40px;
+}
+.studio-tree-row__actions {
+  border-radius: var(--studio-radius);
+}
+.studio-tree-row__actions:hover {
+  background: var(--admin-line);
+}
+.studio-tree-row--root .studio-tree-row__label {
+  color: var(--admin-text-muted);
+}
+.studio-library-clear {
+  overflow-wrap: anywhere;
+  font: 12px/1.5 var(--studio-font-ui);
+}
+.studio-menu {
+  min-width: 188px;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+}
+.studio-menu button,
+.studio-menu-turn summary {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.studio-menu__hint {
+  font-size: 10px;
+}
+.studio-menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.content-workspace .studio-save--action {
+  border-radius: var(--studio-radius);
+}
+.studio-toast {
+  overflow-wrap: anywhere;
+}
+@media (pointer: coarse) {
+  .studio-menu button,
+  .studio-menu-turn summary {
+    min-height: 40px;
+  }
 }

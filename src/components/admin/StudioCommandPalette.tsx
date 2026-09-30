@@ -1,5 +1,11 @@
 import { createPortal } from 'preact/compat';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'preact/hooks';
 import type { ContentEntryListItem } from '../../lib/contracts';
 
 export interface PaletteCommand {
@@ -34,14 +40,16 @@ export default function StudioCommandPalette({
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      setQuery('');
-      setActive(0);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
+  useLayoutEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    setQuery('');
+    setActive(0);
+    inputRef.current?.focus();
+    return () => previous?.focus({ preventScroll: true });
   }, [open]);
 
   const rows = useMemo<Row[]>(() => {
@@ -108,25 +116,58 @@ export default function StudioCommandPalette({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="studio-palette" role="dialog" aria-modal="true">
+      <div
+        className="studio-palette"
+        ref={panelRef}
+        role="dialog"
+        aria-label="Find a note or command"
+        aria-modal="true"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            onClose();
+          }
+          if (event.key !== 'Tab') return;
+          const controls = Array.from(
+            panelRef.current?.querySelectorAll<HTMLElement>(
+              'input, button:not([tabindex="-1"])',
+            ) ?? [],
+          ).filter((node) => node.checkVisibility());
+          const index = controls.indexOf(document.activeElement as HTMLElement);
+          if (
+            (event.shiftKey && index === 0) ||
+            (!event.shiftKey && index === controls.length - 1)
+          ) {
+            event.preventDefault();
+            (event.shiftKey ? controls.at(-1) : controls[0])?.focus();
+          }
+        }}
+      >
         <div className="studio-palette__search">
           <input
             ref={inputRef}
             className="studio-palette__input"
             placeholder="Go to a file or run a command…"
             aria-label="Go to a file or run a command"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-controls="studio-palette-results"
+            aria-activedescendant={
+              rows[active] ? `studio-palette-option-${active}` : undefined
+            }
             value={query}
             onChange={(event) => {
               setQuery(event.currentTarget.value);
               setActive(0);
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Escape') {
+              if (event.key === 'ArrowDown') {
                 event.preventDefault();
-                onClose();
-              } else if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                setActive((current) => Math.min(current + 1, rows.length - 1));
+                setActive((current) =>
+                  Math.min(current + 1, Math.max(0, rows.length - 1)),
+                );
               } else if (event.key === 'ArrowUp') {
                 event.preventDefault();
                 setActive((current) => Math.max(current - 1, 0));
@@ -145,7 +186,13 @@ export default function StudioCommandPalette({
             Cancel
           </button>
         </div>
-        <div className="studio-palette__list" ref={listRef} role="listbox">
+        <div
+          className="studio-palette__list"
+          ref={listRef}
+          role="listbox"
+          id="studio-palette-results"
+          aria-label="Notes and commands"
+        >
           {rows.length === 0 ? (
             <p className="studio-palette__empty">No matches.</p>
           ) : (
@@ -158,6 +205,8 @@ export default function StudioCommandPalette({
                     : `note:${row.entry.id}`
                 }
                 data-index={index}
+                id={`studio-palette-option-${index}`}
+                tabIndex={-1}
                 role="option"
                 aria-selected={index === active}
                 className={`studio-palette__row ${

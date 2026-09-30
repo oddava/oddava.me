@@ -69,6 +69,7 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
     measured: false,
   });
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
 
   const close = useCallback(() => setKey(null), []);
 
@@ -80,6 +81,7 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
 
   const openUnder = useCallback(
     (next: Key, trigger: HTMLElement) => {
+      triggerRef.current = trigger;
       const bounds = trigger.getBoundingClientRect();
       openAt(next, { x: bounds.right, y: bounds.bottom + 2, align: 'end' });
     },
@@ -95,6 +97,7 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
         openUnder(next, event.currentTarget);
         return;
       }
+      triggerRef.current = event.currentTarget;
       openAt(next, { x: event.clientX, y: event.clientY, align: 'start' });
     },
     [openAt, openUnder],
@@ -136,7 +139,14 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
   }, [anchor, key]);
 
   useEffect(() => {
-    if (key === null) return;
+    if (key === null || !position.measured) return;
+    const items = () =>
+      Array.from(
+        ref.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), summary',
+        ) ?? [],
+      ).filter((item) => item.checkVisibility());
+    items()[0]?.focus({ preventScroll: true });
     function onPointerDown(event: MouseEvent) {
       const target = event.target as HTMLElement | null;
       if (
@@ -148,7 +158,26 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
       setKey(null);
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setKey(null);
+      if (event.key === 'Escape' || event.key === 'Tab') {
+        if (event.key === 'Escape') event.preventDefault();
+        event.stopPropagation();
+        setKey(null);
+        triggerRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const options = items();
+      const index = options.indexOf(document.activeElement as HTMLElement);
+      const next =
+        event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? options.length - 1
+            : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) %
+              options.length;
+      options[next]?.focus();
     }
     // Anything that moves what the menu points at closes it rather than
     // leaving it floating over unrelated rows.
@@ -157,20 +186,20 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
         return;
       setKey(null);
     };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown, true);
     document.addEventListener('scroll', dismiss, {
       capture: true,
       passive: true,
     });
     window.addEventListener('resize', dismiss);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown, true);
       document.removeEventListener('scroll', dismiss, { capture: true });
       window.removeEventListener('resize', dismiss);
     };
-  }, [key]);
+  }, [key, position.measured]);
 
   return {
     key,
