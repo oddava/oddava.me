@@ -110,21 +110,6 @@
   text-decoration: underline;
 }
 
-.home-hero__cta {
-  display: inline-flex;
-  flex-wrap: wrap;
-  /* Bottoms, not centres: every station sits on the same rule, so the line they
-     are plotted on stays a line even if one item is ever taller than another. */
-  align-items: flex-end;
-  justify-content: center;
-  /* Wider than the pills needed — without a border to end them, the gap is what
-     separates one destination from the next. Roughly half a segment's length,
-     which is what makes the row read as one intermittent scale. */
-  gap: 1rem;
-  max-width: 100%;
-  margin-top: var(--space-md);
-}
-
 .home-hero--intro {
   flex: 1;
   text-align: center;
@@ -148,11 +133,6 @@
   color: var(--color-text-secondary);
 }
 
-.home-hero--intro .home-hero__cta {
-  justify-content: center;
-  margin-top: var(--space-1-5);
-}
-
 .home-section {
   padding: var(--space-md) 0;
 }
@@ -164,51 +144,6 @@
   gap: 0.75rem;
   padding-top: var(--space-md);
   padding-bottom: var(--space-md);
-}
-
-/* --- Primary destinations --- */
-.home-cta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-surface-raised) 48%, transparent);
-  color: var(--color-text-interactive);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  letter-spacing: 0.03em;
-  text-decoration: none;
-}
-
-.home-cta:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-
-.home-cta:hover,
-.home-cta:focus-visible {
-  border-color: var(--color-rule-strong);
-  background: var(--color-surface-raised);
-  color: var(--color-text-interactive-hover);
-}
-
-.home-cta__face {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.home-cta__glyph {
-  width: 1rem;
-  height: 1rem;
-  color: var(--color-text-muted);
-}
-
-.home-cta:hover .home-cta__glyph,
-.home-cta:focus-visible .home-cta__glyph {
-  color: inherit;
 }
 
 .now-card {
@@ -301,11 +236,6 @@
     padding: var(--space-md) 0 var(--space-sm);
   }
 
-  .home-hero--intro .home-hero__cta {
-    gap: 0.85rem;
-    margin-top: var(--space-1-5);
-  }
-
   .now-card__link {
     margin-left: 0;
   }
@@ -314,22 +244,5 @@
 @media (max-width: 480px) {
   .home-hero--intro {
     padding: var(--space-sm) 0;
-  }
-
-  .home-hero--intro .home-hero__cta {
-    gap: 0.7rem;
-    margin-top: var(--space-sm);
-  }
-
-  .home-cta {
-    padding-inline: 0.5rem;
-  }
-}
-
-@media (forced-colors: active) {
-  .home-cta {
-    border-color: ButtonText;
-    background: ButtonFace;
-    color: LinkText;
   }
 }

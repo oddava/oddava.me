@@ -1,7 +1,6 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
-import LinkIcon from '../components/LinkIcon.astro';
 import LivingFolio from '../components/LivingFolio.astro';
 import '../styles/components/_home.css';
 ---
@@ -13,10 +12,6 @@ import '../styles/components/_home.css';
 >
   <LivingFolio slot="background" />
   <section class="home-hero home-hero--intro">
-    {
-      /* Business card: name, then one breath of who, then the three stations.
-         No portrait mark — type carries the identity. */
-    }
     <h1 class="home-hero__name">oddava</h1>
     <p class="home-hero__tagline">
       i build software, explore AI, and enjoy anime in my spare time. currently
@@ -24,24 +19,35 @@ import '../styles/components/_home.css';
       <a href="https://dt.uz/" target="_blank" rel="noopener">DT</a>.
     </p>
 
-    <nav class="home-hero__cta" aria-label="primary">
-      <a href="/notes" class="home-cta">
-        <span class="home-cta__face">
-          <LinkIcon name="pen" class="home-cta__glyph" />
-          <span class="home-cta__label">notes</span>
-        </span>
+    <nav class="folio-nav" aria-label="primary" data-folio-nav>
+      <a href="/notes" class="folio-waypoint folio-waypoint--notes">
+        <svg viewBox="-40 -40 80 80" aria-hidden="true">
+          <path class="folio-waypoint__echo" d="M-28 18L4 35 34-13"></path>
+          <path
+            class="folio-waypoint__mark"
+            d="M-28 10L-3-26 27-15 0 25Z M-3-26L0 25 27-15"></path>
+        </svg>
+        <span class="folio-waypoint__label">notes</span>
       </a>
-      <a href="/about" class="home-cta">
-        <span class="home-cta__face">
-          <LinkIcon name="user" class="home-cta__glyph" />
-          <span class="home-cta__label">about</span>
-        </span>
+      <a href="/about" class="folio-waypoint folio-waypoint--about">
+        <svg viewBox="-40 -40 80 80" aria-hidden="true">
+          <path class="folio-waypoint__echo" d="M-23 25A33 33 0 0 0 30-11"
+          ></path>
+          <path
+            class="folio-waypoint__mark"
+            d="M-32 9A36 36 0 0 1 26-25A41 41 0 0 0-32 9Z"></path>
+        </svg>
+        <span class="folio-waypoint__label">about</span>
       </a>
-      <a href="/links" class="home-cta">
-        <span class="home-cta__face">
-          <LinkIcon name="link" class="home-cta__glyph" />
-          <span class="home-cta__label">links</span>
-        </span>
+      <a href="/links" class="folio-waypoint folio-waypoint--links">
+        <svg viewBox="-40 -40 80 80" aria-hidden="true">
+          <path class="folio-waypoint__echo" d="M-24 17Q0 30 27 4"></path>
+          <path
+            class="folio-waypoint__mark"
+            d="M-32-6Q-8 15 30-13 M-25-13L-18-6-25 1-32-6Z M30-18L35-13 30-8 25-13Z"
+          ></path>
+        </svg>
+        <span class="folio-waypoint__label">links</span>
       </a>
     </nav>
   </section>
