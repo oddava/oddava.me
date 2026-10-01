@@ -13,8 +13,14 @@ export const TAU = Math.PI * 2;
 export function folioPoint(angle: number, view: FolioView): [number, number] {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
-  const rx = view.quietWidth / 2 + 48;
-  const ry = view.quietHeight / 2 + 60;
+  const mobile = view.width < 900;
+  const rx = mobile
+    ? Math.min(view.width / 2 - 12, view.quietWidth / 2 + 42)
+    : view.quietWidth / 2 + 48;
+  // Keep wider mobile/tablet layouts from becoming a shallow, swollen head.
+  const ry = mobile
+    ? Math.max(view.quietHeight / 2 + 34, rx * 0.7)
+    : view.quietHeight / 2 + 60;
   const ear = (tip: number) => {
     const distance = Math.sqrt((angle - tip) ** 2 + 0.0016) - 0.04;
     const profile = Math.max(0, 1 - distance / 0.43);
@@ -23,13 +29,17 @@ export function folioPoint(angle: number, view: FolioView): [number, number] {
   const ears = ear(4.02) + ear(5.405);
   return [
     view.centerX + c * (1 + 0.14 * s * s) * rx + ears * c * 7,
-    view.centerY + s * (1 + 0.14 * c * c) * ry - ears * ry * 0.64,
+    view.centerY +
+      (mobile ? 12 : 0) +
+      s * (1 + 0.14 * c * c) * ry -
+      ears * ry * (mobile ? 0.52 : 0.64),
   ];
 }
 
 export function folioPath(view: FolioView): string {
-  const points = Array.from({ length: 160 }, (_, i) =>
-    folioPoint((i / 160) * TAU, view),
+  const samples = view.width < 900 ? 96 : 160;
+  const points = Array.from({ length: samples }, (_, i) =>
+    folioPoint((i / samples) * TAU, view),
   );
   const midpoint = (a: number[], b: number[]) =>
     `${((a[0]! + b[0]!) / 2).toFixed(2)},${((a[1]! + b[1]!) / 2).toFixed(2)}`;
@@ -52,6 +62,12 @@ function orbitPoint(angle: number, view: FolioView): [number, number] {
 }
 
 export function folioOrbit(view: FolioView): string {
+  if (view.width < 900) {
+    const { width: w, height: h, centerY, quietHeight } = view;
+    const top = Math.max(60, centerY - quietHeight / 2 - 110);
+    const bottom = Math.min(h - 45, centerY + quietHeight / 2 + 75);
+    return `M${w * 0.14} ${top} Q${w * 0.46} ${top - 35} ${w * 0.85} ${top + 12} M${w * 0.2} ${bottom} Q${w * 0.55} ${bottom + 24} ${w * 0.86} ${bottom - 12}`;
+  }
   return Array.from({ length: 129 }, (_, i) => {
     const [x, y] = orbitPoint((i / 128) * TAU, view);
     return `${i ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`;
@@ -60,16 +76,18 @@ export function folioOrbit(view: FolioView): string {
 
 export function folioAccents(view: FolioView): [number, number][] {
   const { width, height, centerY, quietHeight } = view;
-  const ry = quietHeight / 2 + 60;
-  if (width < 900)
+  if (width < 900) {
+    const top = centerY - quietHeight / 2 - 88;
+    const bottom = centerY + quietHeight / 2 + 28;
     return [
-      [-80, centerY - ry * 0.5],
-      [width * 0.79, centerY - ry * 1.45 - 65],
-      [width * 0.22, Math.min(height - 65, centerY + ry + 85)],
-      [width + 80, centerY + ry * 0.4],
-      [width * 0.26, centerY - ry * 1.45 - 42],
-      [width * 0.75, Math.min(height - 40, centerY + ry + 105)],
+      [width * 0.2, 30],
+      [width * 0.78, Math.max(42, top - 58)],
+      [width * 0.2, height - 35],
+      [width * 0.8, height - 35],
+      [width * 0.22, Math.max(28, top - 22)],
+      [width * 0.66, Math.min(height - 32, bottom + 50)],
     ];
+  }
   return [3.4, 5.65, 2.2, 0.15, 4.5, 1.18].map((angle) =>
     orbitPoint(angle, view),
   );
@@ -103,7 +121,10 @@ export function folioStars(view: FolioView): [number, number, number][] {
     [0.82, 0.755, 0.4],
     [0.94, 0.86, 0.55],
   ];
-  return placements.map(([u, v, size]) => {
+  return placements.map(([u, v, size], i) => {
+    // Keep the same authored marks, but only eight quiet anchors on phones.
+    if (view.width < 900 && ![0, 2, 6, 8, 15, 16, 20, 23].includes(i))
+      return [u! * view.width, v! * view.height, 0];
     const x = u! * view.width;
     const y = v! * view.height;
     // Includes drift and pointer displacement, even on a narrow phone.

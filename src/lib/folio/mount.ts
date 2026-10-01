@@ -44,6 +44,10 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   const controller = new AbortController();
   const { signal } = controller;
   let destroyed = false;
+  let mobile = false;
+  let burst: Animation | undefined;
+  let lastBurst = -1000;
+  let resizeFrame = 0;
   let frame = 0;
   let pointer: { x: number; y: number; vx: number; vy: number } | null = null;
   let inputTime = 0;
@@ -76,6 +80,8 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   }
 
   function reset() {
+    burst?.cancel();
+    burst = undefined;
     pointer = null;
     echoes = [];
     entered = false;
@@ -99,6 +105,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   function wake() {
     if (
       !frame &&
+      !mobile &&
       !destroyed &&
       !document.hidden &&
       !motion.matches &&
@@ -119,6 +126,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     if (destroyed || document.hidden) return;
     bounds = svg!.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
+    mobile = bounds.width < 900;
     const parts = Array.from(
       document.querySelectorAll<HTMLElement>(
         '.home-hero__name, .home-hero__tagline, .home-hero__cta',
@@ -166,8 +174,8 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
       star.element.setAttribute('visibility', size ? 'visible' : 'hidden');
     });
     // Cache uniformly spaced edge samples once; pointer frames never measure SVG.
-    const length = trace!.getTotalLength();
-    edge = Array.from({ length: 256 }, (_, i) => {
+    const length = mobile ? 0 : trace!.getTotalLength();
+    edge = Array.from({ length: mobile ? 0 : 256 }, (_, i) => {
       const point = trace!.getPointAtLength((i / 256) * length);
       return [point.x, point.y];
     });
@@ -292,6 +300,37 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     }
     const x = event.clientX - bounds.left;
     const y = event.clientY - bounds.top;
+    if (mobile) {
+      // One short compositor animation; no star updates, springs, or edge scans.
+      if (event.timeStamp - lastBurst < 500) return;
+      const index = [1, 4, 5].reduce(
+        (nearest, i) =>
+          Math.hypot(positions[i]![0] - x, positions[i]![1] - y) <
+          Math.hypot(positions[nearest]![0] - x, positions[nearest]![1] - y)
+            ? i
+            : nearest,
+        1,
+      );
+      const element = accents[index]?.querySelector<SVGGElement>(
+        '.folio-accent__response',
+      );
+      if (!element) return;
+      lastBurst = event.timeStamp;
+      burst?.cancel();
+      burst = element.animate(
+        [
+          { transform: 'translateY(0px) rotate(0deg)', opacity: 1 },
+          {
+            transform: 'translateY(-4px) rotate(7deg)',
+            opacity: 0.8,
+            offset: 0.3,
+          },
+          { transform: 'translateY(0px) rotate(0deg)', opacity: 1 },
+        ],
+        { duration: 650, easing: 'ease-out' },
+      );
+      return;
+    }
     const elapsed = Math.max(8, event.timeStamp - inputTime) / 1000;
     const vx = pointer
       ? Math.max(-2400, Math.min(2400, (x - pointer.x) / elapsed))
@@ -319,23 +358,34 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   window.addEventListener('blur', reset, { signal });
   window.addEventListener('pagehide', reset, { signal });
   window.addEventListener('pageshow', resize, { signal });
-  window.addEventListener('resize', resize, { signal, passive: true });
-  window.addEventListener('scroll', resize, { signal, passive: true });
+  const scheduleResize = () => {
+    if (!resizeFrame && !destroyed && !document.hidden)
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        resize();
+      });
+  };
+  window.addEventListener('resize', scheduleResize, { signal, passive: true });
+  window.addEventListener('scroll', scheduleResize, { signal, passive: true });
   document.addEventListener(
     'visibilitychange',
     () => {
-      if (document.hidden) reset();
-      else resize();
+      if (document.hidden) {
+        cancelAnimationFrame(resizeFrame);
+        resizeFrame = 0;
+        reset();
+      } else resize();
     },
     { signal },
   );
   motion.addEventListener('change', reset, { signal });
   contrast.addEventListener('change', reset, { signal });
-  const observer = new ResizeObserver(resize);
+  const observer = new ResizeObserver(scheduleResize);
   const hero = document.querySelector('.home-hero');
   if (hero) observer.observe(hero);
   const destroy = () => {
     destroyed = true;
+    cancelAnimationFrame(resizeFrame);
     reset();
     controller.abort();
     observer.disconnect();
