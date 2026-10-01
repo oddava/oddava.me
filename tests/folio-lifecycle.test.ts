@@ -91,6 +91,48 @@ function settle() {
 }
 
 describe('folio composition lifecycle', () => {
+  it('measures the settled navigation layout after fonts load and keeps it on history return', async () => {
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<h1 class="home-hero__name">name</h1><nav data-folio-nav><a href="/notes">notes</a></nav>',
+    );
+    const nav = document.querySelector<HTMLElement>('[data-folio-nav]')!;
+    const title = document.querySelector<HTMLElement>('h1')!;
+    const measured = vi
+      .spyOn(title, 'getBoundingClientRect')
+      .mockImplementation(() => {
+        expect(nav.hasAttribute('data-ready')).toBe(true);
+        return { left: 600, right: 800, top: 400, bottom: 450 } as DOMRect;
+      });
+    let ready!: () => void;
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: {
+        status: 'loading',
+        ready: new Promise<void>((resolve) => {
+          ready = resolve;
+        }),
+      },
+    });
+    destroy = mountFolio(root);
+    expect(measured).not.toHaveBeenCalled();
+    expect(root.hasAttribute('data-ready')).toBe(false);
+    ready();
+    await Promise.resolve();
+    expect(measured).toHaveBeenCalledTimes(1);
+    const path = root.querySelector('[data-folio-island]')!.getAttribute('d');
+    window.dispatchEvent(
+      new PageTransitionEvent('pagehide', { persisted: true }),
+    );
+    window.dispatchEvent(
+      new PageTransitionEvent('pageshow', { persisted: true }),
+    );
+    expect(root.querySelector('[data-folio-island]')!.getAttribute('d')).toBe(
+      path,
+    );
+    expect(root.hasAttribute('data-ready')).toBe(true);
+  });
+
   it('has no idle loop, coalesces pointer input, and never deforms the island', () => {
     destroy = mountFolio(root);
     expect(root.dataset.ready).toBe('');

@@ -46,6 +46,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   const controller = new AbortController();
   const { signal } = controller;
   let destroyed = false;
+  let fontsReady = document.fonts.status !== 'loading';
   let mobile = false;
   let burst: Animation | undefined;
   let lastBurst = -1000;
@@ -125,10 +126,12 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   }
 
   function resize() {
-    if (destroyed || document.hidden) return;
+    if (destroyed || document.hidden || !fontsReady) return;
     bounds = svg!.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
     mobile = bounds.width < 900;
+    // Take navigation out of hero flow before measuring, including history returns.
+    if (nav) nav.dataset.ready = '';
     const parts = Array.from(
       document.querySelectorAll<HTMLElement>(
         '.home-hero__name, .home-hero__tagline',
@@ -162,7 +165,6 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
         link?.style.setProperty('--waypoint-x', `${x + bounds.left}px`);
         link?.style.setProperty('--waypoint-y', `${y + bounds.top}px`);
       });
-      nav.dataset.ready = '';
     }
     const path = folioPath(view);
     root
@@ -406,9 +408,11 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     once: true,
   });
   resize();
-  void document.fonts.ready.then(() => {
-    if (!destroyed) resize();
-  });
+  if (!fontsReady)
+    void document.fonts.ready.then(() => {
+      fontsReady = true;
+      if (!destroyed) resize();
+    });
   mounted.set(root, destroy);
   return destroy;
 }
