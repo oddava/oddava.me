@@ -180,26 +180,6 @@ body:has([data-folio]) .page {
 .living-folio[data-sleep] * {
   animation-play-state: paused;
 }
-@media (width < 900px) {
-  .folio-accent--whisker,
-  .folio-accent--fan {
-    display: none;
-  }
-  .folio-accent__response {
-    scale: 0.65;
-  }
-  .living-folio__thread,
-  .living-folio__traveler {
-    opacity: 0.16;
-  }
-}
-@media (width < 900px) and (height < 700px) {
-  .folio-accent--crescent,
-  .folio-accent--spark,
-  .folio-accent--fold {
-    display: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .living-folio * {
     animation: none !important;
@@ -270,4 +250,65 @@ body:has([data-folio]) .page {
 [data-folio-star]:nth-child(12) .folio-dust__spark {
   animation-duration: 43s;
   animation-delay: -31s;
+}
+
+/* Portrait composition: three small motifs and one slow idle movement. */
+@media (width < 900px) {
+  body:has([data-folio]) .home-hero--intro .home-hero__tagline {
+    max-width: min(24rem, calc(100vw - 80px));
+  }
+  .living-folio:not([data-ready]) .living-folio__surface {
+    visibility: hidden;
+  }
+  .folio-accent--whisker,
+  .folio-accent--fan,
+  .folio-accent--fold,
+  .living-folio__traveler,
+  .living-folio__trace,
+  [data-folio-star][visibility='hidden'] {
+    display: none;
+  }
+  .folio-accent__response {
+    scale: 0.5;
+  }
+  .folio-accent__float,
+  .folio-dust__drift,
+  .folio-dust__spark {
+    animation: none;
+  }
+  .folio-accent--crescent .folio-accent__float {
+    animation: folio-mobile-float 14s ease-in-out infinite alternate;
+  }
+  .living-folio__thread {
+    opacity: 0.28;
+    stroke-dasharray: none;
+  }
+}
+@keyframes folio-mobile-float {
+  from {
+    transform: translateY(-1px);
+  }
+  to {
+    transform: translateY(1px);
+  }
+}
+
+@media (width < 380px) {
+  body:has([data-folio]) .home-hero--intro .home-hero__tagline {
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: calc(100vw - 72px);
+  }
+  body:has([data-folio]) .home-hero__cta {
+    gap: 0.5rem;
+  }
+  body:has([data-folio]) .home-cta {
+    padding-inline: 0.3rem;
+  }
+}
+
+@media (width < 340px) {
+  body:has([data-folio]) .home-cta {
+    font-size: 0.75rem;
+  }
 }

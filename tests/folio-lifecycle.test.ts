@@ -151,6 +151,48 @@ describe('folio composition lifecycle', () => {
     expect(star.getAttribute('style')).toBeNull();
   });
 
+  it('uses bounded native touch bursts on mobile without spring frames or edge measurements', () => {
+    vi.mocked(SVGElement.prototype.getBoundingClientRect).mockReturnValue({
+      width: 390,
+      height: 844,
+      left: 0,
+      top: 0,
+    } as DOMRect);
+    const cancel = vi.fn();
+    const animate = vi.fn(() => ({ cancel }));
+    root.querySelectorAll('[data-folio-accent]').forEach((accent) => {
+      const response = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'g',
+      );
+      response.setAttribute('class', 'folio-accent__response');
+      Object.assign(response, { animate });
+      accent.append(response);
+    });
+    destroy = mountFolio(root);
+    const event = new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 300,
+      clientY: 80,
+    });
+    Object.assign(event, { pointerType: 'touch' });
+    document.dispatchEvent(event);
+    for (let i = 0; i < 100; i++) move(300, 80);
+    expect(animate).toHaveBeenCalledTimes(1);
+    expect(animate.mock.calls[0]).toEqual([
+      expect.any(Array),
+      { duration: 650, easing: 'ease-out' },
+    ]);
+    expect(raf).not.toHaveBeenCalled();
+    expect(trace.getTotalLength).not.toHaveBeenCalled();
+    expect(trace.getPointAtLength).not.toHaveBeenCalled();
+    Object.assign(reduced, { matches: true });
+    reduced.dispatchEvent(new Event('change'));
+    expect(cancel).toHaveBeenCalled();
+    move(300, 80);
+    expect(animate).toHaveBeenCalledTimes(1);
+  });
+
   it('honors reduced motion and forced colors, including preference changes', () => {
     Object.assign(reduced, { matches: true });
     destroy = mountFolio(root);
