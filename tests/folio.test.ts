@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   folioAccents,
+  folioWaypoints,
   folioStars,
   folioPath,
   folioOrbit,
@@ -111,6 +112,31 @@ describe('the composed cat island', () => {
       expect(spanX).toBeLessThanOrEqual(view.quietWidth + 84);
       const cheek = folioPoint(Math.PI / 6, view);
       expect(cheek[0] - view.centerX).toBeLessThan((spanX / 2) * 0.92);
+    },
+  );
+  it.each([320, 360, 390, 430, 800, 1440])(
+    'keeps navigation targets separate and inside the viewport at %ipx',
+    (width) => {
+      const view = {
+        width,
+        height: 844,
+        centerX: width / 2,
+        centerY: 410,
+        quietWidth: Math.min(width - 80, 384) + 24,
+        quietHeight: 170,
+      };
+      const points = folioWaypoints(view);
+      const halfWidth = width < 900 ? 44 : 75;
+      for (const [i, [x, y]] of points.entries()) {
+        expect(x - halfWidth).toBeGreaterThanOrEqual(0);
+        expect(x + halfWidth).toBeLessThanOrEqual(width);
+        expect(y + 60).toBeLessThan(view.height);
+        for (const [otherX, otherY] of points.slice(i + 1))
+          expect(
+            Math.abs(otherX - x) >= halfWidth * 2 ||
+              Math.abs(otherY - y) >= 120,
+          ).toBe(true);
+      }
     },
   );
 });

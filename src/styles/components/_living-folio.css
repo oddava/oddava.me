@@ -299,16 +299,143 @@ body:has([data-folio]) .page {
     line-height: 1.6;
     max-width: calc(100vw - 72px);
   }
-  body:has([data-folio]) .home-hero__cta {
+}
+
+/* Named objects on the orbit: the ornament itself is the destination. */
+body:has(.folio-nav) .folio-accent--fold,
+body:has(.folio-nav) .folio-accent--crescent,
+body:has(.folio-nav) .folio-accent--stitch {
+  display: none;
+}
+.folio-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.folio-nav[data-ready] {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  pointer-events: none;
+}
+.folio-waypoint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 150px;
+  min-height: 120px;
+  color: var(--color-text-interactive);
+  text-decoration: none;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+}
+.folio-nav[data-ready] .folio-waypoint {
+  position: absolute;
+  left: var(--waypoint-x);
+  top: var(--waypoint-y);
+  transform: translate(-50%, -50%);
+}
+.folio-waypoint svg {
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.85;
+  transition: transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.folio-waypoint__mark {
+  fill: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  transition: fill 300ms;
+}
+.folio-waypoint__echo {
+  opacity: 0.35;
+  transform-origin: center;
+  transition:
+    transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 300ms;
+}
+.folio-waypoint__label {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid transparent;
+  transition: border-color 200ms;
+}
+.folio-waypoint:is(:hover, :focus-visible) svg {
+  transform: translateY(-5px) rotate(-8deg);
+}
+.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__echo {
+  transform: rotate(14deg) scale(1.12);
+  opacity: 0.8;
+}
+.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__mark {
+  fill: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__label {
+  border-color: currentColor;
+}
+.folio-waypoint:focus-visible {
+  outline: 1px dashed var(--color-focus-ring);
+  outline-offset: 5px;
+}
+.folio-waypoint:active svg {
+  transform: scale(0.9);
+  transition-duration: 100ms;
+}
+@media (width < 900px) {
+  .folio-nav {
     gap: 0.5rem;
   }
-  body:has([data-folio]) .home-cta {
-    padding-inline: 0.3rem;
+  .folio-waypoint {
+    width: 88px;
+    min-height: 90px;
+  }
+  .folio-waypoint svg {
+    width: 48px;
+    height: 48px;
+  }
+  .folio-waypoint__label {
+    font-size: 0.8rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .folio-waypoint,
+  .folio-waypoint * {
+    transition: none !important;
+  }
+}
+@media (forced-colors: active) {
+  .folio-waypoint {
+    color: LinkText;
+  }
+  .folio-waypoint__label {
+    text-decoration: underline;
   }
 }
 
-@media (width < 340px) {
-  body:has([data-folio]) .home-cta {
-    font-size: 0.75rem;
+@media (height < 640px) {
+  .folio-nav[data-ready] {
+    position: static;
+    margin-top: 6rem;
+    pointer-events: auto;
+  }
+  .folio-nav[data-ready] .folio-waypoint {
+    position: static;
+    transform: none;
+  }
+  .folio-nav {
+    gap: 0.5rem;
+  }
+  .folio-waypoint {
+    width: 88px;
+    min-height: 90px;
+  }
+  .folio-waypoint svg {
+    width: 48px;
+    height: 48px;
   }
 }

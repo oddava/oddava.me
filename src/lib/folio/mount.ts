@@ -1,5 +1,6 @@
 import {
   folioAccents,
+  folioWaypoints,
   folioStars,
   folioPath,
   folioOrbit,
@@ -39,6 +40,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
       light: 0,
     }),
   );
+  const nav = document.querySelector<HTMLElement>('[data-folio-nav]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const contrast = matchMedia('(forced-colors: active)');
   const controller = new AbortController();
@@ -129,7 +131,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     mobile = bounds.width < 900;
     const parts = Array.from(
       document.querySelectorAll<HTMLElement>(
-        '.home-hero__name, .home-hero__tagline, .home-hero__cta',
+        '.home-hero__name, .home-hero__tagline',
       ),
       (part) => part.getBoundingClientRect(),
     );
@@ -154,6 +156,14 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
       quietHeight: bottom - top + 24,
     };
     svg!.setAttribute('viewBox', `0 0 ${view.width} ${view.height}`);
+    if (nav) {
+      folioWaypoints(view).forEach(([x, y], i) => {
+        const link = nav.children[i] as HTMLElement | undefined;
+        link?.style.setProperty('--waypoint-x', `${x + bounds.left}px`);
+        link?.style.setProperty('--waypoint-y', `${y + bounds.top}px`);
+      });
+      nav.dataset.ready = '';
+    }
     const path = folioPath(view);
     root
       .querySelectorAll('[data-folio-island]')
@@ -303,13 +313,13 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     if (mobile) {
       // One short compositor animation; no star updates, springs, or edge scans.
       if (event.timeStamp - lastBurst < 500) return;
-      const index = [1, 4, 5].reduce(
+      const index = (nav ? [4] : [1, 4, 5]).reduce(
         (nearest, i) =>
           Math.hypot(positions[i]![0] - x, positions[i]![1] - y) <
           Math.hypot(positions[nearest]![0] - x, positions[nearest]![1] - y)
             ? i
             : nearest,
-        1,
+        nav ? 4 : 1,
       );
       const element = accents[index]?.querySelector<SVGGElement>(
         '.folio-accent__response',

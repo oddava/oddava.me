@@ -65,8 +65,8 @@ export function folioOrbit(view: FolioView): string {
   if (view.width < 900) {
     const { width: w, height: h, centerY, quietHeight } = view;
     const top = Math.max(60, centerY - quietHeight / 2 - 110);
-    const bottom = Math.min(h - 45, centerY + quietHeight / 2 + 75);
-    return `M${w * 0.14} ${top} Q${w * 0.46} ${top - 35} ${w * 0.85} ${top + 12} M${w * 0.2} ${bottom} Q${w * 0.55} ${bottom + 24} ${w * 0.86} ${bottom - 12}`;
+    const bottom = Math.min(folioPoint(Math.PI / 2, view)[1] + 52, h - 100);
+    return `M${w * 0.14} ${top} Q${w * 0.46} ${top - 35} ${w * 0.85} ${top + 12} M${w * 0.21} ${bottom} Q${w * 0.5} ${bottom + 56} ${w * 0.79} ${bottom}`;
   }
   return Array.from({ length: 129 }, (_, i) => {
     const [x, y] = orbitPoint((i / 128) * TAU, view);
@@ -135,4 +135,20 @@ export function folioStars(view: FolioView): [number, number, number][] {
       return [x, y, 0];
     return [x, y, size!];
   });
+}
+
+/** Navigation replaces three orbit ornaments; portrait screens use a lower constellation. */
+export function folioWaypoints(view: FolioView): [number, number][] {
+  if (view.width >= 900) {
+    const accents = folioAccents(view);
+    return [accents[2]!, accents[1]!, accents[5]!];
+  }
+  const bottom = folioPoint(Math.PI / 2, view)[1];
+  const y = Math.min(bottom + 62, view.height - 90);
+  const spread = Math.min(view.width * 0.29, 145);
+  return [
+    [view.centerX - spread, y],
+    [view.centerX, y + 28],
+    [view.centerX + spread, y],
+  ];
 }
