@@ -257,9 +257,6 @@ body:has([data-folio]) .page {
   body:has([data-folio]) .home-hero--intro .home-hero__tagline {
     max-width: min(24rem, calc(100vw - 80px));
   }
-  .living-folio:not([data-ready]) .living-folio__surface {
-    visibility: hidden;
-  }
   .folio-accent--whisker,
   .folio-accent--fan,
   .folio-accent--fold,
@@ -437,5 +434,13 @@ body:has(.folio-nav) .folio-accent--stitch {
   .folio-waypoint svg {
     width: 48px;
     height: 48px;
+  }
+}
+
+/* Reveal only measured geometry; the server preview is not the current viewport. */
+@media (scripting: enabled) {
+  .living-folio:not([data-ready]) .living-folio__surface,
+  .folio-nav:not([data-ready]) {
+    visibility: hidden;
   }
 }
