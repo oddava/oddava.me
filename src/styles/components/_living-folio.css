@@ -310,7 +310,7 @@ body:has(.folio-nav) .folio-accent--stitch {
   gap: 1rem;
   margin-top: 2rem;
 }
-.folio-nav[data-ready] {
+.folio-nav:is([data-ready], [data-measuring]) {
   position: fixed;
   inset: 0;
   margin: 0;
@@ -329,7 +329,7 @@ body:has(.folio-nav) .folio-accent--stitch {
   -webkit-tap-highlight-color: transparent;
   border-radius: 50%;
 }
-.folio-nav[data-ready] .folio-waypoint {
+.folio-nav:is([data-ready], [data-measuring]) .folio-waypoint {
   position: absolute;
   left: var(--waypoint-x);
   top: var(--waypoint-y);
@@ -415,12 +415,12 @@ body:has(.folio-nav) .folio-accent--stitch {
 }
 
 @media (height < 640px) {
-  .folio-nav[data-ready] {
+  .folio-nav:is([data-ready], [data-measuring]) {
     position: static;
     margin-top: 6rem;
     pointer-events: auto;
   }
-  .folio-nav[data-ready] .folio-waypoint {
+  .folio-nav:is([data-ready], [data-measuring]) .folio-waypoint {
     position: static;
     transform: none;
   }

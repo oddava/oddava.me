@@ -1,53 +1,200 @@
+/* The same small constellation accompanies navigation and the first awakening. */
 .loading-indicator {
   position: fixed;
-  inset: 0 0 auto;
-  height: 2px;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: 88px;
+  height: 70px;
   z-index: 100;
-  overflow: hidden;
   pointer-events: none;
+  color: var(--color-accent);
   opacity: 0;
-  transition: opacity 120ms ease;
+  visibility: hidden;
+  transition:
+    opacity 240ms ease,
+    visibility 0s 240ms;
 }
 
 .site-nav > .loading-indicator {
   position: absolute;
-  inset: auto 0 -1px;
+  right: 0;
+  bottom: 0;
+  width: 64px;
+  height: 52px;
 }
 
-.loading-indicator span {
+.loading-indicator__composition {
+  width: 100%;
+}
+
+.loading-indicator svg {
   display: block;
-  width: 35%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-brand),
-    var(--color-brand-strong)
-  );
-  border-radius: 2px;
+  width: 100%;
+  overflow: visible;
+  stroke: currentColor;
+  stroke-width: 8;
+  stroke-linecap: round;
 }
 
-html[data-loading] .loading-indicator {
+.loading-indicator__orbit {
+  transform-origin: 500px 400px;
+  transform: rotate(-18deg);
+}
+
+.loading-indicator__orbit ellipse {
+  opacity: 0.15;
+}
+
+.loading-indicator__arc {
+  stroke-width: 10;
+}
+
+.loading-indicator__arc--echo {
+  opacity: 0.4;
+}
+
+.loading-indicator__star,
+.loading-indicator circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.loading-indicator__island {
+  fill: #05080e;
+  stroke-opacity: 0.2;
+}
+
+.loading-indicator__trace {
+  stroke-dasharray: 740 260;
+  stroke-width: 10;
+}
+
+.loading-indicator__whiskers {
+  opacity: 0.55;
+  transform-origin: 500px 400px;
+}
+
+.loading-indicator__caption {
+  display: none;
+}
+
+html[data-loading] .loading-indicator,
+.loading-indicator[data-awakening] {
   opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
-html[data-loading] .loading-indicator span {
-  animation: loading-line 1.2s ease-in-out infinite;
+:is(html[data-loading] .loading-indicator, .loading-indicator[data-awakening])
+  .loading-indicator__orbit {
+  animation: loading-orbit 9s ease-in-out infinite alternate;
 }
 
-@keyframes loading-line {
-  from {
-    transform: translateX(-100%);
-  }
+:is(html[data-loading] .loading-indicator, .loading-indicator[data-awakening])
+  .loading-indicator__trace {
+  animation: loading-trace 4.8s ease-in-out infinite;
+}
+
+:is(html[data-loading] .loading-indicator, .loading-indicator[data-awakening])
+  .loading-indicator__whiskers {
+  animation: loading-whiskers 3.6s ease-in-out infinite alternate;
+}
+
+.loading-indicator[data-intro] {
+  inset: 0;
+  width: auto;
+  height: auto;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    ellipse at center,
+    #0b1421 0%,
+    #030507 45%,
+    #000 80%
+  );
+  transition:
+    opacity 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s 650ms;
+}
+
+.loading-indicator[data-intro][data-awakening] {
+  transition-delay: 0s;
+}
+
+.loading-indicator[data-intro] svg {
+  stroke-width: 2;
+}
+
+.loading-indicator[data-intro] .loading-indicator__trace {
+  stroke-width: 3;
+}
+
+.loading-indicator[data-intro] .loading-indicator__arc {
+  stroke-width: 4;
+}
+
+.loading-indicator[data-intro] .loading-indicator__composition {
+  position: relative;
+  width: min(390px, 82vw);
+}
+
+.loading-indicator[data-intro] .loading-indicator__caption {
+  display: block;
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  text-align: center;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.loading-indicator__caption span {
+  display: block;
+  margin-top: 1rem;
+  color: var(--color-accent);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+}
+
+@keyframes loading-orbit {
   to {
-    transform: translateX(386%);
+    transform: rotate(18deg);
+  }
+}
+
+@keyframes loading-trace {
+  0% {
+    stroke-dashoffset: 1000;
+    opacity: 0.35;
+  }
+  45%,
+  65% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -1000;
+    opacity: 0.35;
+  }
+}
+
+@keyframes loading-whiskers {
+  to {
+    transform: scaleX(1.035);
+    opacity: 0.9;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-loading] .loading-indicator span {
+  .loading-indicator,
+  .loading-indicator[data-intro] {
+    transition: none;
+  }
+  .loading-indicator * {
     animation: none !important;
-    width: 100%;
-    background: var(--color-brand);
+  }
+  .loading-indicator__trace {
+    stroke-dasharray: none;
   }
 }

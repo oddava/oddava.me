@@ -111,3 +111,87 @@ export function installNavigationFeedback() {
   navigation?.addEventListener('navigateerror', stopNavigationFeedback);
   navigation?.addEventListener('navigatesuccess', stopNavigationFeedback);
 }
+
+/** Only a genuinely pending first visit gets an entrance; history stays still. */
+export function awakenHomepage() {
+  const folio = document.querySelector<HTMLElement>('[data-folio]');
+  const loader = document.querySelector<HTMLElement>('[data-site-loader]');
+  const entry = performance.getEntriesByType('navigation')[0] as
+    PerformanceNavigationTiming | undefined;
+  if (
+    !folio ||
+    !loader ||
+    folio.hasAttribute('data-ready') ||
+    entry?.type === 'back_forward'
+  )
+    return;
+
+  let shown = false;
+  let finished = false;
+  const reveal = setTimeout(() => {
+    shown = true;
+    loader.dataset.intro = '';
+    loader.dataset.awakening = '';
+  }, 180);
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(reveal);
+    clearTimeout(fallback);
+    observer.disconnect();
+    if (!shown) {
+      window.removeEventListener('pagehide', dismiss);
+      return;
+    }
+    delete loader.dataset.awakening;
+    const composition = loader.querySelector<SVGSVGElement>('svg');
+    const outline = loader.querySelector('.loading-indicator__island');
+    const island = folio.querySelector('[data-folio-island]');
+    if (
+      composition &&
+      outline &&
+      island &&
+      folio.hasAttribute('data-ready') &&
+      !matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      const from = outline.getBoundingClientRect();
+      const to = island.getBoundingClientRect();
+      if (from.width && to.width) {
+        const bounds = composition.getBoundingClientRect();
+        composition.style.transformOrigin = `${from.x + from.width / 2 - bounds.x}px ${from.y + from.height / 2 - bounds.y}px`;
+        composition.animate(
+          [
+            { transform: 'translate(0, 0) scale(1)' },
+            {
+              transform: `translate(${to.x + to.width / 2 - from.x - from.width / 2}px, ${to.y + to.height / 2 - from.y - from.height / 2}px) scale(${to.width / from.width})`,
+              opacity: 0,
+            },
+          ],
+          { duration: 650, easing: 'cubic-bezier(.22,1,.36,1)' },
+        );
+      }
+    }
+    setTimeout(() => {
+      delete loader.dataset.intro;
+      window.removeEventListener('pagehide', dismiss);
+    }, 650);
+  };
+  const dismiss = () => {
+    finish();
+    delete loader.dataset.intro;
+    delete loader.dataset.awakening;
+    loader
+      .getAnimations?.({ subtree: true })
+      .forEach((animation) => animation.cancel());
+  };
+  const observer = new MutationObserver(() => {
+    if (folio.hasAttribute('data-ready')) finish();
+  });
+  observer.observe(folio, {
+    attributes: true,
+    attributeFilter: ['data-ready'],
+  });
+  // Fail open if enhancement or a font request fails; content remains usable.
+  const fallback = setTimeout(finish, 8000);
+  window.addEventListener('pagehide', dismiss, { once: true });
+}

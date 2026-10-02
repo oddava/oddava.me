@@ -46,7 +46,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   const controller = new AbortController();
   const { signal } = controller;
   let destroyed = false;
-  let fontsReady = document.fonts.status !== 'loading';
+  let waitingForFonts = false;
   let mobile = false;
   let burst: Animation | undefined;
   let lastBurst = -1000;
@@ -126,18 +126,30 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   }
 
   function resize() {
-    if (destroyed || document.hidden || !fontsReady) return;
+    if (destroyed || document.hidden || waitingForFonts) return;
+    // Keep navigation out of the measured flow without revealing it yet.
+    if (nav) nav.dataset.measuring = '';
     bounds = svg!.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
     mobile = bounds.width < 900;
-    // Take navigation out of hero flow before measuring, including history returns.
-    if (nav) nav.dataset.ready = '';
     const parts = Array.from(
       document.querySelectorAll<HTMLElement>(
         '.home-hero__name, .home-hero__tagline',
       ),
       (part) => part.getBoundingClientRect(),
     );
+    // Layout can start font requests even when FontFaceSet was initially loaded.
+    // Wait after the layout read, on initial loads and history restores alike.
+    if (document.fonts.status === 'loading') {
+      waitingForFonts = true;
+      root.removeAttribute('data-ready');
+      nav?.removeAttribute('data-ready');
+      void document.fonts.ready.then(() => {
+        waitingForFonts = false;
+        resize();
+      });
+      return;
+    }
     const left = parts.length
       ? Math.min(...parts.map((part) => part.left)) - bounds.left
       : bounds.width * 0.3;
@@ -193,6 +205,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     });
     reset();
     root.dataset.ready = '';
+    if (nav) nav.dataset.ready = '';
   }
 
   function update(now: number) {
@@ -303,7 +316,12 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
       motion.matches ||
       contrast.matches ||
       document.hidden ||
-      !positions.length
+      !positions.length ||
+      // Chromium can send a zero-motion pointermove after restoring a document.
+      // A return should keep the neutral pose until the user actually moves.
+      (event.type === 'pointermove' &&
+        event.movementX === 0 &&
+        event.movementY === 0)
     )
       return;
     if (interactive(event.target)) {
@@ -408,11 +426,6 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     once: true,
   });
   resize();
-  if (!fontsReady)
-    void document.fonts.ready.then(() => {
-      fontsReady = true;
-      if (!destroyed) resize();
-    });
   mounted.set(root, destroy);
   return destroy;
 }
