@@ -98,8 +98,8 @@
   display: inline-grid;
   flex-shrink: 0;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: var(--studio-control-size);
+  height: var(--studio-control-size);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--radius-sm-2);
@@ -126,7 +126,7 @@
 
 .studio-grid {
   display: grid;
-  grid-template-columns: var(--studio-sidebar-w, 280px) minmax(0, 1fr);
+  grid-template-columns: var(--studio-sidebar-w, 300px) minmax(0, 1fr);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;

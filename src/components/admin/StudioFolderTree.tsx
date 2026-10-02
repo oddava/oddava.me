@@ -807,23 +807,21 @@ export default function StudioFolderTree({
         menuRef={menu.ref}
         position={menu.position}
       >
-        <button
-          type="button"
-          onClick={() => {
-            menu.close();
-            openNode(node, { placement: 'permanent' });
-          }}
-        >
-          Open in new tab
-        </button>
-        <span />
         <button type="button" onClick={() => beginCreate(folderForNew)}>
-          New child note
+          Add subnote
         </button>
-        <span />
         <button type="button" onClick={() => beginRename(node)}>
           Rename
           <span className="studio-menu__hint">F2</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMoving(nodeRef(node));
+            menu.close();
+          }}
+        >
+          Move to…
         </button>
         <button
           type="button"
@@ -836,25 +834,7 @@ export default function StudioFolderTree({
         >
           Duplicate
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMoving(nodeRef(node));
-            menu.close();
-          }}
-        >
-          Move to…
-        </button>
         <span />
-        <button
-          type="button"
-          onClick={() => {
-            menu.close();
-            void copyToClipboard(nodePath(node), 'Path');
-          }}
-        >
-          Copy path
-        </button>
         {page && (
           <button
             type="button"
@@ -869,6 +849,15 @@ export default function StudioFolderTree({
             Copy link
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            menu.close();
+            void copyToClipboard(nodePath(node), 'Path');
+          }}
+        >
+          Copy path
+        </button>
         <span />
         <button
           type="button"
@@ -882,26 +871,6 @@ export default function StudioFolderTree({
           <span className="studio-menu__hint">Del</span>
         </button>
       </StudioContextMenu>
-    );
-  }
-
-  /** The root row's own page, when the collection has an `index` note. */
-  function renderRootPageActions(page: ContentEntryListItem | undefined) {
-    if (!page) return null;
-    return (
-      <>
-        <button
-          type="button"
-          onClick={() => {
-            menu.close();
-            onSelectFolder('');
-            onEditEntry(page, { placement: 'permanent' });
-          }}
-        >
-          Open in new tab
-        </button>
-        <span />
-      </>
     );
   }
 
@@ -1417,7 +1386,6 @@ export default function StudioFolderTree({
             menuRef={menu.ref}
             position={menu.position}
           >
-            {renderRootPageActions(tree.rootDocument)}
             <button type="button" onClick={() => beginCreate('')}>
               New note
             </button>

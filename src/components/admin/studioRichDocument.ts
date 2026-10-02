@@ -148,7 +148,7 @@ export class RichDocument {
       }
 
       // HTML, reference definitions and inline HTML cannot safely be reduced
-      // to the rich schema. Keep these editable in an explicit source card.
+      // to the rich schema. Keep their source losslessly behind the rendered custom block.
       const custom =
         (block.type !== 'code' &&
           (/\[\^[^\]]+\]|\[[^\]]+\]\[[^\]]*\]/.test(block.raw) ||
@@ -189,6 +189,14 @@ export class RichDocument {
   }
 
   serialize(editor: Editor): string {
+    const doc = editor.state.doc;
+    if (
+      this.spellings.size > 0 &&
+      doc.childCount === 1 &&
+      doc.firstChild?.type.name === 'paragraph' &&
+      !doc.firstChild.content.size
+    )
+      return '';
     let result = '';
     editor.state.doc.forEach((node, _offset, index) => {
       const original = this.originals.get(node);

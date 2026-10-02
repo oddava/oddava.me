@@ -10,7 +10,7 @@ import { normalizeWikiLinkTarget } from './utils';
 // Every surface that displays a note body calls it:
 //   - the published page (`GardenDocumentPage.astro`)
 //   - Studio's Preview mode (`StudioPreviewPane.tsx`), one render of the note
-//   - Studio's Visual editor (`StudioVisualEditor.tsx`), one render per block,
+//   - Studio's rich editor (`StudioRichEditor.tsx`), one render per block,
 //     which is why block-to-block spacing there belongs to the editor's own
 //     stylesheet rather than to `.prose`
 // so the editor cannot drift from the page — it is the page. The matching CSS

@@ -5,11 +5,7 @@ import {
   useRef,
   useState,
 } from 'preact/hooks';
-import type {
-  CSSProperties,
-  TargetedKeyboardEvent,
-  TargetedPointerEvent,
-} from 'preact';
+import type { CSSProperties, TargetedPointerEvent } from 'preact';
 import { renderNoteHtml } from '../../lib/garden/render';
 import { buildWikiLinkHrefLookup, gardenSlug } from '../../lib/garden/utils';
 import { uploadContentMedia } from './api';
@@ -22,11 +18,7 @@ import StudioCommandPalette, {
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
 import StudioEditorPane from './StudioEditorPane';
 import type { TabPlacement } from './studioTabStrip';
-import { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
-import {
-  makeEditorCommands,
-  type EditorCommands,
-} from './studioEditorCommands';
+import type { EditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import { useContentLibrary } from './useContentLibrary';
 import { useContentMutations } from './useContentMutations';
@@ -48,16 +40,14 @@ import {
 import {
   DEFAULT_SESSION,
   SIDEBAR_BOUNDS,
-  VIEW_MODES,
   clamp,
   readSession,
   writeSession,
   type StudioSession,
-  type ViewMode,
 } from './studioSession';
 import './Studio.css';
 import './StudioProduct.css';
-// The preview renders through the site's own note stylesheet, not a copy of it.
+// The editor uses the site's published note typography.
 import '../../styles/components/_note-prose.css';
 
 interface ContentWorkspaceProps {
@@ -81,9 +71,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
   const [sessionRestored, setSessionRestored] = useState(false);
 
-  // Markdown commands target the source textarea; Visual uses rich transactions.
-  const editorRef = useRef<HTMLTextAreaElement | null>(null);
-  const richCommandsRef = useRef<EditorCommands | null>(null);
+  const commandsRef = useRef<EditorCommands | null>(null);
   // How the active surface takes focus, registered by the surface itself.
   const focusRef = useRef<(() => void) | null>(null);
   const sidebarRef = useRef<HTMLElement | null>(null);
@@ -136,14 +124,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     open: openDocument,
   } = doc;
 
-  const hasBody = collection?.body ?? true;
-  const view: ViewMode = session.view;
-
-  // Keyed by what the lookup is actually built from, not by the array holding
-  // it. Every save replaces `entries` wholesale, and a new lookup means a new
-  // `renderMarkdown`, which throws away the visual editor's per-block render
-  // cache — the whole note re-rendered through `marked` after each autosave,
-  // for a link index that had not changed.
+  // Keep the published link lookup stable across autosaves.
   const wikiLinkSignature = JSON.stringify(
     entries.map((entry) => [entry.folder, entry.id, entry.title, entry.href]),
   );
@@ -160,10 +141,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     // which is whatever it was when the signature last moved.
     [wikiLinkSignature],
   );
-  // Same renderer and link index the published page uses, so what the editor
-  // draws and what a reader gets cannot drift apart. Passed down as a function
-  // rather than a rendered string because the visual editor renders one block
-  // at a time and caches the result per block.
+  // Custom blocks share the published renderer and note-link lookup.
   const renderMarkdown = useCallback(
     (raw: string) => renderNoteHtml(raw, { wikiLinkHrefs }),
     [wikiLinkHrefs],
@@ -382,28 +360,21 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Editor helpers ------------------------------------------------------
 
-  // Route shared shortcuts to the active surface, keeping its native undo history.
-  const editorCommands = useMemo(() => {
-    const source = makeEditorCommands(() => editorRef.current);
-    return Object.fromEntries(
-      Object.entries(source).map(([key]) => [
-        key,
-        (...args: unknown[]) => {
-          const target = richCommandsRef.current ?? source;
-          return (
-            target[key as keyof EditorCommands] as (...args: unknown[]) => void
-          )(...args);
-        },
-      ]),
-    ) as unknown as EditorCommands;
-  }, []);
-
-  // `[[` autocomplete: suggests existing notes at the caret and inserts a
-  // resolving wikilink. Shares the editor's undo-safe range replacement.
-  const wikiMenu = useWikiLinkAutocomplete(
-    () => editorRef.current,
-    entries,
-    editorCommands.replaceRange,
+  const suggestions = useMemo(
+    () =>
+      entries.map((entry) => {
+        const target = [entry.folder, entry.id].filter(Boolean).join('/');
+        return {
+          id: entry.id,
+          title: entry.title,
+          folder: entry.folder,
+          href: entry.href,
+          insert: entry.title
+            ? `[[${target}|${entry.title}]]`
+            : `[[${target}]]`,
+        };
+      }),
+    [entries],
   );
 
   // Upload a file to the note's media folder and return its URL.
@@ -431,69 +402,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     [collection, openId],
   );
 
-  // Paste / drop: upload and drop a plain Markdown image at the caret. The
-  // toolbar's image button opens the richer dialog (size, position, caption).
-  async function quickInsertImage(file: File) {
-    const url = await uploadImageFile(file);
-    if (!url) return;
-    const alt = file.name
-      .replace(/\.[a-z0-9]+$/i, '')
-      .replaceAll('[', '\\[')
-      .replaceAll(']', '\\]');
-    editorCommands.insertInline(`![${alt}](${url})`);
-    setNotice('Image added.');
-  }
-
-  /**
-   * The shortcuts every writing surface shares. Returns true when the key was
-   * consumed, so Visual and Markdown mode can each run their own handling
-   * first and still agree on what ⌘B does.
-   */
-  function runEditorShortcut(
-    event: TargetedKeyboardEvent<HTMLTextAreaElement>,
-  ): boolean {
-    const mod = event.metaKey || event.ctrlKey;
-    if (!mod) return false;
-    const key = event.key.toLowerCase();
-    const run = (command: () => void) => {
-      event.preventDefault();
-      // The workspace listens on `window` for its own shortcuts. Stopping the
-      // key here is what lets ⌘K mean "link" while the caret is in a note and
-      // "go to file" everywhere else, without either handler knowing about the
-      // other.
-      event.stopPropagation();
-      command();
-      return true;
-    };
-    if (key === 's') return run(() => void saveNow());
-    if (key === 'b') return run(editorCommands.bold);
-    if (key === 'i') return run(editorCommands.italic);
-    if (key === 'k' && !event.shiftKey) return run(editorCommands.link);
-    if (event.shiftKey && key === 'c') return run(editorCommands.inlineCode);
-    if (event.shiftKey && key === 'x') return run(editorCommands.strike);
-    // By physical key, not by character: Shift over a digit produces `&`, `*`
-    // or `(` on a US layout and something else again elsewhere, so matching on
-    // `event.key` meant these three did nothing at all on most keyboards.
-    if (event.shiftKey) {
-      if (event.code === 'Digit7') return run(editorCommands.orderedList);
-      if (event.code === 'Digit8') return run(editorCommands.bulletList);
-      if (event.code === 'Digit9') return run(editorCommands.taskList);
-    }
-    return false;
-  }
-
-  // --- Global keyboard shortcuts ------------------------------------------
-
-  const cycleView = useCallback(() => {
-    const order = VIEW_MODES.map((mode) => mode.id);
-    const index = order.indexOf(view);
-    patchSession({ view: order[(index + 1) % order.length] });
-  }, [patchSession, view]);
-
-  const nextViewLabel =
-    VIEW_MODES[
-      (VIEW_MODES.findIndex((mode) => mode.id === view) + 1) % VIEW_MODES.length
-    ]?.label ?? 'Visual';
+  // --- Global keyboard shortcuts ---
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -528,26 +437,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         goThroughHistory(1);
         return;
       }
-      if (mod && event.key === 'Tab' && openIds.length > 1) {
-        event.preventDefault();
-        const index = openIds.indexOf(openId);
-        const offset = event.shiftKey ? -1 : 1;
-        const next =
-          openIds[(index + offset + openIds.length) % openIds.length];
-        if (next) void openNote(next);
-        return;
-      }
       if (mod && /^[1-9]$/.test(event.key)) {
         const next = openIds[Number(event.key) - 1];
         if (next) {
           event.preventDefault();
           void openNote(next);
         }
-        return;
-      }
-      if (mod && event.key === 'e' && openId) {
-        event.preventDefault();
-        cycleView();
         return;
       }
     }
@@ -561,7 +456,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     openIds,
     phone,
     saveState,
-    cycleView,
     patchSession,
     setSidebarCollapsed,
     openNote,
@@ -619,12 +513,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           activeFolder,
           mutations.uniqueItemId('untitled'),
         ),
-    },
-    {
-      id: 'toggle-view',
-      title: `Switch to ${nextViewLabel}`,
-      hint: '⌘E',
-      run: cycleView,
     },
     {
       id: 'toggle-sidebar',
@@ -922,32 +810,24 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   }}
                   publishedUrl={publishedUrl}
                   body={body}
-                  wikiLinkHrefs={wikiLinkHrefs}
                   renderMarkdown={renderMarkdown}
                   wordCount={wordCount}
                   readingMinutes={readingMinutes}
-                  view={view}
-                  hasBody={hasBody}
                   compact={phone}
                   keyboardOpen={keyboardOpen}
                   sidebarVisible={sidebarVisible}
                   saveState={saveState}
                   savedAt={doc.savedAt}
                   uploading={busyKey === 'upload-body'}
-                  editorRef={editorRef}
-                  richCommandsRef={richCommandsRef}
+                  commandsRef={commandsRef}
                   focusRef={focusRef}
-                  commands={editorCommands}
-                  wikiMenu={wikiMenu}
+                  suggestions={suggestions}
                   onOpenFiles={() => setSidebarCollapsed(false)}
-                  onSetView={(next) => patchSession({ view: next })}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {
                     doc.setBody(value);
                     doc.markDirty({ body: value });
                   }}
-                  onShortcut={runEditorShortcut}
-                  onImageFile={(file) => void quickInsertImage(file)}
                   uploadImage={uploadImageFile}
                   onRequestImage={(request) => {
                     setImageEdit(request ?? null);
@@ -995,7 +875,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         onSubmit={(markup) =>
           imageEdit
             ? imageEdit.onSubmit(markup)
-            : editorCommands.insertBlock(markup)
+            : commandsRef.current?.insertBlock(markup)
         }
       />
       {dialog}

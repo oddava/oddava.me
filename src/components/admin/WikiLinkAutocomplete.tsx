@@ -1,6 +1,12 @@
 import { createPortal } from 'preact/compat';
 import { useEffect, useRef } from 'preact/hooks';
-import type { WikiSuggestion } from './useWikiLinkAutocomplete';
+export interface WikiSuggestion {
+  id: string;
+  title: string;
+  folder: string;
+  href?: string;
+  insert: string;
+}
 
 interface Props {
   open: boolean;

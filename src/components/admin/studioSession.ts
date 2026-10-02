@@ -2,22 +2,16 @@
 // Persisted to localStorage, read after mount so the SSR markup matches the
 // first client paint.
 
-// Three ways to look at a note, and no fourth: Visual is the editor, Markdown
-// is the source, Preview is the published page. The old permanent Split view is
-// gone — Visual already shows rendered Markdown, so a second pane showing the
-// same thing cost half the writing width to say it twice.
-export type ViewMode = 'visual' | 'markdown' | 'preview';
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
 export const STATE_STORAGE_KEY = 'oddava.studio.session';
-export const SIDEBAR_BOUNDS = { min: 190, max: 420 } as const;
+export const SIDEBAR_BOUNDS = { min: 220, max: 420 } as const;
 export const AUTOSAVE_DELAY_MS = 700;
 export const MAX_OPEN_TABS = 24;
 
 export interface StudioSession {
   sidebar: number;
   sidebarCollapsed: boolean;
-  view: ViewMode;
   lastOpenId: string;
   openIds: string[];
   /** The tab that browsing reuses; '' when every open tab is a deliberate one. */
@@ -26,31 +20,13 @@ export interface StudioSession {
 }
 
 export const DEFAULT_SESSION: StudioSession = {
-  sidebar: 280,
+  sidebar: 300,
   sidebarCollapsed: false,
-  view: 'visual',
   lastOpenId: '',
   openIds: [],
   previewId: '',
   expandedFolders: [''],
 };
-
-export const VIEW_MODES: { id: ViewMode; label: string; hint: string }[] = [
-  { id: 'visual', label: 'Visual', hint: 'Write in the rendered document' },
-  { id: 'markdown', label: 'Markdown', hint: 'Edit the raw source' },
-  { id: 'preview', label: 'Preview', hint: 'The published page' },
-];
-
-/**
- * A stored view, migrated. `write` and `split` were the two halves of the old
- * side-by-side editor; both are what Visual replaced, so a returning session
- * lands there rather than on a mode that no longer exists.
- */
-export function normalizeView(value: unknown): ViewMode {
-  if (value === 'preview') return 'preview';
-  if (value === 'markdown') return 'markdown';
-  return 'visual';
-}
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -68,7 +44,6 @@ export function readSession(): StudioSession {
         SIDEBAR_BOUNDS.max,
       ),
       sidebarCollapsed: parsed.sidebarCollapsed === true,
-      view: normalizeView(parsed.view),
       lastOpenId:
         typeof parsed.lastOpenId === 'string' ? parsed.lastOpenId : '',
       openIds: Array.isArray(parsed.openIds)

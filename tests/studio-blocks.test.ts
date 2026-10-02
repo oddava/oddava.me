@@ -3,10 +3,7 @@ import {
   matchSlashCommands,
   parseBlocks,
 } from '../src/components/admin/studioBlocks';
-import {
-  DEFAULT_SESSION,
-  normalizeView,
-} from '../src/components/admin/studioSession';
+import { DEFAULT_SESSION } from '../src/components/admin/studioSession';
 
 const NOTE = [
   '# A note',
@@ -125,6 +122,9 @@ describe('matchSlashCommands', () => {
       'h1',
       'h2',
       'h3',
+      'h4',
+      'h5',
+      'h6',
     ]);
   });
 
@@ -149,21 +149,8 @@ describe('matchSlashCommands', () => {
   });
 });
 
-describe('normalizeView', () => {
-  it('defaults to the visual editor', () => {
-    expect(DEFAULT_SESSION.view).toBe('visual');
-    expect(normalizeView(undefined)).toBe('visual');
-    expect(normalizeView('nonsense')).toBe('visual');
-  });
-
-  // Sessions stored before the redesign name modes that no longer exist.
-  it('migrates the retired write and split modes onto Visual', () => {
-    expect(normalizeView('write')).toBe('visual');
-    expect(normalizeView('split')).toBe('visual');
-  });
-
-  it('keeps the modes that survived', () => {
-    expect(normalizeView('markdown')).toBe('markdown');
-    expect(normalizeView('preview')).toBe('preview');
+describe('unified editor session', () => {
+  it('does not persist an editing mode', () => {
+    expect(DEFAULT_SESSION).not.toHaveProperty('view');
   });
 });

@@ -23,9 +23,8 @@ function textAnchor() {
       return rect.height ? rect : element?.getBoundingClientRect();
     };
   }
-  const source = document.querySelector('.studio-textarea');
   const editor = document.querySelector('.studio-rich-content');
-  return () => (source ?? editor)?.getBoundingClientRect();
+  return () => editor?.getBoundingClientRect();
 }
 
 /** Shared, text-anchored editing dialog. No backdrop or page-sized overlay. */
