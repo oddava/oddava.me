@@ -3,7 +3,9 @@ import { test, expect, type Page } from '@playwright/test';
 const seed =
   '# A quieter kind of workspace\n\nA place for **unfinished ideas**, small discoveries, and things worth keeping.\n\n## On the desk\n\n- [ ] Make something useful\n- [x] Leave room to explore\n\n> Pay attention. The good ideas are usually hiding in the ordinary.\n\n## Field notes\n\nKeep following the thread.\n';
 
-async function setup(page: Page) {
+const savedNotes = new WeakMap<Page, () => string>();
+
+async function setup(page: Page, initialBody = seed) {
   const entries = [
     'welcome',
     'small-discoveries',
@@ -22,7 +24,7 @@ async function setup(page: Page) {
     href: `/notes/${id}`,
     revision: 'r1',
     fields: {},
-    body: index ? `# ${id}\n\nA fresh page.` : seed,
+    body: index ? `# ${id}\n\nA fresh page.` : initialBody,
   }));
   const folders = [
     {
@@ -34,7 +36,8 @@ async function setup(page: Page) {
       totalNoteCount: 0,
     },
   ];
-  let saved = seed;
+  let saved = initialBody;
+  savedNotes.set(page, () => saved);
   await page.route('**/api/admin/**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -127,11 +130,38 @@ async function openNote(page: Page) {
   ).toBeVisible();
 }
 
-async function setView(page: Page, name: 'Visual' | 'Markdown' | 'Preview') {
-  await page.getByRole('button', { name, exact: true }).click();
+// Exercise the real paste/import path, then assert the Markdown sent to storage.
+async function replaceContent(page: Page, markdown: string) {
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.focus();
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.press('Control+Shift+End');
+  await page.keyboard.press('Backspace');
+  if (markdown) {
+    await page
+      .context()
+      .grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.evaluate(
+      (text) => navigator.clipboard.writeText(text),
+      markdown,
+    );
+    await page.keyboard.press('Control+v');
+  }
+  await expect(page.locator('.studio-save')).toHaveAttribute(
+    'data-tone',
+    'saved',
+  );
 }
 
-test('YouTube slash command validates links and survives mode changes', async ({
+async function savedMarkdown(page: Page) {
+  await expect(page.locator('.studio-save')).toHaveAttribute(
+    'data-tone',
+    'saved',
+  );
+  return savedNotes.get(page)!();
+}
+
+test('YouTube slash command validates links and saves as Markdown', async ({
   page,
 }) => {
   await page.route('https://www.youtube-nocookie.com/**', (route) =>
@@ -139,9 +169,9 @@ test('YouTube slash command validates links and survives mode changes', async ({
   );
   const store = await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page.getByRole('combobox', { name: 'Note source' }).fill('');
-  await setView(page, 'Visual');
+
+  await replaceContent(page, '');
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await editor.click();
   await page.keyboard.type('/youtube');
@@ -175,39 +205,37 @@ test('YouTube slash command validates links and survives mode changes', async ({
     'https://www.youtube-nocookie.com/embed/dQw4w9WgXc?start=90',
   );
   await expect.poll(store.saved).toContain('note-youtube');
-  await setView(page, 'Preview');
-  await expect(page.locator('.studio-preview iframe')).toHaveAttribute(
+
+  await expect(page.locator('.studio-rich-content iframe')).toHaveAttribute(
     'src',
     /start=90$/,
   );
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /<iframe/,
-  );
-  await setView(page, 'Visual');
+
+  await expect.poll(() => savedMarkdown(page)).toMatch(/<iframe/);
+
   await expect(editor.locator('.note-youtube iframe')).toHaveCount(1);
   await expect(editor.locator('.studio-source-block')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/youtube-embed.png' });
 });
 
-test('clearing a note does not manufacture a title in preview', async ({
-  page,
-}) => {
+test('clearing a note keeps the editing surface empty', async ({ page }) => {
   const store = await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page.getByRole('combobox', { name: 'Note source' }).fill('');
+
+  await replaceContent(page, '');
   await expect.poll(store.saved).toBe('');
-  await setView(page, 'Preview');
-  await expect(page.locator('.studio-preview h1')).toHaveCount(0);
-  await expect(page.locator('.studio-preview__stub')).toBeVisible();
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill('# A fresh start');
-  await setView(page, 'Preview');
-  await expect(page.locator('.studio-preview h1')).toHaveCount(1);
-  await expect(page.locator('.studio-preview h1')).toHaveText('A fresh start');
+
+  await expect(page.locator('.studio-rich-content h1')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Note editor' })).toHaveText(
+    '',
+  );
+
+  await replaceContent(page, '# A fresh start');
+
+  await expect(page.locator('.studio-rich-content h1')).toHaveCount(1);
+  await expect(page.locator('.studio-rich-content h1')).toHaveText(
+    'A fresh start',
+  );
 });
 
 test('block controls follow hovered text and sidebar controls replace the header', async ({
@@ -268,7 +296,7 @@ test('block controls follow hovered text and sidebar controls replace the header
   await page.screenshot({ path: 'test-results/studio-sidebar-hover.png' });
 });
 
-test('continuous typing, slash blocks, formatting, undo and Markdown round trip', async ({
+test('continuous typing, slash blocks, formatting, undo and Markdown persistence', async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -304,11 +332,9 @@ test('continuous typing, slash blocks, formatting, undo and Markdown round trip'
   ).toBeVisible();
   await page.keyboard.press('Control+b');
   await expect(editor.locator('strong').last()).toHaveText('going');
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /Keep \*\*going\*\*/,
-  );
-  await setView(page, 'Visual');
+
+  await expect.poll(() => savedMarkdown(page)).toMatch(/Keep \*\*going\*\*/);
+
   await expect(editor.locator('strong').last()).toHaveText('going');
   await editor.click();
   await page.keyboard.press('Control+z');
@@ -389,10 +415,9 @@ test('tasks, note links, block movement and autosave', async ({ page }) => {
     'future-note',
   );
 
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /\[\[reading-list\|Reading list\]\]/,
-  );
+  await expect
+    .poll(() => savedMarkdown(page))
+    .toMatch(/\[\[reading-list\|Reading list\]\]/);
 });
 
 test('create, rename and move a file without losing the open document', async ({
@@ -472,21 +497,22 @@ test('custom source, links, and block drag preserve content', async ({
 }, info) => {
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      '# Test page\n\nAlpha paragraph.\n\nBeta paragraph.\n\n<div style="text-align:center">Custom content</div>',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    '# Test page\n\nAlpha paragraph.\n\nBeta paragraph.\n\n<div style="text-align:center">Custom content</div>',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
-  await page.getByRole('button', { name: 'Edit source', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Edit custom block', exact: true })
+    .click();
   const custom = page.getByRole('textbox', { name: 'Custom Markdown source' });
   await custom.fill('<div style="text-align:center">Better content</div>');
   await page
     .getByRole('button', { name: 'Apply changes', exact: true })
     .click();
-  await expect(editor.locator('.studio-source-block')).toContainText(
+  await expect(editor.locator('.studio-custom-block')).toContainText(
     'Better content',
   );
   await editor.locator('p').first().click();
@@ -514,10 +540,10 @@ test('custom source, links, and block drag preserve content', async ({
       'Alpha paragraph.',
     );
   }
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /<div style="text-align:center">Better content<\/div>/,
-  );
+
+  await expect
+    .poll(() => savedMarkdown(page))
+    .toMatch(/<div style="text-align:center">Better content<\/div>/);
 });
 
 test('delete requires confirmation and removes the selected file', async ({
@@ -540,7 +566,7 @@ test('delete requires confirmation and removes the selected file', async ({
   await expect(dialog).not.toBeVisible();
 });
 
-test('Visual uses published prose typography and Markdown stays readable', async ({
+test('the unified editor uses published prose typography', async ({
   page,
 }, info) => {
   await setup(page);
@@ -586,13 +612,9 @@ test('Visual uses published prose typography and Markdown stays readable', async
     return results;
   });
   expect(differences).toEqual([]);
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveCSS(
-    'font-size',
-    info.project.name === 'mobile' ? '16px' : '15px',
-  );
+
   await page.screenshot({
-    path: `test-results/markdown-${info.project.name}.png`,
+    path: `test-results/unified-typography-${info.project.name}.png`,
   });
 });
 
@@ -639,10 +661,8 @@ test('typing keeps controls and save status available without moving the page', 
   await expect(
     page.getByRole('button', { name: 'Workspace menu' }),
   ).toHaveCount(0);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill('Source editing also saves.');
+
+  await replaceContent(page, 'Source editing also saves.');
   await expect(header).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(header).toBeVisible();
@@ -722,7 +742,7 @@ test('phone typing keeps the page spacious and Files covers editor controls', as
     window.visualViewport!.dispatchEvent(new Event('resize'));
   });
   await expect(page.locator('.studio')).not.toHaveClass(/is-keyboard-open/);
-  await editor.click();
+  await editor.focus();
   await page.keyboard.press('Control+Home');
   await page.keyboard.press('Control+Shift+ArrowRight');
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
@@ -749,7 +769,9 @@ test('phone typing keeps the page spacious and Files covers editor controls', as
 test('local images and captions render and reopen for adjustment', async ({
   page,
 }, info) => {
-  await setup(page);
+  const source =
+    '# Images\n\n<img src="/images/test.svg" alt="Local image" style="width:50%;display:block;margin:auto">\n\n<figure style="margin:1.2em 0;text-align:left">\n  <img src="/images/test.svg" alt="Captioned image" style="width:75%">\n  <figcaption style="opacity:0.7">Original caption</figcaption>\n</figure>';
+  await setup(page, source);
   await page.route('**/images/test.svg', (route) =>
     route.fulfill({
       contentType: 'image/svg+xml',
@@ -757,11 +779,7 @@ test('local images and captions render and reopen for adjustment', async ({
     }),
   );
   await openNote(page);
-  await setView(page, 'Markdown');
-  const source =
-    '# Images\n\n<img src="/images/test.svg" alt="Local image" style="width:50%;display:block;margin:auto">\n\n<figure style="margin:1.2em 0;text-align:left">\n  <img src="/images/test.svg" alt="Captioned image" style="width:75%">\n  <figcaption style="opacity:0.7">Original caption</figcaption>\n</figure>';
-  await page.getByRole('combobox', { name: 'Note source' }).fill(source);
-  await setView(page, 'Visual');
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await expect(editor.locator('img')).toHaveCount(2);
   await expect(editor.locator('figcaption:visible')).toHaveText(
@@ -776,11 +794,9 @@ test('local images and captions render and reopen for adjustment', async ({
         (node: HTMLImageElement) => node.complete && node.naturalWidth > 0,
       ),
   ).toBe(true);
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    source,
-  );
-  await setView(page, 'Visual');
+
+  await expect.poll(() => savedMarkdown(page)).toMatch(source);
+
   const target = editor.getByRole('img', { name: 'Captioned image' });
   if (info.project.name === 'mobile') {
     await target.tap();
@@ -836,13 +852,11 @@ test('local images and captions render and reopen for adjustment', async ({
   await expect(
     editor.getByRole('img', { name: 'Captioned image' }),
   ).toHaveClass(/note-image--width-50/);
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /note-figure--align-center/,
-  );
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /Updated caption/,
-  );
+
+  await expect
+    .poll(() => savedMarkdown(page))
+    .toMatch(/note-figure--align-center/);
+  await expect.poll(() => savedMarkdown(page)).toMatch(/Updated caption/);
 });
 
 test('images keep text below and clicking underneath continues writing', async ({
@@ -856,13 +870,12 @@ test('images keep text below and clicking underneath continues writing', async (
     }),
   );
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      '<img src="/images/block.svg" alt="First" class="note-image note-image--width-50 note-image--align-left">\n\n![Last](/images/block.svg)',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    '<img src="/images/block.svg" alt="First" class="note-image note-image--width-50 note-image--align-left">\n\n![Last](/images/block.svg)',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   const selectedImage = editor.getByRole('img', { name: 'First', exact: true });
   await selectedImage.click();
@@ -910,18 +923,17 @@ test('images keep text below and clicking underneath continues writing', async (
   });
 });
 
-test('columns keep mixed content through preview and mode changes', async ({
+test('columns keep mixed content in the document and storage', async ({
   page,
 }, info) => {
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      'Intro.\n\n:::columns equal\nLeft text\n:::column\nRight text\n:::\n\nAfter.',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    'Intro.\n\n:::columns equal\nLeft text\n:::column\nRight text\n:::\n\nAfter.',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await expect(editor.locator('.note-column')).toHaveCount(2);
   await expect(
@@ -937,13 +949,15 @@ test('columns keep mixed content through preview and mode changes', async ({
   await expect(editor.locator('.note-columns')).toHaveClass(
     /note-columns--left/,
   );
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /:::columns left[\s\S]*Right text edited/,
+
+  await expect
+    .poll(() => savedMarkdown(page))
+    .toMatch(/:::columns left[\s\S]*Right text edited/);
+
+  await expect(page.locator('.studio-rich-content .note-column')).toHaveCount(
+    2,
   );
-  await setView(page, 'Preview');
-  await expect(page.locator('.studio-preview .note-column')).toHaveCount(2);
-  await setView(page, 'Visual');
+
   await editor.getByText('Right text edited', { exact: true }).click();
   await page.screenshot({
     path: `test-results/columns-${info.project.name}.png`,
@@ -970,13 +984,12 @@ test('dragging an image moves one block and preserves its size', async ({
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="300" height="150" fill="blue"/></svg>',
     }),
   );
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      '# Start\n\nBefore.\n\n<img src="/images/drag.svg" alt="Move me" class="note-image note-image--width-50">\n\nEnd.',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    '# Start\n\nBefore.\n\n<img src="/images/drag.svg" alt="Move me" class="note-image note-image--width-50">\n\nEnd.',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   const imageBox = (await editor
     .getByRole('img', { name: 'Move me' })
@@ -1021,13 +1034,12 @@ test('block handles move content between columns without copying', async ({
   test.skip(info.project.name !== 'desktop', 'Pointer drag uses a mouse');
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      ':::columns equal\nLeft text\n\nStay here\n:::column\nRight text\n:::',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    ':::columns equal\nLeft text\n\nStay here\n:::column\nRight text\n:::',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await editor.getByText('Left text', { exact: true }).hover();
   await page
@@ -1046,7 +1058,7 @@ test('block handles move content between columns without copying', async ({
   );
 });
 
-test('small images stack in the shared public preview', async ({ page }) => {
+test('small images stack in the unified editor', async ({ page }) => {
   await setup(page);
   await openNote(page);
   await page.route('**/images/stack.svg', (route) =>
@@ -1055,14 +1067,13 @@ test('small images stack in the shared public preview', async ({ page }) => {
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"/>',
     }),
   );
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      '<img src="/images/stack.svg" alt="First" class="note-image note-image--width-50">\n\n<img src="/images/stack.svg" alt="Second" class="note-image note-image--width-50">',
-    );
-  await setView(page, 'Preview');
-  const images = page.locator('.studio-preview img');
+
+  await replaceContent(
+    page,
+    '<img src="/images/stack.svg" alt="First" class="note-image note-image--width-50">\n\n<img src="/images/stack.svg" alt="Second" class="note-image note-image--width-50">',
+  );
+
+  const images = page.locator('.studio-rich-content img');
   await expect(images).toHaveCount(2);
   await expect(images.first()).toHaveCSS('display', 'block');
   const first = await images.first().boundingBox();
@@ -1075,11 +1086,9 @@ test('create columns from a block and add a third column', async ({
 }, info) => {
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill('Keep this text.');
-  await setView(page, 'Visual');
+
+  await replaceContent(page, 'Keep this text.');
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await editor.locator('p').click();
   if (info.project.name === 'desktop') await editor.locator('p').hover();
@@ -1106,10 +1115,12 @@ test('create columns from a block and add a third column', async ({
   await page.screenshot({
     path: `test-results/columns-${info.project.name}.png`,
   });
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /:::columns three[\s\S]*Keep this text.[\s\S]*Beside it.[\s\S]*One more./,
-  );
+
+  await expect
+    .poll(() => savedMarkdown(page))
+    .toMatch(
+      /:::columns three[\s\S]*Keep this text.[\s\S]*Beside it.[\s\S]*One more./,
+    );
 });
 
 test('drag beside a block snaps into columns with a spaced grip', async ({
@@ -1121,11 +1132,12 @@ test('drag beside a block snaps into columns with a spaced grip', async ({
   );
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill('Keep this text.\n\nMove this beside it.\n\nAdd this too.');
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    'Keep this text.\n\nMove this beside it.\n\nAdd this too.',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   const source = editor.getByText('Move this beside it.', { exact: true });
   await source.hover();
@@ -1167,12 +1179,12 @@ test('drag beside a block snaps into columns with a spaced grip', async ({
     'Add this too.',
   );
   await page.screenshot({ path: 'test-results/side-snap-result.png' });
-  await setView(page, 'Markdown');
-  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveValue(
-    /:::columns three/,
+
+  await expect.poll(() => savedMarkdown(page)).toMatch(/:::columns three/);
+
+  await expect(page.locator('.studio-rich-content .note-column')).toHaveCount(
+    3,
   );
-  await setView(page, 'Preview');
-  await expect(page.locator('.studio-preview .note-column')).toHaveCount(3);
 });
 
 test('native image drag snaps beside text and undo restores one image', async ({
@@ -1187,13 +1199,12 @@ test('native image drag snaps beside text and undo restores one image', async ({
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="300" height="150" fill="slateblue"/></svg>',
     }),
   );
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      'Beside the image.\n\n<img src="/images/snap.svg" alt="Snap me" class="note-image note-image--width-50">',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    'Beside the image.\n\n<img src="/images/snap.svg" alt="Snap me" class="note-image note-image--width-50">',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   const target = editor.getByText('Beside the image.', { exact: true });
   const box = (await target.boundingBox())!;
@@ -1237,11 +1248,9 @@ test('side snapping cancels with Escape and stays off when columns cannot fit', 
   );
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill('Target.\n\nSource.');
-  await setView(page, 'Visual');
+
+  await replaceContent(page, 'Target.\n\nSource.');
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   async function dragToSide() {
     await editor.getByText('Source.', { exact: true }).hover();
@@ -1290,13 +1299,12 @@ test('images keep their width across repeated snap and unsnap moves', async ({
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200" fill="slateblue"/></svg>',
     }),
   );
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill(
-      '# Images\n\n<img src="/images/layout-a.svg" alt="A" class="note-image note-image--width-25">\n\n<img src="/images/layout-b.svg" alt="B" class="note-image note-image--width-25">',
-    );
-  await setView(page, 'Visual');
+
+  await replaceContent(
+    page,
+    '# Images\n\n<img src="/images/layout-a.svg" alt="A" class="note-image note-image--width-25">\n\n<img src="/images/layout-b.svg" alt="B" class="note-image note-image--width-25">',
+  );
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   const first = editor.getByRole('img', { name: 'A', exact: true });
   const second = editor.getByRole('img', { name: 'B', exact: true });
@@ -1313,8 +1321,8 @@ test('images keep their width across repeated snap and unsnap moves', async ({
       await page.screenshot({
         path: 'test-results/stable-image-columns-desktop.png',
       });
-      await setView(page, 'Preview');
-      const note = page.locator('.studio-preview .prose');
+
+      const note = page.locator('.studio-rich-content');
       const noteWidth = (await note.boundingBox())!.width;
       const columnWidth = (await note
         .locator('.note-column')
@@ -1323,7 +1331,6 @@ test('images keep their width across repeated snap and unsnap moves', async ({
       expect(
         (await note.locator('img').first().boundingBox())!.width,
       ).toBeCloseTo(Math.min(noteWidth * 0.25, columnWidth), 0);
-      await setView(page, 'Visual');
     }
     // The image's write-below affordance creates the otherwise invisible caret paragraph.
     await editor
@@ -1352,10 +1359,8 @@ test('images keep their width across repeated snap and unsnap moves', async ({
   await expect(editor.locator('.note-column')).toHaveCount(2);
   await page.keyboard.press('Control+Shift+z');
   await expect(editor.locator('.note-column')).toHaveCount(0);
-  await setView(page, 'Markdown');
-  const markdown = await page
-    .getByRole('combobox', { name: 'Note source' })
-    .inputValue();
+
+  const markdown = await savedMarkdown(page);
   expect(markdown.match(/layout-a.svg/g)).toHaveLength(1);
   expect(markdown.match(/layout-b.svg/g)).toHaveLength(1);
   expect(markdown).not.toContain(':::columns');
@@ -1372,11 +1377,9 @@ test('marquee selects blocks for copy, cut, undo and moving together', async ({
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
-  await page
-    .getByRole('combobox', { name: 'Note source' })
-    .fill('# Page\n\nAlpha\n\nBeta\n\nGamma');
-  await setView(page, 'Visual');
+
+  await replaceContent(page, '# Page\n\nAlpha\n\nBeta\n\nGamma');
+
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   const first = (await editor
     .getByText('Alpha', { exact: true })
@@ -1437,9 +1440,7 @@ test('existing notes accept child notes through one creation action', async ({
   await expect(
     page.getByRole('button', { name: 'New folder', exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole('button', { name: 'New child note', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Add subnote', exact: true }).click();
   const input =
     info.project.name === 'desktop'
       ? page.getByRole('textbox', { name: 'New note name' })
@@ -1599,11 +1600,8 @@ test('file icon picker separates emoji and upload choices with readable emojis',
   await expect(
     page.getByRole('button', { name: 'Change file icon' }).locator('img'),
   ).toHaveAttribute('src', /\/png\/112\/1f331\.png$/);
-  for (const view of ['Visual', 'Preview'] as const) {
-    await setView(page, view);
-    const pageRoot = page.locator(
-      view === 'Visual' ? '.studio-rich-page' : '.studio-preview__page',
-    );
+  {
+    const pageRoot = page.locator('.studio-rich-page');
     const icon = pageRoot.locator('> .note-page-icon');
     await expect(icon).toBeVisible();
     await icon.evaluate((image) => (image as HTMLImageElement).decode());
@@ -1613,7 +1611,7 @@ test('file icon picker separates emoji and upload choices with readable emojis',
     expect(iconBox.y + iconBox.height).toBeLessThan(titleBox.y);
     expect(Math.abs(iconBox.x - titleBox.x)).toBeLessThan(2);
     await pageRoot.screenshot({
-      path: testInfo.outputPath(`note-icon-${view}.png`),
+      path: testInfo.outputPath('note-icon.png'),
     });
   }
   await page.getByRole('button', { name: 'Change file icon' }).click();
@@ -1774,7 +1772,7 @@ test('icon crop cancels locally, handles invalid images and keeps the original u
   expect(uploaded).toEqual(file.buffer);
 });
 
-test('tree menus support keyboard navigation and Markdown lets Tab leave the editor', async ({
+test('tree menus support keyboard navigation and Tab leaves the writing surface', async ({
   page,
 }, info) => {
   test.skip(
@@ -1790,6 +1788,18 @@ test('tree menus support keyboard navigation and Markdown lets Tab leave the edi
     exact: true,
   });
   await expect(menu).toBeVisible();
+  await expect(menu.getByRole('button')).toHaveText([
+    'Add subnote',
+    'RenameF2',
+    'Move to…',
+    'Duplicate',
+    'Copy link',
+    'Copy path',
+    'DeleteDel',
+  ]);
+  await expect(menu.locator(':scope > span')).toHaveCount(2);
+  await page.screenshot({ path: 'test-results/note-actions-desktop.png' });
+
   await expect(menu.getByRole('button').first()).toBeFocused();
   await page.keyboard.press('End');
   await expect(menu.getByRole('button').last()).toBeFocused();
@@ -1799,8 +1809,30 @@ test('tree menus support keyboard navigation and Markdown lets Tab leave the edi
   await expect(menu).toHaveCount(0);
   await expect(row).toBeFocused();
   await openNote(page);
-  await setView(page, 'Markdown');
-  const source = page.getByRole('combobox', { name: 'Note source' });
+
+  await row.dblclick();
+  await page.locator('[data-tree-key="entry:reading-list"]').dblclick();
+  await openNote(page);
+  for (const shiftKey of [false, true]) {
+    expect(
+      await page.evaluate((shiftKey) => {
+        const event = new KeyboardEvent('keydown', {
+          key: 'Tab',
+          ctrlKey: true,
+          shiftKey,
+          bubbles: true,
+          cancelable: true,
+        });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, shiftKey),
+    ).toBe(false);
+  }
+  await expect(page.locator('.studio-bar__title')).toContainText(
+    'A quieter kind of workspace',
+  );
+
+  const source = page.getByRole('textbox', { name: 'Note editor' });
   await source.focus();
   await source.press('Shift+Tab');
   await expect(source).not.toBeFocused();
@@ -1840,14 +1872,14 @@ test('long titles and writing stay within compact viewports', async ({
 }, info) => {
   await setup(page);
   await openNote(page);
-  await setView(page, 'Markdown');
+
   const body =
     '# ' +
     'A deliberately long note title '.repeat(8) +
     '\n\n' +
     'UnbrokenText'.repeat(80);
-  await page.getByRole('combobox', { name: 'Note source' }).fill(body);
-  await setView(page, 'Visual');
+  await replaceContent(page, body);
+
   for (const width of info.project.name === 'desktop'
     ? [1440, 1024, 780]
     : [390, 320]) {
@@ -1896,4 +1928,54 @@ test('loading and unavailable storage never masquerade as an empty garden', asyn
   await expect(page.getByRole('alert')).toContainText(
     'Content store unavailable',
   );
+});
+
+test('legacy modes restore into one editor and all heading levels save as Markdown', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'oddava.studio.session',
+      JSON.stringify({ view: 'markdown' }),
+    ),
+  );
+  const store = await setup(page);
+  await openNote(page);
+  await expect(page.getByRole('group', { name: 'Editor view' })).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Note source' })).toHaveCount(
+    0,
+  );
+  await expect(page.locator('.studio-preview')).toHaveCount(0);
+  await replaceContent(page, '');
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  for (const level of [1, 2, 3, 4, 5, 6]) {
+    await editor.click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type(`/h${level}`);
+    await page
+      .getByRole('option', { name: new RegExp(`Heading ${level}`) })
+      .click();
+    await page.keyboard.type(`Level ${level}`);
+    await expect(editor.locator(`h${level}`)).toHaveText(`Level ${level}`);
+    await page.keyboard.press('Enter');
+  }
+  await page.keyboard.press('Control+s');
+  await expect.poll(store.saved).toContain('###### Level 6');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem('oddava.studio.session')!),
+      ),
+    )
+    .not.toHaveProperty('view');
+  const markdown = await savedMarkdown(page);
+  await page.reload();
+  await openNote(page);
+  for (const level of [1, 2, 3, 4, 5, 6]) {
+    await expect(editor.locator(`h${level}`)).toHaveText(`Level ${level}`);
+  }
+  expect(store.saved()).toBe(markdown);
+  await page.screenshot({
+    path: `test-results/unified-editor-${test.info().project.name}.png`,
+  });
 });

@@ -1,20 +1,13 @@
 import StudioIconPicker from './StudioIconPicker';
 import { FileIcon } from './studioFileIcons';
 import type { ImageEditRequest } from './StudioImageDialog';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
-import type { TargetedClipboardEvent, TargetedKeyboardEvent } from 'preact';
 import StudioSaveIndicator from './StudioSaveIndicator';
-import StudioVisualEditor from './StudioVisualEditor';
-import StudioPreviewPane from './StudioPreviewPane';
-import WikiLinkAutocomplete, {
-  WIKI_MENU_ID,
-  wikiOptionId,
-} from './WikiLinkAutocomplete';
+import StudioRichEditor from './StudioRichEditor';
 import type { EditorCommands } from './studioEditorCommands';
-import type { useWikiLinkAutocomplete } from './useWikiLinkAutocomplete';
-import { markdownFromClipboard, planPaste } from './studioPaste';
-import { VIEW_MODES, type SaveState, type ViewMode } from './studioSession';
+import type { WikiSuggestion } from './WikiLinkAutocomplete';
+import type { SaveState } from './studioSession';
 
 interface Props {
   title: string;
@@ -22,89 +15,26 @@ interface Props {
   onIconChange: (icon: string | undefined) => void;
   publishedUrl: string;
   body: string;
-  wikiLinkHrefs: ReadonlyMap<string, string>;
   renderMarkdown: (raw: string) => string;
   wordCount: number;
   readingMinutes: number;
-  view: ViewMode;
-  /** The collection stores a body — the view switch is pointless without one. */
-  hasBody: boolean;
-  /** Phone layout: the mode switch and the counters move to a bottom dock. */
   compact: boolean;
   keyboardOpen: boolean;
   sidebarVisible: boolean;
   saveState: SaveState;
   savedAt: number | null;
   uploading: boolean;
-  editorRef: MutableRef<HTMLTextAreaElement | null>;
-  richCommandsRef: MutableRef<EditorCommands | null>;
+  commandsRef: MutableRef<EditorCommands | null>;
   focusRef: MutableRef<(() => void) | null>;
-  commands: EditorCommands;
-  wikiMenu: ReturnType<typeof useWikiLinkAutocomplete>;
+  suggestions: WikiSuggestion[];
   /** The dock's way back to Files. Phone layout only. */
   onOpenFiles: () => void;
-  onSetView: (view: ViewMode) => void;
   onSave: () => void;
   onBodyChange: (value: string) => void;
-  onShortcut: (event: TargetedKeyboardEvent<HTMLTextAreaElement>) => boolean;
-  onImageFile: (file: File) => void;
   /** Uploads and returns a URL, so a drop can place the image where it landed. */
   uploadImage: (file: File) => Promise<string | null>;
   onRequestImage: (request?: ImageEditRequest) => void;
   onNotice: (message: string) => void;
-}
-
-function imageFromTransfer(
-  items: DataTransferItemList | undefined,
-): File | null {
-  if (!items) return null;
-  // DataTransferItemList isn't reliably iterable — index it directly.
-  for (let i = 0; i < items.length; i += 1) {
-    const item = items[i];
-    if (item && item.kind === 'file' && item.type.startsWith('image/')) {
-      return item.getAsFile();
-    }
-  }
-  return null;
-}
-
-/**
- * Paste into the raw source. The same conversions Visual mode makes — rich
- * text arrives as Markdown, and a URL dropped on selected words becomes a link
- * around them — because switching view should not change what ⌘V means.
- */
-function onSourcePaste(
-  event: TargetedClipboardEvent<HTMLTextAreaElement>,
-  plainRef: MutableRef<boolean>,
-  commands: EditorCommands,
-  onImageFile: (file: File) => void,
-): void {
-  const file = imageFromTransfer(event.clipboardData?.items);
-  if (file) {
-    event.preventDefault();
-    onImageFile(file);
-    return;
-  }
-  const el = event.currentTarget;
-  const plain = plainRef.current;
-  plainRef.current = false;
-  const start = el.selectionStart ?? 0;
-  const end = el.selectionEnd ?? start;
-  const plan = planPaste(
-    markdownFromClipboard(event.clipboardData, plain),
-    el.value.slice(start, end),
-  );
-  if (!plan) return;
-  // Nothing to improve on — let the browser paste it, which keeps the native
-  // undo entry exactly as it would have been.
-  if (plan.text === (event.clipboardData?.getData('text/plain') ?? '')) return;
-  event.preventDefault();
-  commands.replaceRange(
-    start,
-    end,
-    plan.text,
-    start + (plan.caret ?? plan.text.length),
-  );
 }
 
 /** The note: its title bar, the surface it is edited on, and the status line. */
@@ -114,76 +44,26 @@ export default function StudioEditorPane({
   onIconChange,
   publishedUrl,
   body,
-  wikiLinkHrefs,
   renderMarkdown,
   wordCount,
   readingMinutes,
-  view,
-  hasBody,
   compact,
   keyboardOpen,
   sidebarVisible,
   saveState,
   savedAt,
   uploading,
-  editorRef,
-  richCommandsRef,
+  commandsRef,
   focusRef,
-  commands,
-  wikiMenu,
+  suggestions,
   onOpenFiles,
-  onSetView,
   onSave,
   onBodyChange,
-  onShortcut,
-  onImageFile,
   uploadImage,
   onRequestImage,
   onNotice,
 }: Props) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
-  const sourceRef = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (compact && sidebarVisible) wikiMenu.close();
-  }, [compact, sidebarVisible]);
-
-  // ⌘⇧V asks for the clipboard exactly as it is; the paste event carries no
-  // modifier state, so the keystroke that caused it is remembered.
-  const plainPasteRef = useRef(false);
-
-  // Markdown mode owns the shared textarea ref while it is the live surface.
-  useEffect(() => {
-    if (view !== 'markdown') return;
-    editorRef.current = sourceRef.current;
-    focusRef.current = () => sourceRef.current?.focus();
-    return () => {
-      if (editorRef.current === sourceRef.current) editorRef.current = null;
-    };
-  }, [editorRef, focusRef, view]);
-
-  useEffect(() => {
-    if (view === 'preview') focusRef.current = null;
-  }, [focusRef, view]);
-
-  // One switch, two homes: the title bar on a desktop, the thumb-height dock
-  // at the bottom of the screen on a phone.
-  const viewSwitch = hasBody ? (
-    <div className="studio-view-switch" role="group" aria-label="Editor view">
-      {VIEW_MODES.map((item) => (
-        <button
-          type="button"
-          key={item.id}
-          className={view === item.id ? 'is-active' : ''}
-          aria-pressed={view === item.id}
-          title={`${item.hint} (⌘E cycles)`}
-          onClick={() => onSetView(item.id)}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  ) : null;
-
   return (
     <>
       <header className="studio-bar">
@@ -200,7 +80,6 @@ export default function StudioEditorPane({
           </button>
           <strong title={title}>{title}</strong>
         </div>
-        {!compact && viewSwitch}
         {compact && keyboardOpen && (
           <button
             type="button"
@@ -208,7 +87,6 @@ export default function StudioEditorPane({
             onClick={() => {
               if (document.activeElement instanceof HTMLElement)
                 document.activeElement.blur();
-              sourceRef.current?.blur();
               document
                 .querySelector<HTMLElement>('.studio-rich-content')
                 ?.blur();
@@ -250,105 +128,23 @@ export default function StudioEditorPane({
           onClose={() => setIconPickerOpen(false)}
         />
       )}
-      <div className={`studio-surface is-${view}`}>
-        <div hidden={view !== 'visual'} className="studio-visual-host">
-          <StudioVisualEditor
-            icon={icon}
-            body={body}
-            renderMarkdown={renderMarkdown}
-            editorRef={editorRef}
-            richCommandsRef={richCommandsRef}
-            visible={view === 'visual' && !(compact && sidebarVisible)}
-            focusRef={focusRef}
-            commands={commands}
-            wikiMenu={wikiMenu}
-            uploading={uploading}
-            compact={compact}
-            onChange={onBodyChange}
-            onShortcut={onShortcut}
-            onImageFile={onImageFile}
-            uploadImage={uploadImage}
-            onRequestImage={onRequestImage}
-            onNotice={onNotice}
-          />
-        </div>
-
-        {view === 'markdown' && (
-          <div className="studio-source">
-            <textarea
-              ref={sourceRef}
-              className="studio-textarea"
-              aria-label="Note source"
-              placeholder="Write what you want to remember…"
-              spellcheck
-              // The `[[` popover is a combobox over this field: without the
-              // wiring, a screen reader is told nothing when the list opens.
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={wikiMenu.open}
-              aria-controls={wikiMenu.open ? WIKI_MENU_ID : undefined}
-              aria-activedescendant={
-                wikiMenu.open ? wikiOptionId(wikiMenu.activeIndex) : undefined
-              }
-              value={body}
-              onKeyDown={(event) => {
-                plainPasteRef.current =
-                  (event.metaKey || event.ctrlKey) &&
-                  event.shiftKey &&
-                  event.key.toLowerCase() === 'v';
-                if (wikiMenu.onKeyDown(event)) return;
-                if (onShortcut(event)) return;
-              }}
-              onInput={(event) => {
-                onBodyChange(event.currentTarget.value);
-                wikiMenu.refresh();
-              }}
-              onKeyUp={(event) => {
-                // Caret moves that don't change text still change context.
-                if (
-                  event.key.startsWith('Arrow') ||
-                  event.key === 'Home' ||
-                  event.key === 'End'
-                ) {
-                  wikiMenu.refresh();
-                }
-              }}
-              onClick={() => wikiMenu.refresh()}
-              onBlur={() => wikiMenu.close()}
-              onPaste={(event) =>
-                onSourcePaste(event, plainPasteRef, commands, onImageFile)
-              }
-              onDragOver={(event) => {
-                if (event.dataTransfer?.types.includes('Files'))
-                  event.preventDefault();
-              }}
-              onDrop={(event) => {
-                const dropped = event.dataTransfer?.files?.[0];
-                if (dropped?.type.startsWith('image/')) {
-                  event.preventDefault();
-                  onImageFile(dropped);
-                }
-              }}
-            />
-            <WikiLinkAutocomplete
-              open={wikiMenu.open}
-              items={wikiMenu.items}
-              activeIndex={wikiMenu.activeIndex}
-              position={wikiMenu.position}
-              onHover={wikiMenu.setActiveIndex}
-              onChoose={wikiMenu.accept}
-            />
-          </div>
-        )}
-
-        {view === 'preview' && (
-          <StudioPreviewPane
-            icon={icon}
-            body={body}
-            title={title}
-            wikiLinkHrefs={wikiLinkHrefs}
-          />
-        )}
+      <div className="studio-surface">
+        <StudioRichEditor
+          icon={icon}
+          body={body}
+          renderMarkdown={renderMarkdown}
+          commandsRef={commandsRef}
+          visible={!(compact && sidebarVisible)}
+          focusRef={focusRef}
+          suggestions={suggestions}
+          uploading={uploading}
+          compact={compact}
+          onChange={onBodyChange}
+          onSave={onSave}
+          uploadImage={uploadImage}
+          onRequestImage={onRequestImage}
+          onNotice={onNotice}
+        />
       </div>
 
       {!compact && (
@@ -363,7 +159,7 @@ export default function StudioEditorPane({
           <span>{readingMinutes} min read</span>
           {uploading && <span className="studio-status__busy">Uploading…</span>}
           <span className="studio-status__spacer" />
-          {wordCount === 0 && view === 'visual' && (
+          {wordCount === 0 && (
             <span className="studio-status__hint">
               Press <kbd>/</kbd> for blocks
             </span>
@@ -382,7 +178,6 @@ export default function StudioEditorPane({
             <FileIcon />
             Files
           </button>
-          {viewSwitch}
           <span className="studio-dock__meta">
             {uploading ? 'Uploading…' : `${wordCount} words`}
           </span>

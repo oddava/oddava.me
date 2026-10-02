@@ -9,9 +9,11 @@ import type { RefObject } from 'preact';
  */
 const TURN_INTO: { label: string; hint: string; target: TurnTarget }[] = [
   { label: 'Text', hint: 'Aa', target: { type: 'paragraph' } },
-  { label: 'Heading 1', hint: '#', target: { type: 'heading', depth: 1 } },
-  { label: 'Heading 2', hint: '##', target: { type: 'heading', depth: 2 } },
-  { label: 'Heading 3', hint: '###', target: { type: 'heading', depth: 3 } },
+  ...[1, 2, 3, 4, 5, 6].map((depth) => ({
+    label: `Heading ${depth}`,
+    hint: '#'.repeat(depth),
+    target: { type: 'heading' as const, depth },
+  })),
   { label: 'Bulleted list', hint: '-', target: { type: 'list' } },
   { label: 'To-do list', hint: '[ ]', target: { type: 'task' } },
   { label: 'Quote', hint: '>', target: { type: 'quote' } },

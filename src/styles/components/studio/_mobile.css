@@ -72,10 +72,6 @@
     flex-basis: 34px;
   }
 
-  .content-workspace .studio-view-switch button {
-    padding: 8px 12px;
-  }
-
   .studio-palette__row,
   .studio-wikimenu__row {
     padding: 12px;
@@ -128,7 +124,7 @@
   pointer-events: auto;
 }
 
-/* Mode switch and word count pinned to the bottom edge: reachable by thumb,
+/* Files and word count pinned to the bottom edge: reachable by thumb,
    and pushed up by the keyboard rather than covered by it. */
 .studio-dock {
   display: flex;
@@ -141,18 +137,8 @@
   background: var(--admin-surface);
 }
 
-.studio-dock .studio-view-switch {
-  display: flex;
-  flex: 1 1 auto;
-}
-
-.content-workspace .studio-dock .studio-view-switch button {
-  flex: 1 1 0;
-  padding: 9px 4px;
-  font-size: 0.78rem;
-}
-
 .studio-dock__meta {
+  margin-left: auto;
   flex: 0 0 auto;
   color: var(--admin-text-muted);
   font: 0.62rem var(--font-mono);
@@ -348,30 +334,9 @@
     height: 8px;
   }
 
-  /* --- Writing --- */
-
-  /* 16px is the threshold under which iOS zooms the page on focus — which
-     leaves the caret somewhere other than where the writer left it. */
-  .studio-textarea {
-    padding: 16px max(16px, env(safe-area-inset-right)) 20px
-      max(16px, env(safe-area-inset-left));
-    font-size: 16px;
-    line-height: 1.7;
-  }
-
   /* The word count lives in the dock now. */
   .studio-status {
     display: none;
-  }
-
-  .studio-preview__layout {
-    padding: 0;
-  }
-
-  .studio-preview__page {
-    width: 100%;
-    padding: 20px max(16px, env(safe-area-inset-right)) 48px
-      max(16px, env(safe-area-inset-left));
   }
 
   .studio-blank {
@@ -482,12 +447,8 @@
     min-width: 104px;
   }
 
-  .content-workspace .studio-dock .studio-view-switch button {
-    padding: 9px 2px;
-    font-size: 0.72rem;
-  }
-
   .studio-dock__meta {
+    margin-left: auto;
     font-size: 0.58rem;
   }
 

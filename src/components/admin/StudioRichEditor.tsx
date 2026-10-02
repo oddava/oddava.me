@@ -14,7 +14,6 @@ import {
 import { Columns, Column, makeColumns, activeColumns } from './studioColumns';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
-import type { TargetedKeyboardEvent } from 'preact';
 import { Editor } from '@tiptap/core';
 import { Slice, Fragment } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
@@ -53,12 +52,9 @@ import {
 import { RichDocument, SourceBlock, WikiLink } from './studioRichDocument';
 import { fuzzyScore } from './studioSearch';
 import type { EditorCommands } from './studioEditorCommands';
-import type {
-  useWikiLinkAutocomplete,
-  WikiSuggestion,
-} from './useWikiLinkAutocomplete';
+import type { WikiSuggestion } from './WikiLinkAutocomplete';
 import { emissionsFrom, isOurs, remember } from './studioEmissions';
-import { markdownFromClipboard } from './studioPaste';
+import { looksLikeMarkdown, markdownFromClipboard } from './studioPaste';
 import './StudioRichEditor.css';
 import NotePageIcon from '../NotePageIcon';
 
@@ -66,17 +62,14 @@ interface Props {
   icon?: string;
   body: string;
   renderMarkdown: (raw: string) => string;
-  editorRef: MutableRef<HTMLTextAreaElement | null>;
-  richCommandsRef: MutableRef<EditorCommands | null>;
+  commandsRef: MutableRef<EditorCommands | null>;
   focusRef: MutableRef<(() => void) | null>;
-  commands: EditorCommands;
-  wikiMenu: ReturnType<typeof useWikiLinkAutocomplete>;
+  suggestions: WikiSuggestion[];
   uploading: boolean;
   compact: boolean;
   visible: boolean;
   onChange: (next: string) => void;
-  onShortcut: (event: TargetedKeyboardEvent<HTMLTextAreaElement>) => boolean;
-  onImageFile: (file: File) => void;
+  onSave: () => void;
   uploadImage: (file: File) => Promise<string | null>;
   onRequestImage: (request?: ImageEditRequest) => void;
   onNotice: (message: string) => void;
@@ -122,7 +115,7 @@ function topBlock(editor: Editor, position = editor.state.selection.from) {
 }
 
 /** One continuous editing surface: the DOM and its selection belong to ProseMirror. */
-export default function StudioVisualEditor(props: Props) {
+export default function StudioRichEditor(props: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -282,7 +275,7 @@ export default function StudioVisualEditor(props: Props) {
       empty && !editor.isActive('codeBlock') && /\[\[([^\]\n|]*)$/.exec(before);
     if (wikiMatch && dismissed.current !== from - wikiMatch[0].length) {
       const query = wikiMatch[1]!;
-      const items = live.current.wikiMenu.suggestions
+      const items = live.current.suggestions
         .map((item) => ({
           item,
           score: fuzzyScore(query, `${item.title} ${item.folder} ${item.id}`),
@@ -440,6 +433,9 @@ export default function StudioVisualEditor(props: Props) {
       h1: () => commands.heading(1),
       h2: () => commands.heading(2),
       h3: () => commands.heading(3),
+      h4: () => commands.heading(4),
+      h5: () => commands.heading(5),
+      h6: () => commands.heading(6),
       bullet: commands.bulletList,
       ordered: commands.orderedList,
       task: commands.taskList,
@@ -553,7 +549,40 @@ export default function StudioVisualEditor(props: Props) {
         Column,
         TableKit,
         Markdown,
-        SourceBlock,
+        SourceBlock.extend({
+          addNodeView() {
+            return ({ node }) => {
+              const dom = document.createElement('div');
+              dom.className = 'studio-custom-block';
+              const content = document.createElement('div');
+              content.contentEditable = 'false';
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.dataset.editSource = '';
+              button.contentEditable = 'false';
+              button.textContent = 'Edit custom block';
+              dom.append(content, button);
+              const render = (raw: string) => {
+                content.innerHTML = live.current.renderMarkdown(raw);
+                if (
+                  !content.textContent?.trim() &&
+                  !content.querySelector('img, iframe, video, audio, hr')
+                )
+                  content.textContent = 'Custom block';
+              };
+              render(node.attrs.raw);
+              return {
+                dom,
+                update(next) {
+                  if (next.type !== node.type) return false;
+                  node = next;
+                  render(next.attrs.raw);
+                  return true;
+                },
+              };
+            };
+          },
+        }),
         WikiLink,
         Placeholder.configure({
           placeholder: ({ node }) =>
@@ -655,6 +684,18 @@ export default function StudioVisualEditor(props: Props) {
             return true;
           }
           const mod = event.metaKey || event.ctrlKey;
+          if (mod && ['Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const { doc, selection } = editor.state;
+            const boundary =
+              event.key === 'Home'
+                ? Selection.atStart(doc).from
+                : Selection.atEnd(doc).to;
+            return editor.commands.setTextSelection({
+              from: event.shiftKey ? selection.anchor : boundary,
+              to: boundary,
+            });
+          }
           if (
             mod &&
             !event.altKey &&
@@ -674,6 +715,15 @@ export default function StudioVisualEditor(props: Props) {
               if (block) editor.commands.setNodeSelection(block.from);
             }
             return true;
+          }
+          if (
+            !mod &&
+            ['Backspace', 'Delete'].includes(event.key) &&
+            editor.state.selection instanceof TextSelection &&
+            !editor.state.selection.empty
+          ) {
+            event.preventDefault();
+            return editor.commands.deleteSelection();
           }
           if (
             !mod &&
@@ -714,9 +764,9 @@ export default function StudioVisualEditor(props: Props) {
             return true;
           }
           if (mod && event.key.toLowerCase() === 's') {
-            live.current.onShortcut(
-              event as unknown as TargetedKeyboardEvent<HTMLTextAreaElement>,
-            );
+            event.preventDefault();
+            event.stopPropagation();
+            live.current.onSave();
             return true;
           }
           if (mod && event.shiftKey && event.key.toLowerCase() === 'c') {
@@ -753,12 +803,13 @@ export default function StudioVisualEditor(props: Props) {
             return true;
           }
           // The schema's HTML parser handles normal rich clipboard contents.
-          // Markdown-only clipboard payloads use the same import as mode switching.
+          // Plain Markdown is imported directly into the writing surface.
           if (!event.clipboardData?.getData('text/html')) {
             const markdown = markdownFromClipboard(event.clipboardData);
             if (
               markdown.includes('\n') ||
-              /^(# |\*\*|\[\[|```|- )/.test(markdown)
+              looksLikeMarkdown(markdown) ||
+              /^(\[\[|<|`|[_*~])/.test(markdown)
             ) {
               insertMarkdown(markdown);
               return true;
@@ -842,6 +893,30 @@ export default function StudioVisualEditor(props: Props) {
           return true;
         },
         handleClickOn: (_view, _pos, node, nodePos, event) => {
+          if (event.metaKey || event.ctrlKey) {
+            const suggestion =
+              node.type.name === 'wikiLink'
+                ? live.current.suggestions.find(
+                    (item) =>
+                      [item.folder, item.id].filter(Boolean).join('/') ===
+                        node.attrs.target || item.id === node.attrs.target,
+                  )
+                : null;
+            const href =
+              suggestion?.href ??
+              (event.target as HTMLElement).closest('a')?.getAttribute('href');
+            if (href) {
+              const url = URL.parse(href, window.location.href);
+              if (
+                url &&
+                ['http:', 'https:', 'mailto:'].includes(url.protocol)
+              ) {
+                event.preventDefault();
+                window.open(url.href, '_blank', 'noopener,noreferrer');
+                return true;
+              }
+            }
+          }
           if (node.type.name === 'image') {
             if (
               (event.target as HTMLElement).closest('[data-write-below-image]')
@@ -969,19 +1044,15 @@ export default function StudioVisualEditor(props: Props) {
         if (snippet === '[[') editor.chain().focus().insertContent('[[').run();
         else insertMarkdown(snippet);
       },
-      replaceRange: (from, to, text) => {
-        editor.chain().focus().insertContentAt({ from, to }, text).run();
-      },
     };
     commandsRef.current = commands;
     if (live.current.visible) {
-      live.current.richCommandsRef.current = commands;
+      live.current.commandsRef.current = commands;
       live.current.focusRef.current = () => editor.commands.focus();
-      live.current.editorRef.current = null;
     }
     return () => {
-      if (live.current.richCommandsRef.current === commands)
-        live.current.richCommandsRef.current = null;
+      if (live.current.commandsRef.current === commands)
+        live.current.commandsRef.current = null;
       editor.destroy();
       editorRef.current = null;
     };
@@ -1019,7 +1090,7 @@ export default function StudioVisualEditor(props: Props) {
     if (
       !editor ||
       props.body === emitted.current ||
-      (props.visible && isOurs(emissions.current, props.body))
+      isOurs(emissions.current, props.body)
     )
       return;
     source.current = new RichDocument();
@@ -1049,11 +1120,10 @@ export default function StudioVisualEditor(props: Props) {
     const editor = editorRef.current;
     if (!editor) return;
     if (props.visible) {
-      props.richCommandsRef.current = commandsRef.current;
+      props.commandsRef.current = commandsRef.current;
       props.focusRef.current = () => editor.commands.focus();
-      props.editorRef.current = null;
     } else {
-      props.richCommandsRef.current = null;
+      props.commandsRef.current = null;
       setSlash(null);
       setWiki(null);
       setSelectionPoint(null);
@@ -1176,7 +1246,7 @@ export default function StudioVisualEditor(props: Props) {
     editor.commands.setTextSelection(from + 1);
     const commands = commandsRef.current!;
     if (target.type === 'heading')
-      commands.heading((target.depth ?? 1) as 1 | 2 | 3);
+      commands.heading((target.depth ?? 1) as 1 | 2 | 3 | 4 | 5 | 6);
     else if (target.type === 'list') commands.bulletList();
     else if (target.type === 'task') commands.taskList();
     else if (target.type === 'quote') commands.quote();
@@ -1636,14 +1706,17 @@ export default function StudioVisualEditor(props: Props) {
           editor && activeColumns(editor)?.node.childCount === 2
             ? () => {
                 const row = activeColumns(editor)!;
-                editor.view.dispatch(
-                  editor.state.tr
-                    .insert(
-                      row.from + row.node.nodeSize - 1,
-                      editor.schema.nodes.column!.createAndFill()!,
-                    )
-                    .setNodeMarkup(row.from, undefined, { layout: 'three' }),
+                const position = row.from + row.node.nodeSize - 1;
+                const tr = editor.state.tr
+                  .insert(
+                    position,
+                    editor.schema.nodes.column!.createAndFill()!,
+                  )
+                  .setNodeMarkup(row.from, undefined, { layout: 'three' });
+                tr.setSelection(
+                  TextSelection.near(tr.doc.resolve(position + 2)),
                 );
+                editor.view.dispatch(tr.scrollIntoView());
                 editor.view.focus();
               }
             : undefined

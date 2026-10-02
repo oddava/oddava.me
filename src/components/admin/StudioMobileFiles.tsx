@@ -474,14 +474,13 @@ export default function StudioMobileFiles({
             act(() => (isFolder ? goTo(node.folder.id) : openNode(node)))
           }
         >
-          {isFolder ? 'Browse child notes' : 'Open'}
+          {isFolder ? 'Browse subnotes' : 'Open'}
         </button>
         {isFolder && (
           <button type="button" onClick={() => act(() => openNode(node))}>
             Open note
           </button>
         )}
-        <span />
         <button
           type="button"
           onClick={() => {
@@ -493,7 +492,7 @@ export default function StudioMobileFiles({
             });
           }}
         >
-          New child note
+          Add subnote
         </button>
         <button type="button" onClick={() => openNameSheet('rename', node)}>
           Rename
@@ -544,14 +543,6 @@ export default function StudioMobileFiles({
         >
           Select
         </button>
-        <button
-          type="button"
-          onClick={() =>
-            act(() => void copyToClipboard(nodePath(node), 'Path'))
-          }
-        >
-          Copy path
-        </button>
         {page && (
           <button
             type="button"
@@ -568,6 +559,14 @@ export default function StudioMobileFiles({
             Copy link
           </button>
         )}
+        <button
+          type="button"
+          onClick={() =>
+            act(() => void copyToClipboard(nodePath(node), 'Path'))
+          }
+        >
+          Copy path
+        </button>
         <span />
         <button
           type="button"

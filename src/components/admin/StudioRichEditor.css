@@ -132,15 +132,6 @@
   color: var(--admin-text-primary);
   cursor: pointer;
 }
-.studio-visual-host {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-}
-.studio-visual-host[hidden] {
-  display: none;
-}
 .studio-rich-scroll {
   background: var(--color-surface);
   position: relative;
@@ -282,32 +273,6 @@
   pointer-events: none;
   z-index: 3;
 }
-.studio-source-block {
-  border: 1px dashed var(--admin-line-strong);
-  border-radius: 10px;
-  padding: 14px;
-  background: var(--admin-surface);
-  cursor: pointer;
-}
-.studio-source-block__label {
-  color: var(--admin-accent);
-  font: 11px var(--font-mono);
-}
-.studio-source-block pre {
-  max-height: 160px;
-  margin: 10px 0 0;
-  padding: 0;
-  border: 0;
-  color: var(--admin-text-muted);
-  font-size: 12px;
-}
-.studio-source-block::after {
-  content: 'Double-click to edit source';
-  display: block;
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--admin-text-disabled);
-}
 .studio-rich-popover {
   position: fixed;
   z-index: 100;
@@ -341,7 +306,6 @@
   margin-top: 10px;
 }
 .studio-link-form button,
-.studio-source-dialog button,
 .studio-table-tools button {
   border: 1px solid var(--admin-line-strong);
   background: var(--admin-surface);
@@ -351,51 +315,9 @@
   cursor: pointer;
   font-size: 12px;
 }
-.studio-link-form button[type='submit'],
-.studio-source-dialog button:last-child {
+.studio-link-form button[type='submit'] {
   background: var(--admin-accent);
   color: var(--color-text-on-accent);
-}
-.studio-source-dialog {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: #0009;
-}
-.studio-source-dialog > div {
-  width: min(720px, 100%);
-  padding: 24px;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: 16px;
-  background: var(--admin-surface);
-}
-.studio-source-dialog h2 {
-  margin: 0;
-  font-size: 22px;
-}
-.studio-source-dialog p {
-  color: var(--admin-text-muted);
-  font-size: 13px;
-}
-.studio-source-dialog textarea {
-  width: 100%;
-  height: min(45vh, 380px);
-  resize: vertical;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: 8px;
-  padding: 16px;
-  background: var(--admin-bg);
-  color: var(--admin-text-primary);
-  font: 13px/1.7 var(--font-mono);
-}
-.studio-source-dialog footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
 }
 .studio-table-tools {
   position: sticky;
@@ -433,19 +355,6 @@
     scroll-behavior: auto;
   }
 }
-.studio-source-block::after {
-  display: none;
-}
-.studio-source-block button {
-  margin-top: 12px;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: 6px;
-  background: var(--admin-surface-elevated);
-  color: var(--admin-accent);
-  padding: 5px 10px;
-  font-size: 11px;
-  cursor: pointer;
-}
 .studio-rich-shell {
   display: flex;
   flex-direction: column;
@@ -460,9 +369,6 @@
   min-height: 44px;
   padding: 5px 8px;
   box-shadow: none;
-}
-.studio-source-dialog {
-  z-index: 1600;
 }
 .studio-link-form {
   z-index: 1300;
@@ -866,4 +772,30 @@
   margin-left: auto;
   background: var(--admin-accent);
   color: var(--color-surface, #101522);
+}
+
+/* Unsupported extensions retain their source, but read as part of the page. */
+.studio-custom-block {
+  position: relative;
+}
+.studio-custom-block > button {
+  display: block;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--studio-radius);
+  background: var(--admin-surface-elevated);
+  color: var(--admin-text-muted);
+  font: 12px var(--studio-font-ui);
+  cursor: pointer;
+  opacity: 0;
+}
+.studio-custom-block:is(:hover, :focus-within, .ProseMirror-selectednode)
+  > button {
+  opacity: 1;
+}
+@media (hover: none) {
+  .studio-custom-block > button {
+    opacity: 1;
+  }
 }
