@@ -15,6 +15,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
+  delete document.documentElement.dataset.homeAwakening;
   vi.useRealTimers();
 });
 
@@ -65,31 +66,39 @@ describe('homepage awakening', () => {
   function setup(type = 'navigate') {
     vi.useFakeTimers();
     vi.stubGlobal('performance', { getEntriesByType: () => [{ type }] });
+    document.documentElement.dataset.homeAwakening = '';
     document.body.innerHTML =
-      '<div data-site-loader></div><div data-folio></div>';
+      '<div data-site-loader data-initial data-intro data-awakening></div><div data-folio></div>';
     return {
       loader: document.querySelector<HTMLElement>('[data-site-loader]')!,
       folio: document.querySelector<HTMLElement>('[data-folio]')!,
     };
   }
 
-  it('skips fast loads and reveals a slow load only until geometry is ready', async () => {
-    let { loader, folio } = setup();
-    awakenHomepage();
+  it('holds even an already-ready homepage for one second', () => {
+    const { loader, folio } = setup();
     folio.dataset.ready = '';
-    await Promise.resolve();
-    vi.advanceTimersByTime(200);
-    expect(loader.hasAttribute('data-intro')).toBe(false);
-
-    ({ loader, folio } = setup());
     awakenHomepage();
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(999);
+    expect(loader.hasAttribute('data-awakening')).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(loader.hasAttribute('data-awakening')).toBe(false);
+    expect(document.documentElement.hasAttribute('data-home-awakening')).toBe(
+      false,
+    );
+    vi.advanceTimersByTime(650);
+    expect(loader.hasAttribute('data-intro')).toBe(false);
+  });
+
+  it('waits beyond the minimum when geometry is still loading', async () => {
+    const { loader, folio } = setup();
+    awakenHomepage();
+    vi.advanceTimersByTime(1500);
     expect(loader.hasAttribute('data-awakening')).toBe(true);
     folio.dataset.ready = '';
     await Promise.resolve();
     expect(loader.hasAttribute('data-awakening')).toBe(false);
     vi.advanceTimersByTime(650);
-    expect(loader.hasAttribute('data-intro')).toBe(false);
   });
 
   it('never replays on history return and clears before a bfcache snapshot', () => {
@@ -111,7 +120,9 @@ describe('homepage awakening', () => {
     vi.advanceTimersByTime(200);
     folio.dataset.ready = '';
     await Promise.resolve();
+    vi.advanceTimersByTime(800);
     expect(loader.hasAttribute('data-intro')).toBe(true);
+    expect(loader.hasAttribute('data-awakening')).toBe(false);
     window.dispatchEvent(new Event('pagehide'));
     expect(loader.hasAttribute('data-intro')).toBe(false);
     vi.runAllTimers();

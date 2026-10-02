@@ -8,8 +8,18 @@ const css =
 Astro.csp?.insertStyleHash(
   `sha256-${createHash('sha256').update(css).digest('base64')}`,
 );
+const awakening =
+  Astro.url.pathname === '/'
+    ? `if(performance.getEntriesByType('navigation')[0]?.type!=='back_forward'){document.documentElement.dataset.homeAwakening='';setTimeout(()=>delete document.documentElement.dataset.homeAwakening,8000);addEventListener('pagehide',()=>delete document.documentElement.dataset.homeAwakening,{once:true});}`
+    : '';
+if (awakening)
+  Astro.csp?.insertScriptHash(
+    `sha256-${createHash('sha256').update(awakening).digest('base64')}`,
+  );
 ---
 
 <meta name="color-scheme" content="dark" />
 <meta name="theme-color" content="#000000" />
 <style is:inline set:html={css}></style>
+
+{awakening && <script is:inline set:html={awakening} />}

@@ -1,3 +1,12 @@
+/* Establish the opening scene in HTML, before deferred modules or fonts load. */
+html:not([data-home-awakening]) .loading-indicator[data-initial] {
+  display: none;
+}
+
+html[data-home-awakening] .page {
+  visibility: hidden;
+}
+
 /* The same small constellation accompanies navigation and the first awakening. */
 .loading-indicator {
   position: fixed;
@@ -118,7 +127,7 @@ html[data-loading] .loading-indicator,
 }
 
 .loading-indicator[data-intro][data-awakening] {
-  transition-delay: 0s;
+  transition: none;
 }
 
 .loading-indicator[data-intro] svg {

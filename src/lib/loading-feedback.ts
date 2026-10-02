@@ -112,37 +112,38 @@ export function installNavigationFeedback() {
   navigation?.addEventListener('navigatesuccess', stopNavigationFeedback);
 }
 
-/** Only a genuinely pending first visit gets an entrance; history stays still. */
+/** Hold the first scene for one second and until geometry is ready. */
 export function awakenHomepage() {
   const folio = document.querySelector<HTMLElement>('[data-folio]');
   const loader = document.querySelector<HTMLElement>('[data-site-loader]');
   const entry = performance.getEntriesByType('navigation')[0] as
     PerformanceNavigationTiming | undefined;
+  if (!folio || !loader) return;
+  delete loader.dataset.initial;
   if (
-    !folio ||
-    !loader ||
-    folio.hasAttribute('data-ready') ||
-    entry?.type === 'back_forward'
-  )
+    entry?.type === 'back_forward' ||
+    !document.documentElement.hasAttribute('data-home-awakening')
+  ) {
+    delete loader.dataset.intro;
+    delete loader.dataset.awakening;
     return;
+  }
 
-  let shown = false;
   let finished = false;
-  const reveal = setTimeout(() => {
-    shown = true;
-    loader.dataset.intro = '';
-    loader.dataset.awakening = '';
-  }, 180);
+  let minimumElapsed = false;
+  loader.dataset.intro = '';
+  loader.dataset.awakening = '';
+  const minimum = setTimeout(() => {
+    minimumElapsed = true;
+    if (folio.hasAttribute('data-ready')) finish();
+  }, 1000);
   const finish = () => {
     if (finished) return;
     finished = true;
-    clearTimeout(reveal);
+    clearTimeout(minimum);
     clearTimeout(fallback);
     observer.disconnect();
-    if (!shown) {
-      window.removeEventListener('pagehide', dismiss);
-      return;
-    }
+    delete document.documentElement.dataset.homeAwakening;
     delete loader.dataset.awakening;
     const composition = loader.querySelector<SVGSVGElement>('svg');
     const outline = loader.querySelector('.loading-indicator__island');
@@ -185,7 +186,7 @@ export function awakenHomepage() {
       .forEach((animation) => animation.cancel());
   };
   const observer = new MutationObserver(() => {
-    if (folio.hasAttribute('data-ready')) finish();
+    if (minimumElapsed && folio.hasAttribute('data-ready')) finish();
   });
   observer.observe(folio, {
     attributes: true,

@@ -1,6 +1,7 @@
 ---
 import { folioPath } from '../lib/folio/geometry';
 import '../styles/components/_loading-indicator.css';
+const isHome = Astro.url.pathname === '/';
 const cat = folioPath({
   width: 1000,
   height: 800,
@@ -11,7 +12,14 @@ const cat = folioPath({
 });
 ---
 
-<div class="loading-indicator" aria-hidden="true" data-site-loader>
+<div
+  class="loading-indicator"
+  aria-hidden="true"
+  data-site-loader
+  data-initial={isHome ? '' : undefined}
+  data-intro={isHome ? '' : undefined}
+  data-awakening={isHome ? '' : undefined}
+>
   <div class="loading-indicator__composition">
     <svg viewBox="0 0 1000 800" fill="none" focusable="false">
       <defs><path id="loading-cat" d={cat} pathLength="1000"></path></defs>
