@@ -7,13 +7,12 @@ html[data-home-awakening] .page {
   visibility: hidden;
 }
 
-/* The same small constellation accompanies navigation and the first awakening. */
+/* Navigation stays on the header rule; the cat belongs to the home entrance. */
 .loading-indicator {
   position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  width: 88px;
-  height: 70px;
+  inset: 0 0 auto;
+  height: 2px;
+  overflow: hidden;
   z-index: 100;
   pointer-events: none;
   color: var(--color-accent);
@@ -26,10 +25,7 @@ html[data-home-awakening] .page {
 
 .site-nav > .loading-indicator {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 64px;
-  height: 52px;
+  inset: auto 0 -1px;
 }
 
 .loading-indicator__composition {
@@ -83,28 +79,63 @@ html[data-home-awakening] .page {
   transform-origin: 500px 400px;
 }
 
-.loading-indicator__caption {
+.loading-indicator[data-site-loader]:not([data-intro]) {
   display: none;
 }
 
-html[data-loading] .loading-indicator,
+.loading-indicator__line {
+  display: block;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-brand),
+    var(--color-brand-strong)
+  );
+  border-radius: 2px;
+}
+
+html[data-loading] .loading-indicator__line {
+  animation: loading-line 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-line {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(386%);
+  }
+}
+
+html[data-loading] .loading-indicator:not([data-site-loader]),
 .loading-indicator[data-awakening] {
   opacity: 1;
   visibility: visible;
   transition-delay: 0s;
 }
 
-:is(html[data-loading] .loading-indicator, .loading-indicator[data-awakening])
+:is(
+    html[data-loading] .loading-indicator:not([data-site-loader]),
+    .loading-indicator[data-awakening]
+  )
   .loading-indicator__orbit {
   animation: loading-orbit 9s ease-in-out infinite alternate;
 }
 
-:is(html[data-loading] .loading-indicator, .loading-indicator[data-awakening])
+:is(
+    html[data-loading] .loading-indicator:not([data-site-loader]),
+    .loading-indicator[data-awakening]
+  )
   .loading-indicator__trace {
   animation: loading-trace 4.8s ease-in-out infinite;
 }
 
-:is(html[data-loading] .loading-indicator, .loading-indicator[data-awakening])
+:is(
+    html[data-loading] .loading-indicator:not([data-site-loader]),
+    .loading-indicator[data-awakening]
+  )
   .loading-indicator__whiskers {
   animation: loading-whiskers 3.6s ease-in-out infinite alternate;
 }
@@ -147,25 +178,6 @@ html[data-loading] .loading-indicator,
   width: min(390px, 82vw);
 }
 
-.loading-indicator[data-intro] .loading-indicator__caption {
-  display: block;
-  position: absolute;
-  top: 100%;
-  width: 100%;
-  text-align: center;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-}
-
-.loading-indicator__caption span {
-  display: block;
-  margin-top: 1rem;
-  color: var(--color-accent);
-  font-size: 0.65rem;
-  letter-spacing: 0.22em;
-}
-
 @keyframes loading-orbit {
   to {
     transform: rotate(18deg);
@@ -205,5 +217,9 @@ html[data-loading] .loading-indicator,
   }
   .loading-indicator__trace {
     stroke-dasharray: none;
+  }
+  .loading-indicator__line {
+    width: 100%;
+    background: var(--color-brand);
   }
 }
