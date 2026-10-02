@@ -101,7 +101,7 @@ describe('folio composition lifecycle', () => {
     const measured = vi
       .spyOn(title, 'getBoundingClientRect')
       .mockImplementation(() => {
-        expect(nav.hasAttribute('data-ready')).toBe(true);
+        expect(nav.hasAttribute('data-measuring')).toBe(true);
         return { left: 600, right: 800, top: 400, bottom: 450 } as DOMRect;
       });
     let ready!: () => void;
@@ -115,11 +115,13 @@ describe('folio composition lifecycle', () => {
       },
     });
     destroy = mountFolio(root);
-    expect(measured).not.toHaveBeenCalled();
+    expect(measured).toHaveBeenCalledTimes(1);
+    expect(nav.hasAttribute('data-ready')).toBe(false);
     expect(root.hasAttribute('data-ready')).toBe(false);
+    Object.assign(document.fonts, { status: 'loaded' });
     ready();
     await Promise.resolve();
-    expect(measured).toHaveBeenCalledTimes(1);
+    expect(measured).toHaveBeenCalledTimes(2);
     const path = root.querySelector('[data-folio-island]')!.getAttribute('d');
     window.dispatchEvent(
       new PageTransitionEvent('pagehide', { persisted: true }),
@@ -131,6 +133,80 @@ describe('folio composition lifecycle', () => {
       path,
     );
     expect(root.hasAttribute('data-ready')).toBe(true);
+  });
+
+  it('does not reveal geometry when its first layout read starts loading fonts', async () => {
+    let ready!: () => void;
+    const fonts = {
+      status: 'loaded',
+      ready: new Promise<void>((resolve) => {
+        ready = resolve;
+      }),
+    };
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: fonts,
+    });
+    vi.mocked(
+      SVGElement.prototype.getBoundingClientRect,
+    ).mockImplementationOnce(() => {
+      fonts.status = 'loading';
+      return { width: 1440, height: 1000, left: 0, top: 0 } as DOMRect;
+    });
+    destroy = mountFolio(root);
+    expect(root.hasAttribute('data-ready')).toBe(false);
+    expect(trace.getTotalLength).not.toHaveBeenCalled();
+    window.dispatchEvent(
+      new PageTransitionEvent('pageshow', { persisted: true }),
+    );
+    expect(root.hasAttribute('data-ready')).toBe(false);
+    fonts.status = 'loaded';
+    ready();
+    await Promise.resolve();
+    expect(root.hasAttribute('data-ready')).toBe(true);
+    expect(trace.getTotalLength).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores stationary pointer events on history return but responds to real movement', () => {
+    destroy = mountFolio(root);
+    move();
+    settle();
+    window.dispatchEvent(
+      new PageTransitionEvent('pagehide', { persisted: true }),
+    );
+    window.dispatchEvent(
+      new PageTransitionEvent('pageshow', { persisted: true }),
+    );
+    raf.mockClear();
+    const restored = new MouseEvent('pointermove', {
+      bubbles: true,
+      clientX: 243,
+      clientY: 517,
+    });
+    Object.assign(restored, { movementX: 0, movementY: 0 });
+    document.dispatchEvent(restored);
+    expect(raf).not.toHaveBeenCalled();
+    expect(
+      root
+        .querySelector<SVGGElement>('[data-folio-accent]')!
+        .style.getPropertyValue('--open'),
+    ).toBe('0.000');
+    const moved = new MouseEvent('pointermove', {
+      bubbles: true,
+      clientX: 244,
+      clientY: 517,
+    });
+    Object.assign(moved, { movementX: 1, movementY: 0 });
+    document.dispatchEvent(moved);
+    expect(raf).toHaveBeenCalledTimes(1);
+    settle();
+    expect(
+      Number(
+        root
+          .querySelector<SVGGElement>('[data-folio-accent]')!
+          .style.getPropertyValue('--open'),
+      ),
+    ).toBeGreaterThan(0);
   });
 
   it('has no idle loop, coalesces pointer input, and never deforms the island', () => {

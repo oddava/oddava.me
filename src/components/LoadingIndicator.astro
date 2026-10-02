@@ -1,10 +1,53 @@
 ---
+import { folioPath } from '../lib/folio/geometry';
 import '../styles/components/_loading-indicator.css';
+const cat = folioPath({
+  width: 1000,
+  height: 800,
+  centerX: 500,
+  centerY: 400,
+  quietWidth: 320,
+  quietHeight: 170,
+});
 ---
 
-<div class="loading-indicator" aria-hidden="true"><span></span></div>
+<div class="loading-indicator" aria-hidden="true" data-site-loader>
+  <div class="loading-indicator__composition">
+    <svg viewBox="0 0 1000 800" fill="none" focusable="false">
+      <defs><path id="loading-cat" d={cat} pathLength="1000"></path></defs>
+      <g class="loading-indicator__orbit">
+        <ellipse cx="500" cy="400" rx="355" ry="255"></ellipse>
+        <path class="loading-indicator__arc" d="M170 307A355 255 0 0 1 391 157"
+        ></path>
+        <path
+          class="loading-indicator__arc loading-indicator__arc--echo"
+          d="M826 502A355 255 0 0 1 650 631"></path>
+        <path
+          class="loading-indicator__star"
+          d="M829 265Q832 287 854 290Q832 293 829 315Q826 293 804 290Q826 287 829 265Z"
+        ></path>
+        <circle cx="209" cy="546" r="5"></circle>
+      </g>
+      <use class="loading-indicator__island" href="#loading-cat"></use>
+      <use class="loading-indicator__trace" href="#loading-cat"></use>
+      <g class="loading-indicator__whiskers">
+        <path d="M229 365Q254 369 270 379M222 389L260 393M233 416L269 406"
+        ></path>
+        <path d="M730 379Q750 369 773 365M740 393L780 389M731 406L767 416"
+        ></path>
+      </g>
+    </svg>
+    <span class="loading-indicator__caption"
+      >a little universe, waking<span>oddava</span></span
+    >
+  </div>
+</div>
 
 <script>
-  import { installNavigationFeedback } from '../lib/loading-feedback';
+  import {
+    installNavigationFeedback,
+    awakenHomepage,
+  } from '../lib/loading-feedback';
   installNavigationFeedback();
+  awakenHomepage();
 </script>
