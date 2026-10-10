@@ -125,9 +125,8 @@ describe('homepage awakening', () => {
     vi.advanceTimersByTime(200);
     folio.dataset.ready = '';
     await Promise.resolve();
-    vi.advanceTimersByTime(800);
-    expect(loader.hasAttribute('data-intro')).toBe(true);
     expect(loader.hasAttribute('data-awakening')).toBe(false);
+    expect(loader.hasAttribute('data-intro')).toBe(true);
     window.dispatchEvent(new Event('pagehide'));
     expect(loader.hasAttribute('data-intro')).toBe(false);
     vi.runAllTimers();
