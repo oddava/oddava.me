@@ -5,9 +5,7 @@
 /* --- Custom Properties --- */
 :root {
   /* Typography */
-  --font-body: 'Instrument Sans', system-ui, sans-serif;
-  /* Display face for names, headings and the wordmark. */
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'M PLUS Rounded 1c', system-ui, sans-serif;
   /* Note titles and body share the site face so a note reads like the rest of
      the page rather than a separate book-style sheet. */
   --font-prose: var(--font-body);
@@ -60,29 +58,28 @@
 :root,
 [data-theme],
 [data-theme='dark'] {
-  /* Persimmon and saffron over deep pine ink. Shared by the site and Studio. */
-  --color-secondary: #f2c14e;
-  --color-brand: #ff8a5b;
-  --color-brand-strong: #ffb08f;
+  /* Clear blue accents over pure black. Shared by the site and Studio. */
+  --color-brand: #7aa7ff;
+  --color-brand-strong: #adcaff;
 
   /* Text roles keep writing bright and secondary controls readable. */
-  --color-text-primary: #f4eee3;
-  --color-text-secondary: #dad2c4;
-  --color-text-muted: #b5ad9f;
-  --color-text-disabled: #8c8578;
-  --color-text-accent: #ffa47e;
-  --color-text-interactive: #ffb08f;
-  --color-text-interactive-hover: #ffd3bf;
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #d6d6d6;
+  --color-text-muted: #b0b0b0;
+  --color-text-disabled: #858585;
+  --color-text-accent: #adcaff;
+  --color-text-interactive: #adcaff;
+  --color-text-interactive-hover: #d6e4ff;
   --color-text-success: #91e3bf;
   --color-text-warning: #f5d08c;
   --color-text-error: #ffa3ad;
-  --color-text-on-accent: #1a0d06;
+  --color-text-on-accent: #0a0f14;
   --color-on-danger: #160a0a;
 
   /* Neutral surfaces keep cards and menus distinct from the black canvas. */
-  --color-surface: #0e1c17;
-  --color-surface-raised: #13241e;
-  --color-surface-elevated: #1a2e27;
+  --color-surface: #000000;
+  --color-surface-raised: #0a0a0a;
+  --color-surface-elevated: #111111;
   --color-surface-glass: color-mix(
     in srgb,
     var(--color-surface-elevated) 84%,

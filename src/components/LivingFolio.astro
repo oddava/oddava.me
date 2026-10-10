@@ -1,5 +1,10 @@
 ---
-import { folioAccents, folioOrbit, folioPath } from '../lib/folio/geometry';
+import {
+  folioAccents,
+  folioOrbit,
+  folioPath,
+  folioStars,
+} from '../lib/folio/geometry';
 import '../styles/components/_living-folio.css';
 const stillView = {
   width: 1440,
@@ -12,6 +17,7 @@ const stillView = {
 const island = folioPath(stillView);
 const orbit = folioOrbit(stillView);
 const positions = folioAccents(stillView);
+const stars = folioStars(stillView);
 const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
 ---
 
@@ -25,10 +31,10 @@ const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
   >
     <defs>
       <linearGradient id="folio-face" x1="0" y1="0" x2="0.8" y2="1">
-        <stop stop-color="#1d362d"></stop><stop
-          offset="0.6"
-          stop-color="#14271f"></stop><stop offset="1" stop-color="#10211a"
-        ></stop>
+        <stop stop-color="color-mix(in srgb, var(--color-accent) 8%, black)"
+        ></stop><stop offset="0.55" stop-color="#050608"></stop><stop
+          offset="1"
+          stop-color="#07090d"></stop>
       </linearGradient>
       <linearGradient id="folio-rim" x1="0" y1="0" x2="0.75" y2="1">
         <stop stop-color="var(--color-accent)" stop-opacity="0.65"></stop><stop
@@ -187,6 +193,31 @@ const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
           </g></g
         >
       </g>
+    </g>
+    <g class="folio-dust" data-folio-dust>
+      {
+        stars.map(([x, y, size], i) => (
+          <g data-folio-star transform={`translate(${x} ${y})`}>
+            <g class="folio-dust__response">
+              <g
+                class:list={[
+                  'folio-dust__drift',
+                  `folio-dust__drift--${i % 3}`,
+                ]}
+              >
+                {size > 1 ? (
+                  <path
+                    class="folio-dust__spark"
+                    d={`M0 ${-size} Q0.45 -0.45 ${size} 0 Q0.45 0.45 0 ${size} Q-0.45 0.45 ${-size} 0 Q-0.45 -0.45 0 ${-size}Z`}
+                  />
+                ) : (
+                  <circle r={size} />
+                )}
+              </g>
+            </g>
+          </g>
+        ))
+      }
     </g>
     <path class="living-folio__island" data-folio-island d={island}></path>
     <path

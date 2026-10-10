@@ -1,6 +1,6 @@
-/* A paper-and-ink cat card on a pine ground, with one persimmon thread around it. */
+/* Folded ribbons, a shared thread, and the site’s blue around a quiet center. */
 .living-folio {
-  --folio-muted: color-mix(in srgb, var(--color-secondary) 55%, #4f6b5f);
+  --folio-muted: color-mix(in srgb, var(--color-accent) 64%, #586576);
   --folio-bright: color-mix(in srgb, var(--color-accent) 70%, white);
   pointer-events: none;
 }
@@ -178,6 +178,67 @@ body:has([data-folio]) .page {
 }
 
 /* Warm pinpricks, far below the contrast of the surrounding blue motifs. */
+.folio-dust {
+  fill: #bdb8ad;
+  fill-opacity: 0.24;
+  stroke: none;
+  pointer-events: none;
+}
+[data-folio-star] {
+  opacity: 0.72;
+}
+.folio-dust__response {
+  transform: translate(var(--dust-x, 0px), var(--dust-y, 0px));
+}
+.folio-dust__drift {
+  animation: folio-dust-drift 31s ease-in-out infinite alternate;
+}
+.folio-dust__drift--1 {
+  animation-duration: 43s;
+  animation-delay: -13s;
+}
+.folio-dust__drift--2 {
+  animation-duration: 53s;
+  animation-delay: -29s;
+}
+.folio-dust__spark {
+  fill-opacity: 0.5;
+  animation: folio-dust-twinkle 37s linear infinite;
+}
+.folio-dust__drift--1 .folio-dust__spark {
+  animation-duration: 47s;
+  animation-delay: -19s;
+}
+.folio-dust__drift--2 .folio-dust__spark {
+  animation-duration: 59s;
+  animation-delay: -7s;
+}
+@keyframes folio-dust-drift {
+  from {
+    transform: translate(-0.7px, 0.8px);
+  }
+  to {
+    transform: translate(1px, -1.2px);
+  }
+}
+@keyframes folio-dust-twinkle {
+  0%,
+  42%,
+  48%,
+  100% {
+    opacity: 0.5;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+[data-folio-star]:nth-child(12) .folio-dust__spark {
+  animation-duration: 43s;
+  animation-delay: -31s;
+}
+
+/* Portrait composition: three small motifs and one slow idle movement. */
 @media (width < 900px) {
   body:has([data-folio]) .home-hero--intro .home-hero__tagline {
     max-width: min(24rem, calc(100vw - 80px));
@@ -187,10 +248,17 @@ body:has([data-folio]) .page {
   .folio-accent--fold,
   .living-folio__traveler,
   .living-folio__trace,
+  [data-folio-star][visibility='hidden'] {
+    display: none;
+  }
   .folio-accent__response {
     scale: 0.5;
   }
   .folio-accent__float,
+  .folio-dust__drift,
+  .folio-dust__spark {
+    animation: none;
+  }
   .folio-accent--crescent .folio-accent__float {
     animation: folio-mobile-float 14s ease-in-out infinite alternate;
   }
@@ -217,8 +285,10 @@ body:has([data-folio]) .page {
 }
 
 /* Named objects on the orbit: the ornament itself is the destination. */
-/* Decorative motifs read as unlabeled icons, so only the labeled nav remains. */
-body:has(.folio-nav) .folio-accent {
+body:has(.folio-nav) .folio-accent--fold,
+body:has(.folio-nav) .folio-accent--crescent,
+body:has(.folio-nav) .folio-accent--stitch,
+body:has(.folio-nav) .folio-accent--fan {
   display: none;
 }
 .folio-nav {
@@ -233,28 +303,40 @@ body:has(.folio-nav) .folio-accent {
   margin: 0;
   pointer-events: none;
 }
+/* Soft pill buttons: icon + label, one size everywhere, 44px tall. */
 .folio-waypoint {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  min-height: 44px;
-  padding: 0.55rem 1.1rem;
-  border: 1px solid var(--color-rule-strong);
+  justify-content: center;
+  gap: 0.5rem;
+  height: 44px;
+  min-width: 7.25rem;
+  padding: 0 1.1rem 0 0.95rem;
+  border: 1px solid var(--color-rule);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: 1rem;
-  font-weight: 500;
+  background: color-mix(
+    in srgb,
+    var(--color-surface-elevated) 82%,
+    transparent
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 6px 20px -12px var(--color-shadow);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
   text-decoration: none;
   white-space: nowrap;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(6px);
   transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease,
-    transform 180ms ease;
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    translate 160ms ease;
 }
 .folio-nav:is([data-ready], [data-measuring]) .folio-waypoint {
   position: absolute;
@@ -262,33 +344,35 @@ body:has(.folio-nav) .folio-accent {
   top: var(--waypoint-y);
   transform: translate(-50%, -50%);
 }
-.folio-waypoint__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--color-brand);
+.folio-waypoint__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--color-text-interactive);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.folio-waypoint--about .folio-waypoint__dot {
-  background: var(--color-secondary);
-}
-.folio-waypoint--links .folio-waypoint__dot {
-  background: var(--color-text-secondary);
-}
-.folio-waypoint__hint {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  font-weight: 400;
+.folio-waypoint:hover {
+  translate: 0 -1px;
 }
 .folio-waypoint:is(:hover, :focus-visible) {
-  border-color: var(--color-brand);
-  background: var(--color-brand);
-  color: var(--color-text-on-accent);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-accent) 12%,
+    var(--color-surface-elevated)
+  );
 }
-.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__hint {
-  color: var(--color-text-on-accent);
-}
-.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__dot {
-  background: var(--color-text-on-accent);
+.folio-waypoint:active {
+  translate: 0 0;
+  background: color-mix(
+    in srgb,
+    var(--color-accent) 18%,
+    var(--color-surface-elevated)
+  );
 }
 .folio-waypoint:focus-visible {
   outline: 2px solid var(--color-focus-ring);
@@ -299,22 +383,25 @@ body:has(.folio-nav) .folio-accent {
     gap: 0.5rem;
   }
   .folio-waypoint {
-    padding: 0.5rem 0.9rem;
-    font-size: 0.95rem;
-  }
-  .folio-waypoint__hint {
-    display: none;
+    min-width: 6.5rem;
+    padding: 0 0.95rem 0 0.8rem;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .folio-waypoint {
     transition: none !important;
   }
+  .folio-waypoint:hover {
+    translate: none;
+  }
 }
 @media (forced-colors: active) {
   .folio-waypoint {
     border-color: LinkText;
     color: LinkText;
+  }
+  .folio-waypoint__icon {
+    stroke: LinkText;
   }
 }
 @media (height < 640px) {
