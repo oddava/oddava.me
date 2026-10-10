@@ -1,69 +1,95 @@
 # oddava.me
 
-It's my personal site. A homepage, some writing and a notes garden. Astro with a few
-Preact islands, running on Cloudflare Workers.
+Hey, I'm oddava. This is the code behind my personal site, [oddava.me](https://oddava.me).
+It's a small corner of the internet with a homepage, a notes garden, and an admin studio I use
+to write.
 
-## Notes are stored in Redis
+<p align="center">
+  <img src=".github/assets/intro.gif" alt="Homepage intro animation" width="860">
+</p>
 
-There's no content folder that gets compiled at build time. Notes live in a
-virtual filesystem in Redis and pages read from it per request.
+## What's here
 
-So writing is: open `/admin/studio`, type. It autosaves to the live store and the
-note is on the site a second later. No commit, no deploy.
+- **Homepage**: a cat-shaped card with a little orbit of links around it. It plays a short
+  intro the first time it loads.
+- **Notes garden**: notes with folders, tags, backlinks, search, and an interactive graph that
+  shows how everything connects.
+- **Studio**: a private editor at `/admin/studio`. I type and it autosaves to the live store,
+  so a note is up a second later. No commit and no deploy.
+- **Now playing**: a widget that shows what I'm listening to (Spotify + Lanyard).
+- **Guestbook**: signed, rate limited, and moderated.
 
-`src/content/notes` is a backup. Nothing reads it at runtime or during a build.
-`notes:export` dumps Redis into it so I can see changes in git, and
-`notes:migrate` pushes it back if I need to restore. It's the only backup I have,
-so both scripts have to keep working.
+## Screenshots
 
-A note's identity is its path in the store, which means moving a note in Studio
-changes its URL. `src/lib/garden` reads the store and works out the rest: folder
-hierarchy, backlinks, tags, search, and the graph.
+| Home | Notes |
+| --- | --- |
+| ![Home](.github/assets/home.png) | ![Notes](.github/assets/notes.png) |
+| **About** | **Graph** |
+| ![About](.github/assets/about.png) | ![Graph](.github/assets/graph.png) |
 
-Dev needs a running Redis too. There used to be a local file mode and I deleted
-it, because it meant the code serving real visitors was the code I tested least.
+<p align="center">
+  <img src=".github/assets/graph.gif" alt="Dragging the notes graph" width="640">
+  &nbsp;
+  <img src=".github/assets/mobile.png" alt="Mobile homepage" width="200">
+</p>
 
-## Integrations
+## Stack
 
-Spotify and Lanyard each get one file in
-`src/lib/server/integrations/providers`. The file says which env vars it needs
-and how to check whether it's up. The registry handles everything else: enabling,
-disabling, status, the admin UI. Adding a service is writing one definition
-instead of scattering cases through routes and components.
+- [Astro](https://astro.build) with a few [Preact](https://preactjs.com) islands
+- Runs on Cloudflare Workers
+- Redis for content (Upstash in production, a local container in dev)
+- Tiptap for the editor, d3-force for the graph
+- Vitest and Playwright for tests
 
-Credentials come from the environment and nowhere else. Cloudflare secrets in
-production, `.env` locally. There's no form in the admin panel to set one.
-Rotating a key means `wrangler secret put` and a deploy, and a push deploys
-anyway.
+## How notes work
 
-The now-playing widget on the homepage merges Spotify and Lanyard behind a short
-cache. An uncached request costs one Redis round trip, and there's a test that
-checks it stays that way.
+There's no content folder compiled at build time. Notes live in a virtual filesystem in Redis,
+and pages read from it on each request. A note's path in the store is its identity, so moving
+a note in Studio changes its URL. `src/lib/garden` builds the rest: hierarchy, backlinks, tags,
+search, and the graph.
 
-## Other bits
+`src/content/notes` is only a backup. `pnpm notes:export` dumps Redis into it so changes show
+up in git, and `pnpm notes:migrate` pushes it back if I ever need to restore.
 
-Guestbook entries are signed, rate limited, moderated, and stored in Redis.
+## Running it locally
 
-Admin is a token login. Every mutation checks the origin and uses a revision
-compare-and-set, so two open tabs can't overwrite each other. A content version
-number invalidates caches across isolates.
+You'll need Node 22.12+, pnpm 10, and Docker (for Redis).
 
-CSP is hashed per page. Syntax highlighting runs without inline styles so it
-can't loosen the policy.
+```bash
+pnpm install
+cp .env.example .env      # fill in the values you need
+docker compose up -d      # local Redis, ephemeral by design
+pnpm notes:migrate        # seed Redis from src/content/notes
+pnpm dev
+```
 
-Redis looks different in each environment: Upstash REST in production, the node
-client in tests, and a loopback bridge in dev because workerd can't load the node
-client.
+Other useful scripts:
 
-## Layout
+```bash
+pnpm build          # production build
+pnpm preview        # preview the build
+pnpm test           # unit tests
+pnpm test:browser   # Playwright tests
+pnpm verify         # format, type check, tests, and build
+pnpm deploy         # build and ship with wrangler
+```
+
+Integrations like Spotify only turn on when their env vars are set. In production the secrets
+live in Cloudflare (`wrangler secret put`). There's no form in the admin panel for them.
+
+## Project layout
 
 ```
 src/pages          routes and API endpoints
-src/lib/server     admin · content · guestbook · integrations · now-playing
+src/lib/server     admin, content, guestbook, integrations, now-playing
 src/lib/garden     hierarchy, backlinks, tags, search, graph layout
 src/components     Astro components and Preact islands
+scripts            notes export/migrate, Spotify token helper, build checks
 ```
 
-Routes import a domain's barrel, not its internals. Underneath sits `core`: env,
-HTTP, signing, rate limiting, Redis primitives. Everything imports it and it
-imports nothing back.
+Routes import a domain's barrel, not its internals. Underneath sits `core` (env, HTTP, signing,
+rate limiting, Redis primitives). Everything imports it and it imports nothing back.
+
+---
+
+Thanks for stopping by. If you want to say hi, the guestbook is open.
