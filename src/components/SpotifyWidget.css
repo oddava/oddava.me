@@ -2,6 +2,7 @@
 @import './spotify/styles/_render-state.css';
 @import './spotify/styles/_controls.css';
 @import './spotify/styles/_content.css';
+@import './spotify/styles/_folio.css';
 
 @media (prefers-reduced-motion: reduce) {
   .spotify-widget-wrapper,
