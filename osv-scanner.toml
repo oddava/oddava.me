@@ -1,0 +1,6 @@
+# http-cache-semantics comes in through astro and has no patched release yet.
+# Revisit when upstream ships a fix or by the expiry date below.
+[[IgnoredVulns]]
+id = "GHSA-ch52-4w7c-c8xp"
+ignoreUntil = 2027-01-10T00:00:00Z
+reason = "http-cache-semantics (via astro): no fixed version available upstream yet."
