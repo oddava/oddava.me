@@ -1,4 +1,4 @@
-/* The listening object is the widget's only skin on desktop, on every page. */
+/* The listening object is a desktop homepage skin; shared widget behavior stays intact. */
 .spotify-folio-orbit,
 .spotify-folio-mini,
 .spotify-folio-fallback-title {
@@ -6,13 +6,12 @@
 }
 
 @media (min-width: 1280px) and (min-height: 700px) and (hover: hover) and (pointer: fine) {
-  .spotify-widget-positioner {
-    /* Same mix as the homepage folio, defined here so non-home pages match. */
-    --listening-ink: color-mix(in srgb, var(--color-accent) 64%, #586576);
-    --listening-bright: color-mix(in srgb, var(--color-accent) 70%, white);
+  body:has([data-folio]) .spotify-widget-positioner {
+    --listening-ink: var(--folio-muted);
+    --listening-bright: var(--folio-bright);
   }
 
-  .spotify-widget-container {
+  body:has([data-folio]) .spotify-widget-container {
     position: relative;
     gap: 24px;
     padding: 16px 14px 16px 18px;
@@ -31,7 +30,7 @@
     opacity: 1;
   }
 
-  .spotify-widget-album {
+  body:has([data-folio]) .spotify-widget-album {
     flex-shrink: 0;
     width: 50px;
     height: 50px;
@@ -43,16 +42,18 @@
       filter 400ms ease;
   }
 
-  .spotify-widget-album--missing {
+  body:has([data-folio]) .spotify-widget-album--missing {
     visibility: hidden;
   }
 
-  .spotify-widget-wrapper:is(:hover, :focus-within) .spotify-widget-album {
+  body:has([data-folio])
+    .spotify-widget-wrapper:is(:hover, :focus-within)
+    .spotify-widget-album {
     opacity: 1;
     filter: saturate(1.16) brightness(1.06);
   }
 
-  .spotify-folio-orbit {
+  body:has([data-folio]) .spotify-folio-orbit {
     display: block;
     position: absolute;
     left: 0;
@@ -69,7 +70,7 @@
     pointer-events: none;
   }
 
-  .spotify-folio-orbit__echo {
+  body:has([data-folio]) .spotify-folio-orbit__echo {
     opacity: 0.28;
     transform-origin: 44px 44px;
     transition:
@@ -77,69 +78,72 @@
       opacity 500ms ease;
   }
 
-  .spotify-widget-wrapper:is(:hover, :focus-within) .spotify-folio-orbit__echo {
+  body:has([data-folio])
+    .spotify-widget-wrapper:is(:hover, :focus-within)
+    .spotify-folio-orbit__echo {
     opacity: 0.46;
     transform: rotate(-6deg);
   }
 
-  .spotify-folio-orbit__track {
+  body:has([data-folio]) .spotify-folio-orbit__track {
     opacity: 0.12;
   }
 
-  .spotify-folio-orbit__elapsed {
+  body:has([data-folio]) .spotify-folio-orbit__elapsed {
     stroke: var(--listening-bright);
     opacity: 0.56;
   }
 
-  .spotify-folio-orbit__star {
+  body:has([data-folio]) .spotify-folio-orbit__star {
     fill: var(--color-surface);
     stroke: var(--listening-bright);
     stroke-width: 0.8;
   }
 
-  .spotify-folio-orbit__fallback {
+  body:has([data-folio]) .spotify-folio-orbit__fallback {
     display: none;
     opacity: 0.45;
   }
 
-  .spotify-widget-container:has(.spotify-widget-album--missing)
+  body:has([data-folio])
+    .spotify-widget-container:has(.spotify-widget-album--missing)
     .spotify-folio-orbit__fallback {
     display: block;
   }
 
-  .spotify-widget-info {
+  body:has([data-folio]) .spotify-widget-info {
     min-width: 150px;
     max-width: 208px;
     gap: 4px;
   }
 
-  .spotify-widget-title {
+  body:has([data-folio]) .spotify-widget-title {
     max-width: 208px;
     font-size: 0.875rem;
     font-weight: 600;
     line-height: 1.4;
   }
 
-  .spotify-folio-fallback-title {
+  body:has([data-folio]) .spotify-folio-fallback-title {
     display: inline;
   }
 
-  .spotify-widget-artist {
+  body:has([data-folio]) .spotify-widget-artist {
     max-width: 208px;
     font-size: 0.675rem;
     line-height: 1.4;
   }
 
-  .spotify-widget-artist:empty {
+  body:has([data-folio]) .spotify-widget-artist:empty {
     display: none;
   }
 
-  .spotify-widget-progress-container {
+  body:has([data-folio]) .spotify-widget-progress-container {
     margin-top: 4px;
   }
 
   /* Preserve the native progress semantics without a second visual track. */
-  .spotify-widget-progress-bar {
+  body:has([data-folio]) .spotify-widget-progress-bar {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -150,20 +154,20 @@
     white-space: nowrap;
   }
 
-  .spotify-widget-time {
+  body:has([data-folio]) .spotify-widget-time {
     justify-content: flex-start;
     gap: 7px;
     font-size: 0.575rem;
     letter-spacing: 0.025em;
   }
 
-  .spotify-widget-time span + span::before {
+  body:has([data-folio]) .spotify-widget-time span + span::before {
     content: '/';
     margin-right: 7px;
     opacity: 0.45;
   }
 
-  .spotify-widget-controls {
+  body:has([data-folio]) .spotify-widget-controls {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -173,7 +177,7 @@
     z-index: 2;
   }
 
-  .action-btn {
+  body:has([data-folio]) .action-btn {
     width: 24px;
     height: 24px;
     border: 0;
@@ -182,21 +186,23 @@
     color: color-mix(in srgb, var(--color-text-primary) 62%, transparent);
   }
 
-  .action-btn:hover {
+  body:has([data-folio]) .action-btn:hover {
     background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
     color: var(--listening-bright);
   }
 
-  .spotify-widget-min-view .min-container {
+  body:has([data-folio]) .spotify-widget-min-view .min-container {
     padding: 4px;
     min-height: 0;
   }
 
-  .spotify-widget-drag-handle > svg:not(.spotify-folio-mini) {
+  body:has([data-folio])
+    .spotify-widget-drag-handle
+    > svg:not(.spotify-folio-mini) {
     display: none;
   }
 
-  .spotify-folio-mini {
+  body:has([data-folio]) .spotify-folio-mini {
     display: block;
     width: 48px;
     height: 48px;
@@ -207,22 +213,24 @@
     stroke-linejoin: round;
   }
 
-  .spotify-widget-min-view:is(:hover, :focus-visible) .spotify-folio-mini {
+  body:has([data-folio])
+    .spotify-widget-min-view:is(:hover, :focus-visible)
+    .spotify-folio-mini {
     stroke: var(--listening-bright);
   }
 
-  .spotify-widget-positioner:focus-visible,
-  .spotify-widget-min-view:focus-visible,
-  .spotify-widget-title:focus-visible,
-  .action-btn:focus-visible {
+  body:has([data-folio]) .spotify-widget-positioner:focus-visible,
+  body:has([data-folio]) .spotify-widget-min-view:focus-visible,
+  body:has([data-folio]) .spotify-widget-title:focus-visible,
+  body:has([data-folio]) .action-btn:focus-visible {
     outline: 1px dashed var(--color-focus-ring);
     outline-offset: 5px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spotify-widget-album,
-  .spotify-folio-orbit__echo {
+  body:has([data-folio]) .spotify-widget-album,
+  body:has([data-folio]) .spotify-folio-orbit__echo {
     transition: none;
   }
 }
