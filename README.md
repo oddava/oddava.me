@@ -21,10 +21,10 @@ to write.
 
 ## Screenshots
 
-| Home | Notes |
-| --- | --- |
-| ![Home](.github/assets/home.png) | ![Notes](.github/assets/notes.png) |
-| **About** | **Graph** |
+| Home                               | Notes                              |
+| ---------------------------------- | ---------------------------------- |
+| ![Home](.github/assets/home.png)   | ![Notes](.github/assets/notes.png) |
+| **About**                          | **Graph**                          |
 | ![About](.github/assets/about.png) | ![Graph](.github/assets/graph.png) |
 
 <p align="center">
