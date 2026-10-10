@@ -6,27 +6,13 @@ body:has([data-folio]) {
 .living-folio {
   pointer-events: none;
 }
-.living-folio__surface,
-.living-folio__atmosphere {
+.living-folio__surface {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: -1;
   contain: strict;
-}
-.living-folio__atmosphere {
-  background:
-    radial-gradient(
-      ellipse at 32% 36%,
-      color-mix(in srgb, var(--color-accent) 10%, transparent),
-      transparent 49%
-    ),
-    radial-gradient(
-      ellipse at 73% 64%,
-      color-mix(in srgb, var(--color-accent) 6%, transparent),
-      transparent 46%
-    );
 }
 .living-folio__surface {
   fill: none;
