@@ -1,6 +1,7 @@
 # oddava.me
 
-Hey, I'm oddava. This is the code behind my personal site, [oddava.me](https://oddava.me).
+Hey, I'm oddava. I got into code because my Telegram name needed a working clock.
+This is the code behind my personal site, [oddava.me](https://oddava.me).
 It's a small corner of the internet with a homepage, a notes garden, and an admin studio I use
 to write.
 
