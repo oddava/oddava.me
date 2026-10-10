@@ -112,35 +112,24 @@ export function installNavigationFeedback() {
   navigation?.addEventListener('navigatesuccess', stopNavigationFeedback);
 }
 
-/** Hold the first scene for one second and until geometry is ready. */
+/** Hold the opening scene until the folio geometry is ready. */
 export function awakenHomepage() {
   const folio = document.querySelector<HTMLElement>('[data-folio]');
   const loader = document.querySelector<HTMLElement>('[data-site-loader]');
-  const entry = performance.getEntriesByType('navigation')[0] as
-    PerformanceNavigationTiming | undefined;
   if (!folio || !loader) return;
   delete loader.dataset.initial;
-  if (
-    entry?.type === 'back_forward' ||
-    !document.documentElement.hasAttribute('data-home-awakening')
-  ) {
+  if (!document.documentElement.hasAttribute('data-home-awakening')) {
     delete loader.dataset.intro;
     delete loader.dataset.awakening;
     return;
   }
 
   let finished = false;
-  let minimumElapsed = false;
   loader.dataset.intro = '';
   loader.dataset.awakening = '';
-  const minimum = setTimeout(() => {
-    minimumElapsed = true;
-    if (folio.hasAttribute('data-ready')) finish();
-  }, 1000);
   const finish = () => {
     if (finished) return;
     finished = true;
-    clearTimeout(minimum);
     clearTimeout(fallback);
     observer.disconnect();
     delete document.documentElement.dataset.homeAwakening;
@@ -177,6 +166,13 @@ export function awakenHomepage() {
       window.removeEventListener('pagehide', dismiss);
     }, 650);
   };
+  const observer = new MutationObserver(() => {
+    if (folio.hasAttribute('data-ready')) finish();
+  });
+  observer.observe(folio, {
+    attributes: true,
+    attributeFilter: ['data-ready'],
+  });
   const dismiss = () => {
     finish();
     delete loader.dataset.intro;
@@ -185,14 +181,8 @@ export function awakenHomepage() {
       .getAnimations?.({ subtree: true })
       .forEach((animation) => animation.cancel());
   };
-  const observer = new MutationObserver(() => {
-    if (minimumElapsed && folio.hasAttribute('data-ready')) finish();
-  });
-  observer.observe(folio, {
-    attributes: true,
-    attributeFilter: ['data-ready'],
-  });
   // Fail open if enhancement or a font request fails; content remains usable.
   const fallback = setTimeout(finish, 8000);
   window.addEventListener('pagehide', dismiss, { once: true });
+  if (folio.hasAttribute('data-ready')) finish();
 }

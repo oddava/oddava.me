@@ -15,6 +15,8 @@ import {
   type Echo,
 } from './motion';
 
+import { mountWorld, WORLD_MEDIA } from './world';
+
 const mounted = new WeakMap<HTMLElement, () => void>();
 
 /** Six rigid motifs and sparse dust share one bounded gesture loop. Native CSS handles ambient
@@ -43,6 +45,8 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
   const nav = document.querySelector<HTMLElement>('[data-folio-nav]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const contrast = matchMedia('(forced-colors: active)');
+  const desktopWorld = matchMedia(WORLD_MEDIA);
+  let world: ReturnType<typeof mountWorld> | null = null;
   const controller = new AbortController();
   const { signal } = controller;
   let destroyed = false;
@@ -204,6 +208,13 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
       return [point.x, point.y];
     });
     reset();
+    if (desktopWorld.matches && view.height >= 700) {
+      world ??= mountWorld(root);
+      world.resize(view);
+    } else {
+      world?.destroy();
+      world = null;
+    }
     root.dataset.ready = '';
     if (nav) nav.dataset.ready = '';
   }
@@ -408,6 +419,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     },
     { signal },
   );
+  desktopWorld.addEventListener('change', scheduleResize, { signal });
   motion.addEventListener('change', reset, { signal });
   contrast.addEventListener('change', reset, { signal });
   const observer = new ResizeObserver(scheduleResize);
@@ -419,6 +431,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     reset();
     controller.abort();
     observer.disconnect();
+    world?.destroy();
     mounted.delete(root);
   };
   document.addEventListener('astro:before-swap', destroy, {

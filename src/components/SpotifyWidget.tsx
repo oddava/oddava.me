@@ -1,4 +1,4 @@
-import { useCallback } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import type {
   CSSProperties,
   TargetedKeyboardEvent,
@@ -14,6 +14,7 @@ import { useWidgetPosition } from './spotify/useWidgetPosition';
 export default function SpotifyWidget() {
   const { data, loading, currentProgress } = useNowPlaying();
   const { displayData, renderState } = useSpotifyRenderState(data, loading);
+  const [failedAlbum, setFailedAlbum] = useState<string>();
   const { isMinimized, setPersistedMinimized } = usePersistedMinimized();
   const expandFromDrag = useCallback(
     () => setPersistedMinimized(false),
@@ -79,6 +80,9 @@ export default function SpotifyWidget() {
     ? (currentProgress / displayData.durationMs) * 100
     : 0;
 
+  const orbitProgress = Math.max(0, Math.min(100, progressPercent));
+  const orbitAngle = (orbitProgress / 100) * Math.PI * 2 - Math.PI / 2;
+
   const style = {
     left: position.edgeX === 'left' ? `${position.offsetX}px` : 'auto',
     right: position.edgeX === 'right' ? `${position.offsetX}px` : 'auto',
@@ -128,21 +132,68 @@ export default function SpotifyWidget() {
             </button>
           </div>
           <div className="spotify-widget-container" draggable={false}>
+            <CoverGlow
+              src={
+                displayData.albumImageUrl !== failedAlbum
+                  ? displayData.albumImageUrl
+                  : undefined
+              }
+              onError={() => setFailedAlbum(displayData.albumImageUrl)}
+            />
+            <svg
+              className="spotify-folio-orbit"
+              viewBox="0 0 88 88"
+              aria-hidden="true"
+            >
+              <path
+                className="spotify-folio-orbit__echo"
+                d="M13 62C-4 35 16 5 43 7C63 6 79 21 80 39M74 65Q57 86 32 78"
+              />
+              <circle
+                className="spotify-folio-orbit__track"
+                cx="44"
+                cy="44"
+                r="35"
+              />
+              {displayData.durationMs ? (
+                <>
+                  <circle
+                    className="spotify-folio-orbit__elapsed"
+                    cx="44"
+                    cy="44"
+                    r="35"
+                    pathLength="100"
+                    stroke-dasharray={`${orbitProgress} 100`}
+                    transform="rotate(-90 44 44)"
+                  />
+                  <path
+                    className="spotify-folio-orbit__star"
+                    d="M0-4Q.7-.7 4 0Q.7.7 0 4Q-.7.7-4 0Q-.7-.7 0-4Z"
+                    transform={`translate(${44 + Math.cos(orbitAngle) * 35} ${44 + Math.sin(orbitAngle) * 35})`}
+                  />
+                </>
+              ) : null}
+              <path
+                className="spotify-folio-orbit__fallback"
+                d="M49 30V51Q48 57 42 55Q37 53 40 50Q42 47 46 49V33L55 31"
+              />
+            </svg>
             <img
               src={displayData.albumImageUrl}
               alt=""
-              className="spotify-widget-album"
+              className={`spotify-widget-album ${displayData.albumImageUrl && displayData.albumImageUrl !== failedAlbum ? '' : 'spotify-widget-album--missing'}`}
+              onError={() => setFailedAlbum(displayData.albumImageUrl)}
+              onLoad={() => setFailedAlbum(undefined)}
               draggable={false}
               onDragStart={(event) => event.preventDefault()}
             />
             <div className="spotify-widget-info">
-              <div className="spotify-widget-label">listening to</div>
               <a
                 href={displayData.songUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="spotify-widget-title"
-                title="Listening on Spotify"
+                title={`${displayData.title || 'Listening'}${displayData.artist ? ` — ${displayData.artist}` : ''} · Open on Spotify`}
                 onClick={(event) => {
                   if (preventClickRef.current) {
                     event.preventDefault();
@@ -150,6 +201,11 @@ export default function SpotifyWidget() {
                 }}
               >
                 {displayData.title}
+                {!displayData.title && (
+                  <span className="spotify-folio-fallback-title">
+                    a little music
+                  </span>
+                )}
               </a>
               <div className="spotify-widget-artist">{displayData.artist}</div>
 
@@ -179,8 +235,25 @@ export default function SpotifyWidget() {
           onClick={expandMinimized}
         >
           <div className="spotify-widget-container min-container">
+            <CoverGlow
+              src={
+                displayData.albumImageUrl !== failedAlbum
+                  ? displayData.albumImageUrl
+                  : undefined
+              }
+              onError={() => setFailedAlbum(displayData.albumImageUrl)}
+            />
             <div className="spotify-widget-drag-handle">
               <SpotifyLogo />
+              <svg
+                className="spotify-folio-mini"
+                viewBox="0 0 48 48"
+                aria-hidden="true"
+              >
+                <path d="M10 36C-3 20 10 3 25 5Q43 6 42 25M37 36Q29 45 17 40" />
+                <path d="M27 14V29Q26 35 20 33Q15 31 18 28Q20 25 24 27V17L32 15" />
+                <path d="M39 29L40 32 43 33 40 34 39 37 38 34 35 33 38 32Z" />
+              </svg>
             </div>
           </div>
         </button>
@@ -189,15 +262,31 @@ export default function SpotifyWidget() {
   );
 }
 
+function CoverGlow({ onError, src }: { onError: () => void; src?: string }) {
+  if (!src) return null;
+
+  return (
+    <img
+      key={src}
+      className="spotify-widget-cover-glow"
+      src={src}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      onError={onError}
+    />
+  );
+}
+
 function MinimizeIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="14"
-      height="14"
+      width="12"
+      height="12"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.75"
       aria-hidden="true"
     >
       <line x1="5" y1="12" x2="19" y2="12" />

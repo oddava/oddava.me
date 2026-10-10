@@ -10,7 +10,7 @@ Astro.csp?.insertStyleHash(
 );
 const awakening =
   Astro.url.pathname === '/'
-    ? `if(performance.getEntriesByType('navigation')[0]?.type!=='back_forward'){document.documentElement.dataset.homeAwakening='';setTimeout(()=>delete document.documentElement.dataset.homeAwakening,8000);addEventListener('pagehide',()=>delete document.documentElement.dataset.homeAwakening,{once:true});}`
+    ? `document.documentElement.dataset.homeAwakening='';setTimeout(()=>delete document.documentElement.dataset.homeAwakening,8000);addEventListener('pagehide',()=>delete document.documentElement.dataset.homeAwakening,{once:true});`
     : '';
 if (awakening)
   Astro.csp?.insertScriptHash(

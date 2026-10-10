@@ -1,4 +1,7 @@
 .spotify-widget-container {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -7,18 +10,89 @@
   color: var(--color-text-primary);
   background-color: color-mix(
     in srgb,
-    var(--color-surface-raised) 80%,
+    var(--color-surface-raised) 56%,
     transparent
   );
-  border: 1px solid var(--color-rule);
-  backdrop-filter: blur(12px);
+  border: 1px solid
+    color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
   transition:
     border-color 0.2s ease,
     opacity 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.2s ease;
-  opacity: 0.95;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+
+.spotify-widget-container > :not(.spotify-widget-cover-glow) {
+  position: relative;
+  z-index: 1;
+}
+
+.spotify-widget-cover-glow {
+  position: absolute;
+  z-index: 0;
+  inset: -32px auto -32px -24px;
+  width: 68%;
+  height: calc(100% + 64px);
+  object-fit: cover;
+  object-position: left center;
+  filter: blur(42px) saturate(1.65) brightness(0.66);
+  mask-image: linear-gradient(90deg, #000 0%, #000 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 30%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.16;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  animation: spotify-cover-glow-in 800ms ease-out both;
+}
+
+.spotify-widget-min-view .spotify-widget-cover-glow {
+  inset: -30px;
+  width: calc(100% + 60px);
+  height: calc(100% + 60px);
+  border-radius: 50%;
+  mask-image: radial-gradient(circle at center, #000 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(
+    circle at center,
+    #000 0%,
+    transparent 75%
+  );
+  opacity: 0.22;
+  animation-name: spotify-cover-glow-in-mini;
+}
+
+@keyframes spotify-cover-glow-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 0.16;
+  }
+}
+
+@keyframes spotify-cover-glow-in-mini {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 0.22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotify-widget-cover-glow {
+    animation: none;
+  }
 }
 
 .spotify-widget-full-view .spotify-widget-container {
@@ -56,15 +130,6 @@
   flex-direction: column;
   justify-content: center;
   min-width: 160px;
-}
-
-.spotify-widget-label {
-  font-size: 0.65rem;
-  font-family: var(--font-body);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 2px;
 }
 
 .spotify-widget-title {
