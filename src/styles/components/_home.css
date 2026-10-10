@@ -77,11 +77,12 @@
 /* Nameplate — present, not billboard. Body face (rounded) so it matches the
    rest of the site; slightly tight tracking keeps it from reading as a slogan. */
 .home-hero__name {
-  font-family: var(--font-body);
-  font-size: clamp(1.65rem, 4.2vw, 2rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: clamp(2.6rem, 6vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--color-text-primary);
   margin: 0;
   text-wrap: balance;
@@ -120,15 +121,22 @@
 }
 
 .home-hero--intro .home-hero__name {
-  margin-bottom: var(--space-sm);
-  /* Slightly warmer presence than a pure UI heading — still the site face. */
-  font-weight: 700;
-  letter-spacing: -0.032em;
+  margin-bottom: 0.75rem;
+}
+
+.home-hero--intro .home-hero__name::after {
+  content: '';
+  display: block;
+  width: 2.5rem;
+  height: 3px;
+  margin: 0.85rem auto 0;
+  border-radius: 2px;
+  background: var(--color-secondary);
 }
 
 .home-hero--intro .home-hero__tagline {
-  font-size: clamp(1.05rem, 2.4vw, 1.2rem);
-  max-width: 24rem;
+  font-size: clamp(1rem, 2.2vw, 1.1rem);
+  max-width: 26rem;
   line-height: 1.7;
   color: var(--color-text-secondary);
 }

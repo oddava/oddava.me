@@ -1,30 +1,16 @@
-/* Folded ribbons, a shared thread, and the site’s blue around a quiet center. */
+/* A paper-and-ink cat card on a pine ground, with one persimmon thread around it. */
 .living-folio {
-  --folio-muted: color-mix(in srgb, var(--color-accent) 64%, #586576);
+  --folio-muted: color-mix(in srgb, var(--color-secondary) 55%, #4f6b5f);
   --folio-bright: color-mix(in srgb, var(--color-accent) 70%, white);
   pointer-events: none;
 }
-.living-folio__surface,
-.living-folio__atmosphere {
+.living-folio__surface {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: -1;
   contain: strict;
-}
-.living-folio__atmosphere {
-  background:
-    radial-gradient(
-      ellipse at 32% 36%,
-      color-mix(in srgb, var(--color-accent) 10%, transparent),
-      transparent 49%
-    ),
-    radial-gradient(
-      ellipse at 73% 64%,
-      color-mix(in srgb, var(--color-accent) 6%, transparent),
-      transparent 46%
-    );
 }
 .living-folio__surface {
   fill: none;
@@ -192,67 +178,6 @@ body:has([data-folio]) .page {
 }
 
 /* Warm pinpricks, far below the contrast of the surrounding blue motifs. */
-.folio-dust {
-  fill: #bdb8ad;
-  fill-opacity: 0.24;
-  stroke: none;
-  pointer-events: none;
-}
-[data-folio-star] {
-  opacity: 0.72;
-}
-.folio-dust__response {
-  transform: translate(var(--dust-x, 0px), var(--dust-y, 0px));
-}
-.folio-dust__drift {
-  animation: folio-dust-drift 31s ease-in-out infinite alternate;
-}
-.folio-dust__drift--1 {
-  animation-duration: 43s;
-  animation-delay: -13s;
-}
-.folio-dust__drift--2 {
-  animation-duration: 53s;
-  animation-delay: -29s;
-}
-.folio-dust__spark {
-  fill-opacity: 0.5;
-  animation: folio-dust-twinkle 37s linear infinite;
-}
-.folio-dust__drift--1 .folio-dust__spark {
-  animation-duration: 47s;
-  animation-delay: -19s;
-}
-.folio-dust__drift--2 .folio-dust__spark {
-  animation-duration: 59s;
-  animation-delay: -7s;
-}
-@keyframes folio-dust-drift {
-  from {
-    transform: translate(-0.7px, 0.8px);
-  }
-  to {
-    transform: translate(1px, -1.2px);
-  }
-}
-@keyframes folio-dust-twinkle {
-  0%,
-  42%,
-  48%,
-  100% {
-    opacity: 0.5;
-  }
-  45% {
-    opacity: 1;
-  }
-}
-
-[data-folio-star]:nth-child(12) .folio-dust__spark {
-  animation-duration: 43s;
-  animation-delay: -31s;
-}
-
-/* Portrait composition: three small motifs and one slow idle movement. */
 @media (width < 900px) {
   body:has([data-folio]) .home-hero--intro .home-hero__tagline {
     max-width: min(24rem, calc(100vw - 80px));
@@ -262,17 +187,10 @@ body:has([data-folio]) .page {
   .folio-accent--fold,
   .living-folio__traveler,
   .living-folio__trace,
-  [data-folio-star][visibility='hidden'] {
-    display: none;
-  }
   .folio-accent__response {
     scale: 0.5;
   }
   .folio-accent__float,
-  .folio-dust__drift,
-  .folio-dust__spark {
-    animation: none;
-  }
   .folio-accent--crescent .folio-accent__float {
     animation: folio-mobile-float 14s ease-in-out infinite alternate;
   }
@@ -299,9 +217,8 @@ body:has([data-folio]) .page {
 }
 
 /* Named objects on the orbit: the ornament itself is the destination. */
-body:has(.folio-nav) .folio-accent--fold,
-body:has(.folio-nav) .folio-accent--crescent,
-body:has(.folio-nav) .folio-accent--stitch {
+/* Decorative motifs read as unlabeled icons, so only the labeled nav remains. */
+body:has(.folio-nav) .folio-accent {
   display: none;
 }
 .folio-nav {
@@ -317,17 +234,27 @@ body:has(.folio-nav) .folio-accent--stitch {
   pointer-events: none;
 }
 .folio-waypoint {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 150px;
-  min-height: 120px;
-  color: var(--color-text-interactive);
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
   text-decoration: none;
+  white-space: nowrap;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
-  border-radius: 50%;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
 }
 .folio-nav:is([data-ready], [data-measuring]) .folio-waypoint {
   position: absolute;
@@ -335,85 +262,61 @@ body:has(.folio-nav) .folio-accent--stitch {
   top: var(--waypoint-y);
   transform: translate(-50%, -50%);
 }
-.folio-waypoint svg {
-  width: 72px;
-  height: 72px;
-  overflow: visible;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 0.85;
-  transition: transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1);
+.folio-waypoint__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-brand);
 }
-.folio-waypoint__mark {
-  fill: color-mix(in srgb, var(--color-accent) 9%, transparent);
-  transition: fill 300ms;
+.folio-waypoint--about .folio-waypoint__dot {
+  background: var(--color-secondary);
 }
-.folio-waypoint__echo {
-  opacity: 0.35;
-  transform-origin: center;
-  transition:
-    transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 300ms;
+.folio-waypoint--links .folio-waypoint__dot {
+  background: var(--color-text-secondary);
 }
-.folio-waypoint__label {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid transparent;
-  transition: border-color 200ms;
+.folio-waypoint__hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 400;
 }
-.folio-waypoint:is(:hover, :focus-visible) svg {
-  transform: translateY(-5px) rotate(-8deg);
+.folio-waypoint:is(:hover, :focus-visible) {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-text-on-accent);
 }
-.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__echo {
-  transform: rotate(14deg) scale(1.12);
-  opacity: 0.8;
+.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__hint {
+  color: var(--color-text-on-accent);
 }
-.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__mark {
-  fill: color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__label {
-  border-color: currentColor;
+.folio-waypoint:is(:hover, :focus-visible) .folio-waypoint__dot {
+  background: var(--color-text-on-accent);
 }
 .folio-waypoint:focus-visible {
-  outline: 1px dashed var(--color-focus-ring);
-  outline-offset: 5px;
-}
-.folio-waypoint:active svg {
-  transform: scale(0.9);
-  transition-duration: 100ms;
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
 }
 @media (width < 900px) {
   .folio-nav {
     gap: 0.5rem;
   }
   .folio-waypoint {
-    width: 88px;
-    min-height: 90px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.95rem;
   }
-  .folio-waypoint svg {
-    width: 48px;
-    height: 48px;
-  }
-  .folio-waypoint__label {
-    font-size: 0.8rem;
+  .folio-waypoint__hint {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .folio-waypoint,
-  .folio-waypoint * {
+  .folio-waypoint {
     transition: none !important;
   }
 }
 @media (forced-colors: active) {
   .folio-waypoint {
+    border-color: LinkText;
     color: LinkText;
   }
-  .folio-waypoint__label {
-    text-decoration: underline;
-  }
 }
-
 @media (height < 640px) {
   .folio-nav:is([data-ready], [data-measuring]) {
     position: static;
@@ -426,14 +329,6 @@ body:has(.folio-nav) .folio-accent--stitch {
   }
   .folio-nav {
     gap: 0.5rem;
-  }
-  .folio-waypoint {
-    width: 88px;
-    min-height: 90px;
-  }
-  .folio-waypoint svg {
-    width: 48px;
-    height: 48px;
   }
 }
 
