@@ -23,6 +23,7 @@ export {
 } from './core/storage';
 export {
   getClientFingerprint,
+  getSigningSecret,
   hasSigningSecret,
   rejectIfSigningUnavailable,
 } from './core/signing';

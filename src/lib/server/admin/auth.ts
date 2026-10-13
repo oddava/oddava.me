@@ -1,6 +1,11 @@
 import type { AstroCookies } from 'astro';
 import { getServerEnv } from '../env';
-import { hasSigningSecret, isSecureRequest, json } from '../core';
+import {
+  getSigningSecret,
+  hasSigningSecret,
+  isSecureRequest,
+  json,
+} from '../core';
 import { firstConfiguredSecret } from '../secrets';
 import { signHmac } from '../crypto';
 import {
@@ -21,18 +26,6 @@ function getAdminToken(): string | null {
       getServerEnv('GUESTBOOK_ADMIN_TOKEN'),
     ) ?? null
   );
-}
-
-function getSigningSecret(): string | null {
-  return (
-    firstConfiguredSecret(getServerEnv('COMMUNITY_SIGNING_SECRET')) ?? null
-  );
-}
-
-function requireSigningSecret(): string {
-  const secret = getSigningSecret();
-  if (!secret) throw new Error('COMMUNITY_SIGNING_SECRET is not configured.');
-  return secret;
 }
 
 function getCookieOptions(
@@ -70,7 +63,7 @@ function tokenBinding(token: string, secret: string): Promise<string> {
 }
 
 export async function createAdminSessionValue(token: string): Promise<string> {
-  const secret = requireSigningSecret();
+  const secret = getSigningSecret();
   return createSignedSessionValue(
     {
       role: 'admin',
@@ -84,8 +77,8 @@ export async function createAdminSessionValue(token: string): Promise<string> {
 export async function isAdminRequest(cookies: AstroCookies): Promise<boolean> {
   const configured = getAdminToken();
   if (!configured) return false;
+  if (!hasSigningSecret()) return false;
   const secret = getSigningSecret();
-  if (!secret) return false;
 
   const session = await verifySession(cookies.get(ADMIN_COOKIE)?.value, secret);
   if (!session) return false;

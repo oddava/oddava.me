@@ -45,10 +45,12 @@ export function getLocalRedisUrl(): string {
   return LOCAL_REDIS_URL;
 }
 
+function configuredSigningSecret(): string | undefined {
+  return firstConfiguredSecret(getServerEnv('COMMUNITY_SIGNING_SECRET'));
+}
+
 export function getSigningSecret(): string {
-  const secret = firstConfiguredSecret(
-    getServerEnv('COMMUNITY_SIGNING_SECRET'),
-  );
+  const secret = configuredSigningSecret();
   if (!secret) {
     throw new Error(
       'COMMUNITY_SIGNING_SECRET is required for signed sessions and tokens.',
@@ -58,9 +60,7 @@ export function getSigningSecret(): string {
 }
 
 export function hasSigningSecret(): boolean {
-  return Boolean(
-    firstConfiguredSecret(getServerEnv('COMMUNITY_SIGNING_SECRET')),
-  );
+  return Boolean(configuredSigningSecret());
 }
 
 export function isDevelopmentEnv(): boolean {

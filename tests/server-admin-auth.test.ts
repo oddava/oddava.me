@@ -115,9 +115,8 @@ describe('parseSessionValue / verifySession', () => {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
-    const { signSessionValue } =
-      await import('../src/lib/server/admin/auth-shared');
-    const signature = await signSessionValue(body, SIGNING_SECRET);
+    const { signHmac } = await import('../src/lib/server/crypto');
+    const signature = await signHmac(body, SIGNING_SECRET);
     await expect(
       parseSessionValue(`${body}.${signature}`, SIGNING_SECRET),
     ).resolves.toBeNull();

@@ -3,7 +3,7 @@ import { getSigningSecret, hasSigningSecret } from './config';
 import { json } from './http';
 import { getClientIp } from './request';
 
-export { hasSigningSecret };
+export { getSigningSecret, hasSigningSecret };
 
 function signString(value: string): Promise<string> {
   return signHmac(value, getSigningSecret());

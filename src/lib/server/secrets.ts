@@ -1,3 +1,5 @@
+import { sha256Hex } from './crypto';
+
 const PLACEHOLDER_SECRETS = new Set([
   'change-me',
   'changeme',
@@ -47,14 +49,8 @@ export function firstConfiguredSecret(
  * cryptographic digest makes accidental collisions negligible and never keeps
  * the raw joined secret as the cache key.
  */
-export async function credentialFingerprint(
+export function credentialFingerprint(
   values: Array<string | undefined>,
 ): Promise<string> {
-  const bytes = new TextEncoder().encode(
-    values.map((value) => value ?? '').join('\u0000'),
-  );
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
+  return sha256Hex(values.map((value) => value ?? '').join('\u0000'));
 }
