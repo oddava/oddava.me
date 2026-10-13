@@ -6,6 +6,7 @@ import {
 } from '../admin';
 import {
   boundedRequest,
+  delay,
   RequestBodyError,
   ensureSameOrigin,
   isStorageUnavailableError,
@@ -20,6 +21,8 @@ import {
 import { dispatchContentRequest } from './router';
 
 const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
+const STABLE_READ_ATTEMPTS = 30;
+const STABLE_READ_RETRY_MS = 100;
 
 function contentStoreUnavailable(message?: string): Response {
   return adminJson(
@@ -41,24 +44,6 @@ function contentPayloadTooLarge(): Response {
     },
     { status: 413 },
   );
-}
-
-function waitForContentStore(signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timeout);
-      reject(signal.reason);
-    };
-    const timeout = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, 100);
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 async function dispatchRedisRequest(
@@ -85,8 +70,9 @@ async function dispatchRedisRequest(
           break;
         }
       }
-      if (attempt >= 29) throw new ContentMutationBusyError();
-      await waitForContentStore(request.signal);
+      if (attempt >= STABLE_READ_ATTEMPTS - 1)
+        throw new ContentMutationBusyError();
+      await delay(STABLE_READ_RETRY_MS, request.signal);
     }
   }
   return withAdminSecurityHeaders(response);

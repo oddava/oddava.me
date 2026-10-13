@@ -6,6 +6,7 @@ export {
   readUrlEncodedBody,
   requestBodyErrorResponse,
 } from './core/body';
+export { delay } from './core/delay';
 export { fetchWithTimeout, json } from './core/http';
 export {
   ensureSameOrigin,

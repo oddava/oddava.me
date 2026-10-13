@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { hasRedisConfig, redisCommand } from '../core';
+import { delay, hasRedisConfig, redisCommand } from '../core';
 import { assertSafeRepositoryPath, matchesExtension } from './paths';
 import {
   ContentConflictError,
@@ -788,24 +788,6 @@ export async function readStableContentVersion(
     : null;
 }
 
-function wait(delayMs: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timeout);
-      reject(signal?.reason);
-    };
-    const timeout = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, delayMs);
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
 export async function withRedisContentMutationLock<T>(
   operation: () => Promise<T>,
   options: { command?: RedisCommand; signal?: AbortSignal } = {},
@@ -827,8 +809,8 @@ export async function withRedisContentMutationLock<T>(
     if (acquired === 'OK') break;
     if (Date.now() >= deadline) throw new ContentMutationBusyError();
     attempt += 1;
-    const delay = Math.min(50 * 2 ** Math.min(attempt, 4), 400);
-    await wait(delay + Math.floor(Math.random() * 40), options.signal);
+    const backoff = Math.min(50 * 2 ** Math.min(attempt, 4), 400);
+    await delay(backoff + Math.floor(Math.random() * 40), options.signal);
   }
 
   try {
