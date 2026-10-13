@@ -137,18 +137,17 @@ export function folioStars(view: FolioView): [number, number, number][] {
   });
 }
 
-/** Navigation replaces three orbit ornaments; portrait screens use a lower constellation. */
+/** Notes and about replace two diagonal orbit ornaments; portrait screens set them side by side below. */
 export function folioWaypoints(view: FolioView): [number, number][] {
   if (view.width >= 900) {
     const accents = folioAccents(view);
-    return [accents[2]!, accents[1]!, accents[5]!];
+    return [accents[2]!, accents[1]!];
   }
   const bottom = folioPoint(Math.PI / 2, view)[1];
   const y = Math.min(bottom + 62, view.height - 90);
-  const spread = Math.min(view.width * 0.29, 145);
+  const spread = Math.min(view.width * 0.2, 96);
   return [
     [view.centerX - spread, y],
-    [view.centerX, y + 28],
     [view.centerX + spread, y],
   ];
 }

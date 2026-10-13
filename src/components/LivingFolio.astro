@@ -19,6 +19,20 @@ const orbit = folioOrbit(stillView);
 const positions = folioAccents(stillView);
 const stars = folioStars(stillView);
 const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
+// Drawn for the left cheek; the right cheek mirrors it so the pair reads as whiskers.
+const whisker: [string | undefined, string][][] = [
+  [['folio-accent__ribbon', 'M-66-14Q-12-14 46-35L34-22Q-8-5-66-14Z']],
+  [
+    [undefined, 'M-69 1Q-9 5 54-7'],
+    ['folio-accent__tip', 'M22 0L56-7'],
+  ],
+  [
+    [
+      'folio-accent__ribbon folio-accent__muted',
+      'M-54 15Q1 30 49 20L29 28Q-9 33-54 15Z',
+    ],
+  ],
+];
 ---
 
 <div class="living-folio" data-folio>
@@ -76,21 +90,15 @@ const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
       >
         <g class="folio-accent__float"
           ><g class="folio-accent__response">
-            <g class="folio-accent__piece" data-piece="0"
-              ><path
-                class="folio-accent__ribbon"
-                d="M-66-14Q-12-14 46-35L34-22Q-8-5-66-14Z"></path></g
-            >
-            <g class="folio-accent__piece" data-piece="1"
-              ><path d="M-69 1Q-9 5 54-7"></path><path
-                class="folio-accent__tip"
-                d="M22 0L56-7"></path></g
-            >
-            <g class="folio-accent__piece" data-piece="2"
-              ><path
-                class="folio-accent__ribbon folio-accent__muted"
-                d="M-54 15Q1 30 49 20L29 28Q-9 33-54 15Z"></path></g
-            >
+            {
+              whisker.map((paths, i) => (
+                <g class="folio-accent__piece" data-piece={i}>
+                  {paths.map(([className, d]) => (
+                    <path class={className} d={d} />
+                  ))}
+                </g>
+              ))
+            }
           </g></g
         >
       </g>
@@ -136,22 +144,23 @@ const position = (i: number) => `translate(${positions[i]!.join(' ')})`;
         >
       </g>
       <g
-        class="folio-accent folio-accent--fan"
+        class="folio-accent folio-accent--whisker folio-accent--whisker-near"
         data-folio-accent
         transform={position(3)}
       >
         <g class="folio-accent__float"
           ><g class="folio-accent__response">
-            {
-              [0, 1, 2, 3].map((i) => (
-                <g class="folio-accent__blade" data-piece={i}>
-                  <path
-                    class="folio-accent__ribbon"
-                    d="M-24 0Q5-9 57-2L48 4Q7 0-24 0Z"
-                  />
-                </g>
-              ))
-            }
+            <g transform="scale(-1 1)">
+              {
+                whisker.map((paths, i) => (
+                  <g class="folio-accent__piece" data-piece={i}>
+                    {paths.map(([className, d]) => (
+                      <path class={className} d={d} />
+                    ))}
+                  </g>
+                ))
+              }
+            </g>
           </g></g
         >
       </g>
