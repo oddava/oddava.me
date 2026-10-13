@@ -38,6 +38,50 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       await cleanupClient.quit();
     });
 
+    it('never evicts an approved guestbook entry to make room for a new one', async () => {
+      const {
+        appendGuestbookEntry,
+        clearGuestbookEntries,
+        readGuestbookEntries,
+        updateGuestbookEntryStatus,
+      } = await import('../src/lib/server/guestbook');
+      await clearGuestbookEntries();
+
+      const entry = (id: string, day: number) => ({
+        id,
+        name: 'tester',
+        message: `message ${id}`,
+        createdAt: new Date(2026, 0, day).toISOString(),
+        status: 'pending' as const,
+      });
+
+      for (const id of ['kept-1', 'kept-2', 'kept-3']) {
+        await appendGuestbookEntry(entry(id, 1));
+        await updateGuestbookEntryStatus(id, 'approved');
+      }
+      // A flood of submissions: more than the moderation queue holds.
+      for (let index = 0; index < 120; index += 1) {
+        await appendGuestbookEntry(entry(`flood-${index}`, 2));
+      }
+
+      const entries = await readGuestbookEntries();
+      const approved = entries.filter((item) => item.status === 'approved');
+      const unapproved = entries.filter((item) => item.status !== 'approved');
+
+      expect(approved.map((item) => item.id).toSorted()).toEqual([
+        'kept-1',
+        'kept-2',
+        'kept-3',
+      ]);
+      // The oldest unapproved entries go first; the newest 100 remain.
+      expect(unapproved).toHaveLength(100);
+      expect(unapproved[0]?.id).toBe('flood-119');
+      expect(unapproved.at(-1)?.id).toBe('flood-20');
+
+      await clearGuestbookEntries();
+      expect(await readGuestbookEntries()).toEqual([]);
+    });
+
     it('preserves concurrent guestbook appends and updates status atomically', async () => {
       const {
         appendGuestbookEntry,

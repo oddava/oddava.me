@@ -11,6 +11,7 @@ import {
   rejectIfSigningUnavailable,
   rejectIfStorageUnavailable,
   requestBodyErrorResponse,
+  sanitizePlainText,
 } from '../../lib/server/core';
 import {
   appendGuestbookEntry,
@@ -18,7 +19,6 @@ import {
   getPublicGuestbookEntries,
   readGuestbookEntries,
 } from '../../lib/server/guestbook';
-import { sanitizePlainText } from '../../lib/server/core';
 
 const GUESTBOOK_RATE_LIMIT = { limit: 3, windowMs: 10 * 60 * 1000 };
 
@@ -121,8 +121,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (isStorageUnavailableError(error)) {
       return json(
         {
-          error:
-            'This shared feature is temporarily unavailable because persistent storage is not configured.',
+          error: 'The guestbook is temporarily unavailable. Try again shortly.',
           code: 'storage_unavailable',
         },
         { status: 503 },

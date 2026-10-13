@@ -10,7 +10,7 @@ export {
 export { parseGuestbookStatus } from './guestbook/status';
 export {
   appendGuestbookEntry,
+  clearGuestbookEntries,
   readGuestbookEntries,
   updateGuestbookEntryStatus,
-  writeGuestbookEntries,
 } from './guestbook/storage';
