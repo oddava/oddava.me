@@ -1,4 +1,4 @@
-import { signHmac } from '../crypto';
+import { signHmac } from './crypto';
 import { getSigningSecret, hasSigningSecret } from './config';
 import { json } from './http';
 import { getClientIp } from './request';

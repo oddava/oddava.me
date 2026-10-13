@@ -115,7 +115,7 @@ describe('parseSessionValue / verifySession', () => {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
-    const { signHmac } = await import('../src/lib/server/crypto');
+    const { signHmac } = await import('../src/lib/server/core/crypto');
     const signature = await signHmac(body, SIGNING_SECRET);
     await expect(
       parseSessionValue(`${body}.${signature}`, SIGNING_SECRET),
@@ -177,7 +177,7 @@ describe('admin session cookie contents', () => {
     // What it does hold is keyed: the same token under a different secret
     // produces a different binding, so the cookie is not a token-only function.
     const parsed = JSON.parse(decoded) as { tokenBinding: string };
-    const { signHmac } = await import('../src/lib/server/crypto');
+    const { signHmac } = await import('../src/lib/server/core/crypto');
     expect(parsed.tokenBinding).toBe(
       await signHmac(ADMIN_TOKEN, SIGNING_SECRET),
     );

@@ -32,7 +32,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
 
     afterAll(async () => {
       const { closeLocalRedisConnection } =
-        await import('../src/lib/server/local-redis');
+        await import('../src/lib/server/core/local-redis');
       await cleanupClient.flushDb();
       await closeLocalRedisConnection();
       await cleanupClient.quit();

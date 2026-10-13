@@ -3,7 +3,7 @@ import type {
   IntegrationErrorCode,
   IntegrationStatus as IntegrationStatusContract,
 } from '../../contracts';
-import type { RuntimeEnvName } from '../env';
+import type { RuntimeEnvName } from '../core/env';
 
 export type { CredentialFieldStatus } from '../../contracts';
 

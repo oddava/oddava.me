@@ -29,3 +29,4 @@ export {
   rejectIfSigningUnavailable,
 } from './core/signing';
 export { sanitizePlainText } from './core/sanitize';
+export { applySecurityHeaders } from './core/security-headers';

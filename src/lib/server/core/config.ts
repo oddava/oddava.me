@@ -1,5 +1,5 @@
-import { getServerEnv } from '../env';
-import { firstConfiguredSecret } from '../secrets';
+import { getServerEnv } from './env';
+import { firstConfiguredSecret } from './secrets';
 
 type AppEnv = 'development' | 'production';
 type RedisMode = 'local' | 'upstash';

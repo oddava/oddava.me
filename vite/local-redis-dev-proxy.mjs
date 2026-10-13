@@ -7,9 +7,9 @@ import {
   closeHttpServer,
   registerDevProxyCleanup,
 } from './dev-proxy-lifecycle.mjs';
-import { firstConfiguredSecret } from '../src/lib/server/secrets.ts';
+import { firstConfiguredSecret } from '../src/lib/server/core/secrets.ts';
 
-// Keep in sync with src/lib/server/local-redis.ts. Avoid the high 45xxx band:
+// Keep in sync with src/lib/server/core/local-redis.ts. Avoid the high 45xxx band:
 // on Windows, Hyper-V/WSL often reserves ~45000–48000 so bind fails with
 // EADDRINUSE while nothing is listening — the Worker then cannot reach Redis.
 const DEFAULT_PROXY_PORT = 18765;

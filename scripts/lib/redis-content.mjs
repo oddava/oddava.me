@@ -76,7 +76,7 @@ export function assertKnownArgs(args, allowed) {
 }
 
 /**
- * Mirrors firstConfiguredSecret in src/lib/server/secrets.ts, which owns this
+ * Mirrors firstConfiguredSecret in src/lib/server/core/secrets.ts, which owns this
  * rule. These scripts run under bare `node` and cannot import the .ts;
  * tests/storage-namespace.test.ts checks the two agree. Change the .ts first.
  *

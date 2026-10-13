@@ -1,5 +1,6 @@
-import { sha256Hex } from './crypto';
-
+// No imports, by design: the workerd dev bridge in vite/local-redis-dev-proxy.mjs
+// imports this file from plain Node, which cannot resolve an extensionless
+// relative import.
 const PLACEHOLDER_SECRETS = new Set([
   'change-me',
   'changeme',
@@ -42,15 +43,4 @@ export function firstConfiguredSecret(
     if (normalized && isConfiguredSecret(normalized)) return normalized;
   }
   return undefined;
-}
-
-/**
- * Derives a stable, non-reversible key for credential-dependent caches. A
- * cryptographic digest makes accidental collisions negligible and never keeps
- * the raw joined secret as the cache key.
- */
-export function credentialFingerprint(
-  values: Array<string | undefined>,
-): Promise<string> {
-  return sha256Hex(values.map((value) => value ?? '').join('\u0000'));
 }

@@ -1,13 +1,13 @@
 import type { AstroCookies } from 'astro';
-import { getServerEnv } from '../env';
+import { getServerEnv } from '../core/env';
 import {
   getSigningSecret,
   hasSigningSecret,
   isSecureRequest,
   json,
 } from '../core';
-import { firstConfiguredSecret } from '../secrets';
-import { signHmac } from '../crypto';
+import { firstConfiguredSecret } from '../core/secrets';
+import { signHmac } from '../core/crypto';
 import {
   ADMIN_COOKIE,
   ADMIN_SESSION_TTL_SECONDS,

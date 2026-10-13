@@ -3,9 +3,12 @@ import {
   encodeTextToBase64Url,
   signHmac,
   verifyHmac,
-} from '../crypto';
+} from '../core/crypto';
 
-export { constantTimeCompare, sha256Hex as computeTokenHash } from '../crypto';
+export {
+  constantTimeCompare,
+  sha256Hex as computeTokenHash,
+} from '../core/crypto';
 
 export const ADMIN_COOKIE = 'oddava-admin-session';
 export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 12;
