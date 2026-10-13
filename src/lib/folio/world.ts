@@ -12,12 +12,8 @@ export const WORLD_MEDIA =
 const NS = 'http://www.w3.org/2000/svg';
 const marks: Record<WorldKind, string> = {
   star: 'M0-8Q1-1 7 0Q1 1 0 8Q-1 1-7 0Q-1-1 0-8Z',
-  paper: 'M-17 4L14-16 8 17-2 8-17 4ZM-17 4L3 2 14-16M3 2L8 17M3 2L-2 8',
   moon: 'M11-15C-15-24-27 10-6 17C3 21 13 15 16 7C-4 15-12-5 11-15ZM-21 9Q-9 26 10 20',
   satellite: 'M-3 0Q-3-4 0-3Q4-3 3 1Q2 4-1 3Q-4 2-3 0Z',
-  creature:
-    'M-13 4Q-20-1-12-7L-9-15-3-10Q2-12 7-8L14-10 12-2Q17 7 9 11Q1 17-7 9Q-16 15-19 9Q-23 3-19 0',
-  fragment: 'M-10 6Q-3-9 11-5L1 8ZM-10 6L11-5',
 };
 function svgElement<K extends keyof SVGElementTagNameMap>(
   tag: K,
@@ -54,6 +50,7 @@ export function mountWorld(root: HTMLElement) {
   let history: { x: number; y: number }[][] = [];
   let details: SVGPathElement[] = [];
   let rings: SVGCircleElement[] = [];
+  let name: SVGTextElement | null = null;
   let pointer: WorldPointer | null = null;
   let held = -1;
   let capture: Element | null = null;
@@ -82,12 +79,7 @@ export function mountWorld(root: HTMLElement) {
     idleTimer = window.setTimeout(() => {
       idleTimer = 0;
       if (!allowed() || held >= 0) return;
-      const paper = world.bodies.find((body) => body.kind === 'paper');
       const satellite = world.bodies.find((body) => body.kind === 'satellite');
-      if (paper) {
-        paper.vx += 5;
-        paper.spin += 0.12;
-      }
       if (satellite) satellite.vx += 5;
       wake();
     }, 30000);
@@ -136,6 +128,14 @@ export function mountWorld(root: HTMLElement) {
         (a.kind === 'moon' ? 0.08 : 0.14) + Math.max(a.light, b.light) * 0.28,
       );
     });
+    if (name) {
+      // The constellation names itself only while some part of it is lit.
+      const lit = world.bodies.reduce(
+        (max, body) => (body.kind === 'star' ? Math.max(max, body.light) : max),
+        0,
+      );
+      name.style.opacity = String(Math.min(0.85, lit * 1.1));
+    }
     rings.forEach((ring, i) => {
       const pulse = world.pulses[i];
       ring.style.opacity = pulse
@@ -258,12 +258,7 @@ export function mountWorld(root: HTMLElement) {
       if (body.kind === 'star')
         mark.setAttribute('transform', `scale(${body.radius / 8})`);
       const detail = svgElement('path', {
-        d:
-          body.kind === 'creature'
-            ? 'M-6-3l1 1m5 0 1-1M-2 3q2 3 4 0'
-            : body.kind === 'paper'
-              ? 'M-17 4L-25-9 3 2M8 17L22 10 14-16'
-              : 'M-12-18l-3-3M15 17l3 3',
+        d: 'M-12-18l-3-3M15 17l3 3',
         class: 'folio-world__secret',
       });
       const hit = svgElement('circle', {
@@ -275,6 +270,26 @@ export function mountWorld(root: HTMLElement) {
       details.push(detail);
       return group;
     });
+    name = null;
+    const stars = world.bodies.filter((body) => body.kind === 'star');
+    if (stars.length) {
+      name = svgElement('text', {
+        class: 'folio-world__name',
+        x: String((stars[0]!.minX + stars[0]!.maxX) / 2),
+        y: String(Math.max(...stars.map((b) => b.homeY)) + 46),
+        'text-anchor': 'middle',
+      });
+      const title = svgElement('tspan', { x: name.getAttribute('x')! });
+      title.textContent = 'felis';
+      const note = svgElement('tspan', {
+        x: name.getAttribute('x')!,
+        dy: '1.5em',
+        class: 'folio-world__note',
+      });
+      note.textContent = 'lost in 1922';
+      name.append(title, note);
+      layer.append(name);
+    }
     history = world.bodies.map(() => []);
     paint();
     armIdle();

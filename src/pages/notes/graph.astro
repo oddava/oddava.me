@@ -11,8 +11,8 @@ const data = deriveNoteGraph(garden.index);
 ---
 
 <Immersive
-  title="graph of notes"
-  description="Explore the connections between notes."
+  title="Notes graph"
+  description="An interactive map of how oddava's notes link to each other."
 >
   <h1 class="sr-only">Graph of notes</h1>
   <InteractiveGraph client:load data={data} fullPage />

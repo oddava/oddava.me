@@ -68,7 +68,7 @@ body:has([data-folio]) {
   animation-delay: -3s;
   animation-duration: 12s;
 }
-.folio-accent--fan .folio-accent__float {
+.folio-accent--whisker-near .folio-accent__float {
   animation-delay: -7s;
 }
 .folio-accent--spark .folio-accent__float {
@@ -131,14 +131,6 @@ body:has([data-folio]) {
       calc(var(--open) * var(--piece) * 16px)
     )
     rotate(calc(var(--turn) * var(--piece) * 0.4));
-}
-.folio-accent__blade {
-  transform: rotate(
-      calc(
-        var(--piece) * 18deg + var(--turn) + var(--echo) * var(--piece) * 16deg
-      )
-    )
-    translateX(calc(var(--open) * 9px));
 }
 body:has([data-folio]) .home-hero--intro {
   padding-block: 5rem;
@@ -246,7 +238,6 @@ body:has([data-folio]) .page {
     max-width: min(24rem, calc(100vw - 80px));
   }
   .folio-accent--whisker,
-  .folio-accent--fan,
   .folio-accent--fold,
   .living-folio__traveler,
   .living-folio__trace,
@@ -468,6 +459,19 @@ body:has(.folio-nav) .folio-accent--stitch {
   }
   .folio-world__secret {
     stroke: var(--folio-bright);
+  }
+  .folio-world__name {
+    fill: var(--folio-bright);
+    stroke: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    opacity: 0;
+  }
+  .folio-world__note {
+    fill: var(--folio-muted);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
   }
   .folio-world__thread,
   .folio-world__trail {

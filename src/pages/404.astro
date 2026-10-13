@@ -8,7 +8,10 @@ import '../styles/components/_status-page.css';
 Astro.response.status = 404;
 ---
 
-<Base title="404" description="This page wandered off.">
+<Base
+  title="Page not found"
+  description="This page doesn't exist on oddava.me."
+>
   <meta slot="head" name="robots" content="noindex" />
   <section class="status-page">
     <h1>404</h1>

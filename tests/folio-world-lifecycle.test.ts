@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { mountWorld } from '../src/lib/folio/world';
+import { createWorld } from '../src/lib/folio/world-physics';
 
 const view = {
   width: 1440,
@@ -65,21 +66,27 @@ function tick() {
   pending.forEach((fn) => fn(now));
 }
 
-it('keeps simulating at 144Hz, then sleeps after the pointer leaves', () => {
-  const paper = root.querySelector('[data-kind=paper]')!;
-  const start = paper.getAttribute('transform');
-  move(100, 630);
+it('keeps simulating at 144Hz, names Felis while lit, then sleeps after the pointer leaves', () => {
+  const chest = createWorld(view).bodies[4]!;
+  const star = root.querySelectorAll('[data-kind=star]')[4]!;
+  const name = root.querySelector<SVGTextElement>('.folio-world__name')!;
+  const start = star.getAttribute('transform');
+  expect(name.textContent).toContain('felis');
+  expect(Number(name.style.opacity)).toBe(0);
+  move(chest.x - 30, chest.y);
   tick();
   expect(callbacks.size).toBe(1);
   for (let i = 0; i < 120; i++) tick();
-  expect(paper.getAttribute('transform')).not.toBe(start);
+  expect(star.getAttribute('transform')).not.toBe(start);
+  expect(Number(name.style.opacity)).toBeGreaterThan(0.3);
   move(720, 500);
   for (let i = 0; i < 3600 && callbacks.size; i++) tick();
   expect(callbacks.size).toBe(0);
+  expect(Number(name.style.opacity)).toBeLessThan(0.01);
 });
 
 it('stops while hidden or reduced, and removes its listeners and surface on destroy', () => {
-  move(100, 630);
+  move(100, 330);
   expect(callbacks.size).toBe(1);
   Object.defineProperty(document, 'hidden', {
     configurable: true,
@@ -87,7 +94,7 @@ it('stops while hidden or reduced, and removes its listeners and surface on dest
   });
   document.dispatchEvent(new Event('visibilitychange'));
   expect(callbacks.size).toBe(0);
-  move(110, 630);
+  move(110, 330);
   expect(callbacks.size).toBe(0);
   Object.defineProperty(document, 'hidden', {
     configurable: true,
@@ -96,16 +103,16 @@ it('stops while hidden or reduced, and removes its listeners and surface on dest
   document.dispatchEvent(new Event('visibilitychange'));
   Object.assign(reduced, { matches: true });
   reduced.dispatchEvent(new Event('change'));
-  move(110, 630);
+  move(110, 330);
   expect(callbacks.size).toBe(0);
   Object.assign(reduced, { matches: false });
   reduced.dispatchEvent(new Event('change'));
-  move(110, 630);
+  move(110, 330);
   expect(callbacks.size).toBe(1);
   world.destroy();
   expect(callbacks.size).toBe(0);
   expect(root.children).toHaveLength(0);
-  move(110, 630);
+  move(110, 330);
   expect(callbacks.size).toBe(0);
 });
 

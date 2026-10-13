@@ -1,7 +1,6 @@
 import type { FolioView } from './geometry';
 
-export type WorldKind =
-  'star' | 'paper' | 'moon' | 'satellite' | 'creature' | 'fragment';
+export type WorldKind = 'star' | 'moon' | 'satellite';
 export interface WorldBody {
   kind: WorldKind;
   x: number;
@@ -51,7 +50,31 @@ export interface FolioWorld {
 const clamp = (v: number, min: number, max: number) =>
   Math.max(min, Math.min(max, v));
 
-/** Authored clusters live outside the whole navigation orbit, not just the cat. */
+/** [x, y, radius, mass]: a sitting cat in profile, facing the island, in CSS px. */
+const FELIS: [number, number, number, number][] = [
+  [-14, -100, 5, 0.7], // far ear
+  [6, -80, 3.5, 0.5], // crown
+  [26, -104, 6, 0.8], // near ear
+  [44, -62, 4, 0.6], // muzzle
+  [22, -24, 7, 1], // chest
+  [40, 64, 5, 0.8], // forepaw
+  [-40, 62, 6, 0.9], // haunch
+  [-36, -28, 5, 0.8], // back
+  [-78, 20, 4, 0.6], // tail tip
+];
+const FELIS_LINKS: [number, number][] = [
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 4],
+  [4, 5],
+  [5, 6],
+  [6, 7],
+  [7, 0],
+  [6, 8],
+];
+
+/** Two authored pockets live outside the whole navigation orbit, not just the cat. */
 export function createWorld(view: FolioView): FolioWorld {
   const { width, height, centerX, quietWidth } = view;
   const left = centerX - quietWidth / 2 - 285;
@@ -108,25 +131,27 @@ export function createWorld(view: FolioView): FolioWorld {
       length: Math.hypot(first.x - second.x, first.y - second.y),
     });
   }
-  const a = add('star', 0, 0.34, 0.19, 8);
-  const b = add('star', 0, 0.72, 0.25, 5, 0.7);
-  const c = add('star', 0, 0.43, 0.32, 6, 0.8);
-  connect(a, b);
-  connect(b, c);
-  add('paper', 0, 0.52, 0.7, 19, 2.4);
-  const moon = add('moon', 1, 0.55, 0.3, 19, 3);
-  const satellite = add('satellite', 1, 0.55, 0.3, 4, 0.5);
+  // Felis, the cat Lalande set among the stars in 1799 and the IAU left off its
+  // 1922 list: a sitting cat facing the island, traced ears to tail.
+  // Scale uniformly, never stretch, so the figure stays a cat in any margin.
+  const span = left - 24 - 32;
+  const scale = Math.min(1.15, span / 150);
+  const felis = FELIS.map(([x, y, radius, mass]) =>
+    add(
+      'star',
+      0,
+      0.56 + (x * scale) / span,
+      0.34 + (y * scale) / (height - 175),
+      radius,
+      mass,
+    ),
+  );
+  for (const [from, to] of FELIS_LINKS) connect(felis[from]!, felis[to]!);
+  const moon = add('moon', 1, 0.5, 0.6, 19, 3);
+  const satellite = add('satellite', 1, 0.5, 0.6, 4, 0.5);
   world.bodies[satellite]!.y -= 43;
   world.bodies[satellite]!.homeY -= 43;
   connect(moon, satellite);
-  add('creature', 1, 0.4, 0.75, 15, 1.3);
-  if (width >= 1700) {
-    add('fragment', 0, 0.8, 0.46, 10, 0.7);
-    add('fragment', 1, 0.73, 0.57, 10, 0.7);
-    const d = add('star', 1, 0.25, 0.1, 5);
-    const e = add('star', 1, 0.58, 0.14, 7);
-    connect(d, e);
-  }
   return world;
 }
 
@@ -176,7 +201,7 @@ export function disturbWorld(world: FolioWorld, index: number) {
   if (!body) return;
   world.pulses.push({ x: body.x, y: body.y, age: 0, reached: 0 });
   if (world.pulses.length > 3) world.pulses.shift();
-  body.spin += body.kind === 'paper' ? 4 : 2;
+  body.spin += 2;
   body.curiosity = 2;
   if (body.kind === 'star') echoConstellation(world, index);
   if (body.kind === 'moon') releaseSatellite(world, body);
@@ -243,11 +268,10 @@ export function stepWorld(
     if (body.kind === 'star' && attentive && !body.attentive)
       echoConstellation(world, index);
     body.attentive = attentive;
-    const curious = body.kind === 'creature' && proximity > 0.2 && speed < 65;
     const moonAttention =
       body.kind === 'moon' && proximity > 0.2 && speed < 32 && held < 0;
     body.curiosity = clamp(
-      body.curiosity + (curious || moonAttention ? dt : -dt * 0.7),
+      body.curiosity + (moonAttention ? dt : -dt * 0.7),
       0,
       2,
     );
@@ -255,9 +279,8 @@ export function stepWorld(
       releaseSatellite(world, body);
     body.echo *= Math.exp(-dt * 2.4);
     if (body.echo < 0.002) body.echo = 0;
-    const direction =
-      body.kind === 'moon' || curious ? -0.5 : body.kind === 'paper' ? 0.22 : 1;
-    const wind = body.kind === 'paper' ? 1.5 : 0.32;
+    const direction = body.kind === 'moon' ? -0.5 : 1;
+    const wind = 0.32;
     const force = (proximity * 430 * direction) / body.mass;
     body.vx +=
       ((dx / (distance || 1)) * force +
@@ -271,16 +294,10 @@ export function stepWorld(
       (((pointer?.vx ?? 0) * dy - (pointer?.vy ?? 0) * dx) *
         proximity *
         dt *
-        (body.kind === 'paper' ? 0.0001 : 0.0008)) /
+        0.0008) /
       body.mass;
     const dragging = held === index && pointer;
-    const stiffness = dragging
-      ? 110
-      : body.kind === 'satellite'
-        ? 0.9
-        : body.kind === 'paper'
-          ? 3.5
-          : 5;
+    const stiffness = dragging ? 110 : body.kind === 'satellite' ? 0.9 : 5;
     const targetX = dragging
       ? clamp(pointer.x, body.minX + body.radius, body.maxX - body.radius)
       : body.homeX;
@@ -290,32 +307,16 @@ export function stepWorld(
     body.vx += (((targetX - body.x) * stiffness) / body.mass) * dt;
     body.vy += (((targetY - body.y) * stiffness) / body.mass) * dt;
     const damping = Math.exp(
-      -(dragging
-        ? 12
-        : body.kind === 'satellite'
-          ? 0.7
-          : body.kind === 'paper'
-            ? 1.65
-            : 2.8) * dt,
+      -(dragging ? 12 : body.kind === 'satellite' ? 0.7 : 2.8) * dt,
     );
     body.vx = clamp(body.vx * damping, -650, 650);
     body.vy = clamp(body.vy * damping, -650, 650);
     body.x += body.vx * dt;
     body.y += body.vy * dt;
     const velocity = Math.hypot(body.vx, body.vy);
-    const heading =
-      body.kind === 'paper' && velocity > 8
-        ? (Math.atan2(body.vy, body.vx) + Math.PI / 4) *
-          Math.min(1, velocity / 65)
-        : 0;
-    // The paper's drawn nose points up-right; steer by the shortest angular arc.
-    const turn = Math.atan2(
-      Math.sin(heading - body.angle),
-      Math.cos(heading - body.angle),
-    );
-    body.spin =
-      (body.spin + turn * (body.kind === 'paper' ? 5 : 3) * dt) *
-      Math.exp(-2 * dt);
+    // Ease back upright by the shortest angular arc.
+    const turn = Math.atan2(Math.sin(-body.angle), Math.cos(-body.angle));
+    body.spin = (body.spin + turn * 3 * dt) * Math.exp(-2 * dt);
     body.angle += body.spin * dt;
     const light = Math.min(1, proximity + velocity / 240 + body.echo);
     body.light += (light - body.light) * (1 - Math.exp(-dt * 5));
@@ -326,7 +327,7 @@ export function stepWorld(
       Math.abs(body.light - light) > 0.002 ||
       (body.curiosity > 0 && body.curiosity < 2);
   });
-  // ponytail: pair scan is bounded to eleven bodies; use a spatial index if density grows.
+  // ponytail: pair scan is bounded to ten bodies; use a spatial index if density grows.
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i]!;

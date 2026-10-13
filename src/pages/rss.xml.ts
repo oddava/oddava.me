@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '../lib/garden';
 import { isStorageUnavailableError } from '../lib/server/core';
-import { SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
+import { NOTES_DESCRIPTION, SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
 
 function escapeXml(value: string): string {
   return value
@@ -58,9 +58,9 @@ export const GET: APIRoute = async () => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${SITE_NAME}'s notes</title>
+    <title>${SITE_NAME} — notes</title>
     <link>${SITE_URL}</link>
-    <description>notes, half-formed and otherwise, from ${SITE_NAME}.</description>
+    <description>${escapeXml(NOTES_DESCRIPTION)}</description>
     <atom:link href="${siteUrl('/rss.xml')}" rel="self" type="application/rss+xml" />
     ${items}
   </channel>

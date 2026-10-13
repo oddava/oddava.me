@@ -10,7 +10,10 @@ Astro.response.status = 503;
 Astro.response.headers.set('Retry-After', '5');
 ---
 
-<Base title="503" description="The notes are being updated.">
+<Base
+  title="Notes are updating"
+  description="oddava's notes are being updated. Try again in a few seconds."
+>
   <meta slot="head" name="robots" content="noindex" />
   <section class="status-page">
     <h1>503</h1>
