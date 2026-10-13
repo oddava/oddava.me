@@ -15,7 +15,11 @@ const notes = index.documents.filter((note) => note.tags.includes(tag));
 if (notes.length === 0) return Astro.rewrite('/404');
 ---
 
-<Base title={'#' + tag} description={'Notes connected to #' + tag + '.'} wide>
+<Base
+  title={`Notes tagged #${tag}`}
+  description={`Every note by oddava tagged #${tag}.`}
+  wide
+>
   <div class="garden-page">
     <div class="garden-index garden-index--topic">
       <header class="garden-topic-header">

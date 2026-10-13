@@ -4,7 +4,10 @@ import {
   SITE_AUTHOR_NAME,
   SITE_DESCRIPTION,
   SITE_NAME,
+  SITE_ROLE,
+  SITE_TITLE,
   SITE_TWITTER_HANDLE,
+  SITE_URL,
 } from '../lib/site';
 
 export interface Props {
@@ -22,16 +25,35 @@ const {
   // Default OG/social image. PNG rendered from public/og-default.svg (the
   // diffable source) — SVG itself is not parsed by every consumer.
   image = '/og-default.png',
-  imageAlt = `${SITE_NAME} social preview`,
+  imageAlt = SITE_TITLE,
   type = 'website',
   modifiedTime,
 } = Astro.props;
 
-const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
+const pageTitle = title === SITE_NAME ? SITE_TITLE : `${title} — ${SITE_NAME}`;
 // Pin canonical to the site origin + pathname so trailing-slash drift
 // (and dev/preview host drift) cannot split the canonical from production.
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
 const socialImage = new URL(image, Astro.site ?? Astro.url).href;
+// Lets search engines show the site name and tie the profiles to one person.
+const structuredData =
+  Astro.url.pathname === '/'
+    ? JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: SITE_NAME,
+        alternateName: 'oddava.me',
+        url: `${SITE_URL}/`,
+        description: SITE_DESCRIPTION,
+        author: {
+          '@type': 'Person',
+          name: SITE_AUTHOR_NAME,
+          jobTitle: SITE_ROLE,
+          url: `${SITE_URL}/about`,
+          sameAs: ['https://github.com/oddava', 'https://x.com/oddava'],
+        },
+      })
+    : null;
 ---
 
 <meta charset="utf-8" />
@@ -69,10 +91,15 @@ const socialImage = new URL(image, Astro.site ?? Astro.url).href;
 <link
   rel="alternate"
   type="application/rss+xml"
-  title="oddava writing"
+  title={`${SITE_NAME} — notes`}
   href="/rss.xml"
 />
 <link rel="sitemap" href="/sitemap-index.xml" />
+{
+  structuredData && (
+    <script is:inline type="application/ld+json" set:html={structuredData} />
+  )
+}
 
 <!-- Preload critical fonts -->
 <link
