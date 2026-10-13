@@ -4,7 +4,9 @@ import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 // `.sr-only` lives in the public site stylesheet, which AdminLayout does not
 // load — admin-side hidden text has to come from this component.
 import { VisuallyHidden } from '../ui/VisuallyHidden';
-import { FileIcon, PlusIcon } from './studioFileIcons';
+import { FileIcon } from './studioFileIcons';
+import { Icon } from './studioIcons';
+import { shortcut } from './studioHelpers';
 import StudioSelect from './StudioSelect';
 import StudioContextMenu from './StudioContextMenu';
 import { MENU_TRIGGER_PROPS, useStudioMenu } from './useStudioMenu';
@@ -933,7 +935,6 @@ export default function StudioFolderTree({
     const marker = dropMarker?.key === key ? dropMarker.position : null;
     const picked = selectedKeys.includes(key);
     const rowBusy = busyKey !== null && busyKey.endsWith(`-${id}`);
-    const count = isFolder ? node.folder.totalNoteCount : 0;
 
     return (
       <li key={key} className="studio-tree-item" role="none">
@@ -1039,7 +1040,7 @@ export default function StudioFolderTree({
               <span
                 className={`studio-tree-row__chevron ${expanded ? 'is-open' : ''}`}
               >
-                ›
+                <Icon name="chevron-right" />
               </span>
             </span>
           ) : (
@@ -1081,7 +1082,7 @@ export default function StudioFolderTree({
                 aria-label="Save name"
                 onClick={(event) => event.stopPropagation()}
               >
-                ↵
+                <Icon name="check" />
               </button>
               <button
                 type="button"
@@ -1092,7 +1093,7 @@ export default function StudioFolderTree({
                   setRenaming(null);
                 }}
               >
-                ×
+                <Icon name="close" />
               </button>
             </form>
           ) : (
@@ -1111,17 +1112,6 @@ export default function StudioFolderTree({
             </span>
           )}
 
-          {count > 0 && !expanded && !searching && (
-            <>
-              <span className="studio-tree-row__count" aria-hidden="true">
-                {count}
-              </span>
-              <VisuallyHidden>
-                {`, ${count} note${count === 1 ? '' : 's'}`}
-              </VisuallyHidden>
-            </>
-          )}
-
           <button
             type="button"
             className="studio-tree-row__actions"
@@ -1135,7 +1125,7 @@ export default function StudioFolderTree({
               menu.toggleUnder(key, event.currentTarget);
             }}
           >
-            <span aria-hidden="true">•••</span>
+            <Icon name="more" />
           </button>
           {renderMenu(node)}
         </div>
@@ -1207,7 +1197,7 @@ export default function StudioFolderTree({
             aria-label="Cancel creation"
             onClick={() => setCreating(null)}
           >
-            ×
+            <Icon name="close" />
           </button>
         </form>
       </li>
@@ -1239,30 +1229,26 @@ export default function StudioFolderTree({
             type="button"
             className="studio-icon-button"
             aria-label="Quick open note"
-            title="Find note (Ctrl+P)"
+            title={`Search notes (${shortcut('P')})`}
             onClick={onQuickOpen}
           >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <circle cx="8.5" cy="8.5" r="5" />
-              <path d="m12.5 12.5 4 4" />
-            </svg>
+            <Icon name="search" />
           </button>
           <button
             type="button"
             className="studio-icon-button studio-sidebar-collapse"
             aria-label="Close Notes explorer"
-            title="Close explorer"
+            title={`Hide sidebar (${shortcut('\\')})`}
             onClick={onRequestClose}
           >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="m10 5-5 5 5 5m5-10-5 5 5 5" />
-            </svg>
+            <Icon name="sidebar" />
           </button>
         </div>
       </div>
       <div className="studio-library-actions">
         <button type="button" onClick={() => beginCreate()}>
-          <PlusIcon /> New note
+          <Icon name="plus" />
+          New note
         </button>
       </div>
       {query && (
@@ -1307,7 +1293,8 @@ export default function StudioFolderTree({
           role="treeitem"
           data-tree-key={ROOT_KEY}
           tabIndex={tabbableKey === ROOT_KEY ? 0 : -1}
-          aria-label="Notes"
+          aria-label="Home"
+          title="The notes landing page, and the top level of the tree"
           aria-owns={rootExpanded ? 'studio-tree-root-children' : undefined}
           aria-level={1}
           aria-posinset={1}
@@ -1354,22 +1341,22 @@ export default function StudioFolderTree({
             <span
               className={`studio-tree-row__chevron ${rootExpanded ? 'is-open' : ''}`}
             >
-              ›
+              <Icon name="chevron-right" />
             </span>
           </span>
           <span className="studio-tree-row__label">
             <span className="studio-tree-row__icon">
-              <FileIcon />
+              <Icon name="home" />
             </span>
             <span className="studio-tree-row__text">
-              <span>Notes</span>
+              <span>Home</span>
             </span>
           </span>
           <button
             type="button"
             className="studio-tree-row__actions"
             tabIndex={-1}
-            aria-label="Notes actions"
+            aria-label="Actions for Home"
             aria-haspopup="menu"
             aria-expanded={menu.key === ROOT_KEY}
             {...MENU_TRIGGER_PROPS}
@@ -1378,11 +1365,11 @@ export default function StudioFolderTree({
               menu.toggleUnder(ROOT_KEY, event.currentTarget);
             }}
           >
-            <span aria-hidden="true">•••</span>
+            <Icon name="more" />
           </button>
           <StudioContextMenu
             open={menu.key === ROOT_KEY}
-            label="Actions for Notes"
+            label="Actions for Home"
             menuRef={menu.ref}
             position={menu.position}
           >

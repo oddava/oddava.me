@@ -1,698 +1,359 @@
-/* Oddava Files — a calm, scalable knowledge-base workspace.
+/* ---------------------------------------------------------------------------
+   Shell: the two panes and the chrome between them.
 
-   Loaded by ContentWorkspace.tsx, which renders standalone on /admin/studio.
-   Two panes: a file tree and the note. Everything writes straight to the file;
-   there is no draft/publish machinery to dress up. Rules are scoped under
-   .content-workspace so the primitives redefined here win over admin.css. */
+   Loaded by ContentWorkspace.tsx on /admin/files. The sidebar holds the notes;
+   the workbench holds one note, edited in place. Everything saves straight to
+   the store, so there is no draft or publish state to dress up.
+--------------------------------------------------------------------------- */
 
-.content-workspace {
+.admin-page:has(.studio) {
+  /* The writing surface is the site's own black, so a note in Studio is the
+     note on the page. */
+  --admin-bg: var(--st-canvas);
+}
+
+.admin-page .content-workspace {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* Touch: no grey flash on tap, no 300ms wait for a double-tap that this
-     workspace never uses. */
-  -webkit-tap-highlight-color: transparent;
-
-  /* One motion vocabulary for the whole workspace.
-
-     Three durations and two curves, because a surface where every transition
-     was timed by hand reads as a set of parts rather than one thing. `--ease`
-     decelerates hard: it is for anything *arriving* — a menu, a drop marker, a
-     handle — which should land rather than drift. `--ease-soft` is symmetrical,
-     for a property changing between two states that are both at rest.
-
-     Nothing here is long enough to wait for. The ceiling is a fifth of a
-     second, which is the point at which motion stops reading as response and
-     starts reading as animation. */
-  --studio-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --studio-ease-soft: cubic-bezier(0.32, 0.08, 0.24, 1);
-  --studio-fast: 90ms;
-  --studio-base: 140ms;
-  --studio-slow: 200ms;
-}
-
-.content-workspace button,
-.content-workspace a,
-.content-workspace summary {
-  touch-action: manipulation;
-}
-
-.content-workspace.admin-panel {
-  padding: 20px;
-}
-
-/* --- Shared primitives --- */
-
-.content-workspace .admin-muted {
-  margin: 4px 0 0;
-  color: var(--admin-text-muted);
-  font-size: 0.8rem;
+  color: var(--st-text);
+  font-size: var(--st-size-sm);
   line-height: 1.5;
 }
 
-.content-workspace .admin-empty {
-  margin: 0;
-  padding: 12px;
-  color: var(--admin-text-muted);
-  font-size: 0.82rem;
+.admin-page .studio--full {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.content-workspace .admin-empty-state {
+.admin-page .studio-grid {
+  display: grid;
+  grid-template-columns: var(--studio-sidebar-w, 300px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.admin-page .studio--full .studio-grid {
+  height: 0;
+}
+
+.admin-page .studio-grid--collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-page .studio-sidebar,
+.admin-page .studio-workbench,
+.admin-page .studio-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.admin-page .studio-sidebar {
+  border-right: 1px solid var(--st-line);
+  background: var(--st-panel);
+}
+
+.admin-page .studio-workbench,
+.admin-page .studio-editor {
+  overflow: hidden;
+  background: var(--st-canvas);
+}
+
+.admin-page .studio-editor-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- Sidebar resize handle --- */
+
+.admin-page .studio-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 2;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.admin-page .studio-resizer::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  content: '';
+  transition: background-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-resizer:hover::after,
+.admin-page .studio-resizer:focus-visible::after,
+.admin-page .studio-resizer:active::after {
+  background: var(--st-accent);
+}
+
+.admin-page .studio-resizer:focus-visible {
+  outline: none;
+}
+
+/* --- The note's bar ---
+   One row: where the note lives on the left, its state and the way to its
+   published page on the right. The rule under it appears only once the page
+   has scrolled beneath it, so an unscrolled note has no chrome edge at all. */
+
+.admin-page .studio-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 16px;
+  min-height: 48px;
+  padding: 0 12px 0 10px;
+  border-bottom: 1px solid transparent;
+  background: var(--st-canvas);
+  transition: border-color var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-editor.is-scrolled .studio-bar {
+  border-bottom-color: var(--st-line);
+}
+
+.admin-page .studio-bar__title {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-page .studio-bar__title strong {
+  min-width: 0;
+  padding: 0 6px;
+  overflow: hidden;
+  color: var(--st-text);
+  font-size: var(--st-size-sm);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The note's own icon, which is also the way to change it. */
+.admin-page .studio-note-icon .studio-file-icon,
+.admin-page .studio-note-icon .studio-glyph {
+  width: var(--st-glyph);
+  height: var(--st-glyph);
+}
+
+/* --- Path above the note --- */
+
+.admin-page .studio-crumbs {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 2px;
+  overflow: hidden;
+}
+
+.admin-page .studio-crumbs__step {
+  flex: 0 1 auto;
+  min-width: 2.5em;
+  max-width: 16ch;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: none;
+  color: var(--st-text-3);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-page button.studio-crumbs__step {
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page button.studio-crumbs__step:hover {
+  background: var(--st-hover);
+  color: var(--st-text);
+}
+
+.admin-page .studio-crumbs__sep {
+  flex: none;
+  padding: 0 2px;
+  color: var(--st-text-4);
+}
+
+.admin-page .studio-bar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* --- Save state --- */
+
+.admin-page .studio-save {
+  padding: 0 8px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+  white-space: nowrap;
+  transition: color var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-save[data-tone='dirty'],
+.admin-page .studio-save[data-tone='saving'] {
+  color: var(--st-text-4);
+}
+
+/* As a button (a failed save) it is a real control, sized like one, and the
+   one time the save state is allowed to be loud. */
+.admin-page .studio-btn.studio-save {
+  padding: 0 10px;
+  color: var(--st-danger);
+}
+
+.admin-page .studio-bar__open .studio-glyph {
+  margin-left: -2px;
+}
+
+/* --- Open-the-sidebar button for when no note is open --- */
+
+.admin-page .studio-sidebar-open {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 5;
+}
+
+/* --- Nothing open --- */
+
+.admin-page .studio-blank {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  gap: 8px;
+  padding: 32px 24px;
   text-align: center;
 }
 
-.content-workspace .admin-input {
-  width: 100%;
-  min-width: 0;
-  min-height: 32px;
-  padding: 6px 9px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-sm-2);
-  background: var(--admin-bg);
-  color: var(--admin-text-primary);
-  font-family: inherit;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  outline: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+.admin-page .studio-blank__title {
+  margin: 0;
+  color: var(--st-text);
+  font-size: var(--st-size-lg);
+  font-weight: 700;
 }
 
-.content-workspace .admin-input::placeholder {
-  color: var(--admin-text-disabled);
+.admin-page .studio-blank__hint {
+  max-width: 40ch;
+  text-wrap: balance;
+  margin: 0;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
 }
 
-.content-workspace .admin-input:focus-visible {
-  border-color: var(--admin-accent);
-  box-shadow: 0 0 0 3px var(--color-focus-ring);
+.admin-page .studio-blank__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
 }
 
-.content-workspace .studio-icon-button {
-  display: inline-grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: var(--studio-control-size);
-  height: var(--studio-control-size);
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm-2);
-  background: transparent;
-  color: var(--admin-text-muted);
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
-}
+/* --- Sidebar, still loading --- */
 
-.content-workspace .studio-icon-button:hover:not(:disabled) {
-  background: var(--admin-surface-elevated);
-  color: var(--admin-text-primary);
-}
-
-.content-workspace .studio-icon-button:focus-visible {
-  outline: none;
-  border-color: var(--admin-accent);
-  box-shadow: 0 0 0 3px var(--color-focus-ring);
-}
-
-/* --- Shell --- */
-
-.studio-grid {
+.admin-page .studio-skeleton {
   display: grid;
-  grid-template-columns: var(--studio-sidebar-w, 300px) minmax(0, 1fr);
-  align-items: stretch;
-  flex: 1 1 auto;
-  min-height: 0;
+  gap: 14px;
+  padding: 64px 20px 0;
 }
 
-.studio-grid--collapsed {
-  grid-template-columns: minmax(0, 1fr);
+.admin-page .studio-skeleton__row {
+  display: block;
+  height: 10px;
+  border-radius: var(--st-radius);
+  background: var(--st-hover);
+  animation: studio-breathe 1.6s ease-in-out infinite;
 }
 
-.studio--full {
-  flex: 1 1 auto;
-  min-height: 0;
+.admin-page .studio-skeleton__row:nth-child(odd) {
+  animation-delay: 0.2s;
 }
 
-.studio--full .studio-grid {
-  height: 0;
-}
-
-.studio-sidebar,
-.studio-editor,
-.studio-workbench {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-
-.studio-sidebar {
-  border-right: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-}
-
-.studio-editor {
-  overflow: hidden;
-  background: var(--admin-bg);
-}
-
-.studio-workbench {
-  overflow: hidden;
-  background: var(--admin-bg);
-}
-
-.studio-editor-groups {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* --- Workbench navigation and open files --- */
-
-.studio-workbench-nav {
-  display: flex;
-  align-items: stretch;
-  flex-shrink: 0;
-  min-width: 0;
-  height: 39px;
-  border-bottom: 1px solid var(--admin-line);
-  background: color-mix(in srgb, var(--admin-surface) 88%, var(--admin-bg));
-}
-
-.studio-nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  flex-shrink: 0;
-  padding: 3px 5px;
-  border-right: 1px solid var(--admin-line);
-}
-
-.studio-workbench-nav .studio-icon-button svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.studio-workbench-nav .studio-icon-button:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.studio-quick-open {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: clamp(104px, 12vw, 168px);
-  min-width: 0;
-  margin: 4px 6px;
-  padding: 0 8px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-sm-2);
-  background: var(--admin-bg);
-  color: var(--admin-text-muted);
-  font: inherit;
-  font-size: 0.68rem;
-  cursor: text;
-}
-
-.studio-quick-open:hover {
-  border-color: var(--admin-line-strong);
-  color: var(--admin-text-secondary);
-}
-
-.studio-quick-open span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.studio-quick-open kbd {
-  border: 0;
-  background: transparent;
-  color: var(--admin-text-disabled);
-  font-size: 0.58rem;
-  white-space: nowrap;
-}
-
-.studio-tabs {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  /* A flick through the tabs must not turn into a page-level swipe. */
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.studio-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-/* Tabs size to their label, never below a width that still reads as a name.
-   Past that the strip scrolls rather than shaving every tab down to 3 letters. */
-.studio-tab {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  flex: 0 0 auto;
-  min-width: 138px;
-  max-width: 210px;
-  border-right: 1px solid var(--admin-line);
-  color: var(--admin-text-muted);
-}
-
-.studio-tab.is-dragging {
-  opacity: 0.4;
-}
-
-/* Both markers use ::before — ::after already carries the active underline. */
-.studio-tab.is-drop-before::before,
-.studio-tab.is-drop-after::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 2;
-  width: 2px;
-  background: var(--admin-accent);
-  content: '';
-}
-
-.studio-tab.is-drop-before::before {
-  left: -1px;
-}
-
-.studio-tab.is-drop-after::before {
-  right: -1px;
-}
-
-.studio-tab::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 1px;
-  background: transparent;
-  content: '';
-}
-
-.studio-tab.is-active {
-  background: var(--admin-bg);
-  color: var(--admin-text-primary);
-}
-
-.studio-tab.is-active::after {
-  background: var(--admin-accent);
-}
-
-.studio-tab.is-menu-open {
-  background: var(--admin-surface-elevated);
-}
-
-.studio-tab__label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0 4px 0 9px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 0.7rem;
-  text-align: left;
-  cursor: default;
-}
-
-.studio-tab__label:focus-visible {
-  outline: 1px solid var(--admin-accent);
-  outline-offset: -2px;
-}
-
-.studio-tab__icon {
-  display: grid;
-  flex: 0 0 14px;
-  place-items: center;
-}
-
-.studio-tab__icon svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.studio-tab__title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.studio-tab__dirty {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: var(--admin-text-secondary);
-}
-
-/* One dot per tab, coloured by what that file's editor is doing. */
-.studio-tab__dirty[data-state='dirty'] {
-  background: var(--admin-warning);
-}
-
-.studio-tab__dirty[data-state='saving'] {
-  background: var(--admin-accent);
-  animation: studio-tab-pulse 1s ease-in-out infinite;
-}
-
-.studio-tab__dirty[data-state='saved'] {
-  background: var(--admin-success);
-}
-
-.studio-tab__dirty[data-state='error'] {
-  background: var(--admin-danger);
-}
-
-@keyframes studio-tab-pulse {
+@keyframes studio-breathe {
   50% {
-    opacity: 0.3;
+    opacity: 0.45;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .studio-tab__dirty[data-state='saving'] {
+  .admin-page .studio-skeleton__row {
     animation: none;
   }
 }
 
-.studio-tab__close {
-  display: grid;
-  width: 24px;
-  flex: 0 0 24px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  opacity: 0;
-  cursor: pointer;
-}
+/* --- Toast ---
+   Bottom centre, above everything but dialogs. A notice leaves after a
+   couple of seconds; an error stays, with a way to dismiss it. */
 
-.studio-tab:hover .studio-tab__close,
-.studio-tab__close:focus-visible,
-.studio-tab.is-active .studio-tab__close {
-  opacity: 1;
-}
-
-.studio-tab__close:hover {
-  color: var(--admin-text-primary);
-}
-
-.studio-tab__close svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-/* --- Sidebar resize handle --- */
-
-.studio-resizer {
-  position: absolute;
-  top: 0;
-  right: -3px;
-  bottom: 0;
-  z-index: 2;
-  width: 7px;
-  cursor: col-resize;
-  touch-action: none;
-}
-
-.studio-resizer::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 3px;
-  width: 1px;
-  background: transparent;
-  transition: background 0.15s ease;
-}
-
-.studio-resizer:hover::after,
-.studio-resizer:focus-visible::after {
-  background: var(--admin-accent);
-}
-
-.studio-resizer:focus-visible {
-  outline: none;
-}
-
-/* --- Sidebar search + new buttons --- */
-
-.studio-explorer__heading {
+.admin-page .studio-toast {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 60;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  flex-wrap: nowrap;
-  gap: 6px;
-  min-height: 37px;
-  padding: 4px 7px 4px 11px;
-  border-bottom: 1px solid var(--admin-line);
-}
-
-.studio-explorer__heading > div:first-child {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.studio-explorer__heading strong {
-  font: 600 0.66rem var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.studio-explorer__heading > div:first-child span {
-  color: var(--admin-text-disabled);
-  font: 0.58rem var(--font-mono);
-}
-
-.studio-explorer__actions {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  gap: 2px;
-}
-
-/* --- Themed dropdown (a native select paints its popup with OS chrome) --- */
-
-.studio-select {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.studio-select__trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 4px;
-  width: 100%;
-  height: 22px;
-  min-width: 0;
-  padding: 0 4px 0 6px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm-2);
-  background: transparent;
-  color: var(--admin-text-muted);
-  font: inherit;
-  font-size: 0.65rem;
-  cursor: pointer;
+  width: max-content;
+  max-width: min(calc(100vw - 32px), 480px);
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius-float);
+  background: var(--st-raised);
+  color: var(--st-text);
+  font-size: var(--st-size-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+  animation: studio-toast-in var(--st-base) var(--st-ease);
 }
 
-.studio-select__trigger:hover:not(:disabled),
-.studio-select.is-open .studio-select__trigger {
-  border-color: var(--color-rule);
-  background: var(--color-overlay-soft);
-  color: var(--color-text-primary);
+.admin-page .studio-toast[data-tone='error'] {
+  padding-right: 4px;
+  border-color: color-mix(in srgb, var(--st-danger) 40%, transparent);
 }
 
-.studio-select__trigger:disabled {
-  opacity: 0.5;
-  cursor: default;
+.admin-page .studio-toast[data-tone='error'] .studio-toast__text {
+  color: var(--st-danger);
 }
 
-.studio-select__value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.admin-page .studio-toast__close {
+  width: 32px;
+  height: 32px;
 }
 
-.studio-select__caret {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 12px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.studio-select.is-open .studio-select__caret {
-  transform: rotate(180deg);
-}
-
-/* Flat: a hairline and the site's raised surface, no shadow, no elevation. */
-.studio-select__menu {
-  position: absolute;
-  top: calc(100% + 3px);
-  right: 0;
-  z-index: 40;
-  display: grid;
-  min-width: 100%;
-  max-height: 260px;
-  padding: 3px;
-  overflow-y: auto;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-sm-2);
-  background: var(--color-surface-raised);
-}
-
-.studio-select__menu.is-start {
-  right: auto;
-  left: 0;
-}
-
-.studio-select__menu.is-up {
-  top: auto;
-  bottom: calc(100% + 4px);
-}
-
-.studio-select__menu button {
-  padding: 5px 9px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: 0.68rem;
-  text-align: left;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.studio-select__menu button:hover,
-.studio-select__menu button:focus-visible {
-  outline: none;
-  background: var(--color-overlay-strong);
-  color: var(--color-text-primary);
-}
-
-.studio-select__menu button.is-selected {
-  color: var(--color-text-accent);
-}
-
-.studio-explorer__close {
-  display: none !important;
-}
-
-.studio-library__search {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 6px;
-  padding: 8px 9px;
-}
-
-/* The field owns the clear button: it belongs to the query, not to the row of
-   actions beside it, and it only exists while there is a query to clear. */
-.studio-search {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.studio-search input[type='search']::-webkit-search-cancel-button {
-  display: none;
-}
-
-.studio-search:has(.studio-search__clear) .admin-input {
-  padding-right: 28px;
-}
-
-.studio-search__clear {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  transform: translateY(-50%);
-  color: var(--admin-text-muted);
-  background: transparent;
-  cursor: pointer;
-}
-
-.studio-search__clear:hover,
-.studio-search__clear:focus-visible {
-  color: var(--admin-text-primary);
-  background: var(--color-overlay-strong);
-}
-
-.studio-search__clear svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-.studio-entry-list {
-  display: grid;
-  align-content: start;
-  gap: 4px;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 8px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+@keyframes studio-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
 }

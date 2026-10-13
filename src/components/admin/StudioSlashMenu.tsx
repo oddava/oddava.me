@@ -80,12 +80,13 @@ export default function StudioSlashMenu({
           }}
           onMouseMove={() => onHover(index)}
         >
-          {/* The Markdown the row produces, shown as its icon — the glyph
-                teaches the shorthand that makes the menu unnecessary. */}
-          <span className="studio-slashmenu__glyph" aria-hidden="true">
-            {item.hint}
-          </span>
           <span className="studio-slashmenu__title">{item.title}</span>
+          {/* The shorthand that makes the same block, like a key hint. */}
+          {item.hint && (
+            <kbd className="studio-slashmenu__hint" aria-hidden="true">
+              {item.hint}
+            </kbd>
+          )}
         </button>,
       ])}
     </div>,

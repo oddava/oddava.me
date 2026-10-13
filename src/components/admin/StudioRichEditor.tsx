@@ -55,8 +55,8 @@ import type { EditorCommands } from './studioEditorCommands';
 import type { WikiSuggestion } from './WikiLinkAutocomplete';
 import { emissionsFrom, isOurs, remember } from './studioEmissions';
 import { looksLikeMarkdown, markdownFromClipboard } from './studioPaste';
-import './StudioRichEditor.css';
 import NotePageIcon from '../NotePageIcon';
+import { Icon } from './studioIcons';
 
 interface Props {
   icon?: string;
@@ -218,7 +218,9 @@ export default function StudioRichEditor(props: Props) {
         dom.getBoundingClientRect().left -
         pane.getBoundingClientRect().left +
         pane.scrollLeft -
-        (live.current.compact || column ? 44 : 76),
+        // The handle's width plus a 12px gap: one grip in a column or on a
+        // phone, add and grip side by side otherwise.
+        (live.current.compact || column ? 36 : 62),
       top:
         dom.getBoundingClientRect().top -
         pane.getBoundingClientRect().top +
@@ -1317,12 +1319,18 @@ export default function StudioRichEditor(props: Props) {
               }}
             />
             {youtubeError && (
-              <p id="studio-youtube-error" role="alert">
+              <p
+                id="studio-youtube-error"
+                className="studio-field-error"
+                role="alert"
+              >
                 {youtubeError}
               </p>
             )}
-            <div>
-              <button type="submit">Embed video</button>
+            <div className="studio-form-actions">
+              <button type="submit" className="studio-btn studio-btn--primary">
+                Embed video
+              </button>
             </div>
           </form>
         </StudioEditorPopover>
@@ -1378,7 +1386,14 @@ export default function StudioRichEditor(props: Props) {
           hoveredBlock.current = null;
           setHandle(null);
         }}
-        onScroll={() => {
+        onScroll={(event) => {
+          // The bar above draws its rule only once the page has slid under it.
+          event.currentTarget
+            .closest('.studio-editor')
+            ?.classList.toggle(
+              'is-scrolled',
+              event.currentTarget.scrollTop > 0,
+            );
           if (!props.compact && menu.key === null && !pointerDrag.current) {
             hoveredBlock.current = null;
             setHandle(null);
@@ -1467,7 +1482,7 @@ export default function StudioRichEditor(props: Props) {
                     .run();
                 }}
               >
-                +
+                <Icon name="plus" />
               </button>
               <button
                 type="button"
@@ -1565,20 +1580,7 @@ export default function StudioRichEditor(props: Props) {
                   setSideDrop(null);
                 }}
               >
-                <svg
-                  width="16"
-                  height="20"
-                  viewBox="0 0 16 20"
-                  aria-hidden="true"
-                  fill="currentColor"
-                >
-                  {[5, 10, 15].map((y) => (
-                    <g key={y}>
-                      <circle cx="5" cy={y} r="1.5" />
-                      <circle cx="11" cy={y} r="1.5" />
-                    </g>
-                  ))}
-                </svg>
+                <Icon name="grip" />
               </button>
             </div>
           )}
@@ -1770,14 +1772,14 @@ export default function StudioRichEditor(props: Props) {
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().addRowAfter().run()}
           >
-            + Row
+            Add row
           </button>
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().addColumnAfter().run()}
           >
-            + Column
+            Add column
           </button>
           <button
             type="button"
@@ -1912,8 +1914,10 @@ export default function StudioRichEditor(props: Props) {
                 })
               }
             />
-            <div>
-              <button type="submit">Save</button>
+            <div className="studio-form-actions">
+              <button type="submit" className="studio-btn studio-btn--primary">
+                Save
+              </button>
             </div>
           </form>
         </StudioEditorPopover>
@@ -1969,10 +1973,15 @@ export default function StudioRichEditor(props: Props) {
                 }
               }}
             />
-            {linkError && <p role="alert">{linkError}</p>}
-            <div>
+            {linkError && (
+              <p className="studio-field-error" role="alert">
+                {linkError}
+              </p>
+            )}
+            <div className="studio-form-actions">
               <button
                 type="button"
+                className="studio-btn"
                 onClick={() => {
                   setLink(null);
                   editor?.commands.focus();
@@ -1980,7 +1989,9 @@ export default function StudioRichEditor(props: Props) {
               >
                 Cancel
               </button>
-              <button type="submit">Apply link</button>
+              <button type="submit" className="studio-btn studio-btn--primary">
+                Apply link
+              </button>
             </div>
           </form>
         </StudioEditorPopover>
@@ -1993,8 +2004,10 @@ export default function StudioRichEditor(props: Props) {
             editor?.commands.focus();
           }}
         >
-          <div>
-            <p>Edit this block’s source.</p>
+          <div className="studio-editor-form">
+            <p className="studio-field-help">
+              This block is kept as written. Edit its Markdown directly.
+            </p>
             <textarea
               aria-label="Custom Markdown source"
               autoFocus
@@ -2003,9 +2016,10 @@ export default function StudioRichEditor(props: Props) {
                 setRawEdit({ ...rawEdit, raw: event.currentTarget.value })
               }
             />
-            <footer>
+            <div className="studio-form-actions">
               <button
                 type="button"
+                className="studio-btn"
                 onClick={() => {
                   setRawEdit(null);
                   editor?.commands.focus();
@@ -2015,6 +2029,7 @@ export default function StudioRichEditor(props: Props) {
               </button>
               <button
                 type="button"
+                className="studio-btn studio-btn--primary"
                 onClick={() => {
                   editor
                     ?.chain()
@@ -2027,7 +2042,7 @@ export default function StudioRichEditor(props: Props) {
               >
                 Apply changes
               </button>
-            </footer>
+            </div>
           </div>
         </StudioEditorPopover>
       )}

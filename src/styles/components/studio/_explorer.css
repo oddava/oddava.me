@@ -1,474 +1,516 @@
-/* --- Folder tree --- */
+/* ---------------------------------------------------------------------------
+   Explorer: the sidebar's heading, its one create action, and the tree.
+--------------------------------------------------------------------------- */
 
-.studio-folder-tree {
-  display: block;
-  padding: 6px;
+.admin-page .studio-explorer__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 8px 0 16px;
 }
 
-.studio-folder-tree ul {
+.admin-page .studio-explorer__heading strong {
+  color: var(--st-text);
+  font-size: var(--st-size-md);
+  font-weight: 700;
+}
+
+.admin-page .studio-explorer__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.admin-page .studio-library-actions {
+  flex: none;
+  padding: 0 8px 8px;
+}
+
+.admin-page .studio-library-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--st-row);
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-library-actions button:hover {
+  background: var(--st-hover);
+  color: var(--st-text);
+}
+
+.admin-page .studio-library-actions .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  margin: 0 1px;
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-library-clear {
+  margin: 0 8px 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-accent-text);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.admin-page .studio-library-clear:hover {
+  background: var(--st-hover);
+}
+
+/* --- The tree --- */
+
+.admin-page .studio-entry-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-page .studio-folder-tree {
+  display: block;
+  padding: 0 8px 24px;
+}
+
+.admin-page .studio-folder-tree ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* Rows own a capped indent, so deeply nested lists never shrink the sidebar. */
-.studio-tree-item {
+.admin-page .studio-tree-item {
   position: relative;
 }
 
-/* The row itself is the tree item: it carries the role, the tab stop and every
-   gesture. The chevron and the label are spans inside it rather than buttons of
-   their own, so a keyboard walks rows — not three controls per row — and a
-   screen reader hears "treeitem" where the focus actually lands. */
-.studio-tree-row {
+/* The row is the tree item: it carries the role, the tab stop and every
+   gesture. Chevron, label and ••• are parts of it, so a keyboard walks rows
+   rather than three controls per row. The indent is set inline by depth and
+   capped, so a deep tree never squeezes the names out of the sidebar. */
+.admin-page .studio-tree-row {
   position: relative;
   display: grid;
-  /* The last column is the ••• button; the padding keeps it off the row's edge
-     rather than shaving the button's own hit area down to make room. */
-  grid-template-columns: 18px minmax(0, 1fr) 24px;
+  grid-template-columns: 20px minmax(0, 1fr) 24px;
   align-items: center;
-  padding-right: 5px;
-  min-height: 28px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm-2);
+  min-height: var(--st-row);
+  padding-right: 4px;
+  border-radius: var(--st-radius);
+  color: var(--st-text-2);
+  font-size: var(--st-size-sm);
   cursor: default;
+  user-select: none;
   transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    opacity 0.15s ease;
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease),
+    opacity var(--st-fast) var(--st-ease);
 }
 
-.studio-tree-row:hover {
-  background: var(--admin-surface-elevated);
+.admin-page .studio-tree-row:hover {
+  background: var(--st-hover);
+  color: var(--st-text);
 }
 
-.studio-tree-row:focus-visible {
-  outline: none;
-  border-color: var(--admin-accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--admin-accent) 45%, transparent);
+.admin-page .studio-tree-row:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: -2px;
 }
 
-.studio-tree-row.is-active {
-  border-color: var(--admin-line);
-  background: var(--color-overlay-strong);
+.admin-page .studio-tree-row.is-active {
+  background: var(--st-current);
+  color: var(--st-text);
 }
 
-/* What is moving is dimmed, so the row under the cursor is the only one that
-   looks like it is about to change. */
-.studio-tree-row.is-dragged {
+.admin-page .studio-tree-row.is-selected {
+  background: var(--st-picked);
+  color: var(--st-text);
+}
+
+/* A right-click leaves no pointer behind, so the row it acted on says so. */
+.admin-page .studio-tree-row.is-menu-open {
+  background: var(--st-current);
+}
+
+.admin-page .studio-tree-row.is-dragged {
   opacity: 0.4;
 }
 
-.studio-tree-row.is-busy {
-  opacity: 0.55;
+.admin-page .studio-tree-row.is-busy {
+  opacity: 0.5;
   pointer-events: none;
 }
 
-.studio-tree-row.is-selected {
-  border-color: color-mix(in srgb, var(--admin-accent) 55%, transparent);
-  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
+.admin-page .studio-tree-row.is-drop-inside {
+  background: var(--st-picked);
+  outline: 1px solid var(--st-accent);
+  outline-offset: -1px;
 }
 
-.studio-tree-row.is-drop-inside {
-  border-color: var(--admin-accent);
-  background: color-mix(in srgb, var(--admin-accent) 10%, transparent);
-}
-
-.studio-tree-row.is-drop-before::before,
-.studio-tree-row.is-drop-after::after {
+.admin-page .studio-tree-row.is-drop-before::before,
+.admin-page .studio-tree-row.is-drop-after::after {
   position: absolute;
-  right: 3px;
-  left: 3px;
+  right: 4px;
+  left: 4px;
   z-index: 2;
   height: 2px;
-  border-radius: 999px;
-  background: var(--admin-accent);
+  border-radius: 1px;
+  background: var(--st-accent);
   content: '';
+  pointer-events: none;
 }
 
-.studio-tree-row.is-drop-before::before {
-  top: -2px;
+.admin-page .studio-tree-row.is-drop-before::before {
+  top: -1px;
 }
 
-.studio-tree-row.is-drop-after::after {
-  bottom: -2px;
+.admin-page .studio-tree-row.is-drop-after::after {
+  bottom: -1px;
 }
 
-.studio-tree-row__toggle,
-.studio-tree-row__actions {
+.admin-page .studio-tree-row__toggle,
+.admin-page .studio-tree-row__spacer {
   display: grid;
-  width: 100%;
-  height: 26px;
   place-items: center;
-  padding: 0;
-  border: 0;
-  color: var(--admin-text-muted);
-  background: transparent;
+  width: 20px;
+  height: var(--st-row);
+}
+
+.admin-page .studio-tree-row__toggle {
+  color: var(--st-text-4);
   cursor: pointer;
 }
 
-.studio-tree-row__chevron {
-  display: block;
-  font-size: 0.9rem;
-  line-height: 1;
-  transform: rotate(0deg);
-  transition: transform 0.12s ease;
+.admin-page .studio-tree-row:hover .studio-tree-row__toggle {
+  color: var(--st-text-3);
 }
 
-.studio-tree-row__chevron.is-open {
+.admin-page .studio-tree-row__chevron {
+  display: grid;
+  place-items: center;
+  transition: transform var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-tree-row__chevron .studio-glyph {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-page .studio-tree-row__chevron.is-open {
   transform: rotate(90deg);
 }
 
-.studio-tree-row__spacer {
-  width: 18px;
-}
-
-.studio-tree-row__label,
-.studio-tree-row__rename {
+.admin-page .studio-tree-row__label,
+.admin-page .studio-tree-row__rename {
   display: grid;
-  grid-template-columns: 17px minmax(0, 1fr);
+  grid-template-columns: var(--st-glyph-sm) minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  height: 26px;
+  min-height: var(--st-row);
   padding: 0 2px;
-  border: 0;
-  color: var(--admin-text-primary);
-  background: transparent;
-  font: inherit;
-  font-size: 0.75rem;
-  text-align: left;
 }
 
-/* Both live in the ••• column: the count is what the row says at rest, the
-   menu handle is what it offers once you reach for it. */
-.studio-tree-row__count,
-.studio-tree-row__actions {
-  grid-row: 1;
-  grid-column: 3;
+.admin-page .studio-tree-row__icon {
+  display: grid;
+  place-items: center;
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  color: var(--st-text-3);
 }
 
-.studio-tree-row__count {
-  justify-self: center;
-  color: var(--admin-text-disabled);
-  font: 0.55rem var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  transition: opacity 0.12s ease;
+.admin-page .studio-tree-row__icon :is(.studio-glyph, .studio-file-icon) {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  font-size: 14px;
+  line-height: var(--st-glyph-sm);
 }
 
-.studio-tree-row:hover .studio-tree-row__count,
-.studio-tree-row:focus-visible .studio-tree-row__count,
-.studio-tree-row.is-menu-open .studio-tree-row__count {
-  opacity: 0;
-}
-
-.studio-tree-row__text {
+.admin-page .studio-tree-row__text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 1.15;
+  line-height: 1.3;
 }
 
-.studio-tree-row__text > span,
-.studio-tree-row__text small {
+.admin-page .studio-tree-row__text > span,
+.admin-page .studio-tree-row__text small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.studio-tree-row__text small {
-  color: var(--admin-text-disabled);
-  font: 0.54rem var(--font-mono);
+/* Where a search hit lives, under its name. */
+.admin-page .studio-tree-row__text small {
+  color: var(--st-text-4);
+  font-size: var(--st-size-xs);
 }
 
-/* What the query matched, so a long result list can be read at a glance. */
-.studio-tree-row__text mark {
+.admin-page .studio-tree-row:has(.studio-tree-row__text small) {
+  padding-block: 4px;
+}
+
+.admin-page .studio-tree-row__text mark,
+.admin-page .studio-mfiles__name mark {
   border-radius: 2px;
-  color: var(--color-text-accent);
-  background: color-mix(in srgb, var(--admin-accent) 22%, transparent);
+  background: var(--st-picked);
+  color: var(--st-text);
 }
 
-.studio-tree-row__icon {
+/* The ••• handle: there when you reach for the row, not before. */
+.admin-page .studio-tree-row__actions {
   display: grid;
-  width: 16px;
-  height: 16px;
+  grid-column: 3;
+  grid-row: 1;
   place-items: center;
-  color: var(--admin-text-muted);
-}
-
-.studio-tree-row__icon svg,
-.studio-library__search .studio-icon-button svg,
-.studio-explorer__actions svg {
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.35;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.studio-library__search .studio-icon-button svg,
-.studio-explorer__actions svg {
-  width: 18px;
-  height: 18px;
-}
-
-.studio-tree-row__actions {
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-
-.studio-tree-row:hover .studio-tree-row__actions,
-.studio-tree-row:focus-visible .studio-tree-row__actions,
-.studio-tree-row__actions:focus-visible,
-.studio-tree-row__actions[aria-expanded='true'] {
-  opacity: 1;
-}
-
-/* A right-click leaves no cursor behind, so the row it acted on says so. */
-.studio-tree-row.is-menu-open {
-  border-color: var(--admin-line);
-  background: var(--admin-surface-elevated);
-}
-
-.studio-tree-row.is-menu-open .studio-tree-row__actions {
-  opacity: 1;
-}
-
-/* Same flat popup treatment as .studio-select__menu. Rendered through a portal
-   on `document.body`: the tree scrolls, the tab strip clips its overflow, and
-   on a phone the drawer is transformed — anchored inside any of them the menu
-   would be cut off or would drift away from what it points at. */
-.studio-menu {
-  max-height: calc(var(--studio-vh, 100dvh) - 24px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  position: fixed;
-  z-index: 1200;
-  display: grid;
-  min-width: 148px;
-  padding: 3px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-sm-2);
-  background: var(--color-surface-raised);
-  box-shadow: 0 12px 32px color-mix(in srgb, #000 34%, transparent);
-  animation: studio-pop var(--studio-base) var(--studio-ease);
-}
-
-.studio-menu button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 5px 9px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  border-radius: 6px;
   background: transparent;
-  font: inherit;
-  font-size: 0.68rem;
-  text-align: left;
+  color: var(--st-text-3);
+  opacity: 0;
   cursor: pointer;
   transition:
-    background var(--studio-fast) var(--studio-ease-soft),
-    color var(--studio-fast) var(--studio-ease-soft);
+    opacity var(--st-fast) var(--st-ease),
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
 }
 
-/* The shortcut that does the same thing, so the menu teaches its way out. */
-.studio-menu__hint {
-  color: var(--admin-text-disabled);
-  font: 0.6rem var(--font-mono);
+.admin-page .studio-tree-row__actions .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
 }
 
-.studio-menu button:hover,
-.studio-menu button:focus-visible {
-  background: var(--color-overlay-strong);
-  color: var(--color-text-primary);
+.admin-page .studio-tree-row:hover .studio-tree-row__actions,
+.admin-page .studio-tree-row:focus-visible .studio-tree-row__actions,
+.admin-page .studio-tree-row.is-menu-open .studio-tree-row__actions,
+.admin-page .studio-tree-row__actions:focus-visible,
+.admin-page .studio-tree-row__actions[aria-expanded='true'] {
+  opacity: 1;
 }
 
-.studio-menu button.is-danger {
-  color: var(--color-text-error);
+.admin-page .studio-tree-row__actions:hover {
+  background: var(--st-press);
+  color: var(--st-text);
 }
 
-.studio-menu > span {
-  height: 1px;
-  margin: 3px 4px;
-  background: var(--color-rule);
+/* The home row: the top of the tree, and the notes landing page. */
+.admin-page .studio-tree-row--root .studio-tree-row__icon {
+  color: var(--st-text-3);
 }
 
-.studio-tree-row__rename input {
+/* --- Renaming and creating in place --- */
+
+.admin-page .studio-tree-row--inline,
+.admin-page form.studio-tree-row__rename {
+  grid-template-columns: var(--st-glyph-sm) minmax(0, 1fr) 24px 24px;
+  gap: 4px;
+}
+
+.admin-page .studio-tree-row--inline {
+  grid-template-columns: 20px minmax(0, 1fr) 24px 24px;
+  gap: 0;
+}
+
+.admin-page .studio-tree-row--inline .studio-tree-row__rename {
+  margin-right: 4px;
+}
+
+.admin-page .studio-tree-row__rename input {
   min-width: 0;
-  height: 22px;
-  padding: 1px 5px;
-  border: 1px solid var(--admin-accent);
-  border-radius: var(--radius-sm-2);
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--st-accent);
+  border-radius: 6px;
   outline: none;
-  color: var(--admin-text-primary);
-  background: var(--admin-bg);
+  background: var(--st-field);
+  color: var(--st-text);
   font: inherit;
-  font-size: 0.72rem;
+  font-size: var(--st-size-sm);
 }
 
-.studio-tree-row--inline {
-  grid-template-columns: 18px minmax(0, 1fr);
+.admin-page .studio-inline-confirm {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--st-text-3);
+  cursor: pointer;
 }
 
-.studio-tree-inline-move {
+.admin-page .studio-inline-confirm:hover:not(:disabled) {
+  background: var(--st-press);
+  color: var(--st-text);
+}
+
+.admin-page .studio-inline-confirm[type='submit'] {
+  color: var(--st-accent-text);
+}
+
+.admin-page .studio-inline-confirm .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+}
+
+.admin-page .studio-tree-inline-move {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin: 2px 0 4px 18px;
+  gap: 6px;
+  margin: 4px 0 6px 20px;
   padding: 6px;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-sm-2);
-  background: var(--color-surface-raised);
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius-float);
+  background: var(--st-raised);
 }
 
-.studio-tree-inline-move__select {
+.admin-page .studio-tree-inline-move__select {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.studio-tree-inline-move__select .studio-select__trigger {
-  border-color: var(--admin-line-strong);
-  background: var(--admin-bg);
-  color: var(--admin-text-primary);
-}
-
-.studio-tree-inline-move button {
-  height: 22px;
-  padding: 0 6px;
+.admin-page .studio-tree-inline-move > button {
+  min-height: var(--st-control);
+  padding: 0 10px;
   border: 0;
-  color: var(--admin-text-muted);
+  border-radius: var(--st-radius);
   background: transparent;
-  font-size: 0.65rem;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-sm);
   cursor: pointer;
 }
 
-/* --- Nothing to show --- */
-
-.studio-tree-empty {
-  display: grid;
-  justify-items: start;
-  gap: 8px;
-  padding: 14px 10px;
-  color: var(--admin-text-muted);
-  font-size: 0.78rem;
+.admin-page .studio-tree-inline-move > button:hover {
+  background: var(--st-hover);
+  color: var(--st-text);
 }
 
-.studio-tree-empty p {
+/* --- Empty and failed --- */
+
+.admin-page .studio-tree-empty {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 16px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+}
+
+.admin-page .studio-tree-empty p {
   margin: 0;
 }
 
-.studio-tree-empty button {
-  padding: 4px 9px;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-primary);
+.admin-page .studio-tree-empty button:not(.studio-btn) {
+  min-height: var(--st-control);
+  padding: 0 12px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text);
   font: inherit;
-  font-size: 0.7rem;
+  font-size: var(--st-size-sm);
   cursor: pointer;
 }
 
-.studio-tree-empty button:hover {
-  background: var(--color-overlay-strong);
+.admin-page .studio-tree-empty button:not(.studio-btn):hover {
+  background: var(--st-hover);
 }
 
-/* The cursor's own label while several files move at once. Positioned off
-   screen because `setDragImage` only needs it rendered, not seen. */
-.studio-drag-ghost {
+/* The pointer's own label while several items move at once. Off screen,
+   because setDragImage only needs it rendered, not seen. */
+.admin-page .studio-drag-ghost {
   position: fixed;
   top: -1000px;
   left: -1000px;
-  padding: 5px 9px;
-  border: 1px solid var(--admin-accent);
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-primary);
-  background: var(--color-surface-raised);
-  font: 0.68rem var(--font-mono);
+  padding: 6px 10px;
+  border: 1px solid var(--st-accent);
+  border-radius: var(--st-radius);
+  background: var(--st-raised);
+  color: var(--st-text);
+  font-family: var(--st-font);
+  font-size: var(--st-size-sm);
   white-space: nowrap;
   pointer-events: none;
 }
 
-.content-workspace .studio-icon-button.is-spinning svg {
-  animation: studio-spin 0.8s linear infinite;
-}
+/* --- Several picked at once --- */
 
-@keyframes studio-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .studio-tree-row,
-  .studio-tree-row__chevron,
-  .studio-tree-row__count {
-    transition: none;
-  }
-
-  .content-workspace .studio-icon-button.is-spinning svg {
-    animation: none;
-  }
-}
-
-/* --- Bulk selection bar --- */
-
-.studio-bulk-bar {
+.admin-page .studio-bulk-bar {
   display: flex;
   align-items: center;
+  flex: none;
   gap: 6px;
-  flex-shrink: 0;
-  padding: 7px 9px;
-  border-top: 1px solid var(--color-rule);
-  background: var(--color-surface-raised);
+  padding: 8px;
+  border-top: 1px solid var(--st-line);
+  background: var(--st-panel);
 }
 
-.studio-bulk-bar strong {
-  flex: 0 0 auto;
-  color: var(--color-text-muted);
-  font: 0.58rem var(--font-mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.admin-page .studio-bulk-bar strong {
+  flex: none;
+  padding: 0 4px;
+  color: var(--st-text-2);
+  font-size: var(--st-size-sm);
+  font-weight: 400;
+  white-space: nowrap;
 }
 
-.studio-bulk-bar__move {
+.admin-page .studio-bulk-bar__move {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.studio-bulk-bar__move .studio-select__trigger {
-  border-color: var(--admin-line-strong);
-  background: var(--admin-bg);
-  color: var(--admin-text-primary);
-}
-
-.studio-bulk-bar button {
-  flex: 0 0 auto;
-  height: 22px;
-  padding: 0 6px;
+.admin-page .studio-bulk-bar > button {
+  flex: none;
+  min-height: var(--st-control);
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-muted);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text-2);
   font: inherit;
-  font-size: 0.65rem;
+  font-size: var(--st-size-sm);
   cursor: pointer;
 }
 
-.studio-bulk-bar button:hover:not(:disabled) {
-  background: var(--color-overlay-strong);
+.admin-page .studio-bulk-bar > button:hover:not(:disabled) {
+  background: var(--st-hover);
+  color: var(--st-text);
 }
 
-.studio-bulk-bar button.is-danger {
-  color: var(--admin-danger);
+.admin-page .studio-bulk-bar > button.is-danger {
+  color: var(--st-danger);
 }
 
-.studio-bulk-bar :disabled {
+.admin-page .studio-bulk-bar > button.is-danger:hover:not(:disabled) {
+  background: var(--st-danger-tint);
+}
+
+.admin-page .studio-bulk-bar :disabled {
   opacity: 0.5;
   cursor: default;
 }

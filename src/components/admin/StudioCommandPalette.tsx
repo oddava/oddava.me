@@ -7,10 +7,14 @@ import {
   useState,
 } from 'preact/hooks';
 import type { ContentEntryListItem } from '../../lib/contracts';
+import { FileIcon } from './studioFileIcons';
+import { Icon, type IconName } from './studioIcons';
 
 export interface PaletteCommand {
   id: string;
   title: string;
+  icon: IconName;
+  /** The shortcut that does the same thing, when there is one. */
   hint?: string;
   danger?: boolean;
   run: () => void;
@@ -148,8 +152,8 @@ export default function StudioCommandPalette({
           <input
             ref={inputRef}
             className="studio-palette__input"
-            placeholder="Go to a file or run a command…"
-            aria-label="Go to a file or run a command"
+            placeholder="Search notes and commands"
+            aria-label="Search notes and commands"
             role="combobox"
             aria-autocomplete="list"
             aria-expanded="true"
@@ -194,7 +198,9 @@ export default function StudioCommandPalette({
           aria-label="Notes and commands"
         >
           {rows.length === 0 ? (
-            <p className="studio-palette__empty">No matches.</p>
+            <p className="studio-palette__empty">
+              No note or command matches “{query.trim()}”.
+            </p>
           ) : (
             rows.map((row, index) => (
               <button
@@ -216,7 +222,11 @@ export default function StudioCommandPalette({
                 onClick={() => choose(row)}
               >
                 <span className="studio-palette__kind" aria-hidden="true">
-                  {row.kind === 'command' ? '⌘' : '¶'}
+                  {row.kind === 'command' ? (
+                    <Icon name={row.command.icon} />
+                  ) : (
+                    <FileIcon icon={row.entry.icon} />
+                  )}
                 </span>
                 <span className="studio-palette__label">
                   {row.kind === 'command' ? row.command.title : row.entry.title}

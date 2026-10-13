@@ -2,13 +2,15 @@ import StudioContextMenu from './StudioContextMenu';
 import type { MenuPosition } from './useStudioMenu';
 import { blockLabel, type StudioBlock, type TurnTarget } from './studioBlocks';
 import type { RefObject } from 'preact';
+import { Icon } from './studioIcons';
+import { altShortcut, shortcut } from './studioHelpers';
 
 /**
  * What a block can be turned into. The Markdown beside each one is the same
  * glyph the slash menu shows, so the two menus teach the same shorthand.
  */
 const TURN_INTO: { label: string; hint: string; target: TurnTarget }[] = [
-  { label: 'Text', hint: 'Aa', target: { type: 'paragraph' } },
+  { label: 'Text', hint: '', target: { type: 'paragraph' } },
   ...[1, 2, 3, 4, 5, 6].map((depth) => ({
     label: `Heading ${depth}`,
     hint: '#'.repeat(depth),
@@ -79,7 +81,10 @@ export default function StudioBlockMenu({
       position={position}
     >
       <details className="studio-menu-turn">
-        <summary>Turn into</summary>
+        <summary>
+          Turn into
+          <Icon name="chevron-right" />
+        </summary>
         {TURN_INTO.map((option) => (
           <button
             type="button"
@@ -87,18 +92,20 @@ export default function StudioBlockMenu({
             onClick={run(() => onTurnInto(option.target))}
           >
             {option.label}
-            <span className="studio-menu__hint">{option.hint}</span>
+            {option.hint && (
+              <span className="studio-menu__hint">{option.hint}</span>
+            )}
           </button>
         ))}
       </details>
       <span className="studio-menu__divider" role="separator" />
       <button type="button" onClick={run(() => onMove(-1))}>
         Move up
-        <span className="studio-menu__hint">⌥↑</span>
+        <span className="studio-menu__hint">{altShortcut('↑')}</span>
       </button>
       <button type="button" onClick={run(() => onMove(1))}>
         Move down
-        <span className="studio-menu__hint">⌥↓</span>
+        <span className="studio-menu__hint">{altShortcut('↓')}</span>
       </button>
       {onColumns && (
         <>
@@ -140,14 +147,14 @@ export default function StudioBlockMenu({
       )}
       <button type="button" onClick={run(onDuplicate)}>
         Duplicate
-        <span className="studio-menu__hint">⌘⇧D</span>
+        <span className="studio-menu__hint">{shortcut('D', true)}</span>
       </button>
       <button type="button" onClick={run(onCopy)}>
         Copy as Markdown
       </button>
       <button type="button" className="is-danger" onClick={run(onDelete)}>
         Delete
-        <span className="studio-menu__hint">⌘⇧⌫</span>
+        <span className="studio-menu__hint">{shortcut('Backspace', true)}</span>
       </button>
     </StudioContextMenu>
   );

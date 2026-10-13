@@ -1,0 +1,110 @@
+/* ---------------------------------------------------------------------------
+   Studio tokens
+
+   One scale for everything the editor draws. Declared on the document root
+   (`.admin-page` is the <html> element) rather than on the workspace, because
+   menus, popovers, sheets and dialogs render through portals on <body> and
+   must speak the same language as the panes they belong to.
+
+   The rules the scale encodes:
+
+   - Type: one face, the site's. Four sizes — 12 for metadata and hints, 13
+     for chrome, 14 for primary chrome text, 16 for fields on touch (iOS zooms
+     the page under that) and dialog titles. Two weights: 400 and 700.
+   - Shape: 8px for anything you press or type into, 12px for anything that
+     floats. A row inside a floating menu sits 4px from its edge, so 12 = 8 + 4
+     and the corners nest.
+   - Depth: none. Floating surfaces are told apart by a lighter fill and a
+     hairline, never a shadow.
+   - Colour: neutral greys. The accent is reserved for focus, the primary
+     action, links, and the current selection.
+   - Motion: colour changes in 120ms; things that arrive take 180ms; drawers
+     and sheets, the only large movements, take 280ms.
+--------------------------------------------------------------------------- */
+
+/* M PLUS Rounded draws the ellipsis as three centred dots, the CJK form, so
+   "Saving…" reads as "Saving···". This face covers that one character with
+   the platform's Latin sans and leaves every other glyph to the site font. */
+@font-face {
+  font-family: 'Studio Ellipsis';
+  src:
+    local('Segoe UI'), local('Helvetica Neue'), local('Helvetica'),
+    local('Roboto'), local('Arial'), local('DejaVu Sans');
+  unicode-range: U+2026;
+}
+
+.admin-page {
+  /* Surfaces, darkest to lightest. */
+  --st-canvas: var(--color-surface);
+  --st-panel: var(--color-surface-raised);
+  --st-raised: #151515;
+  --st-field: var(--color-surface);
+
+  /* Interaction fills: hover, press, and "this one" (current, highlighted). */
+  --st-hover: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+  --st-press: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  --st-current: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  --st-picked: color-mix(in srgb, var(--color-brand) 16%, transparent);
+
+  --st-line: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  --st-line-strong: color-mix(
+    in srgb,
+    var(--color-text-primary) 18%,
+    transparent
+  );
+
+  /* Text, brightest to faintest. The faintest still clears 4.5:1 on black. */
+  --st-text: var(--color-text-primary);
+  --st-text-2: #c9c9c9;
+  --st-text-3: #9b9b9b;
+  --st-text-4: #787878;
+
+  --st-accent: var(--color-brand);
+  --st-accent-text: var(--color-brand-strong);
+  --st-on-accent: var(--color-text-on-accent);
+  --st-danger: var(--color-text-error);
+  --st-danger-tint: color-mix(
+    in srgb,
+    var(--color-text-error) 12%,
+    transparent
+  );
+  --st-focus: var(--color-focus-ring);
+
+  --st-font: 'Studio Ellipsis', var(--font-body);
+  --st-mono: var(--font-mono);
+  --st-size-xs: 12px;
+  --st-size-sm: 13px;
+  --st-size-md: 14px;
+  --st-size-lg: 16px;
+
+  --st-radius: var(--radius-md);
+  --st-radius-float: var(--radius-lg);
+
+  --st-control: 32px;
+  --st-row: 30px;
+  --st-touch: 44px;
+  --st-glyph: 18px;
+  --st-glyph-sm: 16px;
+
+  --st-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --st-ease-move: cubic-bezier(0.32, 0.72, 0, 1);
+  --st-fast: 120ms;
+  --st-base: 180ms;
+  --st-slow: 280ms;
+}
+
+@media (pointer: coarse) {
+  .admin-page {
+    --st-control: var(--st-touch);
+    --st-row: 40px;
+    --st-glyph: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page {
+    --st-fast: 1ms;
+    --st-base: 1ms;
+    --st-slow: 1ms;
+  }
+}

@@ -255,7 +255,11 @@ export type SlashGroup = 'Basic' | 'Lists' | 'Blocks' | 'Insert';
 export interface SlashCommand {
   id: string;
   title: string;
-  /** The Markdown this produces, shown as the row's glyph. */
+  /**
+   * The Markdown that makes the same block when typed at the start of a line,
+   * shown beside the row so the menu teaches its way out of being needed.
+   * Empty where no such shorthand exists.
+   */
   hint: string;
   keywords: string;
   group: SlashGroup;
@@ -273,7 +277,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: 'text',
     title: 'Text',
-    hint: 'Aa',
+    hint: '',
     keywords: 'text paragraph plain body',
     group: 'Basic',
     insert: '',
@@ -330,7 +334,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: 'table',
     title: 'Table',
-    hint: '|',
+    hint: '',
     keywords: 'table grid rows columns',
     group: 'Blocks',
     // Written pre-aligned, the way the formatter would leave it.
@@ -349,7 +353,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: 'image',
     title: 'Image…',
-    hint: '!',
+    hint: '',
     keywords: 'image picture photo upload figure media',
     group: 'Insert',
     insert: '',
@@ -358,7 +362,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: 'youtube',
     title: 'YouTube video…',
-    hint: '▶',
+    hint: '',
     keywords: 'youtube video embed link media watch shorts',
     group: 'Insert',
     insert: '',
@@ -375,7 +379,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: 'link',
     title: 'Link',
-    hint: '[]',
+    hint: '',
     keywords: 'link url href external web',
     group: 'Insert',
     insert: '[](https://)',
@@ -384,7 +388,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: 'date',
     title: "Today's date",
-    hint: 'date',
+    hint: '',
     keywords: 'date today now timestamp day',
     group: 'Insert',
     insert: '',

@@ -1,363 +1,238 @@
 /* ---------------------------------------------------------------------------
    Touch, then phones.
 
-   Two independent axes. The first is the input device: a finger has no hover
-   to reveal controls with, and needs a target it can actually hit — as true of
-   a 13" touchscreen as of a phone. The second is width, where the workspace
-   stops being three columns of chrome around a note and becomes one screen at
-   a time: the tree slides in over the note as a drawer, and the controls a
-   keyboard would otherwise reach move to the bottom edge, within a thumb's
-   reach and on top of the on-screen keyboard rather than behind it.
+   Two separate questions. The first is the input: a finger has no hover to
+   reveal controls with and needs a 44px target, on a touchscreen laptop as
+   much as on a phone — the tokens already grow controls and rows under
+   `pointer: coarse`. The second is width: below 720px the workspace is one
+   screen at a time. The notes slide over the page as a drawer, and the note's
+   bar keeps only what a thumb needs.
 --------------------------------------------------------------------------- */
 
-/* Without hover there is no "reveal on hover" — and these are the only handles
-   on closing a tab or opening a row's menu, so they are always on. */
+/* With no hover, the reveal-on-hover handles are simply always there. */
 @media (hover: none) {
-  .studio-tab__close,
-  .studio-tree-row__actions {
+  .admin-page .studio-tree-row__actions {
     opacity: 1;
-  }
-
-  /* The count and the ••• handle share one cell, trading places on hover. With
-     the handle always on there is no trade — and no room for both. */
-  .studio-tree-row__count {
-    display: none;
   }
 }
 
-/* 40px is about the smallest target a finger hits reliably. The dialogs render
-   through a portal on `document.body`, so their rules cannot be scoped under
-   `.content-workspace` the way the rest of the workspace is. */
 @media (pointer: coarse) {
-  .content-workspace .studio-icon-button,
-  .studio-inline-tool,
-  .studio-imgdlg__close,
-  .studio-bar__toggle,
-  .studio-bar__open {
+  .admin-page .studio-tree-row__toggle,
+  .admin-page .studio-tree-row__spacer {
+    width: 28px;
+  }
+
+  .admin-page .studio-tree-row {
+    grid-template-columns: 28px minmax(0, 1fr) 36px;
+  }
+
+  .admin-page .studio-tree-row__actions {
+    width: 36px;
+    height: 36px;
+  }
+
+  .admin-page .studio-inline-tool {
     width: 40px;
     height: 40px;
   }
 
-  .studio-slashmenu__row {
-    padding: 11px 10px;
+  .admin-page .studio-slashmenu__row,
+  .admin-page .studio-wikimenu__row,
+  .admin-page .studio-palette__row {
+    min-height: var(--st-touch);
   }
 
-  .studio-tree-row {
-    min-height: 40px;
-  }
-
-  .studio-tree-row__toggle,
-  .studio-tree-row__actions,
-  .studio-tree-row__label,
-  .studio-tree-row__rename {
-    height: 38px;
-  }
-
-  .studio-tree-row__actions {
-    font-size: 0.7rem;
-  }
-
-  .studio-menu button,
-  .studio-select__menu button {
-    padding: 10px 12px;
-    font-size: 0.78rem;
-  }
-
-  .studio-select__trigger {
-    height: 32px;
-  }
-
-  .studio-tab__close {
-    width: 34px;
-    flex-basis: 34px;
-  }
-
-  .studio-palette__row,
-  .studio-wikimenu__row {
-    padding: 12px;
-  }
-
-  .studio-bulk-bar button,
-  .studio-tree-inline-move button {
-    height: 34px;
-    padding: 0 12px;
-  }
-
-  .studio-tree-row__rename input,
-  .studio-tree-inline-move select {
-    height: 32px;
+  .admin-page .studio-rich-handle button {
+    width: 32px;
+    height: 36px;
   }
 }
 
-@media (max-width: 900px) {
-  .studio-grid {
-    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+@media (max-width: 900px) and (min-width: 721px) {
+  .admin-page .studio-grid:not(.studio-grid--collapsed) {
+    grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
   }
 
-  .studio-resizer {
+  .admin-page .studio-resizer {
     display: none;
   }
+
+  /* The bar keeps its words for the save state; the link becomes its icon. */
+  .admin-page .studio-bar__open-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .admin-page .studio-bar__open {
+    width: var(--st-control);
+    padding: 0;
+  }
 }
 
-/* The phone layout. The classes below are set by ContentWorkspace once it
-   knows it is on this layout; the drawer geometry itself is keyed on width
-   alone, so the first paint is already right. */
-.studio-grid--drawer {
+/* The phone layout. ContentWorkspace adds the drawer classes once it knows it
+   is on this layout; the geometry itself keys on width, so the very first
+   paint is already right. */
+.admin-page .studio-grid--drawer {
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* The dim behind the drawer. A sibling of the drawer, not a child: a
-   transformed element is the containing block for its fixed descendants, so a
-   backdrop inside the drawer would slide away together with it. */
-.studio-scrim {
+/* The dim behind the drawer. A sibling of the drawer rather than a child: a
+   transformed element contains its fixed descendants, so a scrim inside the
+   drawer would slide away with it. */
+.admin-page .studio-scrim {
   position: fixed;
   inset: 0;
   z-index: 44;
-  background: color-mix(in srgb, #000 46%, transparent);
+  background: color-mix(in srgb, #000 60%, transparent);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.26s ease;
+  transition: opacity var(--st-slow) var(--st-ease-move);
 }
 
-.studio-scrim.is-open {
+.admin-page .studio-scrim.is-open {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* Files and word count pinned to the bottom edge: reachable by thumb,
-   and pushed up by the keyboard rather than covered by it. */
-.studio-dock {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  padding: 6px max(8px, env(safe-area-inset-right))
-    calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
-  border-top: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-}
-
-.studio-dock__meta {
-  margin-left: auto;
-  flex: 0 0 auto;
-  color: var(--admin-text-muted);
-  font: 0.62rem var(--font-mono);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.content-workspace .studio-dock__files {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 6px;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-secondary, var(--admin-text-muted));
-  background: transparent;
-  font: inherit;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-
-.content-workspace .studio-dock__files svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.content-workspace .studio-dock__files:active {
-  background: var(--color-overlay-strong);
-}
-
 @media (max-width: 720px) {
-  .studio-grid {
+  /* The app frame meets the screen's edges; only the notch is kept clear. */
+  .admin-page .admin-shell.admin-shell--full {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0
+      env(safe-area-inset-left);
+  }
+
+  .admin-page .studio-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* --- Files, as a drawer over the note --- */
+  /* --- The notes, as a drawer over the page --- */
 
-  .studio-sidebar {
+  .admin-page .studio-sidebar {
     position: fixed;
     top: 0;
-    bottom: 0;
+    bottom: auto;
     left: 0;
     z-index: 45;
-    /* Wider than it was: with the listing flat there is no indentation to pay
-       for, and file names get the room instead. The sliver of note left
-       showing is the tap target that puts the drawer away again. */
-    width: min(88vw, 380px);
-    max-width: none;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    border-right: 1px solid var(--admin-line);
-    border-radius: 0;
-    background: var(--admin-surface);
-    box-shadow: 0 0 40px color-mix(in srgb, #000 45%, transparent);
+    width: min(88vw, 400px);
+    height: var(--studio-vh, 100dvh);
+    padding: env(safe-area-inset-top) 0 0 env(safe-area-inset-left);
+    border-right: 1px solid var(--st-line);
+    background: var(--st-panel);
     transform: translate3d(-100%, 0, 0);
-    transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform var(--st-slow) var(--st-ease-move);
     overscroll-behavior: contain;
     will-change: transform;
   }
 
-  .studio-sidebar.is-open {
+  .admin-page .studio-sidebar.is-open {
     transform: translate3d(0, 0, 0);
   }
 
-  /* While a finger is on it the drawer is positioned frame by frame. */
-  .studio-sidebar.is-dragging {
+  /* Under a finger, the drawer follows it frame by frame. */
+  .admin-page .studio-sidebar.is-dragging {
     transition: none;
   }
 
-  .studio-explorer__close {
-    display: inline-grid !important;
+  .admin-page .studio-workbench {
+    z-index: 0;
+    isolation: isolate;
   }
 
-  .studio-explorer__heading,
-  .studio-library__search {
-    padding-right: 10px;
-    padding-left: 12px;
+  .admin-page .studio-workbench[inert] {
+    pointer-events: none;
   }
 
-  .studio-library__search {
-    gap: 8px;
-    padding-top: 10px;
-    padding-bottom: 10px;
+  /* --- One note, one screen --- */
+
+  .admin-page .studio-bar {
+    gap: 4px;
+    min-height: 52px;
+    padding: 0 max(6px, env(safe-area-inset-right)) 0
+      max(6px, env(safe-area-inset-left));
   }
 
-  .studio-menu {
-    min-width: 176px;
+  .admin-page .studio-bar__title strong {
+    font-size: var(--st-size-md);
   }
 
-  .studio-bulk-bar {
-    flex-wrap: wrap;
-    padding-bottom: calc(7px + env(safe-area-inset-bottom));
-  }
-
-  /* --- One file, one screen --- */
-
-  /* A strip carrying a single tab is a row of chrome for nothing: it hides,
-     and the note's own bar keeps the explorer toggle. */
-  .studio-workbench-nav.is-lone-file {
-    display: none;
-  }
-
-  .studio-workbench-nav {
-    height: 40px;
-  }
-
-  .studio-nav-actions,
-  .studio-quick-open {
-    display: none;
-  }
-
-  .studio-workbench .studio-bar__toggle {
-    display: grid;
-  }
-
-  .studio-tab {
-    min-width: 116px;
-    max-width: 62vw;
-  }
-
-  /* One row that never wraps: toggle · title · save · autosave · open. */
-  .studio-bar {
-    gap: 2px;
-    min-height: 48px;
-    padding: 4px max(4px, env(safe-area-inset-right)) 4px
-      max(4px, env(safe-area-inset-left));
-  }
-
-  .studio-bar__title {
-    margin-right: auto;
-    padding: 0 4px;
-  }
-
-  .studio-bar__title strong {
-    font-size: 0.9rem;
-  }
-
-  /* The published path is a desktop nicety; the title carries the file here. */
-  .studio-bar__title code {
-    display: none;
-  }
-
-  /* Save state loses its words — "Saved 4m ago" is three of them on a screen
-     with none to spare — but keeps a control-sized slot. Tapping Save turns a
-     40px button into this, and a 6px dot floating where the button was reads
-     as a stray mark rather than an answer. `:not(:empty)` leaves the idle
-     state costing nothing, since it has nothing to show. */
-  .studio-bar .studio-save:not(.studio-save--action):not(:empty) {
-    justify-content: center;
-    width: 40px;
-    height: 40px;
+  .admin-page .studio-bar__actions {
     gap: 0;
-    font-size: 0;
   }
 
-  .studio-bar .studio-save:not(.studio-save--action) .studio-save__dot {
-    width: 8px;
-    height: 8px;
+  .admin-page .studio-bar__open-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
-  .studio-bar .studio-save:not(.studio-save--action) .studio-save__check {
-    width: 18px;
-    height: 18px;
-  }
-
-  .content-workspace .studio-save--action {
-    height: 40px;
-    padding: 0 14px;
-    font-size: 0.72rem;
-  }
-
-  .content-workspace .studio-bar__autosave {
-    justify-content: center;
-    width: 40px;
-    height: 40px;
+  .admin-page .studio-bar__open {
+    width: var(--st-touch);
     padding: 0;
   }
 
-  .studio-bar__autosave-label {
+  .admin-page .studio-bar__open .studio-glyph {
+    width: var(--st-glyph);
+    height: var(--st-glyph);
+    margin: 0;
+  }
+
+  /* The page keeps a gutter on the left for the one grip a phone shows. */
+  .admin-page .studio-rich-scroll {
+    padding: 24px 20px 96px 40px;
+    scrollbar-gutter: auto;
+  }
+
+  .admin-page .studio-rich-handle button:first-child:not(:only-child) {
     display: none;
   }
 
-  .studio-bar__autosave-dot {
-    width: 8px;
-    height: 8px;
+  .admin-page .studio-rich-drop {
+    right: 20px;
+    left: 40px;
   }
 
-  /* The word count lives in the dock now. */
-  .studio-status {
-    display: none;
+  /* Typing: the bar shrinks to the title and Done, and the page gets the
+     rest of what the keyboard leaves. */
+  .admin-page .studio.is-keyboard-open .studio-bar {
+    min-height: 44px;
   }
 
-  .studio-blank {
+  .admin-page .studio.is-keyboard-open .studio-rich-scroll {
+    padding-top: 16px;
+    padding-bottom: 24px;
+  }
+
+  .studio.is-keyboard-open .studio-rich-content > * {
+    scroll-margin-block: 24px;
+  }
+
+  .admin-page .studio-keyboard-done {
+    min-height: 40px;
+    color: var(--st-accent-text);
+    font-size: var(--st-size-md);
+  }
+
+  .admin-page .studio-blank {
     padding: 24px 20px;
   }
 
-  /* A shortcut hint is noise on a device with no ⌘ key. */
-  .studio-blank__hint {
-    display: none;
-  }
+  /* --- Dialogs become screens --- */
 
-  /* --- Dialogs become sheets --- */
-
-  .studio-palette-overlay {
+  .admin-page .studio-palette-overlay {
     padding: 0;
   }
 
-  .studio-palette {
+  .admin-page .studio-palette {
     width: 100%;
     max-width: none;
-    height: 100%;
+    height: var(--studio-vh, 100dvh);
     max-height: none;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -365,104 +240,35 @@
     border-radius: 0;
   }
 
-  .studio-palette__cancel {
+  .admin-page .studio-palette__cancel {
     display: block;
   }
 
-  .studio-palette__input {
-    padding: 16px 18px;
-    font-size: 16px;
-  }
-
-  .studio-palette__row {
-    font-size: 0.88rem;
-  }
-
-  .studio-imgdlg-overlay {
-    padding: 0;
-  }
-
-  .studio-imgdlg {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    padding-top: env(safe-area-inset-top);
-    border: 0;
-    border-radius: 0;
-  }
-
-  .studio-imgdlg__body {
-    padding: 14px;
-  }
-
-  .studio-imgdlg__url {
-    flex-wrap: wrap;
-  }
-
-  .studio-imgdlg__url input {
-    min-width: 0;
-  }
-
-  .studio-imgdlg__segmented,
-  .studio-imgdlg__presets {
-    flex-wrap: wrap;
-  }
-
-  .studio-imgdlg__width {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .studio-imgdlg__foot {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  }
-
-  .studio-imgdlg__foot button {
-    flex: 1 1 auto;
-    min-height: 44px;
+  .admin-page .studio-palette__input {
+    height: 56px;
   }
 
   /* iOS zooms the whole page when a focused field is under 16px. */
-  .content-workspace .admin-input,
-  .studio-tree-row__rename input,
-  .studio-imgdlg__field input[type='text'],
-  .studio-imgdlg__url input {
-    font-size: 16px;
+  .admin-page .studio-input,
+  .admin-page .studio .admin-input,
+  .admin-page .studio-sheet .admin-input,
+  .admin-page .studio-editor-popover :is(input, textarea),
+  .admin-page .studio-tree-row__rename input {
+    font-size: var(--st-size-lg);
   }
 
-  .studio-toast {
+  .admin-page .studio-editor-popover .studio-btn {
+    min-height: var(--st-touch);
+  }
+
+  .admin-page .studio-toast {
     bottom: calc(12px + env(safe-area-inset-bottom));
-    width: calc(100% - 24px);
-    max-width: none;
-  }
-
-  .studio-wikimenu {
-    width: min(92vw, 320px);
   }
 }
 
-@media (max-width: 480px) {
-  .studio-tab {
-    min-width: 104px;
-  }
-
-  .studio-dock__meta {
-    margin-left: auto;
-    font-size: 0.58rem;
-  }
-
-  .studio-imgdlg__segmented button,
-  .studio-imgdlg__presets button {
-    padding: 8px 11px;
-    font-size: 0.72rem;
-  }
-}
-
-/* The drawer and its scrim are the only motion here big enough to matter. */
 @media (prefers-reduced-motion: reduce) {
-  .studio-sidebar,
-  .studio-scrim {
+  .admin-page .studio-sidebar,
+  .admin-page .studio-scrim {
     transition: none;
   }
 }
@@ -470,16 +276,14 @@
 /* ---------------------------------------------------------------------------
    The phone file manager
 
-   A different surface over the same operations, not the tree at a smaller
-   size. One folder fills the drawer, so a row is the full width instead of
-   the full width minus its depth; the breadcrumb says in words what
-   indentation used to say in pixels; and every control is a 44px target that
-   does not depend on hover to appear. Rendered by StudioMobileFiles, which
-   ContentWorkspace swaps in for the tree below the drawer breakpoint — these
-   rules are not media-scoped because nothing else ever draws them.
+   Its own surface over the same operations, not the tree at a smaller size:
+   one level fills the drawer, so a name gets the full width instead of the
+   width minus its depth; the path above says in words what indentation says
+   in pixels; and every control is a 44px target that needs no hover.
+   Rendered by StudioMobileFiles only below the drawer breakpoint.
 --------------------------------------------------------------------------- */
 
-.studio-mfiles {
+.admin-page .studio-mfiles {
   position: relative;
   display: flex;
   flex: 1 1 auto;
@@ -487,254 +291,235 @@
   min-height: 0;
 }
 
-.studio-mfiles svg {
+.admin-page .studio-mfiles .studio-glyph {
   width: 20px;
   height: 20px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
-/* --- Title bar --- */
-
-.studio-mfiles__bar {
+.admin-page .studio-mfiles__bar {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 2px;
-  min-height: 52px;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--admin-line);
+  flex: none;
+  gap: 4px;
+  min-height: 56px;
+  padding: 0 6px;
 }
 
-.studio-mfiles__title {
+.admin-page .studio-mfiles__title {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  padding: 0 4px;
+  padding: 0 6px;
   overflow: hidden;
-  color: var(--admin-text-primary);
-  font-size: 0.95rem;
-  font-weight: 600;
-  white-space: nowrap;
+  color: var(--st-text);
+  font-size: var(--st-size-lg);
+  font-weight: 700;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.studio-mfiles__icon,
-.studio-mfiles__word {
+.admin-page .studio-mfiles__icon,
+.admin-page .studio-mfiles__word {
   display: grid;
-  flex: 0 0 auto;
+  flex: none;
   place-items: center;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 8px;
+  min-width: var(--st-touch);
+  height: var(--st-touch);
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-muted);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text-2);
   font: inherit;
+  font-size: var(--st-size-md);
   cursor: pointer;
 }
 
-.studio-mfiles__icon {
-  font-size: 1.35rem;
-  line-height: 1;
+.admin-page .studio-mfiles__icon {
+  padding: 0;
 }
 
-.studio-mfiles__word {
-  color: var(--admin-accent);
-  font-size: 0.8rem;
+.admin-page .studio-mfiles__word {
+  color: var(--st-accent-text);
 }
 
-.studio-mfiles__icon:active,
-.studio-mfiles__word:active {
-  background: var(--color-overlay-strong);
+.admin-page .studio-mfiles__word:disabled {
+  color: var(--st-text-4);
 }
 
-.studio-mfiles__word[disabled] {
-  color: var(--admin-text-disabled);
+.admin-page .studio-mfiles__icon:active,
+.admin-page .studio-mfiles__word:active:not(:disabled) {
+  background: var(--st-press);
 }
 
-/* --- Breadcrumb --- */
-
-/* Scrolls sideways rather than wrapping: a path that grows a second line
-   would shove the list down every time you went one folder deeper. */
-.studio-mfiles__crumbs {
+/* Scrolls sideways rather than wrapping: a path that grew a second line would
+   push the list down every time you went a level deeper. */
+.admin-page .studio-mfiles__crumbs {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
+  flex: none;
   gap: 2px;
-  padding: 8px 12px 0;
+  padding: 0 10px;
   overflow-x: auto;
   scrollbar-width: none;
   white-space: nowrap;
 }
 
-.studio-mfiles__crumbs::-webkit-scrollbar {
+.admin-page .studio-mfiles__crumbs::-webkit-scrollbar {
   display: none;
 }
 
-.studio-mfiles__crumbs button {
-  padding: 4px 2px;
+.admin-page .studio-mfiles__crumbs :is(button, span) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 4px;
   border: 0;
-  color: var(--admin-accent);
-  background: transparent;
+  background: none;
   font: inherit;
-  font-size: 0.74rem;
+  font-size: var(--st-size-sm);
+}
+
+.admin-page .studio-mfiles__crumbs button {
+  color: var(--st-text-3);
   cursor: pointer;
 }
 
-.studio-mfiles__crumbs button::after {
-  margin-left: 6px;
-  color: var(--admin-text-disabled);
-  content: '›';
+.admin-page .studio-mfiles__crumbs button::after {
+  margin-left: 8px;
+  color: var(--st-text-4);
+  content: '/' / '';
 }
 
-.studio-mfiles__crumbs span {
-  padding: 4px 2px;
-  color: var(--admin-text-muted);
-  font-size: 0.74rem;
+.admin-page .studio-mfiles__crumbs span {
+  color: var(--st-text-2);
 }
 
-/* --- Search --- */
-
-.studio-mfiles__search {
+.admin-page .studio-mfiles__search {
   position: relative;
-  flex: 0 0 auto;
-  padding: 10px 12px;
+  flex: none;
+  padding: 8px 12px 12px;
 }
 
-.studio-mfiles__search input {
-  min-height: 44px;
-  padding-right: 40px;
-  /* Under 16px iOS zooms the whole page when the field takes focus. */
-  font-size: 16px;
+.admin-page .studio-mfiles__search input {
+  min-height: var(--st-touch);
+  padding-right: 44px;
+  font-size: var(--st-size-lg);
 }
 
-.studio-mfiles__search input::-webkit-search-cancel-button {
-  display: none;
-}
-
-.studio-mfiles__clear {
+.admin-page .studio-mfiles__clear {
   position: absolute;
-  top: 10px;
+  top: 8px;
   right: 12px;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: var(--st-touch);
+  height: var(--st-touch);
   border: 0;
-  color: var(--admin-text-muted);
   background: transparent;
-  font-size: 1.3rem;
-  line-height: 1;
+  color: var(--st-text-3);
   cursor: pointer;
 }
 
-.studio-mfiles__count-line {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0 14px 6px;
-  color: var(--admin-text-muted);
-  font: 0.7rem var(--font-mono);
-}
-
-/* --- The listing --- */
-
-.studio-mfiles__list {
+.admin-page .studio-mfiles__list {
   flex: 1 1 auto;
   min-height: 0;
-  /* Room for the create button to float over the end of the list. */
   margin: 0;
-  padding: 0 0 92px;
+  padding: 0 0 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
   list-style: none;
-  -webkit-overflow-scrolling: touch;
 }
 
-.studio-mfiles__item {
+.admin-page .studio-mfiles__item {
+  position: relative;
   display: flex;
   align-items: stretch;
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--admin-line) 55%, transparent);
+  margin: 0 8px;
+  border-radius: var(--st-radius);
 }
 
-.studio-mfiles__item.is-active {
-  box-shadow: inset 3px 0 0 var(--admin-accent);
+.admin-page .studio-mfiles__item.is-active {
+  background: var(--st-current);
 }
 
-.studio-mfiles__item.is-picked {
-  background: color-mix(in srgb, var(--admin-accent) 12%, transparent);
+.admin-page .studio-mfiles__item.is-picked {
+  background: var(--st-picked);
 }
 
-.studio-mfiles__item.is-busy {
+.admin-page .studio-mfiles__item.is-busy {
   opacity: 0.5;
   pointer-events: none;
 }
 
-.studio-mfiles__open {
+.admin-page .studio-mfiles__open {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  /* 56px: comfortably above the 44px floor, and tall enough for two lines. */
-  min-height: 56px;
-  padding: 8px 2px 8px 14px;
+  min-height: 52px;
+  padding: 6px 4px 6px 12px;
   border: 0;
-  color: var(--admin-text-primary);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  /* A press-and-hold here opens the action sheet; without this it would also
-     start a text selection and raise iOS's own callout on top of it. */
+  /* Press-and-hold opens the action sheet; without these it would also start
+     a text selection and raise the system's own callout over it. */
   user-select: none;
   -webkit-touch-callout: none;
+  transition: background-color var(--st-fast) var(--st-ease);
 }
 
-/* No hover to fall back on, so the press itself has to answer. */
-.studio-mfiles__open:active {
-  background: var(--color-overlay-strong);
+/* No hover to lean on, so the press itself answers. */
+.admin-page .studio-mfiles__open:active {
+  background: var(--st-press);
 }
 
-.studio-mfiles__mark {
+.admin-page .studio-mfiles__mark {
   display: grid;
-  flex: 0 0 22px;
+  flex: none;
   place-items: center;
+  width: 22px;
   height: 22px;
-  color: var(--admin-text-muted);
+  color: var(--st-text-3);
 }
 
-.studio-mfiles__check {
-  width: 21px;
-  height: 21px;
-  border: 2px solid var(--color-rule-strong);
+.admin-page .studio-mfiles__mark .studio-file-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 18px;
+  line-height: 20px;
+}
+
+.admin-page .studio-mfiles__check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--st-line-strong);
   border-radius: 50%;
+  color: var(--st-on-accent);
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    border-color var(--st-fast) var(--st-ease);
 }
 
-.studio-mfiles__check.is-on {
-  position: relative;
-  border-color: var(--admin-accent);
-  background: var(--admin-accent);
+.admin-page .studio-mfiles__check.is-on {
+  border-color: var(--st-accent-text);
+  background: var(--st-accent-text);
 }
 
-.studio-mfiles__check.is-on::after {
-  position: absolute;
-  top: 3px;
-  left: 6px;
-  width: 5px;
-  height: 9px;
-  border: solid var(--color-text-on-accent);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  content: '';
+.admin-page .studio-mfiles .studio-mfiles__check .studio-glyph {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.25;
 }
 
-.studio-mfiles__text {
+.admin-page .studio-mfiles__text {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -742,156 +527,135 @@
   min-width: 0;
 }
 
-.studio-mfiles__name {
+.admin-page .studio-mfiles__name {
   overflow: hidden;
-  font-size: 0.92rem;
+  font-size: var(--st-size-lg);
   line-height: 1.3;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.studio-mfiles__item.is-active .studio-mfiles__name {
-  color: var(--admin-accent);
-  font-weight: 600;
+.admin-page .studio-mfiles__item.is-active .studio-mfiles__name {
+  font-weight: 700;
 }
 
-.studio-mfiles__name mark {
-  color: inherit;
-  background: color-mix(in srgb, var(--admin-accent) 28%, transparent);
-}
-
-.studio-mfiles__text small {
+.admin-page .studio-mfiles__text small {
   overflow: hidden;
-  color: var(--admin-text-muted);
-  font-size: 0.7rem;
-  white-space: nowrap;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.studio-mfiles__count {
-  flex: 0 0 auto;
-  padding: 2px 7px;
-  border-radius: 999px;
-  color: var(--admin-text-muted);
-  background: var(--color-overlay-strong);
-  font: 0.66rem var(--font-mono);
+.admin-page .studio-mfiles__chevron {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--st-text-4);
 }
 
-.studio-mfiles__chevron {
-  flex: 0 0 auto;
-  padding: 0 6px;
-  color: var(--admin-text-disabled);
-  font-size: 1.15rem;
-}
-
-.studio-mfiles__more {
-  flex: 0 0 46px;
+.admin-page .studio-mfiles__more {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--st-touch);
   border: 0;
-  color: var(--admin-text-muted);
+  border-radius: var(--st-radius);
   background: transparent;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
+  color: var(--st-text-3);
   cursor: pointer;
 }
 
-.studio-mfiles__more:active {
-  background: var(--color-overlay-strong);
+.admin-page .studio-mfiles__more:active {
+  background: var(--st-press);
 }
 
-.studio-mfiles__empty {
+.admin-page .studio-mfiles__empty {
   display: grid;
   flex: 1 1 auto;
   align-content: start;
   justify-items: center;
   gap: 12px;
   min-height: 0;
-  padding: 40px 20px;
-  color: var(--admin-text-muted);
-  font-size: 0.85rem;
+  padding: 48px 24px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-md);
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
-.studio-mfiles__empty p {
+.admin-page .studio-mfiles__empty p {
   margin: 0;
 }
 
-.studio-mfiles__empty button {
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-primary);
+.admin-page .studio-mfiles__empty button {
+  min-height: var(--st-touch);
+  padding: 0 16px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--st-size-md);
   cursor: pointer;
 }
 
-/* --- Create, and the selection action bar that replaces it --- */
-
-.studio-mfiles__fab {
-  position: absolute;
-  right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border: 0;
-  border-radius: 50%;
-  color: var(--color-text-on-accent);
-  background: var(--admin-accent);
-  box-shadow: 0 6px 20px color-mix(in srgb, #000 40%, transparent);
-  font-size: 1.75rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform 0.16s ease;
-}
-
-.studio-mfiles__fab:active {
-  transform: scale(0.93);
-}
-
-.studio-mfiles__actions {
+/* The bottom bar: New note, or — while picking — what to do with the pick. */
+.admin-page .studio-mfiles__actions {
   display: flex;
-  flex: 0 0 auto;
+  flex: none;
   gap: 8px;
-  padding: 10px max(12px, env(safe-area-inset-left))
-    calc(10px + env(safe-area-inset-bottom))
-    max(12px, env(safe-area-inset-right));
-  border-top: 1px solid var(--admin-line);
-  background: var(--admin-surface);
+  padding: 8px max(12px, env(safe-area-inset-right))
+    calc(8px + env(safe-area-inset-bottom)) 12px;
+  border-top: 1px solid var(--st-line);
+  background: var(--st-panel);
 }
 
-.studio-mfiles__actions button {
+.admin-page .studio-mfiles__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 1 1 0;
-  min-height: 46px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-sm-2);
-  color: var(--admin-text-primary);
+  gap: 8px;
+  min-height: var(--st-touch);
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--st-size-md);
   cursor: pointer;
 }
 
-.studio-mfiles__actions button.is-danger {
-  color: var(--color-text-error);
+.admin-page .studio-mfiles__actions button:active:not(:disabled) {
+  background: var(--st-press);
 }
 
-.studio-mfiles__actions button[disabled] {
-  opacity: 0.45;
+.admin-page .studio-mfiles__actions .studio-mfiles__new {
+  border-color: transparent;
+  background: var(--st-accent-text);
+  color: var(--st-on-accent);
+  font-weight: 700;
+}
+
+.admin-page .studio-mfiles__actions .studio-mfiles__new:active {
+  background: color-mix(in srgb, var(--st-accent-text) 80%, black);
+}
+
+.admin-page .studio-mfiles__actions button.is-danger {
+  color: var(--st-danger);
+}
+
+.admin-page .studio-mfiles__actions button:disabled {
+  color: var(--st-text-4);
+  border-color: var(--st-line);
 }
 
 /* ---------------------------------------------------------------------------
-   Bottom sheets
-
-   What the pointer-anchored popup menu becomes for a thumb. Portalled onto
-   `document.body`, so none of this can be scoped under .content-workspace.
+   Bottom sheets: what a row's menu becomes for a thumb. Portalled onto <body>.
 --------------------------------------------------------------------------- */
 
-.studio-sheet-layer {
+.admin-page .studio-sheet-layer {
   position: fixed;
   inset: 0;
   z-index: 1300;
@@ -901,214 +665,186 @@
   pointer-events: none;
 }
 
-.studio-sheet__scrim {
+.admin-page .studio-sheet__scrim {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, #000 52%, transparent);
+  background: color-mix(in srgb, #000 60%, transparent);
   opacity: 0;
   pointer-events: auto;
-  transition: opacity 0.22s ease;
+  transition: opacity var(--st-slow) var(--st-ease-move);
 }
 
-.studio-sheet-layer.is-open .studio-sheet__scrim {
+.admin-page .studio-sheet-layer.is-open .studio-sheet__scrim {
   opacity: 1;
 }
 
-.studio-sheet {
+.admin-page .studio-sheet {
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 520px;
-  max-height: 82dvh;
+  max-height: 85dvh;
   padding-bottom: env(safe-area-inset-bottom);
-  border: 1px solid var(--color-rule-strong);
+  border: 1px solid var(--st-line-strong);
   border-bottom: 0;
-  border-radius: 18px 18px 0 0;
+  border-radius: var(--st-radius-float) var(--st-radius-float) 0 0;
   outline: none;
-  background: var(--color-surface-raised);
-  box-shadow: 0 -12px 40px color-mix(in srgb, #000 45%, transparent);
+  background: var(--st-raised);
+  color: var(--st-text);
   transform: translate3d(0, 100%, 0);
   pointer-events: auto;
-  transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform var(--st-slow) var(--st-ease-move);
   will-change: transform;
 }
 
-.studio-sheet-layer.is-open .studio-sheet {
+.admin-page .studio-sheet-layer.is-open .studio-sheet {
   transform: translate3d(0, 0, 0);
 }
 
-/* While a finger is on the grip the sheet is positioned frame by frame. */
-.studio-sheet.is-dragging {
+.admin-page .studio-sheet.is-dragging {
   transition: none;
 }
 
-.studio-sheet svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.admin-page .studio-sheet .studio-glyph {
+  width: 20px;
+  height: 20px;
+  color: var(--st-text-3);
 }
 
-/* Only this drags the sheet away — a flick anywhere else scrolls the list of
-   actions, which on a long menu is what the flick was for. */
-.studio-sheet__grip {
+/* Only the grip drags: a flick anywhere else scrolls a long list of actions,
+   which is what that flick was for. */
+.admin-page .studio-sheet__grip {
   display: grid;
-  flex: 0 0 auto;
+  flex: none;
   place-items: center;
-  padding: 10px 0 6px;
+  padding: 8px 0 4px;
   touch-action: none;
 }
 
-.studio-sheet__grip span {
-  width: 38px;
+.admin-page .studio-sheet__grip span {
+  width: 36px;
   height: 4px;
-  border-radius: 999px;
-  background: var(--color-rule-strong);
+  border-radius: 2px;
+  background: var(--st-line-strong);
 }
 
-.studio-sheet__head {
+.admin-page .studio-sheet__head {
   display: grid;
-  flex: 0 0 auto;
+  flex: none;
   gap: 2px;
-  padding: 0 18px 10px;
-  border-bottom: 1px solid var(--color-rule);
+  padding: 4px 20px 12px;
+  border-bottom: 1px solid var(--st-line);
 }
 
-.studio-sheet__head strong {
+.admin-page .studio-sheet__head strong {
   overflow: hidden;
-  color: var(--color-text-primary);
-  font-size: 0.95rem;
-  white-space: nowrap;
+  font-size: var(--st-size-lg);
+  font-weight: 700;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.studio-sheet__head span {
+.admin-page .studio-sheet__head span {
   overflow: hidden;
-  color: var(--admin-text-muted);
-  font-size: 0.72rem;
-  white-space: nowrap;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.studio-sheet__body {
+.admin-page .studio-sheet__body {
   display: grid;
+  align-content: start;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 6px 8px 10px;
+  padding: 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
 }
 
-.studio-sheet__body button {
+.admin-page .studio-sheet__body > button {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  min-height: 50px;
+  min-height: 48px;
   padding: 0 12px;
   border: 0;
-  border-radius: var(--radius-sm-2);
-  color: var(--color-text-primary);
+  border-radius: var(--st-radius);
   background: transparent;
+  color: var(--st-text);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--st-size-lg);
   text-align: left;
+  cursor: pointer;
+  transition: background-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-sheet__body > button:active:not(:disabled) {
+  background: var(--st-press);
+}
+
+.admin-page .studio-sheet__body > button:disabled {
+  color: var(--st-text-4);
+}
+
+.admin-page .studio-sheet__body > button.is-danger {
+  color: var(--st-danger);
+}
+
+.admin-page .studio-sheet__body > span:empty {
+  height: 1px;
+  margin: 6px 12px;
+  background: var(--st-line);
+}
+
+.admin-page .studio-sheet__folder .studio-file-icon,
+.admin-page .studio-sheet__folder .studio-glyph {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-page .studio-sheet__hint {
+  margin-left: auto;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+}
+
+.admin-page .studio-sheet__form {
+  display: flex;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.admin-page .studio-sheet__form input {
+  flex: 1 1 auto;
+  min-height: 48px;
+}
+
+.admin-page .studio-sheet .studio-sheet__submit {
+  flex: none;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: var(--st-accent-text);
+  color: var(--st-on-accent);
+  font: inherit;
+  font-size: var(--st-size-md);
+  font-weight: 700;
   cursor: pointer;
 }
 
-.studio-sheet__body button:active {
-  background: var(--color-overlay-strong);
-}
-
-.studio-sheet__body button[disabled] {
-  opacity: 0.45;
-}
-
-.studio-sheet__body button.is-danger {
-  color: var(--color-text-error);
-}
-
-.studio-sheet__body button.is-on {
-  color: var(--admin-accent);
-}
-
-.studio-sheet__body button.is-on::after {
-  margin-left: auto;
-  content: '✓';
-}
-
-.studio-sheet__body > span {
-  height: 1px;
-  margin: 6px 12px;
-  background: var(--color-rule);
-}
-
-.studio-sheet__hint {
-  margin-left: auto;
-  color: var(--admin-text-muted);
-  font-size: 0.68rem;
-}
-
-.studio-sheet__form {
-  display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-}
-
-.studio-sheet__form input {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 12px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-sm-2);
-  color: var(--color-text-primary);
-  background: var(--admin-bg);
-  font: inherit;
-  font-size: 16px;
-}
-
-.studio-sheet__form input:focus-visible {
-  border-color: var(--admin-accent);
-  outline: none;
-}
-
-.studio-sheet .studio-sheet__submit {
-  flex: 0 0 auto;
-  justify-content: center;
-  width: auto;
-  min-height: 48px;
-  padding: 0 20px;
-  color: var(--color-text-on-accent);
-  background: var(--admin-accent);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.studio-sheet .studio-sheet__submit[disabled] {
-  opacity: 0.4;
+.admin-page .studio-sheet .studio-sheet__submit:disabled {
+  background: var(--st-press);
+  color: var(--st-text-4);
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .studio-sheet,
-  .studio-sheet__scrim,
-  .studio-mfiles__fab {
+  .admin-page .studio-sheet,
+  .admin-page .studio-sheet__scrim {
     transition: none;
   }
-}
-
-.studio-menu-turn summary {
-  padding: 8px 12px;
-  cursor: pointer;
-  color: var(--admin-text-primary);
-  font-size: 12px;
-}
-.studio-menu-turn summary:focus-visible {
-  outline: 2px solid var(--admin-accent);
-  outline-offset: -2px;
 }

@@ -177,10 +177,10 @@ export default function StudioIconCropper({
               });
             }}
           />
-          <p id="studio-icon-crop-help">
+          <p id="studio-icon-crop-help" className="studio-field-help">
             Drag to reposition, or focus the image and use arrow keys.
           </p>
-          <label for="studio-icon-zoom">
+          <label className="studio-icon-cropper__zoom" for="studio-icon-zoom">
             Zoom <output>{Math.round(zoom * 100)}%</output>
           </label>
           <input
@@ -198,6 +198,7 @@ export default function StudioIconCropper({
           />
           <button
             type="button"
+            className="studio-btn studio-btn--quiet studio-icon-cropper__reset"
             disabled={disabled}
             onClick={() => {
               setZoom(1);
@@ -206,22 +207,35 @@ export default function StudioIconCropper({
           >
             Reset framing
           </button>
-          <p>
-            Cropped icons are saved as a still PNG. Use original to keep
-            animation.
+          <p className="studio-field-help">
+            A crop is saved as a still PNG. Use original to keep an animation.
           </p>
         </>
       ) : (
-        !error && <p role="status">Opening image…</p>
+        !error && (
+          <p className="studio-field-help" role="status">
+            Opening image…
+          </p>
+        )
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p className="studio-field-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="studio-icon-cropper__actions">
-        <button type="button" disabled={disabled} onClick={onCancel}>
+        <button
+          type="button"
+          className="studio-btn"
+          disabled={disabled}
+          onClick={onCancel}
+        >
           Cancel
         </button>
         {image && (
           <button
             type="button"
+            className="studio-btn"
             disabled={disabled}
             onClick={() => void onApply(file)}
           >
@@ -231,6 +245,7 @@ export default function StudioIconCropper({
         {image && (
           <button
             type="button"
+            className="studio-btn studio-btn--primary"
             disabled={disabled}
             onClick={() => void applyCrop()}
           >
