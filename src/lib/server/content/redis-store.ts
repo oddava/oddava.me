@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { delay, hasRedisConfig, redisCommand } from '../core';
 import { assertSafeRepositoryPath, matchesExtension } from './paths';
+import { NOTES_COLLECTION } from './registry';
 import {
   ContentConflictError,
   ContentFolderNotEmptyError,
@@ -14,13 +15,6 @@ import type {
   LinkedFileDelete,
   LinkedFileMove,
 } from './types';
-
-export const NOTES_SOURCE_DIR = 'src/content/notes';
-export const NOTES_EXTENSION = 'md';
-// Reads accept both: keys written before the move to `.md` are still `.mdx` in
-// the live store until `notes:migrate` rewrites them. See
-// ContentCollectionDefinition.readExtensions.
-export const NOTE_READ_EXTENSIONS = ['md', 'mdx'] as const;
 
 /**
  * The content store's key layout. `scripts/lib/redis-content.mjs` mirrors these
@@ -730,10 +724,10 @@ export function createRedisContentProvider(
   };
 }
 
-/** `src/content/notes/reading/books.md` -> `reading/books`, either extension. */
+/** `src/content/notes/reading/books.md` -> `reading/books`, any read extension. */
 function noteSourceId(path: string): string {
-  const relative = path.slice(NOTES_SOURCE_DIR.length + 1);
-  for (const extension of NOTE_READ_EXTENSIONS) {
+  const relative = path.slice(NOTES_COLLECTION.sourceDir.length + 1);
+  for (const extension of NOTES_COLLECTION.readExtensions) {
     const suffix = `.${extension}`;
     if (relative.toLowerCase().endsWith(suffix)) {
       return relative.slice(0, -suffix.length);
@@ -747,8 +741,8 @@ export async function readRedisNoteFiles(
 ): Promise<RedisNoteFile[]> {
   const provider = createRedisContentProvider({ command });
   const files = await provider.listFiles(
-    NOTES_SOURCE_DIR,
-    NOTE_READ_EXTENSIONS,
+    NOTES_COLLECTION.sourceDir,
+    NOTES_COLLECTION.readExtensions,
   );
   return files
     .filter((file) => file.encoding === 'utf8')

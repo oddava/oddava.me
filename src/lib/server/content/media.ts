@@ -5,7 +5,8 @@ import {
   missingCollection,
 } from './http';
 import { isValidSlug, sanitizeFilename } from './paths';
-import { getContentCollection } from './registry';
+import { readRedisBinaryFile } from './redis-store';
+import { getContentCollection, NOTES_COLLECTION } from './registry';
 import type { ContentProvider } from './types';
 
 const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
@@ -36,6 +37,14 @@ function detectImageType(bytes: Uint8Array): SupportedImageType | null {
     return 'image/webp';
   }
   return null;
+}
+
+/**
+ * Reads one uploaded note image by its path under the collection's public media
+ * URL (`/images/notes/<path>`). The caller has already rejected unsafe paths.
+ */
+export function readNoteMedia(path: string): Promise<Uint8Array | null> {
+  return readRedisBinaryFile(`${NOTES_COLLECTION.mediaDir}/${path}`);
 }
 
 // Upload only. Studio has no media browser or delete affordance, and the

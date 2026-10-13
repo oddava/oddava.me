@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { isStorageUnavailableError } from '../../../lib/server/core';
-import { readRedisBinaryFile } from '../../../lib/server/content';
+import { readNoteMedia } from '../../../lib/server/content';
 
 const CONTENT_TYPES: Record<string, string> = {
   gif: 'image/gif',
@@ -30,7 +30,7 @@ export const GET: APIRoute = async ({ params }) => {
   }
 
   try {
-    const bytes = await readRedisBinaryFile(`public/images/notes/${path}`);
+    const bytes = await readNoteMedia(path);
     if (!bytes) return new Response('Not found', { status: 404 });
     return new Response(bytes as BodyInit, {
       headers: {
