@@ -3,6 +3,7 @@ import { readJsonBody, requestBodyErrorResponse } from '../core/body';
 import {
   contentWithOrder,
   ensureFolderDocument,
+  entriesFromFiles,
   findFolderDocument,
   folderDocumentPath,
   folderExists,
@@ -36,7 +37,14 @@ async function performFolderTreeDuplicate(
   sourceFolder: string,
   destinationFolder: string,
 ): Promise<void> {
-  const entries = await readEntries(store, collection);
+  // One batch read for the whole collection: the entries to copy and their
+  // contents, rather than a GET per note while the mutation lock is held.
+  const files = await store.listFiles(
+    collection.sourceDir,
+    collection.readExtensions,
+  );
+  const contentByPath = new Map(files.map((file) => [file.path, file.content]));
+  const entries = entriesFromFiles(collection, files);
   const reservedIds = new Set(entries.map((entry) => entry.id));
   const destinationId = folderName(destinationFolder);
   if (reservedIds.has(destinationId)) {
@@ -117,8 +125,8 @@ async function performFolderTreeDuplicate(
       continue;
     }
 
-    const source = await store.readFile(entry.path);
-    if (!source) continue;
+    const content = contentByPath.get(entry.path);
+    if (content === undefined) continue;
     const childFolder = [entry.folder, entry.id].filter(Boolean).join('/');
     const mappedChildFolder = destinationBySource.get(childFolder);
     const destinationEntryFolder = mappedChildFolder
@@ -138,7 +146,7 @@ async function performFolderTreeDuplicate(
         collection.extension,
         destinationEntryFolder,
       ),
-      source.content,
+      content,
       `content: duplicate ${collection.id}/${entry.id}`,
     );
   }
@@ -158,9 +166,7 @@ export async function duplicateFolderTree(
   destinationFolder: string,
 ): Promise<void> {
   const filesBefore = new Set(
-    (
-      await store.listFiles(collection.sourceDir, collection.readExtensions)
-    ).map((file) => file.path),
+    await store.listFilePaths(collection.sourceDir, collection.readExtensions),
   );
   const directoriesBefore = new Set(
     await store.listDirectories(collection.sourceDir),

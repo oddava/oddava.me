@@ -34,9 +34,6 @@ describe('file icons', () => {
       const detail = toDetail(NOTES_COLLECTION, {
         path: 'src/content/notes/example.md',
         content: serializeContentDocument(fields, '# Example'),
-        encoding: 'utf8',
-        byteLength: 0,
-        updatedAt: '',
         revision: 'r1',
       });
       expect(detail.icon).toBe(icon);
