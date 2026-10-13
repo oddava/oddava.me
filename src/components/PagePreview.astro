@@ -451,8 +451,32 @@ import '../styles/components/_page-preview.css';
       if (document.hidden) dismiss();
     });
 
+    /**
+     * Links inside running text that will open a sheet carry a mark before
+     * they are hovered, so a reader can tell them from ordinary links. Nav,
+     * cards, and lists of links stay unmarked — the mark is for prose, where
+     * a link is a detour the reader might want to peek at first. Recomputed
+     * when previews toggle, so a narrow or touch screen shows no promise the
+     * page cannot keep.
+     */
+    const markPreviewableLinks = () => {
+      for (const link of document.querySelectorAll<HTMLAnchorElement>(
+        'main a[href]',
+      )) {
+        const inProse =
+          link.closest('p, blockquote, .prose li, .prose td') &&
+          !link.closest('nav');
+        link.toggleAttribute(
+          'data-previewable',
+          Boolean(inProse && eligibleLink(link)),
+        );
+      }
+    };
+    markPreviewableLinks();
+
     previewsDisabled.addEventListener('change', () => {
       if (previewsDisabled.matches) closePanel();
+      markPreviewableLinks();
     });
 
     document.addEventListener(

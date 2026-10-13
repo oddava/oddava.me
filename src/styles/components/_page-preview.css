@@ -267,9 +267,64 @@
 
 /* --- Source link --- */
 
-/* The link keeps a quiet mark of its own while its sheet is open, so the pair
-   reads as one gesture. */
-.page-preview-link {
+/* Previewable links in running text. At rest a dotted rule, the drafting
+   convention for "see detail" and a promise that a sheet sits behind the
+   words. On hover, focus, or while the sheet is open, a tinted band wipes in
+   from the left and the dots close into a solid inked baseline: the leader
+   line's origin made visible. One gradient stack paints both, so a link
+   wrapped across lines gets the band on every line box (`clone`). The
+   `main` qualifier outranks `.prose a`, whose underline would otherwise
+   double up with the inked baseline. */
+main a[data-previewable] {
+  --previewable-ink: color-mix(in srgb, var(--color-brand) 70%, transparent);
+
+  padding: 0 0.12em;
+  margin: 0 -0.12em;
+  border-radius: 3px 3px 0 0;
+  color: var(--color-text-interactive);
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-brand) 60%,
+    transparent
+  );
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.28em;
+  background-image:
+    linear-gradient(var(--previewable-ink), var(--previewable-ink)),
+    linear-gradient(var(--color-overlay-strong), var(--color-overlay-strong));
+  background-repeat: no-repeat;
+  background-position:
+    left bottom,
+    left top;
+  background-size:
+    0% 2px,
+    0% 100%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition:
+    background-size 260ms cubic-bezier(0.2, 0.72, 0.25, 1),
+    color 150ms ease,
+    text-decoration-color 150ms ease;
+}
+
+main a[data-previewable]:is(:hover, :focus-visible, .page-preview-link) {
+  color: var(--color-text-primary);
+  text-decoration-color: transparent;
+  background-size:
+    100% 2px,
+    100% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main a[data-previewable] {
+    transition: none;
+  }
+}
+
+/* Any other link that opens a sheet (nav, lists) keeps a quiet mark of its
+   own while the sheet is open, so the pair reads as one gesture. */
+.page-preview-link:not([data-previewable]) {
   text-decoration: underline;
   text-decoration-color: color-mix(
     in srgb,

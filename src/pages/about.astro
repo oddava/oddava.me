@@ -3,35 +3,56 @@ export const prerender = true;
 import Base from '@layouts/Base.astro';
 import { Guestbook } from '../components/Guestbook';
 import '../styles/components/_prose.css';
+import '../styles/components/_about.css';
+
+const links = [
+  { label: 'email', href: 'mailto:hello@oddava.me' },
+  { label: 'github', href: 'https://github.com/oddava' },
+  { label: 'x', href: 'https://x.com/oddava' },
+];
 ---
 
-<Base title="about" description="a little about me and this site.">
-  <div class="about-content">
+<Base
+  title="about"
+  description="how i got into code, what i'm building now, and what i'm after."
+>
+  <article class="about">
     <h1>about</h1>
-    <p>
-      the first thing i ever built was a working clock for my telegram nickname.
-      a very serious problem, clearly. it worked, it felt like magic, and that's
-      more or less how i ended up learning to code in high school.
+
+    <p class="about__lead">
+      hey, i'm oddava, a backend developer.
     </p>
 
     <p>
-      after school i went to PDP Academy for the backend basics: python, django,
-      databases, algorithms. i had good mentors there, and most of what i've
-      learned since came from building my own projects.
+      back in high school, the first thing i ever built was a clock that lived
+      in my telegram name. once a minute, a script woke up, checked the time and
+      renamed me. nobody asked for it, me included. but a few lines in a file
+      had a real app doing what i told it to, and there was no going back.
     </p>
 
     <p>
-      now i code for a living. work pulled me from python and django into
-      node.js, typescript and vue, and i got comfortable faster than i expected.
-      these days i'm contributing to real projects, which is the fun part.
+      i learned the backend properly at PDP Academy: python, django, databases,
+      algorithms. the mentors there were great, but most of what stuck came from
+      building my own things. the biggest was AniShows, an anime tracker with
+      watchlists, reviews and forums. then i found out AniList doesn't let
+      competing trackers use its data, so i moved the whole catalog sync onto a
+      self-hosted Jikan instance. no course teaches you that part.
     </p>
 
     <p>
-      i'm curious about how fast AI is moving and what it means for writing
-      software. i use it to move quicker, find my way around code i've never
-      seen, brainstorm and learn. my one rule is that i want to understand
-      everything i build.
+      now i write code for a living. work pulled me from django into node.js,
+      typescript and vue sooner than i expected, and it turned out fine. my
+      first big job was replacing an old php site without losing a single
+      article. after that came tracking down session bugs that only showed up
+      once a token expired. that's the stuff i'm learning the most from.
     </p>
+
+    <p>
+      i use AI every day, to move faster, find my way around code i've never
+      seen, and learn. i have one rule about it:
+    </p>
+
+    <p class="about__rule">i only ship what i understand.</p>
 
     <p>
       outside of work it's side projects, reading about new tech, and following
@@ -39,16 +60,42 @@ import '../styles/components/_prose.css';
     </p>
 
     <p>
-      i'm early in my career and i know it. i like getting better through real
-      work, and i'm looking for a place where i can keep growing, learn from
-      programmers stronger than me, and build things people actually use.
+      i'm early in my career and i know it. what i want next is simple: work
+      with people better than me, keep getting better, and build things people
+      actually use.
     </p>
 
     <p>
-      this site is where i keep my projects, notes and anything else worth
-      remembering. if you find something useful here, that's a nice bonus ;)
+      this site is my corner of the internet, where i keep my
+      <a href="/notes">notes</a> and anything else worth remembering. if something
+      here helps you, that's a nice bonus.
     </p>
-  </div>
+
+    <footer class="about__contact">
+      <h2 class="about__label">say hi</h2>
+      <ul class="about__links">
+        {
+          links.map((link) => {
+            const isExternal = link.href.startsWith('http');
+            return (
+              <li>
+                <a
+                  href={link.href}
+                  target={isExternal ? '_blank' : undefined}
+                  rel={isExternal ? 'noopener noreferrer' : undefined}
+                  aria-label={
+                    isExternal ? `${link.label} (opens in new tab)` : undefined
+                  }
+                >
+                  {link.label}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </footer>
+  </article>
 
   <Guestbook client:idle />
   <noscript>

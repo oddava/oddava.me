@@ -33,20 +33,6 @@
   color: var(--color-text-interactive);
 }
 
-.about-content {
-  padding-top: 0;
-}
-
-.about-content h1 {
-  margin-bottom: var(--space-md);
-}
-
-.about-content p {
-  margin-bottom: 1.5em;
-  color: var(--color-text-primary);
-  overflow-wrap: break-word;
-}
-
 /* Shown only when the guestbook island cannot run (JS disabled). */
 .guestbook-noscript {
   margin-top: var(--space-sm);
