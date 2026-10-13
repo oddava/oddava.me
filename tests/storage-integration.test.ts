@@ -198,6 +198,50 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       expect(await readStableContentVersion()).toEqual(expect.any(String));
     });
 
+    it("keeps a file's createdAt across single and batched updates", async () => {
+      const { createRedisContentProvider } =
+        await import('../src/lib/server/content/redis-store');
+      let clock = Date.parse('2026-03-01T00:00:00.000Z');
+      const provider = createRedisContentProvider({
+        now: () => new Date((clock += 60_000)),
+      });
+      const path = 'src/content/notes/created-at.md';
+      const rawRecord = async () =>
+        JSON.parse((await cleanupClient.get(`dev:content:file:${path}`))!);
+      const tricky = '# t\n\nnaïve 👋 "quoted" \\ back/slash </script>\u0001';
+
+      const created = await provider.writeTextFile(path, '# t', 'create');
+      const original = await rawRecord();
+      expect(original.createdAt).toBe('2026-03-01T00:01:00.000Z');
+
+      const updated = await provider.writeTextFile(
+        path,
+        tricky,
+        'update',
+        created.revision,
+      );
+      expect(await rawRecord()).toEqual({
+        content: tricky,
+        enc: 'utf8',
+        rev: updated.revision,
+        createdAt: original.createdAt,
+        updatedAt: '2026-03-01T00:02:00.000Z',
+      });
+
+      const batched = await provider.writeTextFiles(
+        [{ path, content: `${tricky}!`, revision: updated.revision! }],
+        'batch',
+      );
+      expect(await rawRecord()).toEqual({
+        content: `${tricky}!`,
+        enc: 'utf8',
+        rev: batched.revisions[path],
+        createdAt: original.createdAt,
+        updatedAt: '2026-03-01T00:03:00.000Z',
+      });
+      expect((await provider.readFile(path))?.content).toBe(`${tricky}!`);
+    });
+
     it('batches reorder writes as an all-or-nothing compare-and-set', async () => {
       const { createRedisContentProvider, readStableContentVersion } =
         await import('../src/lib/server/content/redis-store');
