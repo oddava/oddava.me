@@ -7,6 +7,7 @@ export {
   requestBodyErrorResponse,
 } from './core/body';
 export { delay } from './core/delay';
+export { withEdgeCache, type WaitUntil } from './core/edge-cache';
 export { fetchWithTimeout, json } from './core/http';
 export {
   ensureSameOrigin,

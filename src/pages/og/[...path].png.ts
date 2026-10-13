@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { noteSocialCard, socialCardKey } from '@lib/garden/og-card';
 import { readSocialCard } from '@lib/server/content';
-import { isStorageUnavailableError } from '@lib/server/core';
+import { isStorageUnavailableError, withEdgeCache } from '@lib/server/core';
 
 const DEFAULT_CARD_PATH = '/og-default.png';
 
@@ -22,26 +22,12 @@ function defaultCard(): Response {
   });
 }
 
-/**
- * Per-note social cards. The bytes are drawn in Studio and stored beside the
- * notes; this route only resolves which card is current — it derives the
- * fingerprint from the live index instead of trusting `?v=`, so a card that no
- * longer matches its note's title, folder or date can never be served.
- */
-export const GET: APIRoute = async ({ params }) => {
-  const key = socialCardKey(params.path ?? '');
-
-  const garden = await getGardenIndexOrUnavailable();
-  if (!garden.ok) return defaultCard();
-
-  const document = garden.index.documents.find(
-    (entry) => socialCardKey(entry.path) === key,
-  );
-  if (!document) return defaultCard();
-
-  const card = noteSocialCard(document);
+async function readCardResponse(
+  path: string,
+  fingerprint: string,
+): Promise<Response> {
   try {
-    const bytes = await readSocialCard(card.path, card.fingerprint);
+    const bytes = await readSocialCard(path, fingerprint);
     if (!bytes) return defaultCard();
     return new Response(bytes as BodyInit, {
       headers: {
@@ -60,4 +46,31 @@ export const GET: APIRoute = async ({ params }) => {
     }
     return defaultCard();
   }
+}
+
+/**
+ * Per-note social cards. The bytes are drawn in Studio and stored beside the
+ * notes; this route only resolves which card is current — it derives the
+ * fingerprint from the live index instead of trusting `?v=`, so a card that no
+ * longer matches its note's title, folder or date can never be served.
+ */
+export const GET: APIRoute = async ({ params, url, locals }) => {
+  const key = socialCardKey(params.path ?? '');
+
+  const garden = await getGardenIndexOrUnavailable();
+  if (!garden.ok) return defaultCard();
+
+  const document = garden.index.documents.find(
+    (entry) => socialCardKey(entry.path) === key,
+  );
+  if (!document) return defaultCard();
+
+  const card = noteSocialCard(document);
+  // Keyed by the fingerprint the index just derived, never by the request URL:
+  // an edited note resolves to a new key, so a cached card cannot go stale.
+  return withEdgeCache(
+    `${url.origin}/og/__cards/${card.path}.${card.fingerprint}.png`,
+    locals.cfContext?.waitUntil.bind(locals.cfContext),
+    () => readCardResponse(card.path, card.fingerprint),
+  );
 };
