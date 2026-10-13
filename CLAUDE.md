@@ -3,9 +3,9 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 `AGENTS.md` holds the full contributor guide (style, commit conventions, domain
-boundaries). `docs/architecture.md` and `docs/development.md` go deeper on module
-boundaries, data flow, and operations. This file covers what you need most often
-plus the constraints that are easy to violate.
+boundaries). `docs/` holds feature notes (`interactive-graph.md`,
+`samsung-emoji.md`). This file covers what you need most often plus the
+constraints that are easy to violate.
 
 ## Commands
 
