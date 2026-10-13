@@ -9,7 +9,6 @@ import {
   delay,
   RequestBodyError,
   ensureSameOrigin,
-  isStorageUnavailableError,
 } from '../core';
 import {
   ContentMutationBusyError,
@@ -18,23 +17,12 @@ import {
   readStableContentVersion,
   withRedisContentMutationLock,
 } from './redis-store';
+import { contentStoreErrorResponse, contentStoreUnavailable } from './http';
 import { dispatchContentRequest } from './router';
 
 const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
 const STABLE_READ_ATTEMPTS = 30;
 const STABLE_READ_RETRY_MS = 100;
-
-function contentStoreUnavailable(message?: string): Response {
-  return adminJson(
-    {
-      error:
-        message ??
-        'Studio storage is not configured. Configure the production Redis credentials and try again.',
-      code: 'content_store_unavailable',
-    },
-    { status: 503 },
-  );
-}
 
 function contentPayloadTooLarge(): Response {
   return adminJson(
@@ -98,17 +86,8 @@ async function dispatch(
     ) {
       return contentPayloadTooLarge();
     }
-    if (error instanceof ContentMutationBusyError) {
-      return adminJson(
-        { error: error.message, code: error.code },
-        { status: 503, headers: { 'Retry-After': '1' } },
-      );
-    }
-    if (isStorageUnavailableError(error)) {
-      return contentStoreUnavailable(
-        'Studio could not reach its content store. Try again shortly.',
-      );
-    }
+    const storeError = contentStoreErrorResponse(error);
+    if (storeError) return storeError;
     const requestId = crypto.randomUUID();
     console.error(`[content] request failed (${requestId})`, error);
     return adminJson(

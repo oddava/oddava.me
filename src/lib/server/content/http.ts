@@ -1,4 +1,6 @@
 import { adminJson } from '../admin/response';
+import { isStorageUnavailableError } from '../core';
+import { ContentMutationBusyError } from './redis-store';
 import {
   ContentConflictError,
   ContentFolderNotEmptyError,
@@ -41,6 +43,38 @@ export function invalidFolder(): Response {
     },
     { status: 400 },
   );
+}
+
+export function folderNotFound(
+  message = 'That folder no longer exists.',
+): Response {
+  return adminJson(
+    { error: message, code: 'folder_not_found' },
+    { status: 404 },
+  );
+}
+
+export function folderAlreadyExists(): Response {
+  return adminJson(
+    { error: 'That folder already exists.', code: 'folder_exists' },
+    { status: 409 },
+  );
+}
+
+export function slugExists(message: string): Response {
+  return adminJson({ error: message, code: 'slug_exists' }, { status: 409 });
+}
+
+export function invalidFolderMove(message: string): Response {
+  return adminJson(
+    { error: message, code: 'invalid_folder_move' },
+    { status: 400 },
+  );
+}
+
+/** The expected revision a compare-and-set request carries, or '' if absent. */
+export function readRevision(body: { revision?: unknown }): string {
+  return typeof body.revision === 'string' ? body.revision.trim() : '';
 }
 
 export function revisionRequired(): Response {
@@ -111,4 +145,36 @@ export function contentFolderErrorResponse(error: unknown): Response {
     },
     { status: 409 },
   );
+}
+
+const STORE_NOT_CONFIGURED_MESSAGE =
+  'Studio storage is not configured. Configure the production Redis credentials and try again.';
+const STORE_UNREACHABLE_MESSAGE =
+  'Studio could not reach its content store. Try again shortly.';
+
+export function contentStoreUnavailable(
+  message = STORE_NOT_CONFIGURED_MESSAGE,
+): Response {
+  return adminJson(
+    { error: message, code: 'content_store_unavailable' },
+    { status: 503 },
+  );
+}
+
+/**
+ * Maps the store-level failures every Studio route shares — a held mutation
+ * lock, an unreachable store — onto HTTP. Null for anything else, which the
+ * caller still owns.
+ */
+export function contentStoreErrorResponse(error: unknown): Response | null {
+  if (error instanceof ContentMutationBusyError) {
+    return adminJson(
+      { error: error.message, code: error.code },
+      { status: 503, headers: { 'Retry-After': '1' } },
+    );
+  }
+  if (isStorageUnavailableError(error)) {
+    return contentStoreUnavailable(STORE_UNREACHABLE_MESSAGE);
+  }
+  return null;
 }

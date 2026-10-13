@@ -17,12 +17,17 @@ import {
 import {
   contentConflictResponse,
   contentFolderErrorResponse,
+  folderAlreadyExists,
+  folderNotFound,
   invalidFolder,
+  invalidFolderMove,
   methodNotAllowed,
   missingCollection,
+  slugExists,
 } from './http';
 import { isValidFolderPath, normalizeFolderPath, sourcePath } from './paths';
 import { getContentCollection } from './registry';
+import { ContentConflictError } from './types';
 import type { ContentCollectionDefinition, ContentProvider } from './types';
 
 async function performFolderTreeDuplicate(
@@ -35,9 +40,10 @@ async function performFolderTreeDuplicate(
   const reservedIds = new Set(entries.map((entry) => entry.id));
   const destinationId = folderName(destinationFolder);
   if (reservedIds.has(destinationId)) {
-    throw Object.assign(new Error('A note already uses that folder name.'), {
-      code: 'path_exists',
-    });
+    throw new ContentConflictError(
+      'path_exists',
+      'A note already uses that folder name.',
+    );
   }
   reservedIds.add(destinationId);
 
@@ -209,13 +215,6 @@ export async function duplicateFolderTree(
   }
 }
 
-function folderNotFound(): Response {
-  return adminJson(
-    { error: 'That folder no longer exists.', code: 'folder_not_found' },
-    { status: 404 },
-  );
-}
-
 export async function handleContentFolders(
   store: ContentProvider,
   collectionId: string | undefined,
@@ -247,10 +246,7 @@ export async function handleContentFolders(
     if (await folderExists(store, collection, folder)) {
       if (body.ensure === true)
         return adminJson({ folders: await readFolders(store, collection) });
-      return adminJson(
-        { error: 'That folder already exists.', code: 'folder_exists' },
-        { status: 409 },
-      );
+      return folderAlreadyExists();
     }
     if (!(await folderExists(store, collection, parentFolder(folder)))) {
       return folderNotFound();
@@ -264,10 +260,7 @@ export async function handleContentFolders(
           (body.copyFrom || entry.folder !== parentFolder(folder)),
       )
     ) {
-      return adminJson(
-        { error: 'A note already uses that folder name.', code: 'slug_exists' },
-        { status: 409 },
-      );
+      return slugExists('A note already uses that folder name.');
     }
 
     const copyFrom = normalizeFolderPath(String(body.copyFrom ?? ''));
@@ -277,12 +270,8 @@ export async function handleContentFolders(
         return folderNotFound();
       }
       if (folder.startsWith(`${copyFrom}/`)) {
-        return adminJson(
-          {
-            error: 'A folder cannot be duplicated inside itself.',
-            code: 'invalid_folder_move',
-          },
-          { status: 400 },
+        return invalidFolderMove(
+          'A folder cannot be duplicated inside itself.',
         );
       }
       try {
@@ -327,13 +316,7 @@ export async function handleContentFolders(
       return adminJson({ folders: await readFolders(store, collection) });
     }
     if (nextFolder.startsWith(`${folder}/`)) {
-      return adminJson(
-        {
-          error: 'A folder cannot be moved inside itself.',
-          code: 'invalid_folder_move',
-        },
-        { status: 400 },
-      );
+      return invalidFolderMove('A folder cannot be moved inside itself.');
     }
     if (!(await folderExists(store, collection, folder))) {
       return folderNotFound();
@@ -342,10 +325,7 @@ export async function handleContentFolders(
       return folderNotFound();
     }
     if (await folderExists(store, collection, nextFolder)) {
-      return adminJson(
-        { error: 'That folder already exists.', code: 'folder_exists' },
-        { status: 409 },
-      );
+      return folderAlreadyExists();
     }
 
     const previousPage = await findFolderDocument(store, collection, folder);
@@ -362,10 +342,7 @@ export async function handleContentFolders(
       conflictingEntry ||
       (await findFolderDocument(store, collection, nextFolder))
     ) {
-      return adminJson(
-        { error: 'A note already uses that folder name.', code: 'slug_exists' },
-        { status: 409 },
-      );
+      return slugExists('A note already uses that folder name.');
     }
 
     try {

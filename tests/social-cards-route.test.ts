@@ -16,7 +16,9 @@ vi.mock('../src/lib/server/content', () => ({
   writeSocialCard: state.write,
   withRedisContentMutationLock: async (operation: () => Promise<unknown>) =>
     operation(),
-  ContentMutationBusyError: class extends Error {},
+  contentStoreErrorResponse: () => null,
+  contentStoreUnavailable: () =>
+    Response.json({ code: 'content_store_unavailable' }, { status: 503 }),
 }));
 vi.mock('../src/lib/garden', () => ({
   getGardenIndexOrUnavailable: async () => ({

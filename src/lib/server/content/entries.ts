@@ -16,12 +16,17 @@ import { duplicateFolderTree } from './folders';
 import {
   contentConflictResponse,
   contentFolderErrorResponse,
+  folderAlreadyExists,
+  folderNotFound,
   invalidFolder,
+  invalidFolderMove,
   invalidSlug,
   methodNotAllowed,
   missingCollection,
   missingEntry,
+  readRevision,
   revisionRequired,
+  slugExists,
   validationError,
 } from './http';
 import {
@@ -109,18 +114,12 @@ export async function handleContentCollection(
   const folder = normalizeFolderPath(body.folder ?? '');
   if (!isValidFolderPath(folder)) return invalidFolder();
   if (!(await folderExists(store, collection, folder))) {
-    return adminJson(
-      { error: 'Choose a folder that still exists.', code: 'folder_not_found' },
-      { status: 404 },
-    );
+    return folderNotFound('Choose a folder that still exists.');
   }
 
   const entries = await readEntries(store, collection);
   if (entries.some((entry) => entry.id === slug)) {
-    return adminJson(
-      { error: 'A note already uses that file name.', code: 'slug_exists' },
-      { status: 409 },
-    );
+    return slugExists('A note already uses that file name.');
   }
 
   let validatedFields: Record<string, unknown>;
@@ -190,8 +189,7 @@ export async function handleContentEntry(
     } catch (error) {
       return requestBodyErrorResponse(error);
     }
-    const revision =
-      typeof body.revision === 'string' ? body.revision.trim() : '';
+    const revision = readRevision(body);
     if (!revision) return revisionRequired();
 
     // Deleting a folder's page is deleting the folder: leaving the directory
@@ -236,8 +234,7 @@ export async function handleContentEntry(
     return requestBodyErrorResponse(error);
   }
 
-  const revision =
-    typeof body.revision === 'string' ? body.revision.trim() : '';
+  const revision = readRevision(body);
   if (!revision) return revisionRequired();
 
   let fields: Record<string, unknown>;
@@ -291,8 +288,7 @@ export async function handleContentMove(
   const nextId = String(body.nextId ?? id);
   const folder = normalizeFolderPath(String(body.folder ?? ''));
   const operation = body.operation === 'duplicate' ? 'duplicate' : 'move';
-  const revision =
-    typeof body.revision === 'string' ? body.revision.trim() : '';
+  const revision = readRevision(body);
   if (!isValidSlug(id) || !isValidSlug(nextId)) return invalidSlug();
   if (!isValidFolderPath(folder)) return invalidFolder();
   if (!revision) return revisionRequired();
@@ -300,10 +296,7 @@ export async function handleContentMove(
     return rootEntryResponse();
   }
   if (!(await folderExists(store, collection, folder))) {
-    return adminJson(
-      { error: 'Choose a folder that still exists.', code: 'folder_not_found' },
-      { status: 404 },
-    );
+    return folderNotFound('Choose a folder that still exists.');
   }
 
   const existing = await findEntry(store, collection, id);
@@ -315,10 +308,7 @@ export async function handleContentMove(
   }
   const entries = await readEntries(store, collection);
   if (nextId !== id && entries.some((entry) => entry.id === nextId)) {
-    return adminJson(
-      { error: 'A note already uses that file name.', code: 'slug_exists' },
-      { status: 409 },
-    );
+    return slugExists('A note already uses that file name.');
   }
 
   const currentFolder = entryFolderFromPath(
@@ -326,10 +316,7 @@ export async function handleContentMove(
     collection.sourceDir,
   );
   if (operation === 'duplicate' && nextId === id) {
-    return adminJson(
-      { error: 'Choose a new file name for the copy.', code: 'slug_exists' },
-      { status: 409 },
-    );
+    return slugExists('Choose a new file name for the copy.');
   }
   if (operation === 'move' && currentFolder === folder && nextId === id) {
     return adminJson({ entry: toDetail(collection, existing) });
@@ -358,19 +345,12 @@ export async function handleContentMove(
         folder === pairedFolder ||
         folder.startsWith(`${pairedFolder}/`)
       ) {
-        return adminJson(
-          {
-            error: `A folder cannot be ${operation === 'duplicate' ? 'copied' : 'moved'} inside itself.`,
-            code: 'invalid_folder_move',
-          },
-          { status: 400 },
+        return invalidFolderMove(
+          `A folder cannot be ${operation === 'duplicate' ? 'copied' : 'moved'} inside itself.`,
         );
       }
       if (await folderExists(store, collection, nextPairedFolder)) {
-        return adminJson(
-          { error: 'That folder already exists.', code: 'folder_exists' },
-          { status: 409 },
-        );
+        return folderAlreadyExists();
       }
 
       if (operation === 'duplicate') {
@@ -469,10 +449,7 @@ export async function handleContentReorder(
   }
   if (!isValidFolderPath(folder)) return invalidFolder();
   if (!(await folderExists(store, collection, folder))) {
-    return adminJson(
-      { error: 'That folder no longer exists.', code: 'folder_not_found' },
-      { status: 404 },
-    );
+    return folderNotFound();
   }
 
   const entries = await readEntries(store, collection);
