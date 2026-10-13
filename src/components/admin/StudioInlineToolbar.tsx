@@ -1,6 +1,7 @@
 import { createPortal } from 'preact/compat';
 import type { ComponentChildren } from 'preact';
 import type { EditorCommands } from './studioEditorCommands';
+import { shortcut } from './studioHelpers';
 
 interface Props {
   /** Viewport point the selection starts at, or null when nothing is selected. */
@@ -16,11 +17,6 @@ interface Props {
   commands: EditorCommands;
   activeMarks?: ReadonlySet<string>;
 }
-
-const isMac =
-  typeof navigator !== 'undefined' &&
-  /Macintosh|iPhone|iPad/.test(navigator.userAgent);
-const mod = isMac ? '⌘' : 'Ctrl';
 
 const icon = {
   fill: 'none',
@@ -49,7 +45,7 @@ function Action({
       className="studio-inline-tool"
       aria-label={label}
       aria-pressed={active}
-      title={hint ? `${label} · ${hint}` : label}
+      title={hint ? `${label} (${hint})` : label}
       // Keep the selection alive while the button is pressed.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
@@ -86,7 +82,7 @@ export default function StudioInlineToolbar({
       <Action
         label="Bold"
         active={activeMarks?.has('bold')}
-        hint={`${mod}B`}
+        hint={shortcut('B')}
         onClick={commands.bold}
       >
         <span className="studio-tool-glyph studio-tool-glyph--bold">B</span>
@@ -94,7 +90,7 @@ export default function StudioInlineToolbar({
       <Action
         label="Italic"
         active={activeMarks?.has('italic')}
-        hint={`${mod}I`}
+        hint={shortcut('I')}
         onClick={commands.italic}
       >
         <span className="studio-tool-glyph studio-tool-glyph--italic">I</span>
@@ -102,7 +98,7 @@ export default function StudioInlineToolbar({
       <Action
         label="Strikethrough"
         active={activeMarks?.has('strike')}
-        hint={`${mod}⇧X`}
+        hint={shortcut('X', true)}
         onClick={commands.strike}
       >
         <span className="studio-tool-glyph studio-tool-glyph--strike">S</span>
@@ -110,7 +106,7 @@ export default function StudioInlineToolbar({
       <Action
         label="Inline code"
         active={activeMarks?.has('code')}
-        hint={`${mod}⇧C`}
+        hint={shortcut('C', true)}
         onClick={commands.inlineCode}
       >
         <svg viewBox="0 0 20 20" {...icon}>
@@ -121,7 +117,7 @@ export default function StudioInlineToolbar({
       <Action
         label="Link"
         active={activeMarks?.has('link')}
-        hint={`${mod}K`}
+        hint={shortcut('K')}
         onClick={commands.link}
       >
         <svg viewBox="0 0 20 20" {...icon}>

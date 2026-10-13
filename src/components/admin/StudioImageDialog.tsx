@@ -58,10 +58,16 @@ export default function StudioImageDialog({
           onInput={(event) => setSrc(event.currentTarget.value)}
         />
         {src && !imageSource(src) && (
-          <p role="status">Use an https:// URL or a path starting with /.</p>
+          <p className="studio-field-error" role="status">
+            Use an https:// URL or a path starting with /.
+          </p>
         )}
-        <div>
-          <button type="submit" disabled={!imageSource(src)}>
+        <div className="studio-form-actions">
+          <button
+            type="submit"
+            className="studio-btn studio-btn--primary"
+            disabled={!imageSource(src)}
+          >
             {initial ? 'Replace image' : 'Insert image'}
           </button>
         </div>

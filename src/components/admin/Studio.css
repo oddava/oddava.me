@@ -1,4 +1,7 @@
-/* Order preserves the shared primitives, feature styles, and responsive overrides. */
+/* Tokens first, then the parts every surface shares, then each surface. The
+   phone layout comes last so its overrides win without raising specificity. */
+@import '../../styles/components/studio/_tokens.css';
+@import '../../styles/components/studio/_primitives.css';
 @import '../../styles/components/studio/_shell.css';
 @import '../../styles/components/studio/_explorer.css';
 @import '../../styles/components/studio/_editor.css';

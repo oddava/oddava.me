@@ -2,6 +2,7 @@ import type { NodeViewRendererProps } from '@tiptap/core';
 import type { Node } from '@tiptap/pm/model';
 import { closeHistory } from '@tiptap/pm/history';
 import { imageSource } from './studioRichImage';
+import { moreGlyphElement } from './studioIcons';
 
 /** Editor-only controls. Only image attributes are persisted to Markdown. */
 export function imageNodeView(
@@ -25,7 +26,7 @@ export function imageNodeView(
   more.dataset.imageControl = '';
   more.setAttribute('aria-label', 'Image actions');
   more.setAttribute('aria-haspopup', 'menu');
-  more.textContent = '···';
+  more.append(moreGlyphElement());
   more.onclick = () => {
     const pos = getPos();
     if (typeof pos !== 'number') return;

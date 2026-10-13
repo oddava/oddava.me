@@ -144,20 +144,14 @@ describe('StudioFolderTree markup', () => {
     expect(html).not.toContain('type="search"');
   });
 
-  it('shows a collapsed folder what it is holding', () => {
-    const html = draw({ ...LIBRARY, expandedFolders: new Set(['']) });
-
-    expect(html).toContain('studio-tree-row__count');
-    expect(html).toContain('2 notes');
-  });
-
-  it('drops the count once the folder is open and speaks for itself', () => {
-    const html = draw({
-      ...LIBRARY,
-      expandedFolders: new Set(['', 'work']),
-    });
-
-    expect(html).not.toContain('studio-tree-row__count');
+  it('draws no note counts on folders, open or shut', () => {
+    // A number beside every folder is noise: the chevron already says there
+    // is something inside, and opening it shows what.
+    for (const expandedFolders of [new Set(['']), new Set(['', 'work'])]) {
+      const html = draw({ ...LIBRARY, expandedFolders });
+      expect(html).not.toContain('studio-tree-row__count');
+      expect(html).not.toContain('2 notes');
+    }
   });
 
   it('marks the open file as current without calling it selected', () => {

@@ -7,8 +7,8 @@ import {
 } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
-import { VisuallyHidden } from '../ui/VisuallyHidden';
 import { FileIcon } from './studioFileIcons';
+import { Icon } from './studioIcons';
 import StudioSheet from './StudioSheet';
 import { useLongPress } from './useLongPress';
 import type { StudioTreeItemRef } from './studioDragItems';
@@ -53,7 +53,6 @@ import {
 type SheetState =
   | { kind: 'row'; item: StudioTreeItemRef }
   | { kind: 'folder' }
-  | { kind: 'new' }
   | {
       kind: 'name';
       mode: 'file' | 'rename';
@@ -361,7 +360,6 @@ export default function StudioMobileFiles({
     const active = isFolder
       ? node.document?.id === currentId
       : node.entry.id === currentId;
-    const count = isFolder ? node.folder.totalNoteCount : 0;
     // Searching, every row needs to say where it came from; at home, a note
     // whose title has drifted from its file name is worth spelling out.
     const detail = searching
@@ -375,7 +373,8 @@ export default function StudioMobileFiles({
         key={key}
         className={[
           'studio-mfiles__item',
-          active ? 'is-active' : '',
+          // While picking, the only highlight is the pick.
+          active && !selecting ? 'is-active' : '',
           picked ? 'is-picked' : '',
           rowBusy ? 'is-busy' : '',
         ]
@@ -397,9 +396,9 @@ export default function StudioMobileFiles({
         >
           <span className="studio-mfiles__mark" aria-hidden="true">
             {selecting ? (
-              <span
-                className={`studio-mfiles__check ${picked ? 'is-on' : ''}`}
-              />
+              <span className={`studio-mfiles__check ${picked ? 'is-on' : ''}`}>
+                {picked && <Icon name="check" />}
+              </span>
             ) : (
               <FileIcon
                 icon={
@@ -416,19 +415,9 @@ export default function StudioMobileFiles({
             </span>
             {detail && <small>{detail}</small>}
           </span>
-          {isFolder && count > 0 && (
-            <>
-              <span className="studio-mfiles__count" aria-hidden="true">
-                {count}
-              </span>
-              <VisuallyHidden>
-                {`, ${count} note${count === 1 ? '' : 's'}`}
-              </VisuallyHidden>
-            </>
-          )}
           {isFolder && !selecting && (
             <span className="studio-mfiles__chevron" aria-hidden="true">
-              ›
+              <Icon name="chevron-right" />
             </span>
           )}
         </button>
@@ -439,7 +428,7 @@ export default function StudioMobileFiles({
             aria-label={`Actions for ${label}`}
             onClick={() => openSheet({ kind: 'row', item: nodeRef(node) })}
           >
-            <span aria-hidden="true">•••</span>
+            <Icon name="more" />
           </button>
         )}
       </li>
@@ -619,16 +608,6 @@ export default function StudioMobileFiles({
     );
   }
 
-  function newSheet(): ComponentChildren {
-    return (
-      <>
-        <button type="button" onClick={() => openNameSheet('file')}>
-          New note
-        </button>
-      </>
-    );
-  }
-
   function nameSheet(mode: 'file' | 'rename'): ComponentChildren {
     return (
       <form
@@ -690,7 +669,7 @@ export default function StudioMobileFiles({
                 className="studio-sheet__folder"
                 disabled={busy || current}
                 style={{
-                  paddingLeft: `${12 + Math.min(option.depth ?? 0, 6) * 2}px`,
+                  paddingLeft: `${12 + Math.min(option.depth ?? 0, 5) * 16}px`,
                 }}
                 onClick={() => void moveTo(items, destination)}
               >
@@ -731,13 +710,6 @@ export default function StudioMobileFiles({
         title: here,
         detail: locationLabel(folderId),
         content: folderSheet(),
-      };
-    }
-    if (sheet.kind === 'new') {
-      return {
-        title: 'Create',
-        detail: `in ${locationLabel(folderId)}`,
-        content: newSheet(),
       };
     }
     if (sheet.kind === 'name') {
@@ -805,7 +777,7 @@ export default function StudioMobileFiles({
                   : goTo(parentFolder(folderId))
               }
             >
-              <span aria-hidden="true">{folderId === '' ? '×' : '‹'}</span>
+              <Icon name={folderId === '' ? 'close' : 'chevron-left'} />
             </button>
             <h2 className="studio-mfiles__title">{here}</h2>
             <button
@@ -823,7 +795,7 @@ export default function StudioMobileFiles({
               aria-haspopup="dialog"
               onClick={() => openSheet({ kind: 'folder' })}
             >
-              <span aria-hidden="true">•••</span>
+              <Icon name="more" />
             </button>
           </>
         )}
@@ -866,13 +838,14 @@ export default function StudioMobileFiles({
             aria-label="Clear search"
             onClick={() => onQueryChange('')}
           >
-            <span aria-hidden="true">×</span>
+            <Icon name="close" />
           </button>
         )}
       </div>
 
       {searching && (
-        <p className="studio-mfiles__count-line" role="status">
+        // Announced, not shown: the list itself is the visible answer.
+        <p className="studio-visually-hidden" role="status">
           {results.length} {results.length === 1 ? 'result' : 'results'}
         </p>
       )}
@@ -892,12 +865,13 @@ export default function StudioMobileFiles({
               </button>
             </>
           ) : (
-            <>
-              <p>{folderId === '' ? 'No notes yet.' : 'No child notes yet.'}</p>
-              <button type="button" onClick={() => openNameSheet('file')}>
-                New note
-              </button>
-            </>
+            // The bar below already offers New note; a second one here would
+            // be the same button twice on one screen.
+            <p>
+              {folderId === ''
+                ? 'No notes yet.'
+                : `Nothing inside ${here} yet.`}
+            </p>
           )}
         </div>
       )}
@@ -925,14 +899,16 @@ export default function StudioMobileFiles({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          className="studio-mfiles__fab"
-          aria-label={`Create in ${here}`}
-          onClick={() => openSheet({ kind: 'new' })}
-        >
-          <span aria-hidden="true">+</span>
-        </button>
+        <div className="studio-mfiles__actions">
+          <button
+            type="button"
+            className="studio-mfiles__new"
+            onClick={() => openNameSheet('file')}
+          >
+            <Icon name="plus" />
+            New note
+          </button>
+        </div>
       )}
 
       <StudioSheet

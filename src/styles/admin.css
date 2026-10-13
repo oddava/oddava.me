@@ -287,20 +287,14 @@
   padding: 0 16px;
   cursor: pointer;
   transition:
-    transform 120ms ease,
     background 120ms ease,
     color 120ms ease,
     border-color 120ms ease;
 }
 
-.admin-button:hover {
-  transform: translateY(-1px);
-}
-
 .admin-button:disabled {
   color: var(--admin-text-disabled);
   cursor: wait;
-  transform: none;
 }
 
 .admin-button.primary {

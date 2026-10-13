@@ -1,0 +1,585 @@
+/* ---------------------------------------------------------------------------
+   Primitives: the handful of parts every Studio surface is built from.
+
+   Written once, unscoped by pane, because the same button appears in the
+   sidebar, in a popover portalled onto <body>, and in a phone sheet — and it
+   has to be the same button in all three.
+--------------------------------------------------------------------------- */
+
+.admin-page .studio,
+.admin-page .studio-menu,
+.admin-page .studio-slashmenu,
+.admin-page .studio-wikimenu,
+.admin-page .studio-inline-toolbar,
+.admin-page .studio-editor-popover,
+.admin-page .studio-palette,
+.admin-page .studio-sheet,
+.admin-page .studio-rich-popover,
+.admin-page .studio-select__menu {
+  font-family: var(--st-font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-page .studio :is(button, a, summary, [role='treeitem']) {
+  touch-action: manipulation;
+}
+
+/* --- Glyphs --- */
+
+.admin-page .studio-glyph {
+  display: block;
+  flex: none;
+  width: var(--st-glyph);
+  height: var(--st-glyph);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Focus ---
+   One ring for everything you can reach with Tab: solid, outside the control
+   so it never covers a label. Rows and list items, which sit edge to edge,
+   draw it inside instead. */
+
+.admin-page .studio :focus-visible,
+.admin-page .studio-menu :focus-visible,
+.admin-page .studio-editor-popover :focus-visible,
+.admin-page .studio-palette :focus-visible,
+.admin-page .studio-sheet :focus-visible,
+.admin-page .studio-select__menu :focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 2px;
+}
+
+.admin-page .studio :focus:not(:focus-visible),
+/* The page you write on is not a control: the caret is its focus. */
+.studio .studio-rich-content:focus-visible {
+  outline: none;
+}
+
+/* --- Buttons --- */
+
+.admin-page .studio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  min-height: var(--st-control);
+  padding: 0 12px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    border-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-btn .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  margin-left: -2px;
+}
+
+.admin-page .studio-btn:hover:not(:disabled) {
+  background: var(--st-hover);
+}
+
+.admin-page .studio-btn:active:not(:disabled) {
+  background: var(--st-press);
+}
+
+.admin-page .studio-btn:disabled {
+  color: var(--st-text-4);
+  border-color: var(--st-line);
+  cursor: default;
+}
+
+.admin-page .studio-btn kbd {
+  margin-left: 4px;
+}
+
+.admin-page .studio-btn--primary {
+  border-color: transparent;
+  background: var(--st-accent-text);
+  color: var(--st-on-accent);
+  font-weight: 700;
+}
+
+.admin-page .studio-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--st-accent-text) 86%, white);
+}
+
+.admin-page .studio-btn--primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--st-accent-text) 80%, black);
+}
+
+.admin-page .studio-btn--primary:disabled {
+  border-color: transparent;
+  background: var(--st-press);
+}
+
+/* No border: for actions that sit in a bar of other quiet controls. */
+.admin-page .studio-btn--quiet {
+  border-color: transparent;
+  color: var(--st-text-2);
+}
+
+.admin-page .studio-btn--quiet:hover:not(:disabled) {
+  color: var(--st-text);
+}
+
+.admin-page .studio-btn--danger-quiet {
+  border-color: transparent;
+  color: var(--st-danger);
+}
+
+.admin-page .studio-btn--danger-quiet:hover:not(:disabled) {
+  background: var(--st-danger-tint);
+}
+
+/* A square button holding one glyph. */
+.admin-page .studio-icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--st-control);
+  height: var(--st-control);
+  padding: 0;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-3);
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-icon-button:hover:not(:disabled) {
+  background: var(--st-hover);
+  color: var(--st-text);
+}
+
+.admin-page .studio-icon-button:active:not(:disabled) {
+  background: var(--st-press);
+}
+
+.admin-page .studio-icon-button:disabled {
+  color: var(--st-text-4);
+  cursor: default;
+}
+
+/* --- Fields --- */
+
+.admin-page .studio-input,
+.admin-page .studio .admin-input,
+.admin-page .studio-sheet .admin-input,
+.admin-page
+  .studio-editor-popover
+  :is(input:not([type='range'], [type='file']), textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--st-control);
+  padding: 0 10px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-field);
+  color: var(--st-text);
+  font: inherit;
+  font-size: var(--st-size-md);
+  line-height: 1.4;
+  transition: border-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-editor-popover textarea {
+  min-height: 160px;
+  padding: 10px;
+  font-family: var(--st-mono);
+  font-size: var(--st-size-sm);
+  resize: vertical;
+}
+
+.admin-page
+  :is(
+    .studio-input,
+    .studio .admin-input,
+    .studio-sheet .admin-input,
+    .studio-editor-popover :is(input, textarea)
+  )::placeholder {
+  color: var(--st-text-4);
+}
+
+.admin-page
+  :is(
+    .studio-input,
+    .studio .admin-input,
+    .studio-sheet .admin-input,
+    .studio-editor-popover :is(input, textarea)
+  ):hover {
+  border-color: color-mix(in srgb, var(--st-text) 26%, transparent);
+}
+
+/* A field shows focus by its own border; the ring would double it. */
+.admin-page
+  :is(
+    .studio-input,
+    .studio .admin-input,
+    .studio-sheet .admin-input,
+    .studio-editor-popover :is(input, textarea)
+  ):focus-visible {
+  outline: none;
+  border-color: var(--st-accent);
+}
+
+.admin-page .studio-editor-popover [aria-invalid='true'] {
+  border-color: var(--st-danger);
+}
+
+.admin-page input[type='search']::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* A plain field label. Kept at the lowest weight that still beats the
+   browser default, so a label that is really a control — the icon upload
+   area, the cropper's zoom row — keeps its own layout. */
+.admin-page .studio-field-label,
+.admin-page .studio-editor-popover :where(label) {
+  display: block;
+  color: var(--st-text-2);
+  font-size: var(--st-size-sm);
+}
+
+.admin-page .studio-field-help,
+.admin-page .studio-field-error {
+  margin: 0;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  line-height: 1.5;
+}
+
+.admin-page .studio-field-error {
+  color: var(--st-danger);
+}
+
+.admin-page .studio-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* --- Keys --- */
+
+.admin-page .studio kbd,
+.admin-page .studio-menu kbd,
+.admin-page .studio-palette kbd,
+.admin-page .studio-slashmenu kbd {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--st-text-4);
+  font-family: var(--st-mono);
+  font-size: var(--st-size-xs);
+  line-height: 1;
+}
+
+/* --- Floating surfaces ---
+   Menus, autocompletes, toolbars and popovers share one body: the raised
+   fill, a hairline, the larger radius, and one entrance. */
+
+.admin-page .studio-menu,
+.admin-page .studio-slashmenu,
+.admin-page .studio-wikimenu,
+.admin-page .studio-inline-toolbar,
+.admin-page .studio-editor-popover,
+.admin-page .studio-rich-popover,
+.admin-page .studio-select__menu {
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius-float);
+  background: var(--st-raised);
+  color: var(--st-text);
+  animation: studio-arrive var(--st-base) var(--st-ease);
+}
+
+@keyframes studio-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes studio-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* --- Menus ---
+   Every ••• button and right-click opens one of these, rendered through
+   StudioContextMenu onto <body>. */
+
+.admin-page .studio-menu {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  min-width: 200px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(var(--studio-vh, 100dvh) - 24px);
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.admin-page .studio-menu button,
+.admin-page .studio-menu summary {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: var(--st-control);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-menu :is(button, summary):hover:not(:disabled),
+.admin-page .studio-menu :is(button, summary):focus-visible {
+  outline: none;
+  background: var(--st-current);
+  color: var(--st-text);
+}
+
+.admin-page .studio-menu button:disabled {
+  color: var(--st-text-4);
+  cursor: default;
+}
+
+.admin-page .studio-menu button.is-danger {
+  color: var(--st-danger);
+}
+
+.admin-page .studio-menu button.is-danger:hover,
+.admin-page .studio-menu button.is-danger:focus-visible {
+  background: var(--st-danger-tint);
+  color: var(--st-danger);
+}
+
+.admin-page .studio-menu button[aria-pressed='true'],
+.admin-page .studio-menu button[aria-checked='true'] {
+  color: var(--st-accent-text);
+}
+
+/* Separators: the menus use an empty <span> or an explicit separator. */
+.admin-page .studio-menu > span:empty,
+.admin-page .studio-menu .studio-menu__divider,
+.admin-page .studio-menu .studio-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--st-line);
+}
+
+.admin-page .studio-menu__hint {
+  color: var(--st-text-4);
+  font-family: var(--st-mono);
+  font-size: var(--st-size-xs);
+}
+
+/* "Turn into" opens in place, so the menu never stacks a second menu. */
+.admin-page .studio-menu-turn {
+  display: grid;
+}
+
+.admin-page .studio-menu-turn summary {
+  list-style: none;
+}
+
+.admin-page .studio-menu-turn summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-page .studio-menu-turn summary .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  color: var(--st-text-4);
+  transition: transform var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-menu-turn[open] summary .studio-glyph {
+  transform: rotate(90deg);
+}
+
+.admin-page .studio-menu-turn[open] {
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--st-line);
+  margin-bottom: 4px;
+}
+
+.admin-page .studio-menu-turn > button {
+  padding-left: 22px;
+}
+
+/* --- Themed select (a native one paints its popup in OS chrome) --- */
+
+.admin-page .studio-select {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  min-width: 0;
+}
+
+.admin-page .studio-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--st-control);
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-field);
+  color: var(--st-text);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  cursor: pointer;
+  transition: border-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-select__trigger:hover:not(:disabled),
+.admin-page .studio-select.is-open .studio-select__trigger {
+  border-color: color-mix(in srgb, var(--st-text) 26%, transparent);
+}
+
+.admin-page .studio-select__trigger:disabled {
+  color: var(--st-text-4);
+  cursor: default;
+}
+
+.admin-page .studio-select__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-page .studio-select__caret {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--st-text-3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-select.is-open .studio-select__caret {
+  transform: rotate(180deg);
+}
+
+.admin-page .studio-select__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 100%;
+  max-height: 280px;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-page .studio-select__menu.is-start {
+  right: auto;
+  left: 0;
+}
+
+.admin-page .studio-select__menu.is-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.admin-page .studio-select__menu button {
+  min-height: var(--st-control);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-page .studio-select__menu button:hover,
+.admin-page .studio-select__menu button:focus-visible {
+  outline: none;
+  background: var(--st-current);
+  color: var(--st-text);
+}
+
+.admin-page .studio-select__menu button.is-selected {
+  color: var(--st-accent-text);
+}
+
+/* --- Odds and ends --- */
+
+.admin-page .studio-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.admin-page .studio-file-icon {
+  display: block;
+  flex: none;
+  width: var(--st-glyph);
+  height: var(--st-glyph);
+  border-radius: 4px;
+  object-fit: cover;
+  font-size: calc(var(--st-glyph) - 2px);
+  line-height: var(--st-glyph);
+  text-align: center;
+}
+
+.admin-page .studio :is(.studio-entry-list, .studio-rich-scroll),
+.admin-page .studio-menu,
+.admin-page .studio-palette__list,
+.admin-page .studio-sheet__body {
+  scrollbar-color: var(--st-line-strong) transparent;
+  scrollbar-width: thin;
+}

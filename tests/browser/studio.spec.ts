@@ -113,7 +113,7 @@ async function setup(page: Page, initialBody = seed) {
     return route.fulfill({ json: { collections: [collection] } });
   });
   await page.goto('/tests/browser/');
-  await expect(page.getByText('No file open', { exact: true })).toBeVisible();
+  await expect(page.getByText('No note open', { exact: true })).toBeVisible();
   return { saved: () => saved, entries: () => entries };
 }
 
@@ -360,7 +360,7 @@ test('browsing, searching, creation and responsive layout', async ({
   }
   const search =
     info.project.name === 'desktop'
-      ? page.getByRole('combobox', { name: 'Go to a file or run a command' })
+      ? page.getByRole('combobox', { name: 'Search notes and commands' })
       : page.getByRole('searchbox');
   await search.fill('reading');
   await expect(
@@ -425,7 +425,7 @@ test('create, rename and move a file without losing the open document', async ({
 }, info) => {
   const store = await setup(page);
   if (info.project.name === 'mobile') {
-    await page.getByRole('button', { name: 'Create in Notes' }).click();
+    // The bottom bar names the note straight away: no menu in between.
     await page.getByRole('button', { name: 'New note', exact: true }).click();
     await page
       .getByRole('textbox', { name: 'Name', exact: true })
@@ -1511,7 +1511,7 @@ test('deeply nested notes keep their labels and actions inside the sidebar', asy
   );
   await page.reload();
   await page
-    .getByRole('button', { name: 'Notes actions', exact: true })
+    .getByRole('button', { name: 'Actions for Home', exact: true })
     .click();
   await page.getByRole('button', { name: 'Expand all', exact: true }).click();
   const rows = page.locator('.studio-tree-row[data-tree-key^="folder:"]');
@@ -1836,9 +1836,7 @@ test('tree menus support keyboard navigation and Tab leaves the writing surface'
   await source.focus();
   await source.press('Shift+Tab');
   await expect(source).not.toBeFocused();
-  await expect(
-    page.getByRole('link', { name: 'Open published page' }),
-  ).toBeFocused();
+  await expect(page.getByRole('link', { name: 'View page' })).toBeFocused();
 });
 
 test('palette keeps focus and exposes the current search result', async ({

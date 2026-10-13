@@ -8,9 +8,22 @@ export function titleFromBody(body: string, fallback: string): string {
   return heading || fallback.replaceAll('-', ' ') || 'Untitled';
 }
 
-export function countWords(value: string): number {
-  const matches = value.trim().match(/\S+/g);
-  return matches ? matches.length : 0;
+const APPLE =
+  typeof navigator !== 'undefined' &&
+  /Macintosh|iPhone|iPad/.test(navigator.userAgent);
+
+/**
+ * A shortcut the way this keyboard labels it: `shortcut('K')` is ⌘K on a Mac
+ * and Ctrl+K everywhere else.
+ */
+export function shortcut(key: string, shift = false): string {
+  if (APPLE) return `⌘${shift ? '⇧' : ''}${key === 'Backspace' ? '⌫' : key}`;
+  return `Ctrl+${shift ? 'Shift+' : ''}${key}`;
+}
+
+/** The same for Alt: ⌥↑ on a Mac, Alt+↑ elsewhere. */
+export function altShortcut(key: string): string {
+  return APPLE ? `⌥${key}` : `Alt+${key}`;
 }
 
 export function noteHref(entries: ContentEntryListItem[], id: string): string {

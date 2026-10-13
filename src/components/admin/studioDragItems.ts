@@ -7,8 +7,6 @@ export type StudioTreeItemRef =
 
 /** A file or folder dragged out of the explorer. */
 export const TREE_DRAG_TYPE = 'application/x-oddava-studio-item';
-/** An open tab dragged along its own strip. */
-export const TAB_DRAG_TYPE = 'application/x-oddava-studio-tab';
 
 /**
  * Both effects are allowed: the tree *moves* what it receives, the tab strip

@@ -3,6 +3,7 @@ import { isEmojiIcon } from '../../lib/content/noteIcon';
 import StudioEditorPopover from './StudioEditorPopover';
 import SamsungEmoji from '../SamsungEmoji';
 import StudioIconCropper from './StudioIconCropper';
+import { Icon } from './studioIcons';
 
 const EMOJIS = [
   '📄',
@@ -138,17 +139,24 @@ export default function StudioIconPicker({
               </button>
             ))}
           </div>
-          <label for="studio-icon-emoji">Or paste your own emoji</label>
+          <label className="studio-field-label" for="studio-icon-emoji">
+            Or paste your own emoji
+          </label>
           <div className="studio-icon-custom">
             <SamsungEmoji emoji={isEmojiIcon(emoji) ? emoji : '😊'} />
             <input
               id="studio-icon-emoji"
+              className="studio-input"
               value={emoji}
               maxLength={64}
               placeholder="😊"
               onInput={(event) => setEmoji(event.currentTarget.value.trim())}
             />
-            <button type="submit" disabled={!isEmojiIcon(emoji)}>
+            <button
+              type="submit"
+              className="studio-btn studio-btn--primary"
+              disabled={!isEmojiIcon(emoji)}
+            >
               Use emoji
             </button>
           </div>
@@ -173,10 +181,14 @@ export default function StudioIconPicker({
           ) : (
             <label className="studio-icon-upload__target">
               <span aria-hidden="true" className="studio-icon-upload__preview">
-                {icon && !isEmojiIcon(icon) ? <img src={icon} alt="" /> : '↑'}
+                {icon && !isEmojiIcon(icon) ? (
+                  <img src={icon} alt="" />
+                ) : (
+                  <Icon name="upload" />
+                )}
               </span>
               <strong>{uploading ? 'Uploading…' : 'Choose an image'}</strong>
-              <span>PNG, JPEG, GIF or WebP · up to 5 MB</span>
+              <span>PNG, JPEG, GIF or WebP, up to 5 MB</span>
               <input
                 aria-label="Upload custom icon"
                 type="file"
@@ -206,14 +218,22 @@ export default function StudioIconPicker({
               />
             </label>
           )}
-          {uploadError && <p role="alert">{uploadError}</p>}
-          {uploading && <p role="status">Uploading your icon…</p>}
+          {uploadError && (
+            <p className="studio-field-error" role="alert">
+              {uploadError}
+            </p>
+          )}
+          {uploading && (
+            <p className="studio-field-help" role="status">
+              Uploading your icon…
+            </p>
+          )}
         </div>
       )}
       {icon && (
         <footer>
           <button
-            className="studio-icon-remove"
+            className="studio-btn studio-btn--danger-quiet studio-icon-remove"
             type="button"
             disabled={uploading}
             onClick={() => choose(undefined)}

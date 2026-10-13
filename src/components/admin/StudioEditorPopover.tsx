@@ -1,6 +1,7 @@
 import { createPortal } from 'preact/compat';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
+import { Icon } from './studioIcons';
 
 function textAnchor() {
   const selected = document.querySelector(
@@ -156,8 +157,13 @@ export default function StudioEditorPopover({
       {showHeader && (
         <header className="studio-editor-popover__head">
           <strong>{title}</strong>
-          <button type="button" aria-label="Close" onClick={onClose}>
-            ×
+          <button
+            type="button"
+            className="studio-icon-button"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <Icon name="close" />
           </button>
         </header>
       )}

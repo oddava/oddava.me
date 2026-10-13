@@ -1,49 +1,52 @@
 import type { SaveState } from './studioSession';
+import { shortcut } from './studioHelpers';
 
 interface Props {
   state: SaveState;
   savedAt: number | null;
+  /** An image is on its way up; that outranks the text's own save state. */
+  uploading?: boolean;
   onSave: () => void;
 }
 
-/**
- * "Saved" says itself, so the tone-coloured dot the other states use would be
- * saying it twice — and on a phone, where there is no room for the words, a
- * lone green dot is all that is left and it says nothing at all.
- */
-function SavedIcon() {
-  return (
-    <svg className="studio-save__check" viewBox="0 0 20 20" aria-hidden="true">
-      <path d="m5 10.5 3.5 3.5L15 6.5" />
-    </svg>
-  );
-}
+const LABELS: Record<SaveState, string> = {
+  // Opened and untouched: what is on screen is what is stored.
+  idle: 'Saved',
+  // Autosave is always on, so a dirty note is a save that has not started
+  // yet. Saying "Unsaved" between keystrokes would read as a warning.
+  dirty: 'Saving…',
+  saving: 'Saving…',
+  saved: 'Saved',
+  error: '',
+};
 
-export default function StudioSaveIndicator({ state, savedAt, onSave }: Props) {
+/**
+ * Where the note stands with the store, in a word. It is text and nothing
+ * else: a writer glances at it, so it should never be the brightest thing in
+ * the bar — except when a save has failed, where it becomes the way to retry.
+ */
+export default function StudioSaveIndicator({
+  state,
+  savedAt,
+  uploading = false,
+  onSave,
+}: Props) {
   if (state === 'error') {
     return (
       <button
         type="button"
-        className="studio-save studio-save--action"
+        className="studio-btn studio-btn--danger-quiet studio-save"
         data-tone={state}
         onClick={onSave}
-        title="Save now (⌘S)"
+        title={`Save now (${shortcut('S')})`}
       >
-        <span className="studio-save__dot" aria-hidden="true" />
         Retry save
       </button>
     );
   }
 
-  let label = 'Saved';
-  let tone = 'saved';
-  if (state === 'saving') {
-    label = 'Saving…';
-    tone = 'saving';
-  } else if (state === 'dirty') {
-    label = 'Unsaved';
-    tone = 'dirty';
-  }
+  // An untouched note is as saved as a freshly saved one.
+  const tone = state === 'idle' ? 'saved' : state;
   return (
     <span
       className="studio-save"
@@ -52,16 +55,14 @@ export default function StudioSaveIndicator({ state, savedAt, onSave }: Props) {
       aria-live="polite"
       title={
         tone === 'saved' && savedAt
-          ? `Saved at ${new Date(savedAt).toLocaleTimeString()}`
-          : label
+          ? `Saved at ${new Date(savedAt).toLocaleTimeString([], {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}`
+          : undefined
       }
     >
-      {tone === 'saved' ? (
-        <SavedIcon />
-      ) : (
-        <span className="studio-save__dot" aria-hidden="true" />
-      )}
-      {label}
+      {uploading ? 'Uploading…' : LABELS[state]}
     </span>
   );
 }

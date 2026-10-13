@@ -140,7 +140,7 @@ export function ConfirmDialog({
         <div className="confirm-dialog__actions">
           <button
             type="button"
-            className="admin-button admin-button--ghost confirm-dialog__cancel"
+            className="admin-button ghost confirm-dialog__cancel"
             data-dialog-action="cancel"
             onClick={onCancel}
           >
@@ -149,7 +149,7 @@ export function ConfirmDialog({
           <button
             type="button"
             className={`admin-button ${
-              danger ? 'admin-button--danger' : 'primary'
+              danger ? 'danger' : 'primary'
             } confirm-dialog__confirm`}
             data-dialog-action="confirm"
             onClick={onConfirm}

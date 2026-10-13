@@ -1,6 +1,6 @@
 import { isEmojiIcon, isImageIcon } from '../../lib/content/noteIcon';
 import SamsungEmoji from '../SamsungEmoji';
-// Shared note glyphs for the desktop tree, mobile browser, and editor tabs.
+// Shared note glyphs for the desktop tree, mobile browser, and editor bar.
 
 export function FileIcon({ icon }: { icon?: string }) {
   if (icon && isImageIcon(icon))
@@ -8,17 +8,9 @@ export function FileIcon({ icon }: { icon?: string }) {
   if (icon && isEmojiIcon(icon))
     return <SamsungEmoji className="studio-file-icon" emoji={icon} />;
   return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M5 2.75h6l4 4v10.5H5V2.75Z" />
-      <path d="M11 2.75v4h4M7.5 10h5M7.5 13h5" />
-    </svg>
-  );
-}
-
-export function PlusIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M10 4.5v11M4.5 10h11" />
+    <svg className="studio-glyph" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M5.25 3.25h5.5l4 4v9.5H5.25z" />
+      <path d="M10.75 3.25v4h4M7.75 10.5h4.5M7.75 13.25h4.5" />
     </svg>
   );
 }

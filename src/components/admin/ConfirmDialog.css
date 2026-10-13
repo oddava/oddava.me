@@ -1,3 +1,6 @@
+/* Shared by every admin surface. Flat like the rest of the admin: a dim
+   backdrop, a lighter surface and a hairline — no blur, no shadow. */
+
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
@@ -5,49 +8,46 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-sm);
-  background: color-mix(in srgb, #060608 70%, transparent);
-  backdrop-filter: blur(2px);
-  animation: confirm-dialog-fade-in 0.12s ease-out;
+  padding: 16px;
+  background: color-mix(in srgb, #000 60%, transparent);
+  animation: confirm-dialog-fade-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .confirm-dialog {
-  width: min(28rem, calc(100vw - 2rem));
-  padding: var(--space-sm);
+  width: min(26rem, 100%);
+  padding: 20px;
   border: 1px solid var(--admin-line-strong, var(--color-rule-strong));
-  border-radius: 12px;
-  background: var(--admin-surface-elevated, var(--color-surface-elevated));
+  border-radius: var(--radius-lg);
+  background: #151515;
   color: var(--admin-text-primary, var(--color-text-primary));
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
-  animation: confirm-dialog-pop-in 0.14s ease-out;
-}
-
-.confirm-dialog.is-danger .confirm-dialog__confirm {
-  background: var(--admin-danger, var(--color-text-error));
-  color: #fff;
+  font-family: var(--font-body);
+  animation: confirm-dialog-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .confirm-dialog__title {
-  margin: 0 0 0.4rem;
+  margin: 0 0 6px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .confirm-dialog__message {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 20px;
   color: var(--admin-text-secondary, var(--color-text-secondary));
   font-size: 0.875rem;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .confirm-dialog__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
-.confirm-dialog__cancel {
-  background: transparent;
+.confirm-dialog .admin-button {
+  min-height: 36px;
+  padding: 0 14px;
 }
 
 .confirm-dialog__cancel:focus-visible,
@@ -56,11 +56,11 @@
   outline-offset: 2px;
 }
 
-/* On a phone the two actions split the width and grow to a finger-sized
-   target, rather than sitting as a pair of small buttons in one corner. */
+/* On a phone the two actions share the width at a finger's size, rather than
+   sitting as two small buttons in a corner. */
 @media (max-width: 480px) {
   .confirm-dialog__actions button {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-height: 44px;
   }
 }
@@ -69,25 +69,18 @@
   from {
     opacity: 0;
   }
-  to {
-    opacity: 1;
-  }
 }
 
-@keyframes confirm-dialog-pop-in {
+@keyframes confirm-dialog-in {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(6px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .confirm-dialog-overlay,
   .confirm-dialog {
-    animation-duration: 0.01ms;
+    animation: none;
   }
 }

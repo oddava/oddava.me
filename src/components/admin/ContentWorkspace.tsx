@@ -16,7 +16,9 @@ import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
-import StudioEditorPane from './StudioEditorPane';
+import StudioEditorPane, { type PaneCrumb } from './StudioEditorPane';
+import { Icon } from './studioIcons';
+import { folderCrumbs } from './studioMobileTree';
 import type { TabPlacement } from './studioTabStrip';
 import type { EditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
@@ -27,8 +29,8 @@ import { useStudioDocument } from './useStudioDocument';
 import { useStudioTabs } from './useStudioTabs';
 import {
   contentRequestError,
-  countWords,
   noteHref,
+  shortcut,
   titleFromBody,
 } from './studioHelpers';
 import {
@@ -46,7 +48,6 @@ import {
   type StudioSession,
 } from './studioSession';
 import './Studio.css';
-import './StudioProduct.css';
 // The editor uses the site's published note typography.
 import '../../styles/components/_note-prose.css';
 
@@ -146,9 +147,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     (raw: string) => renderNoteHtml(raw, { wikiLinkHrefs }),
     [wikiLinkHrefs],
   );
-  const wordCount = useMemo(() => countWords(body), [body]);
-  // 220 wpm, rounded up: the number a reader sees on the published page.
-  const readingMinutes = Math.max(1, Math.round(wordCount / 220));
   const currentTitle = titleFromBody(body, openId);
 
   // --- Session persistence -------------------------------------------------
@@ -507,7 +505,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     {
       id: 'new-note',
       title: 'New note',
-      hint: 'in Notes',
+      icon: 'plus',
       run: () =>
         void mutations.createEntryInFolder(
           activeFolder,
@@ -517,7 +515,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     {
       id: 'toggle-sidebar',
       title: session.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar',
-      hint: '⌘\\',
+      icon: 'sidebar',
+      hint: shortcut('\\'),
       run: () => patchSession({ sidebarCollapsed: !session.sidebarCollapsed }),
     },
   ];
@@ -526,17 +525,20 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       {
         id: 'insert-image',
         title: 'Insert image…',
+        icon: 'image',
         run: () => setImageDialogOpen(true),
       },
       {
         id: 'save-note',
         title: 'Save now',
-        hint: '⌘S',
+        icon: 'save',
+        hint: shortcut('S'),
         run: () => void saveNow(),
       },
       {
         id: 'open-browser',
         title: 'Open published page',
+        icon: 'external',
         run: () => {
           if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
         },
@@ -544,6 +546,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       {
         id: 'delete-note',
         title: 'Delete current note',
+        icon: 'trash',
         danger: true,
         run: () => {
           const entry = entries.find((candidate) => candidate.id === openId);
@@ -552,6 +555,29 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       },
     );
   }
+
+  // The notes the open one sits inside. A parent with a page of its own is a
+  // way back to it; one without is only a name on the path.
+  const openEntry = entries.find((entry) => entry.id === openId);
+  const crumbs: PaneCrumb[] = openEntry
+    ? folderCrumbs(openEntry.folder)
+        .slice(1)
+        .map((crumb) => {
+          const folder = folders.find((candidate) => candidate.id === crumb.id);
+          const page = folder?.documentId
+            ? entries.find(
+                (entry) =>
+                  entry.id === folder.documentId &&
+                  entry.folder === (folder.parentId ?? ''),
+              )
+            : undefined;
+          return {
+            id: crumb.id,
+            label: crumb.label,
+            open: page ? () => editEntry(page) : undefined,
+          };
+        })
+    : [];
 
   // --- Render --------------------------------------------------------------
 
@@ -602,13 +628,28 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             inert={phone && !sidebarVisible}
           >
             {loading ? (
-              <p className="admin-empty" role="status">
-                Indexing files…
-              </p>
+              // The shape of a tree, so the sidebar does not jump from one
+              // line of text to a full listing when the notes arrive.
+              <div className="studio-skeleton" role="status">
+                <span className="studio-visually-hidden">Loading notes</span>
+                {[56, 72, 48, 64, 40, 68].map((width, index) => (
+                  <span
+                    key={index}
+                    className="studio-skeleton__row"
+                    style={{ width: `${width}%` }}
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
             ) : library.loadError ? (
               <div className="studio-tree-empty">
-                <p>Could not load notes.</p>
-                <button type="button" onClick={() => window.location.reload()}>
+                <p>The notes could not be loaded.</p>
+                <button
+                  type="button"
+                  className="studio-btn"
+                  onClick={() => window.location.reload()}
+                >
+                  <Icon name="refresh" />
                   Retry connection
                 </button>
               </div>
@@ -720,18 +761,16 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           inert={phone && sidebarVisible}
           aria-hidden={phone && sidebarVisible}
         >
-          {!sidebarVisible && (
+          {/* With a note open, its bar carries this button instead. */}
+          {!sidebarVisible && (!openId || !collection) && (
             <button
               type="button"
               className="studio-sidebar-open studio-icon-button"
               aria-label="Show Files explorer"
-              title="Show explorer (Ctrl+\\)"
+              title={`Show sidebar (${shortcut('\\')})`}
               onClick={() => setSidebarCollapsed(false)}
             >
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <rect x="3" y="4" width="14" height="12" rx="2" />
-                <path d="M8 4v12" />
-              </svg>
+              <Icon name="sidebar" />
             </button>
           )}
           <div className="studio-editor-groups">
@@ -749,19 +788,22 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                       ? 'Loading notes…'
                       : library.loadError
                         ? 'Notes unavailable'
-                        : 'No file open'}
+                        : 'No note open'}
                   </p>
-                  <p className="studio-blank__hint">
-                    {loading
-                      ? 'Connecting to your garden.'
-                      : library.loadError
-                        ? 'Your notes could not be reached. Retry the connection from Files.'
-                        : 'Select a file or create a note.'}
-                  </p>
+                  {!loading && (
+                    <p className="studio-blank__hint">
+                      {library.loadError
+                        ? 'The content store did not answer. Retry from the sidebar once it is reachable.'
+                        : phone
+                          ? 'Open one from your notes, or start a new one.'
+                          : 'Pick one from the sidebar, or start a new one.'}
+                    </p>
+                  )}
                   {!loading && !library.loadError && (
                     <div className="studio-blank__actions">
                       <button
                         type="button"
+                        className="studio-btn studio-btn--primary"
                         disabled={busyKey !== null || !collection}
                         onClick={() =>
                           void mutations.createEntryInFolder(
@@ -770,20 +812,26 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                           )
                         }
                       >
-                        + New note
+                        <Icon name="plus" />
+                        New note
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaletteOpen(true)}
-                      >
-                        Find a file
-                      </button>
-                      {phone && (
+                      {phone ? (
                         <button
                           type="button"
+                          className="studio-btn"
                           onClick={() => setSidebarCollapsed(false)}
                         >
-                          Browse files
+                          Browse notes
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="studio-btn"
+                          onClick={() => setPaletteOpen(true)}
+                        >
+                          <Icon name="search" />
+                          Search
+                          <kbd>{shortcut('P')}</kbd>
                         </button>
                       )}
                     </div>
@@ -808,11 +856,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                       ),
                     );
                   }}
+                  crumbs={crumbs}
                   publishedUrl={publishedUrl}
                   body={body}
                   renderMarkdown={renderMarkdown}
-                  wordCount={wordCount}
-                  readingMinutes={readingMinutes}
                   compact={phone}
                   keyboardOpen={keyboardOpen}
                   sidebarVisible={sidebarVisible}
@@ -822,7 +869,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   commandsRef={commandsRef}
                   focusRef={focusRef}
                   suggestions={suggestions}
-                  onOpenFiles={() => setSidebarCollapsed(false)}
+                  onShowSidebar={() => setSidebarCollapsed(false)}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {
                     doc.setBody(value);
@@ -842,11 +889,22 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       </div>
 
       {(error || notice) && (
-        <div className="studio-toast" role={error ? 'alert' : 'status'}>
-          {error ? (
-            <span className="studio-toast__error">{error}</span>
-          ) : (
-            <span>{notice}</span>
+        <div
+          className="studio-toast"
+          data-tone={error ? 'error' : 'notice'}
+          role={error ? 'alert' : 'status'}
+        >
+          <span className="studio-toast__text">{error ?? notice}</span>
+          {/* A notice leaves on its own; an error stays until it is read. */}
+          {error && (
+            <button
+              type="button"
+              className="studio-icon-button studio-toast__close"
+              aria-label="Dismiss"
+              onClick={() => setError(null)}
+            >
+              <Icon name="close" />
+            </button>
           )}
         </div>
       )}
