@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type { NoteGraphData } from '../../lib/garden/graph';
 import { mountGraph } from '../../lib/garden/graph-canvas';
-import { morphGraph } from '../../lib/garden/graph-morph';
+import { animatePresence } from '../../lib/garden/graph-presence';
 import '../../styles/components/_interactive-graph.css';
 
 type Props = {
@@ -22,7 +22,6 @@ export default function InteractiveGraph({
   const snapshot = useRef<HTMLCanvasElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
   const globalButton = useRef<HTMLButtonElement>(null);
-  const flight = useRef<ReturnType<typeof morphGraph>>();
   const canvas = useRef<HTMLCanvasElement>(null);
   const globalCanvas = useRef<HTMLCanvasElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -34,113 +33,84 @@ export default function InteractiveGraph({
   const [returnHref, setReturnHref] = useState('/notes');
   const [focused, setFocused] = useState<string | null>(null);
 
-  function move(open: boolean, global: boolean) {
-    // A second command redirects the running spring without replacing its
-    // geometry, node frames or velocity.
-    if (flight.current) {
-      flight.current.setOpen(open);
-      return;
-    }
+  /** Where the surface grows from and sinks back to: the sidebar graph. */
+  function home() {
+    const box = slot.current?.getBoundingClientRect();
+    return box && { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  }
+
+  function open(global: boolean) {
     const element = global ? globalDialog.current : dialog.current;
     const local = engine.current;
-    if (!element || !local || !slot.current) return;
-    if (!open && !element.matches(':modal')) return;
-    local.suspend(true);
-    const miniBounds = slot.current.getBoundingClientRect();
-    const mini =
-      open || global
-        ? local.capture()
-        : local.captureMini(
-            miniBounds.width,
-            Math.max(1, miniBounds.height - 1),
-          );
-    if (open) {
-      if (!global && snapshot.current && canvas.current) {
-        snapshot.current.width = canvas.current.width;
-        snapshot.current.height = canvas.current.height;
-        snapshot.current.getContext('2d')?.drawImage(canvas.current, 0, 0);
-      }
-      element.close();
-      element.showModal();
-      if (global && !globalEngine.current && globalCanvas.current && globalData)
+    if (!element || !local || element.matches(':modal')) return;
+    if (!global && snapshot.current && canvas.current) {
+      // Hold the sidebar picture while its live canvas moves into the top layer.
+      snapshot.current.width = canvas.current.width;
+      snapshot.current.height = canvas.current.height;
+      snapshot.current.getContext('2d')?.drawImage(canvas.current, 0, 0);
+    }
+    element.close();
+    element.showModal();
+    if (global) {
+      if (!globalCanvas.current || !globalData) return;
+      // The global graph mounts on first open, and a mount blooms on arrival.
+      if (globalEngine.current) {
+        globalEngine.current.resize();
+        globalEngine.current.bloom();
+      } else
         globalEngine.current = mountGraph(
           globalCanvas.current,
           globalData,
           currentId,
           setFocused,
         );
-      if (!global) setExpanded(true);
+    } else {
+      setExpanded(true);
+      local.expand(true);
+      local.bloom();
     }
-    const active = global ? globalEngine.current : local;
-    if (!active) {
-      local.suspend(false);
-      return;
-    }
-    active.suspend(true);
-    if (open) {
-      active.expand(true);
-      active.startFormation();
-    }
-    active.paint();
-    const full = active.capture();
-    const finish = (
-      isOpen: boolean,
-      momentum?: ReadonlyMap<string, { x: number; y: number }>,
-    ) => {
-      flight.current = undefined;
-      if (!isOpen) {
-        active.stopFormation();
-        element.close();
-        if (!global) {
-          element.show();
-          setExpanded(false);
-          local.expand(false);
-        }
+    void animatePresence(element, true, home());
+  }
+
+  function close(global: boolean) {
+    const element = global ? globalDialog.current : dialog.current;
+    const local = engine.current;
+    if (!element || !local || !element.matches(':modal')) return;
+    if (element.dataset.closing !== undefined) return;
+    const box = slot.current?.getBoundingClientRect();
+    if (!global && snapshot.current && box?.width)
+      // Nothing moves on the way out: the sidebar already shows the layout the
+      // live canvas returns to, so the handoff is pixel-identical.
+      local.paintCollapsed(
+        snapshot.current,
+        box.width,
+        Math.max(1, box.height - 1),
+      );
+    element.dataset.closing = '';
+    void animatePresence(element, false, home()).then((done) => {
+      delete element.dataset.closing;
+      if (!done) return;
+      element.close();
+      if (!global) {
+        element.show();
+        setExpanded(false);
+        local.expand(false);
       }
-      if (global && isOpen) active.suspend(false);
-      local.suspend(false);
-      if (momentum && !isOpen) local.settle(momentum);
-      if (!isOpen) {
-        const button = global ? globalButton.current : expandButton.current;
-        if (button?.getClientRects().length)
-          button.focus({ preventScroll: true });
-        else
-          slot.current
-            ?.closest('.note-context')
-            ?.querySelector<HTMLAnchorElement>('.note-context__graph-link')
-            ?.focus({ preventScroll: true });
-      }
-    };
-    if (
-      matchMedia('(prefers-reduced-motion: reduce)').matches ||
-      !miniBounds.width ||
-      !miniBounds.height
-    ) {
-      finish(open);
-      return;
-    }
-    flight.current = morphGraph({
-      panel: element,
-      slot: slot.current,
-      mini,
-      full,
-      opening: open,
-      onRest: finish,
-      advanceFrame: active.advanceFormation,
-      onDirection: (isOpen) => active.pauseFormation(!isOpen),
-      refreshFrames: (miniWidth, miniHeight, fullWidth, fullHeight) => ({
-        mini: global
-          ? local.captureAt(miniWidth, miniHeight)
-          : local.captureMini(miniWidth, miniHeight),
-        full: active.captureAt(fullWidth, fullHeight),
-      }),
+      const button = global ? globalButton.current : expandButton.current;
+      if (button?.getClientRects().length)
+        button.focus({ preventScroll: true });
+      else
+        slot.current
+          ?.closest('.note-context')
+          ?.querySelector<HTMLAnchorElement>('.note-context__graph-link')
+          ?.focus({ preventScroll: true });
     });
   }
 
-  const expand = () => move(true, false);
-  const collapse = () => move(false, false);
-  const openGlobal = () => move(true, true);
-  const closeGlobal = () => move(false, true);
+  const expand = () => open(false);
+  const collapse = () => close(false);
+  const openGlobal = () => open(true);
+  const closeGlobal = () => close(true);
 
   useEffect(() => {
     if (!slot.current) return;
@@ -176,12 +146,6 @@ export default function InteractiveGraph({
       globalEngine.current = undefined;
     },
     [globalData, currentId],
-  );
-  useEffect(
-    () => () => {
-      flight.current?.destroy();
-    },
-    [],
   );
 
   return (

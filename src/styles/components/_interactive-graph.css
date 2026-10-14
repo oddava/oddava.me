@@ -115,9 +115,11 @@
 .interactive-graph__panel:modal {
   position: fixed;
   inset: 0;
-  width: calc(100% - 48px);
-  height: calc(100dvh - 48px);
-  max-width: 1440px;
+  /* A window over the note, not a takeover: room to explore while the page
+     stays visible around it. Phones keep the full-screen sheet below. */
+  width: min(100% - 64px, 1100px);
+  height: min(100dvh - 64px, 760px);
+  max-width: none;
   max-height: none;
   margin: auto;
   border: 1px solid var(--color-rule);
@@ -183,30 +185,8 @@ body:has(.interactive-graph__panel:modal) {
   outline-color: var(--color-focus-ring);
   outline-offset: 2px;
 }
-/* Presence comes from the same spring as the graph, never a second clock. */
-.interactive-graph__panel:modal::backdrop {
-  opacity: var(--graph-presence, 1);
-  backdrop-filter: blur(4px);
-}
-.interactive-graph__panel[data-morphing] .interactive-graph__viewport > canvas {
-  visibility: hidden;
-}
-.interactive-graph__panel[data-morphing] .interactive-graph__actions {
-  z-index: 2;
-  opacity: var(--graph-controls, 0);
-  top: calc(var(--space-quarter) + var(--graph-inset-top, 0px));
-  right: calc(var(--space-quarter) + var(--graph-inset-right, 0px));
-  left: calc(var(--space-quarter) + var(--graph-inset-left, 0px));
-}
-.interactive-graph__slot[data-morphing] > .interactive-graph__snapshot,
-.interactive-graph__slot[data-morphing]
-  > .interactive-graph__panel:not(:modal) {
-  visibility: hidden;
-}
-.interactive-graph .interactive-graph__transition {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
+/* A closing surface is already on its way out; it no longer takes input. */
+.interactive-graph__panel[data-closing] {
   pointer-events: none;
 }
 .interactive-graph__empty {
