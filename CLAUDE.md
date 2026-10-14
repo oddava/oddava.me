@@ -150,7 +150,10 @@ exist.
 
 ### Redis transports differ per environment
 
-Upstash REST API in production; direct Redis client in Node tests; and in the
+Upstash REST protocol in production — served by a self-hosted Redis behind SRH
+on a VPS, reached through a Cloudflare Tunnel (`deploy/vps/`); the
+`UPSTASH_REDIS_REST_*` variables keep their names and point there. Direct Redis
+client in Node tests; and in the
 workerd dev server, the token-authenticated loopback bridge in
 `vite/local-redis-dev-proxy.mjs` (workerd cannot load the Node Redis client).
 The bridge binds to `127.0.0.1`, accepts only bounded JSON command arrays, and

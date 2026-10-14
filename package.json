@@ -26,6 +26,7 @@
     "format:check": "prettier --check .",
     "notes:export": "node scripts/export-notes-from-redis.mjs",
     "notes:migrate": "node scripts/migrate-notes-to-redis.mjs",
+    "redis:copy": "node scripts/copy-redis.mjs",
     "spotify:token": "node scripts/get-spotify-token.mjs",
     "verify": "pnpm run format:check && pnpm run check && pnpm run test && pnpm run build",
     "astro": "astro",

@@ -1,0 +1,60 @@
+# Production storage on a self-hosted VPS: Redis behind an Upstash-compatible
+# REST bridge, reached by the Cloudflare Worker through a Cloudflare Tunnel.
+#
+#   Worker ──https──▶ Cloudflare edge ──tunnel──▶ cloudflared ─▶ srh ─▶ redis
+#
+# Nothing here listens on a public interface: the tunnel dials out, and Redis is
+# published on loopback only (for `ssh -L` debugging). See README.md.
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      [
+        'redis-server',
+        '/usr/local/etc/redis/redis.conf',
+        '--requirepass',
+        '${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}',
+      ]
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-data:/data
+    ports:
+      - '127.0.0.1:6379:6379'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # Speaks the Upstash REST protocol the Worker already uses
+  # (`POST /` with a JSON command array and a Bearer token), so the app only
+  # needs new UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN secrets.
+  srh:
+    image: hiett/serverless-redis-http:latest
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${SRH_TOKEN:?set SRH_TOKEN in .env}
+      SRH_CONNECTION_STRING: redis://:${REDIS_PASSWORD}@redis:6379
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - srh
+    command: ['tunnel', '--no-autoupdate', 'run']
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+
+volumes:
+  redis-data:
