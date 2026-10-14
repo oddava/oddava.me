@@ -1,9 +1,9 @@
 ---
-updated: 2026-07-11T21:39:43+05:00
+icon: /images/notes/books/1000073681-icon-c8ea50fb-1de2-4a10-bbde-bd4ca112f70c.png
+updated: 2026-09-26T15:22:03.122Z
 ---
 
 # books
 
-a mix of practical books and stories i've lived beside for a while. each page
-keeps the part that actually mattered — an idea to try, a feeling to come back
-to, or a thread that ties into the rest of these notes.
+- [[reading/books/why-we-sleep|"why we sleep" by Matthew Walker]]
+- [[reading/books/atomic-habits|atomic habits]]

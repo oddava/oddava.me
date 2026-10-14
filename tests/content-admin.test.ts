@@ -904,104 +904,39 @@ describe('content HTTP handlers', () => {
   });
 });
 
-// The live store still holds `.mdx` keys written before notes moved to `.md`,
-// and will until notes:migrate runs against it. Studio has to keep working
-// across that gap, in either order.
-describe('a content store still holding legacy .mdx notes', () => {
-  async function storeWithLegacyNotes() {
+// Production was migrated to `.md` keys on 2026-10-14 and reads accept only
+// `.md` since. A stray `.mdx` key — an old export restored by hand — is not a
+// note: it must neither list nor shadow the canonical file.
+describe('a stray legacy .mdx key', () => {
+  it('is ignored rather than listed as a note', async () => {
     const provider = new MemoryContentProvider();
     await provider.writeTextFile(
-      'src/content/notes/index.mdx',
+      'src/content/notes/index.md',
       '# notes',
-      'seed root',
+      'root',
     );
     await provider.writeTextFile(
-      'src/content/notes/reading.mdx',
+      'src/content/notes/reading.md',
       '# reading',
-      'seed folder page',
+      'canonical',
     );
     await provider.writeTextFile(
-      'src/content/notes/reading/books.mdx',
-      '# books',
-      'seed note',
+      'src/content/notes/stray.mdx',
+      '# stray',
+      'legacy',
     );
-    return provider;
-  }
 
-  it('lists legacy notes rather than reporting an empty collection', async () => {
     const listed = await handleContentCollection(
-      await storeWithLegacyNotes(),
+      provider,
       'notes',
       new Request('https://oddava.me/api/admin/content/notes'),
     );
     expect(listed.status).toBe(200);
     const body = await payload<{ entries: { id: string }[] }>(listed);
     expect(body.entries.map((entry) => entry.id).toSorted()).toEqual([
-      'books',
       'index',
       'reading',
     ]);
-  });
-
-  it('reads a legacy note by its id, extension and all', async () => {
-    const read = await handleContentEntry(
-      await storeWithLegacyNotes(),
-      'notes',
-      'books',
-      new Request('https://oddava.me/api/admin/content/notes/books'),
-    );
-    expect(read.status).toBe(200);
-    await expect(read.json()).resolves.toMatchObject({
-      entry: { id: 'books', body: '# books' },
-    });
-  });
-
-  it('refuses to delete the root note even when it is index.mdx', async () => {
-    // The root guard compared against a hardcoded `index.mdx`. Were it to
-    // compare against only the canonical `.md`, a legacy root would become
-    // deletable — the one file the garden cannot survive losing.
-    const deleted = await handleContentEntry(
-      await storeWithLegacyNotes(),
-      'notes',
-      'index',
-      jsonRequest('DELETE', 'https://oddava.me/api/admin/content/notes/index', {
-        revision: 'r1',
-      }),
-    );
-    expect(deleted.status).toBe(400);
-  });
-
-  it('does not duplicate a legacy folder page when creating the folder', async () => {
-    const provider = await storeWithLegacyNotes();
-    const created = await handleContentFolders(
-      provider,
-      'notes',
-      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/folders', {
-        path: 'reading',
-      }),
-    );
-    expect(created.status).toBe(409);
-
-    // Two pages for one folder would collapse to one note id and throw
-    // "Duplicate note id" when the garden index next rebuilt.
-    expect(provider.files.has('src/content/notes/reading.md')).toBe(false);
-    expect(provider.files.has('src/content/notes/reading.mdx')).toBe(true);
-  });
-
-  it('renames a legacy folder page onto the canonical extension', async () => {
-    const provider = await storeWithLegacyNotes();
-    const renamed = await handleContentFolders(
-      provider,
-      'notes',
-      jsonRequest(
-        'PATCH',
-        'https://oddava.me/api/admin/content/notes/folders',
-        { path: 'reading', nextPath: 'library' },
-      ),
-    );
-    expect(renamed.status).toBe(200);
-    expect(provider.files.has('src/content/notes/library.md')).toBe(true);
-    expect(provider.files.has('src/content/notes/reading.mdx')).toBe(false);
   });
 });
 

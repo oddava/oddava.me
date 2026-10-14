@@ -89,8 +89,9 @@ live with no commit, push, or deploy. Consequences:
 - `src/content/notes` is an export artifact, not a source: nothing reads it at
   runtime or at build time. `pnpm run notes:export` writes it (git-diffable
   backup), `pnpm run notes:migrate` imports it back (seed/restore), with
-  `-- --target=prod` for production. That round trip is the only durability
-  story — keep both scripts working.
+  `-- --target=prod` for production. That round trip is the git-diffable copy —
+  keep both scripts working. The nightly restic snapshot of the whole store
+  (`deploy/vps/backup.sh`) is the disaster-recovery copy.
 
 Note identity comes from a note's path within the collection — the shape of its
 Redis key, which export mirrors into `src/content/notes`; an `index.md` at
@@ -98,18 +99,18 @@ the collection root is required. `src/lib/garden` builds hierarchy, backlinks,
 tags, search, and graph layout from the live store. `/garden/*` routes are legacy
 301 redirects to `/notes/*`.
 
-Notes are plain Markdown and always were — nothing ever used MDX. New writes are
-`.md`, but reads still accept `.mdx` (`readExtensions` in
-`content/registry.ts`), because the live store holds keys written before the
-rename. **The production store has not been migrated.** Until
-`pnpm run notes:migrate -- --prune --target=prod` runs against it from the
-committed `.md` tree, prod keys are `.mdx` and that compatibility is what keeps
-the garden readable — dropping `.mdx` from `readExtensions` first would match
-zero notes and 503 the whole site. The migration is that command specifically:
-import writes each note under its canonical `.md` key (even a `.mdx` on disk is
-normalized), and `--prune` drops the superseded `.mdx` keys. Run it from the
-committed tree, never from a fresh prod export — an export would re-materialize
-the `.mdx` keys on disk first.
+Notes are plain Markdown and always were — nothing ever used MDX. Keys are
+`.md`, and reads accept only `.md` (`readExtensions` in `content/registry.ts`).
+Production held legacy `.mdx` keys until 2026-10-14, when it was migrated with
+`notes:migrate -- --prune --target=prod`; the notes scripts still normalize
+`.mdx` files so old exports and backups import cleanly.
+
+**Never run `notes:migrate -- --prune --target=prod` from a stale tree.** It
+writes the tree over the store and prunes every note the tree lacks, so a tree
+behind production deletes live notes and rolls others back. Studio edits never
+reach git on their own: run `notes:export -- --target=prod` first, review and
+commit the result, then migrate from that commit. On 2026-10-14 the committed
+tree was missing 9 of 15 live notes.
 
 Astro's Vite watcher deliberately ignores `src/content/notes`: only
 `notes:export` writes that tree, in bulk, and nothing renders from it — so

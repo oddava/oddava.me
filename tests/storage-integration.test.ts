@@ -161,7 +161,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         withRedisContentMutationLock,
       } = await import('../src/lib/server/content/redis-store');
       const provider = createRedisContentProvider();
-      const path = 'src/content/notes/integration.mdx';
+      const path = 'src/content/notes/integration.md';
       const created = await provider.writeTextFile(
         path,
         '# integration',
@@ -321,12 +321,12 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       const notes = 'src/content/notes';
       await provider.createDirectory(`${notes}/reading`, 'create reading');
       const page = await provider.writeTextFile(
-        `${notes}/reading.mdx`,
+        `${notes}/reading.md`,
         '# reading',
         'create reading page',
       );
       await provider.writeTextFile(
-        `${notes}/reading/book.mdx`,
+        `${notes}/reading/book.md`,
         '# book\n\nnaïve 👋 "quoted"',
         'create book',
       );
@@ -336,35 +336,35 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         `${notes}/library`,
         'move reading to library',
         {
-          from: `${notes}/reading.mdx`,
-          to: `${notes}/library.mdx`,
+          from: `${notes}/reading.md`,
+          to: `${notes}/library.md`,
           revision: page.revision!,
         },
       );
-      expect(await provider.readFile(`${notes}/reading/book.mdx`)).toBeNull();
-      expect(
-        await provider.readFile(`${notes}/library/book.mdx`),
-      ).toMatchObject({ content: '# book\n\nnaïve 👋 "quoted"' });
-      expect(await provider.readFile(`${notes}/library.mdx`)).toMatchObject({
+      expect(await provider.readFile(`${notes}/reading/book.md`)).toBeNull();
+      expect(await provider.readFile(`${notes}/library/book.md`)).toMatchObject(
+        { content: '# book\n\nnaïve 👋 "quoted"' },
+      );
+      expect(await provider.readFile(`${notes}/library.md`)).toMatchObject({
         content: '# reading',
       });
 
-      const libraryPage = await provider.readFile(`${notes}/library.mdx`);
+      const libraryPage = await provider.readFile(`${notes}/library.md`);
       await expect(
         provider.deleteDirectory(
           `${notes}/library`,
           'reject non-empty library',
           {
-            path: `${notes}/library.mdx`,
+            path: `${notes}/library.md`,
             revision: libraryPage!.revision,
           },
         ),
       ).rejects.toMatchObject({ code: 'folder_not_empty' });
 
-      const book = await provider.readFile(`${notes}/library/book.mdx`);
+      const book = await provider.readFile(`${notes}/library/book.md`);
       await provider.moveFile(
-        `${notes}/library/book.mdx`,
-        `${notes}/book.mdx`,
+        `${notes}/library/book.md`,
+        `${notes}/book.md`,
         'move book to root',
         book!.revision,
       );
@@ -372,11 +372,11 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         `${notes}/library`,
         'delete empty library',
         {
-          path: `${notes}/library.mdx`,
+          path: `${notes}/library.md`,
           revision: libraryPage!.revision,
         },
       );
-      expect(await provider.readFile(`${notes}/library.mdx`)).toBeNull();
+      expect(await provider.readFile(`${notes}/library.md`)).toBeNull();
 
       const mediaPath = 'public/images/notes/integration/pixel.png';
       const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);

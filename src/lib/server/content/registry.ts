@@ -7,7 +7,7 @@ export const NOTES_COLLECTION = {
   singularLabel: 'Note',
   sourceDir: 'src/content/notes',
   extension: 'md',
-  readExtensions: ['md', 'mdx'],
+  readExtensions: ['md'],
   mediaDir: 'public/images/notes',
   mediaPublicPath: '/images/notes',
   routePrefix: '/notes',

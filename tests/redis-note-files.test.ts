@@ -33,7 +33,7 @@ function fakeStore(records: Record<string, string>): RedisCommand {
 }
 
 describe('readRedisNoteFiles', () => {
-  it('reads canonical .md and legacy .mdx notes, and nothing else', async () => {
+  it('reads .md notes and nothing else, legacy .mdx keys included', async () => {
     const files = await readRedisNoteFiles(
       fakeStore({
         'src/content/notes/index.mdx': storedRecord('# notes'),
@@ -44,11 +44,7 @@ describe('readRedisNoteFiles', () => {
       }),
     );
 
-    expect(files.map((file) => file.sourceId).toSorted()).toEqual([
-      'index',
-      'reading',
-      'reading/books',
-    ]);
+    expect(files.map((file) => file.sourceId).toSorted()).toEqual(['reading']);
     expect(files.find((file) => file.sourceId === 'reading')).toEqual({
       sourceId: 'reading',
       content: '# reading',

@@ -58,11 +58,10 @@ export interface ContentCollectionDefinition {
   /**
    * Extensions accepted on read, canonical first.
    *
-   * `mdx` is still here because the content store is live: production keys were
-   * written as `.mdx` and stay that way until `notes:migrate` rewrites them.
-   * Notes have always been plain Markdown — nothing ever used MDX — so this is
-   * a key-naming tail, not a format. Reading both is what lets the rename
-   * deploy without a coordinated data migration.
+   * Just `md` since production was migrated (2026-10-14). It accepted `mdx` too
+   * while the live store still held keys written before the rename — notes were
+   * always plain Markdown, so that was a key-naming tail, not a format. The
+   * notes scripts still normalize `.mdx` files, so old exports import cleanly.
    */
   readExtensions: readonly string[];
   mediaDir: string;

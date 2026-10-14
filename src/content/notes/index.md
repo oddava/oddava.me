@@ -1,12 +1,14 @@
 ---
-updated: 2026-07-15T12:03:06.081Z
+icon: 🗒️
+updated: 2026-10-02T11:27:20.198Z
 ---
 
 # notes
 
-this is where i keep the things i don't want to lose — half-formed ideas, stuff
-i'm building, books that stuck around, and the occasional thing i just want to
-be able to find again later.
+a collection of things i want to remember, revisit or build upon.
 
-nothing here is finished, and it doesn't need to be. if a note is useful before
-it's done, that's plenty.
+this is my personal knowledge base. though, it's yet incomplete, i'm working on adding more content.
+
+- [[reading|reading]]
+- [[diary|diary]]
+- [[knowledge|knowledge]]

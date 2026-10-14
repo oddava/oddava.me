@@ -1,9 +1,12 @@
 ---
-order: 3
-updated: 2026-07-11T21:39:43+05:00
+icon: 📚
+order: 0
+updated: 2026-09-15T07:27:41.936Z
 ---
 
 # reading
 
-less a reading log, more a record of what stayed with me. these pages hold the
-scene, the idea, or the question that kept echoing after i put something down.
+collection of what i read
+
+- [[reading/books|books]]
+- [[reading/manhwa|manhwa]]
