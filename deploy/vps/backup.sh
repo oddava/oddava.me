@@ -23,19 +23,30 @@ RCLONE_IMAGE=rclone/rclone:1.75.2
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-# One run at a time: a slow upload must not overlap the next night's run.
-exec 9>"$STAGE.lock"
-flock -n 9 || {
-  log 'another backup is still running; skipping'
-  exit 1
-}
-
 set -a
 # shellcheck source=/dev/null
 . ./.env
 # shellcheck source=/dev/null
 . "$ENV_FILE"
 set +a
+
+# Dead man's switch: with HEALTHCHECK_URL set (a healthchecks.io ping URL),
+# each run reports its start and exit status. The service alerts on a failed
+# run *and* on a run that never reports at all — a dead VPS, a stopped cron —
+# which a notify-on-error hook here could never catch.
+ping() {
+  [ -n "${HEALTHCHECK_URL:-}" ] || return 0
+  curl -fsS -m 10 --retry 3 -o /dev/null "$HEALTHCHECK_URL$1" || true
+}
+trap 'ping "/$?"' EXIT
+ping /start
+
+# One run at a time: a slow upload must not overlap the next night's run.
+exec 9>"$STAGE.lock"
+flock -n 9 || {
+  log 'another backup is still running; skipping'
+  exit 1
+}
 
 redis_cli() {
   docker compose exec -T redis sh -c \
