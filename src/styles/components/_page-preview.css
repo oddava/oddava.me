@@ -1,106 +1,105 @@
 /* ===================================================
-   PAGE PREVIEW — a miniature document, not a tooltip.
+   PAGE PREVIEW — a quiet glimpse of where a link goes.
 
    One reusable sheet follows any same-origin page link: the destination's
-   title, its opening lines, and a footer of provenance. The visual language
-   is the site's own — a flat bordered surface, hairline rules — plus a
-   leader line drawn from the hovered words to the sheet, the way a callout
-   is tied to a drawing.
+   title, its opening lines, and a line of provenance. It is the site's own
+   surface — flat, hairline-bordered, opaque — lifted only by a shadow that
+   separates it from the text it sits over.
 
    Placement is script-driven through the custom properties below rather than
    CSS anchor positioning: the sheet attaches to the *line box* under the
-   cursor, flips sides on the viewport edge, and glides between links, none of
-   which `position-area` can express. Writes go through CSSOM
+   cursor, keeps its side while moving between links, and glides between
+   them, none of which `position-area` can express. Writes go through CSSOM
    (`style.setProperty`), which `style-src` does not govern — no inline style
    attribute is ever authored, so the strict hashed CSP stays intact.
    =================================================== */
 
 .page-preview {
   /* Distance between the hovered line box and the sheet. The script reads
-     this back so the geometry and the leader line agree. */
-  --preview-gap: 10px;
-  --preview-tether-x: 1.25rem;
-  --preview-enter-y: -4px;
+     this back so the geometry and the hover bridge agree. */
+  --preview-gap: 8px;
+  --preview-origin-x: 1.5rem;
+  --preview-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   position: fixed;
   /* The popover UA sheet sets `inset: 0`, which would stretch a sized box
      across the viewport; pin the start edges and free the end ones. */
   inset: 0 auto auto 0;
   z-index: 1000;
-  inline-size: min(23rem, calc(100vw - 2 * var(--page-padding)));
+  inline-size: min(22rem, calc(100vw - 2 * var(--page-padding)));
   margin: 0;
   padding: 0;
   border: 0;
   overflow: visible;
   background: none;
   color: var(--color-text-primary);
-  opacity: 0;
+  cursor: pointer;
   translate: var(--preview-x, 0px) var(--preview-y, 0px);
-  /* Never a hover target of its own: the pointer stays with the link, so
-     crossing the sheet can never fight the hover that opened it. */
+  transform-origin: var(--preview-origin-x) 0;
+  /* Closed, and on its way out: quicker than the entrance, and never a
+     target, so a fading sheet cannot catch the pointer. */
+  opacity: 0;
+  scale: 0.98;
   pointer-events: none;
   transition:
-    opacity 110ms cubic-bezier(0.3, 0, 0.35, 1),
-    display 200ms allow-discrete,
-    overlay 200ms allow-discrete;
+    opacity 120ms ease-out,
+    scale 120ms ease-out,
+    display 120ms allow-discrete,
+    overlay 120ms allow-discrete;
 }
 
 .page-preview[hidden] {
   display: none;
 }
 
+.page-preview[data-placement='above'] {
+  transform-origin: var(--preview-origin-x) 100%;
+}
+
 .page-preview:popover-open {
   opacity: 1;
+  scale: 1;
+  /* The sheet is part of the hover: the pointer can move onto it, read it,
+     and click it, without it closing underneath (WCAG 1.4.13). */
+  pointer-events: auto;
+  transition:
+    opacity 150ms ease-out,
+    scale 200ms var(--preview-ease),
+    display 150ms allow-discrete,
+    overlay 150ms allow-discrete;
 }
 
 @starting-style {
   .page-preview:popover-open {
     opacity: 0;
+    scale: 0.97;
   }
 }
 
 /* Only added while the sheet moves between links or resizes around freshly
-   arrived content. Scroll repositioning stays instant — a sheet easing after
-   a scrolling link would read as lag, not polish. */
+   arrived content. A resize stays instant — a sheet easing after its link
+   would read as lag, not polish. */
 .page-preview--glide {
   transition:
-    opacity 110ms cubic-bezier(0.3, 0, 0.35, 1),
-    translate 260ms cubic-bezier(0.2, 0.72, 0.25, 1),
-    display 200ms allow-discrete,
-    overlay 200ms allow-discrete;
+    opacity 150ms ease-out,
+    scale 200ms var(--preview-ease),
+    translate 220ms var(--preview-ease),
+    display 150ms allow-discrete,
+    overlay 150ms allow-discrete;
 }
 
-/* --- Leader line --- */
-
+/* An invisible bridge over the gap, so moving from the link onto the sheet
+   never passes over the page — or over a link the sheet would hand off to. */
 .page-preview::before {
   content: '';
   position: absolute;
-  inset-block-start: calc(-1 * var(--preview-gap));
-  inset-inline-start: var(--preview-tether-x);
-  inline-size: 1px;
+  inset-inline: 0;
+  inset-block-end: 100%;
   block-size: var(--preview-gap);
-  background: linear-gradient(to bottom, transparent, var(--color-rule-strong));
-  transform: scaleY(0);
-  transform-origin: top;
-  transition: transform 150ms cubic-bezier(0.2, 0.72, 0.25, 1);
-}
-
-.page-preview:popover-open::before {
-  transform: scaleY(1);
-  /* Drawn after the sheet has settled, so the connection reads as a
-     consequence of the sheet arriving rather than a second moving part. */
-  transition-delay: 70ms;
-}
-
-.page-preview[data-placement='above'] {
-  --preview-enter-y: 4px;
 }
 
 .page-preview[data-placement='above']::before {
-  inset-block-start: auto;
-  inset-block-end: calc(-1 * var(--preview-gap));
-  background: linear-gradient(to top, transparent, var(--color-rule-strong));
-  transform-origin: bottom;
+  inset-block: 100% auto;
 }
 
 /* --- Sheet --- */
@@ -111,66 +110,63 @@
   box-sizing: content-box;
   block-size: var(--preview-block-size, auto);
   overflow: clip;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-md);
-  /* A flat sheet of the site's own ground: opaque, no lift, no glass. */
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
-  transform: translateY(var(--preview-enter-y));
-  transition: transform 180ms cubic-bezier(0.2, 0.72, 0.25, 1);
+  /* Invisible against the black canvas; it only darkens the words the sheet
+     is laid over, which is exactly where separation is needed. */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 4%),
+    0 2px 6px rgb(0 0 0 / 40%),
+    0 14px 36px -10px rgb(0 0 0 / 70%);
+  transition: border-color 150ms ease;
 }
 
-.page-preview:popover-open .page-preview__frame {
-  transform: none;
+.page-preview:hover .page-preview__frame {
+  border-color: var(--color-rule-strong);
 }
 
 .page-preview--glide .page-preview__frame {
   transition:
-    transform 180ms cubic-bezier(0.2, 0.72, 0.25, 1),
-    block-size 240ms cubic-bezier(0.2, 0.72, 0.25, 1);
+    border-color 150ms ease,
+    block-size 220ms var(--preview-ease);
 }
 
 .page-preview__sheet {
   display: grid;
-  gap: 0.55rem;
-  padding: 0.8rem 0.95rem 0.7rem;
+  padding: 0.85rem 1rem 0.9rem;
 }
 
-/* Re-run whenever the sheet's contents change under an already-open panel, so
-   a swap between links resolves rather than snapping. */
-.page-preview--settling .page-preview__sheet {
-  animation: page-preview-settle 200ms cubic-bezier(0.2, 0.72, 0.25, 1) both;
+/* Fresh contents under an already-open sheet fade up in place; the frame
+   carries the motion, so the words do not travel as well. */
+.page-preview--swap .page-preview__sheet {
+  animation: page-preview-swap 180ms ease-out both;
 }
 
-@keyframes page-preview-settle {
+@keyframes page-preview-swap {
   from {
-    opacity: 0.3;
-    transform: translateY(3px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
 }
 
-/* --- Body --- */
+/* --- Content --- */
 
-.page-preview__body {
-  display: grid;
-  gap: 0.4rem;
+.page-preview__title,
+.page-preview__excerpt,
+.page-preview__meta {
+  margin: 0;
 }
 
 .page-preview__title {
   display: -webkit-box;
   overflow: hidden;
-  margin: 0;
   color: var(--color-text-primary);
   font-family: var(--font-body);
-  font-size: clamp(1.05rem, 2vw, 1.18rem);
+  font-size: 1.0625rem;
   font-weight: 600;
   line-height: 1.35;
-  letter-spacing: -0.025em;
-  text-wrap: pretty;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -178,30 +174,21 @@
 .page-preview__excerpt {
   display: -webkit-box;
   overflow: hidden;
-  margin: 0;
+  margin-block-start: 0.4rem;
   color: var(--color-text-secondary);
   font-family: var(--font-body);
   font-size: var(--text-sm);
-  line-height: 1.55;
+  line-height: 1.6;
   text-wrap: pretty;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
 
-.page-preview__excerpt[hidden] {
-  display: none;
-}
-
-/* --- Footer --- */
-
 .page-preview__meta {
   overflow: hidden;
-  margin: 0;
-  padding-block-start: 0.55rem;
-  border-block-start: 1px solid var(--color-rule);
+  margin-block-start: 0.7rem;
   color: var(--color-text-muted);
-  /* The same mono provenance line as `.garden-document__tended` — a quiet
-      `edited <time>` footer, not a tooltip's metadata chip. */
+  /* The same mono provenance line as `.garden-document__tended`. */
   font: 500 0.7rem / 1.4 var(--font-mono);
   letter-spacing: 0.02em;
   text-overflow: ellipsis;
@@ -209,120 +196,120 @@
   white-space: nowrap;
 }
 
-/* --- States --- */
-
-.page-preview__skeleton {
-  display: grid;
-  gap: 0.45rem;
-  padding-block: 0.1rem 0.15rem;
-}
-
-.page-preview__bar {
-  block-size: 0.6rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-overlay-strong);
-  animation: page-preview-breathe 1.9s ease-in-out infinite;
-}
-
-.page-preview__bar--title {
-  block-size: 0.85rem;
-  inline-size: 58%;
-  background: color-mix(in srgb, var(--color-brand) 20%, transparent);
-}
-
-.page-preview__bar:nth-child(2) {
-  animation-delay: 120ms;
-}
-
-.page-preview__bar:nth-child(3) {
-  inline-size: 76%;
-  animation-delay: 240ms;
-}
-
-/* A slow breath rather than a shimmer sweep: the panel reads as waiting,
-   not as advertising that it is waiting. */
-@keyframes page-preview-breathe {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-
-  50% {
-    opacity: 0.9;
-  }
-}
-
-.page-preview:not([data-state='loading']) .page-preview__skeleton,
-.page-preview[data-state='loading'] .page-preview__body,
-.page-preview:not([data-state='ready']) .page-preview__meta {
+.page-preview__title[hidden],
+.page-preview__excerpt[hidden],
+.page-preview__meta[hidden] {
   display: none;
 }
 
-.page-preview[data-state='empty'] .page-preview__title {
+/* --- States --- */
+
+/* Shaped like the content it stands in for — a title, two lines — so the
+   sheet barely changes size when the page arrives. */
+.page-preview__skeleton {
+  display: none;
+  gap: 0.6rem;
+  padding-block: 0.25rem 0.35rem;
+}
+
+.page-preview[data-state='loading'] .page-preview__skeleton {
+  display: grid;
+}
+
+.page-preview__bar {
+  block-size: 0.55rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+  animation: page-preview-wait 1.6s ease-in-out infinite;
+}
+
+.page-preview__bar--title {
+  block-size: 0.8rem;
+  inline-size: 55%;
+  margin-block-end: 0.15rem;
+}
+
+.page-preview__bar--short {
+  inline-size: 70%;
+}
+
+/* A slow breath rather than a shimmer sweep: the sheet reads as waiting,
+   not as advertising that it is waiting. Most hovers never see it: the
+   script waits briefly for the page before falling back to a skeleton. */
+@keyframes page-preview-wait {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.page-preview[data-state='missing'] .page-preview__title {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: 500;
   letter-spacing: 0;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .page-preview,
+  .page-preview:popover-open {
+    scale: none;
+    transition:
+      opacity 120ms ease-out,
+      display 120ms allow-discrete,
+      overlay 120ms allow-discrete;
+  }
+
+  @starting-style {
+    .page-preview:popover-open {
+      scale: none;
+    }
+  }
+
+  .page-preview__bar {
+    animation: none;
+  }
+}
+
 /* --- Source link --- */
 
-/* Previewable links in running text. At rest a dotted rule, the drafting
-   convention for "see detail" and a promise that a sheet sits behind the
-   words. On hover, focus, or while the sheet is open, a tinted band wipes in
-   from the left and the dots close into a solid inked baseline: the leader
-   line's origin made visible. One gradient stack paints both, so a link
-   wrapped across lines gets the band on every line box (`clone`). The
-   `main` qualifier outranks `.prose a`, whose underline would otherwise
-   double up with the inked baseline. */
+/* Previewable links in running text carry a dotted rule at rest — the
+   drafting convention for "see detail", and a promise that a sheet sits
+   behind the words. Hovered, focused, or while its sheet is open, the words
+   take a faint wash and the rule firms up. `clone` gives every line box of a
+   wrapped link its own wash. The `main` qualifier outranks `.prose a`. */
 main a[data-previewable] {
-  --previewable-ink: color-mix(in srgb, var(--color-brand) 70%, transparent);
-
   padding: 0 0.12em;
   margin: 0 -0.12em;
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--radius-sm);
   color: var(--color-text-interactive);
   text-decoration: underline dotted;
   text-decoration-color: color-mix(
     in srgb,
-    var(--color-brand) 60%,
+    var(--color-brand) 50%,
     transparent
   );
-  text-decoration-thickness: 2px;
-  text-underline-offset: 0.28em;
-  background-image:
-    linear-gradient(var(--previewable-ink), var(--previewable-ink)),
-    linear-gradient(var(--color-overlay-strong), var(--color-overlay-strong));
-  background-repeat: no-repeat;
-  background-position:
-    left bottom,
-    left top;
-  background-size:
-    0% 2px,
-    0% 100%;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.26em;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   transition:
-    background-size 260ms cubic-bezier(0.2, 0.72, 0.25, 1),
+    background-color 150ms ease,
     color 150ms ease,
     text-decoration-color 150ms ease;
 }
 
 main a[data-previewable]:is(:hover, :focus-visible, .page-preview-link) {
   color: var(--color-text-primary);
-  text-decoration-color: transparent;
-  background-size:
-    100% 2px,
-    100% 100%;
+  text-decoration-color: var(--color-brand);
+  background-color: var(--color-overlay-soft);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  main a[data-previewable] {
-    transition: none;
-  }
-}
-
-/* Any other link that opens a sheet (nav, lists) keeps a quiet mark of its
+/* Any other link that opens a sheet (lists, rails) keeps a quiet mark of its
    own while the sheet is open, so the pair reads as one gesture. */
 .page-preview-link:not([data-previewable]) {
   text-decoration: underline;

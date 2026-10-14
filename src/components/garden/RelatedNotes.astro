@@ -24,7 +24,11 @@ const related = getRelatedNotes(document, index);
       <ul class="note-links__list">
         {related.map((note) => (
           <li class="note-link">
-            <a href={note.href} class="note-link__anchor">
+            <a
+              href={note.href}
+              class="note-link__anchor"
+              data-page-preview-ignore={note.summary ? '' : undefined}
+            >
               <span class="note-link__title">{note.title}</span>
               {note.summary && (
                 <span class="note-link__summary">{note.summary}</span>

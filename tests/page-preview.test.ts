@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyPreviewResponse,
   composePreviewContent,
   previewPageUrl,
   resolvePreviewPlacement,
@@ -64,8 +65,8 @@ describe('resolvePreviewPlacement', () => {
     expect(placement.side).toBe('below');
     expect(placement.y).toBe(330);
     expect(placement.x).toBe(232);
-    // The leader line lands back on the pointer, not on the sheet's corner.
-    expect(placement.x + placement.tetherX).toBe(260);
+    // The sheet grows out of the pointer, not out of its own corner.
+    expect(placement.x + placement.originX).toBe(260);
   });
 
   it('attaches to the words under the pointer, never past the link', () => {
@@ -98,14 +99,14 @@ describe('resolvePreviewPlacement', () => {
     expect(left.x).toBe(12);
   });
 
-  it('keeps the leader line off the rounded corners', () => {
+  it('keeps the attachment point off the rounded corners', () => {
     const placement = resolvePreviewPlacement({
       ...base,
       anchor: { top: 300, bottom: 320, left: 4, right: 40 },
       pointerX: 6,
     });
-    expect(placement.tetherX).toBe(14);
-    expect(placement.tetherX).toBeLessThanOrEqual(base.panel.width - 14);
+    expect(placement.originX).toBe(14);
+    expect(placement.originX).toBeLessThanOrEqual(base.panel.width - 14);
   });
 
   it('takes the roomier side when the sheet fits on neither', () => {
@@ -124,9 +125,25 @@ describe('resolvePreviewPlacement', () => {
     ).toMatchObject({ side: 'below', y: 70 });
   });
 
+  it('keeps an open sheet above the text while it still fits there', () => {
+    // Plenty of room below, but the sheet is already above: moving to a
+    // neighbouring link must not flip it across the line.
+    expect(resolvePreviewPlacement({ ...base, prefer: 'above' })).toMatchObject(
+      { side: 'above', y: 130 },
+    );
+    // No room above any more: fall back to the usual choice.
+    expect(
+      resolvePreviewPlacement({
+        ...base,
+        anchor: { top: 100, bottom: 120, left: 200, right: 340 },
+        prefer: 'above',
+      }),
+    ).toMatchObject({ side: 'below', y: 130 });
+  });
+
   it('anchors into the link text when there is no pointer to follow', () => {
     const placement = resolvePreviewPlacement({ ...base, pointerX: null });
-    expect(placement.x + placement.tetherX).toBe(232);
+    expect(placement.x + placement.originX).toBe(232);
 
     // A link shorter than the offset still attaches within its own box.
     const short = resolvePreviewPlacement({
@@ -134,7 +151,7 @@ describe('resolvePreviewPlacement', () => {
       anchor: { top: 300, bottom: 320, left: 200, right: 214 },
       pointerX: null,
     });
-    expect(short.x + short.tetherX).toBe(214);
+    expect(short.x + short.originX).toBe(214);
   });
 });
 
@@ -225,5 +242,39 @@ describe('composePreviewContent', () => {
 
   it('refuses a document with no title at all', () => {
     expect(composePreviewContent({ description: 'x' })).toBeNull();
+  });
+});
+
+describe('classifyPreviewResponse', () => {
+  const html = 'text/html; charset=utf-8';
+
+  it('reads successful HTML pages', () => {
+    expect(
+      classifyPreviewResponse({ ok: true, status: 200, contentType: html }),
+    ).toBe('read');
+  });
+
+  it('reports a missing page as an answer worth showing', () => {
+    for (const status of [404, 410]) {
+      expect(
+        classifyPreviewResponse({ ok: false, status, contentType: html }),
+      ).toBe('missing');
+    }
+  });
+
+  it('treats server errors and non-HTML responses as transient failures', () => {
+    expect(
+      classifyPreviewResponse({ ok: false, status: 503, contentType: html }),
+    ).toBe('failed');
+    expect(
+      classifyPreviewResponse({
+        ok: true,
+        status: 200,
+        contentType: 'application/json',
+      }),
+    ).toBe('failed');
+    expect(
+      classifyPreviewResponse({ ok: true, status: 200, contentType: null }),
+    ).toBe('failed');
   });
 });
