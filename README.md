@@ -38,7 +38,8 @@ to write.
 
 - [Astro](https://astro.build) with a few [Preact](https://preactjs.com) islands
 - Runs on Cloudflare Workers
-- Redis for content (Upstash in production, a local container in dev)
+- Redis for content (self-hosted on a VPS in production, a local container in
+  dev)
 - Tiptap for the editor, d3-force for the graph
 - Vitest and Playwright for tests
 

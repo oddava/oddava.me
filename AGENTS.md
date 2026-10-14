@@ -145,8 +145,9 @@ Lowercase subject, imperative mood, optional scope in parentheses.
     health view must live in storage or not exist.
   - **Now-playing** (`src/lib/server/now-playing/`) composes the Spotify and
     Lanyard integrations — it is a _consumer_ of the registry, not part of it.
-- **Redis transports:** Cloudflare Workers use the Upstash REST API in
-  production, Node integration tests use the direct Redis client, and the
+- **Redis transports:** Cloudflare Workers use the Upstash REST protocol in
+  production, served by a self-hosted Redis behind SRH (`deploy/vps/`). Node
+  integration tests use the direct Redis client, and the
   workerd-based development server uses the authenticated local HTTP proxy in
   `vite/local-redis-dev-proxy.mjs`.
 - **Security headers** are applied centrally by middleware. Base hardening
