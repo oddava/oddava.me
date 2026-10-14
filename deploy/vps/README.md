@@ -155,10 +155,15 @@ docker compose up -d
 Then add a tunnel public hostname `s3` → `HTTP` → `rustfs:9000`. Do not add one
 for the console.
 
-**Console:** from the laptop, `ssh -N -L 9001:127.0.0.1:9001 deploy@<vps>`,
-then open `http://localhost:9001` and sign in with the keys from
+**Console:** from the laptop, `ssh -N -L 19001:127.0.0.1:9001 deploy@<vps>`,
+then open `http://localhost:19001` and sign in with the keys from
 `grep RUSTFS_ ~/oddava-storage/.env` on the VPS. Create a scoped access key per
 app there; keep the root keys for administration.
+
+Local ports 19000/19001 rather than 9000/9001 on purpose: a local MinIO or
+RustFS (common in dev stacks) already holds 9000/9001, and `ssh -L` then fails
+to bind with only a warning — the browser silently reaches the local console
+instead, which rejects these keys as "invalid login".
 
 Buckets are private by default: an unsigned request gets `403`, and Cloudflare
 does not cache signed requests (`cf-cache-status: BYPASS`), so a private object
@@ -178,8 +183,8 @@ with `SignatureDoesNotMatch`:
 So for the AWS CLI, rclone and other admin or bulk work, skip Cloudflare:
 
 ```bash
-ssh -N -L 9000:127.0.0.1:9000 deploy@<vps>      # in one terminal
-aws --endpoint-url http://127.0.0.1:9000 s3 ls  # in another
+ssh -N -L 19000:127.0.0.1:9000 deploy@<vps>      # in one terminal
+aws --endpoint-url http://127.0.0.1:19000 s3 ls  # in another
 ```
 
 Requests through the tunnel are also capped at 100 MB per request on

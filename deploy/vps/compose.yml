@@ -52,7 +52,7 @@ services:
 
   # S3-compatible object storage. The API (9000) is public through the tunnel
   # and every request must be SigV4-signed; the console (9001) is never routed
-  # through the tunnel — open it with `ssh -L 9001:127.0.0.1:9001`. Both are
+  # through the tunnel — open it with `ssh -L 19001:127.0.0.1:9001`. Both are
   # also on loopback so admin tools can skip Cloudflare via `ssh -L` (see
   # README: the AWS CLI signs headers Cloudflare may rewrite).
   # Runs as 10001:10001, which owns /data and /logs in the image, so the named
