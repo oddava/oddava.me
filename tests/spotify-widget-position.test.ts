@@ -3,6 +3,8 @@ import { resolveInitialMinimized } from '../src/components/spotify/minimizedStat
 import {
   calculateDraggedWidgetPosition,
   clampWidgetPosition,
+  DEFAULT_WIDGET_POSITION,
+  defaultWidgetPosition,
   isWidgetPosition,
 } from '../src/components/spotify/widgetPosition';
 
@@ -132,6 +134,26 @@ describe('Spotify widget position helpers', () => {
       offsetX: 16,
       offsetY: 16,
     });
+  });
+
+  it('tucks the default position into the corner on small viewports', () => {
+    expect(defaultWidgetPosition(true)).toEqual({
+      edgeX: 'left',
+      edgeY: 'bottom',
+      offsetX: 8,
+      offsetY: 8,
+    });
+  });
+
+  it('keeps the regular inset on larger viewports', () => {
+    expect(defaultWidgetPosition(false)).toEqual(DEFAULT_WIDGET_POSITION);
+  });
+
+  it('keeps the small-viewport default onscreen on the narrowest phones', () => {
+    const position = defaultWidgetPosition(true);
+    expect(clampWidgetPosition(position, { width: 320, height: 568 })).toEqual(
+      position,
+    );
   });
 });
 
