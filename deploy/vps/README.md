@@ -133,6 +133,58 @@ cd ~/oddava-storage && sed -i "s/^SRH_TOKEN=.*/SRH_TOKEN=$(openssl rand -hex 32)
 Then repeat step 5 for `UPSTASH_REDIS_REST_TOKEN`. The site errors between the
 two, so do them back to back.
 
+## Object storage (RustFS)
+
+[RustFS](https://rustfs.com/) is an S3-compatible object store (Apache-2.0,
+the MinIO-style successor now that MinIO's community edition is archived).
+
+| What           | Where                          | Reachable from              |
+| -------------- | ------------------------------ | --------------------------- |
+| S3 API         | `https://s3.<domain>` (tunnel) | anywhere, signed only       |
+| S3 API, direct | `127.0.0.1:9000` on the VPS    | `ssh -L` only               |
+| Web console    | `127.0.0.1:9001` on the VPS    | `ssh -L` only, never public |
+
+Setup, once:
+
+```bash
+# on the VPS — generates root keys straight into .env, never displayed
+cd ~/oddava-storage && printf 'RUSTFS_ACCESS_KEY=%s\nRUSTFS_SECRET_KEY=%s\n' "admin-$(openssl rand -hex 4)" "$(openssl rand -hex 24)" >> .env
+docker compose up -d
+```
+
+Then add a tunnel public hostname `s3` → `HTTP` → `rustfs:9000`. Do not add one
+for the console.
+
+**Console:** from the laptop, `ssh -N -L 9001:127.0.0.1:9001 deploy@<vps>`,
+then open `http://localhost:9001` and sign in with the keys from
+`grep RUSTFS_ ~/oddava-storage/.env` on the VPS. Create a scoped access key per
+app there; keep the root keys for administration.
+
+Buckets are private by default: an unsigned request gets `403`, and Cloudflare
+does not cache signed requests (`cf-cache-status: BYPASS`), so a private object
+fetched once is not served to anyone else.
+
+**Clients and Cloudflare.** Plain SigV4 clients (curl `--aws-sigv4`, `aws4fetch`
+in a Worker, most SDK calls) work through `s3.<domain>`: 300/300 signed
+GET/HEAD requests passed in testing. The AWS CLI does not, reliably — it signs
+extra headers that Cloudflare can rewrite in transit, so RustFS rejects them
+with `SignatureDoesNotMatch`:
+
+- its default (CRT) downloader signs `Content-Length: 0` on GETs, which
+  Cloudflare drops: downloads failed 10/10;
+- even with `preferred_transfer_client = classic`, about 1 in 40 `HEAD`
+  requests still failed, in bursts.
+
+So for the AWS CLI, rclone and other admin or bulk work, skip Cloudflare:
+
+```bash
+ssh -N -L 9000:127.0.0.1:9000 deploy@<vps>      # in one terminal
+aws --endpoint-url http://127.0.0.1:9000 s3 ls  # in another
+```
+
+Requests through the tunnel are also capped at 100 MB per request on
+Cloudflare's free plan; multipart uploads stay under it per part.
+
 ## Backups
 
 Redis writes AOF + RDB into the `redis-data` volume. Get a copy off the box:
@@ -144,12 +196,14 @@ mkdir -p ~/backups
 ```
 
 Then ship `~/backups` somewhere else (e.g. `rclone sync` to Cloudflare R2 or
-Backblaze B2). A backup on the same disk is not a backup.
+Backblaze B2). A backup on the same disk is not a backup. The same applies to
+the `rustfs-data` volume, which RustFS on a single disk does not replicate.
 
 ## Operating it
 
 ```bash
 docker compose logs -f srh                 # request errors
+docker compose exec rustfs sh -c 'tail -f /logs/rustfs.log'   # RustFS logs to a file, not stdout
 docker compose exec redis sh -c 'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning INFO memory'
 docker compose pull && docker compose up -d   # updates
 ```
