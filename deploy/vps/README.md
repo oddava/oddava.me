@@ -133,23 +133,156 @@ cd ~/oddava-storage && sed -i "s/^SRH_TOKEN=.*/SRH_TOKEN=$(openssl rand -hex 32)
 Then repeat step 5 for `UPSTASH_REDIS_REST_TOKEN`. The site errors between the
 two, so do them back to back.
 
-## Backups
+## Object storage (RustFS)
 
-Redis writes AOF + RDB into the `redis-data` volume. Get a copy off the box:
+[RustFS](https://rustfs.com/) is an S3-compatible object store (Apache-2.0,
+the MinIO-style successor now that MinIO's community edition is archived).
+
+| What           | Where                          | Reachable from              |
+| -------------- | ------------------------------ | --------------------------- |
+| S3 API         | `https://s3.<domain>` (tunnel) | anywhere, signed only       |
+| S3 API, direct | `127.0.0.1:9000` on the VPS    | `ssh -L` only               |
+| Web console    | `127.0.0.1:9001` on the VPS    | `ssh -L` only, never public |
+
+Setup, once:
 
 ```bash
-mkdir -p ~/backups
-# crontab -e on the VPS — nightly RDB copy, keep 14 days
-0 3 * * * cd ~/oddava-storage && docker compose exec -T redis sh -c 'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning BGSAVE' && sleep 30 && docker compose cp redis:/data/dump.rdb ~/backups/dump-$(date +\%F).rdb && find ~/backups -name 'dump-*.rdb' -mtime +14 -delete
+# on the VPS — generates root keys straight into .env, never displayed
+cd ~/oddava-storage && printf 'RUSTFS_ACCESS_KEY=%s\nRUSTFS_SECRET_KEY=%s\n' "admin-$(openssl rand -hex 4)" "$(openssl rand -hex 24)" >> .env
+docker compose up -d
 ```
 
-Then ship `~/backups` somewhere else (e.g. `rclone sync` to Cloudflare R2 or
-Backblaze B2). A backup on the same disk is not a backup.
+Then add a tunnel public hostname `s3` → `HTTP` → `rustfs:9000`. Do not add one
+for the console.
+
+**Console:** from the laptop, `ssh -N -L 19001:127.0.0.1:9001 deploy@<vps>`,
+then open `http://localhost:19001` and sign in with the keys from
+`grep RUSTFS_ ~/oddava-storage/.env` on the VPS. Create a scoped access key per
+app there; keep the root keys for administration.
+
+Local ports 19000/19001 rather than 9000/9001 on purpose: a local MinIO or
+RustFS (common in dev stacks) already holds 9000/9001, and `ssh -L` then fails
+to bind with only a warning — the browser silently reaches the local console
+instead, which rejects these keys as "invalid login".
+
+Buckets are private by default: an unsigned request gets `403`, and Cloudflare
+does not cache signed requests (`cf-cache-status: BYPASS`), so a private object
+fetched once is not served to anyone else.
+
+**Clients and Cloudflare.** Plain SigV4 clients (curl `--aws-sigv4`, `aws4fetch`
+in a Worker, most SDK calls) work through `s3.<domain>`: 300/300 signed
+GET/HEAD requests passed in testing. The AWS CLI does not, reliably — it signs
+extra headers that Cloudflare can rewrite in transit, so RustFS rejects them
+with `SignatureDoesNotMatch`:
+
+- its default (CRT) downloader signs `Content-Length: 0` on GETs, which
+  Cloudflare drops: downloads failed 10/10;
+- even with `preferred_transfer_client = classic`, about 1 in 40 `HEAD`
+  requests still failed, in bursts.
+
+So for the AWS CLI, rclone and other admin or bulk work, skip Cloudflare:
+
+```bash
+ssh -N -L 19000:127.0.0.1:9000 deploy@<vps>      # in one terminal
+aws --endpoint-url http://127.0.0.1:19000 s3 ls  # in another
+```
+
+Requests through the tunnel are also capped at 100 MB per request on
+Cloudflare's free plan; multipart uploads stay under it per part.
+
+## Backups
+
+`backup.sh` runs nightly at 03:15 UTC from the `deploy` user's crontab and
+sends one encrypted, deduplicated [restic](https://restic.net) snapshot to
+Cloudflare R2 (bucket `oddava-backups`). Each snapshot holds:
+
+| Path in snapshot         | What                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `/stage/redis/dump.rdb`  | a fresh Redis snapshot (`BGSAVE`, waited on) — notes, media, guestbook |
+| `/stage/rustfs/<bucket>` | every RustFS object exported over S3 as plain files                    |
+| `/stage/config/`         | `compose.yml`, `redis.conf`, `.env` — every key needed to rebuild      |
+| `/rustfs-volume/`        | the raw RustFS volume, for IAM users, access keys and bucket settings  |
+
+Retention: 7 daily, 4 weekly, 6 monthly. Every run ends with `restic check`;
+on Sundays it also re-downloads and verifies 10% of the stored data. Output is
+appended to `~/backup.log`.
+
+### Setup, once
+
+1. In the Cloudflare account that owns the domain: R2 → create bucket
+   `oddava-backups` (private), then R2 → Manage API tokens → create a token with
+   **Object Read & Write** on that bucket only.
+2. On the VPS, write `backup.env` (prompts for the R2 values, generates the
+   restic password; nothing is echoed):
+
+   ```bash
+   cd ~/oddava-storage && read -rp 'R2 S3 endpoint: ' EP && read -rp 'R2 Access Key ID: ' AK && read -rsp 'R2 Secret Access Key (hidden): ' SK && echo && EP=${EP%/} && EP=${EP%/oddava-backups} && printf 'RESTIC_REPOSITORY=s3:%s/oddava-backups\nRESTIC_PASSWORD=%s\nAWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n' "$EP" "$(openssl rand -base64 32 | tr -d '\n')" "$AK" "$SK" > backup.env && chmod 600 backup.env && unset AK SK
+   ```
+
+3. **Copy `RESTIC_PASSWORD` off the VPS** (password manager). Without it the
+   backups cannot be decrypted — and a dead VPS is exactly when you need them.
+   From WSL, without displaying it:
+   `ssh deploy@<vps> "grep '^RESTIC_PASSWORD=' ~/oddava-storage/backup.env | cut -d= -f2- | tr -d '\n'" | clip.exe`
+4. Initialise the repository, run once, then schedule:
+
+   ```bash
+   docker run --rm --env-file backup.env restic/restic:0.19.1 init
+   ./backup.sh
+   (echo '15 3 * * * $HOME/oddava-storage/backup.sh >> $HOME/backup.log 2>&1') | crontab -
+   ```
+
+### Checking on it
+
+```bash
+tail -20 ~/backup.log
+docker run --rm --env-file ~/oddava-storage/backup.env restic/restic:0.19.1 snapshots
+```
+
+### Restoring
+
+On any machine with Docker, given `backup.env` (or just the four values —
+rebuild it from R2 and the saved password):
+
+```bash
+mkdir restore && docker run --rm --env-file backup.env -v "$PWD/restore:/restore" restic/restic:0.19.1 restore latest --target /restore
+```
+
+Then, on a fresh VPS (steps 1–3 above, with the tunnel token from the restored
+`.env`):
+
+- **Config:** copy `restore/stage/config/*` into `~/oddava-storage/`.
+- **Redis:** seed the volume before Redis ever starts with AOF on. With
+  `appendonly yes` and no AOF present, Redis 7 starts **empty and ignores
+  `dump.rdb`** — so load it with AOF off, switch AOF on live (Redis writes a
+  fresh AOF from memory), then start normally:
+
+  ```bash
+  docker compose up --no-start
+  docker run --rm -v oddava-storage_redis-data:/data -v "$PWD/restore/stage/redis:/r:ro" alpine sh -c 'cp /r/dump.rdb /data/ && chown 999:999 /data/dump.rdb'
+  docker run -d --name redis-restore -v oddava-storage_redis-data:/data -v "$PWD/redis.conf:/usr/local/etc/redis/redis.conf:ro" redis:7-alpine redis-server /usr/local/etc/redis/redis.conf --appendonly no
+  docker exec redis-restore redis-cli DBSIZE                      # the restored key count
+  docker exec redis-restore redis-cli CONFIG SET appendonly yes
+  docker exec redis-restore redis-cli INFO persistence | grep -E '^aof_(enabled|rewrite_in_progress)'  # wait for 1 and 0
+  docker rm -f redis-restore && docker compose up -d
+  ```
+
+- **RustFS:** start it empty and re-upload the exported objects with
+  `rclone copy restore/stage/rustfs <remote>:` (tested path: the export is
+  checked against the live bucket). To also keep IAM users and keys, copy
+  `restore/rustfs-volume/` into the `rustfs-data` volume with RustFS stopped and
+  `chown -R 10001:10001` it — that raw-volume path has not been exercised yet.
+
+Tested on 2026-10-14: a snapshot pulled back from R2 gave all 82 Redis keys with
+identical contents (per-key SHA-1 fingerprints) and byte-identical config; the
+Redis steps above, run against a scratch volume with the production
+`redis.conf`, came back with all 82 keys after a normal AOF-on restart; exported
+objects matched the live bucket (`rclone check --download`).
 
 ## Operating it
 
 ```bash
 docker compose logs -f srh                 # request errors
+docker compose exec rustfs sh -c 'tail -f /logs/rustfs.log'   # RustFS logs to a file, not stdout
 docker compose exec redis sh -c 'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning INFO memory'
 docker compose pull && docker compose up -d   # updates
 ```
