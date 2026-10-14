@@ -133,6 +133,42 @@
   color: var(--color-text-secondary);
 }
 
+/* Contact row: part of the card, so the folio measures it into the quiet zone. */
+.home-hero__contact {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xs);
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+}
+
+.home-hero__contact a {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  transition: color 0.15s ease;
+}
+
+.home-hero__contact a:hover,
+.home-hero__contact a:focus-visible {
+  color: var(--color-text-interactive-hover);
+}
+
+.home-hero__contact a:focus-visible {
+  outline: 1px dashed var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .home-hero__contact a {
+    color: LinkText;
+  }
+}
+
 .home-section {
   padding: var(--space-md) 0;
 }

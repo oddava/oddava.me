@@ -1,8 +1,13 @@
 ---
 export const prerender = true;
 import Base from '@layouts/Base.astro';
+import LinkIcon from '../components/LinkIcon.astro';
 import LivingFolio from '../components/LivingFolio.astro';
+import linksData from '../data/links.json';
 import '../styles/components/_home.css';
+
+// Off-site contacts only; the waypoints below already cover on-site pages.
+const contacts = linksData.links.filter((link) => !link.url.startsWith('/'));
 ---
 
 <Base hideNav>
@@ -13,6 +18,27 @@ import '../styles/components/_home.css';
       i write software, interrogate SI (silly intellect), and make tools for
       small annoyances.
     </p>
+    <ul class="home-hero__contact" aria-label="contact">
+      {
+        contacts.map((link) => {
+          const isExternal = link.url.startsWith('http');
+          return (
+            <li>
+              <a
+                href={link.url}
+                target={isExternal ? '_blank' : undefined}
+                rel={isExternal ? 'noopener noreferrer' : undefined}
+                aria-label={
+                  isExternal ? `${link.title} (opens in new tab)` : link.title
+                }
+              >
+                <LinkIcon name={link.icon} />
+              </a>
+            </li>
+          );
+        })
+      }
+    </ul>
 
     <nav class="folio-nav" aria-label="primary" data-folio-nav>
       <a href="/notes" class="folio-waypoint folio-waypoint--notes">
@@ -23,6 +49,18 @@ import '../styles/components/_home.css';
             d="M-28 10L-3-26 27-15 0 25Z M-3-26L0 25 27-15"></path>
         </svg>
         <span class="folio-waypoint__label">notes</span>
+      </a>
+      <a href="/notes/graph" class="folio-waypoint folio-waypoint--graph">
+        <svg viewBox="-40 -40 80 80" aria-hidden="true">
+          <path
+            class="folio-waypoint__echo"
+            d="M8 22L27 15 M33 14A3 3 0 1 0 27 14A3 3 0 1 0 33 14Z"></path>
+          <path
+            class="folio-waypoint__mark"
+            d="M-17-14A7 7 0 1 0-31-14A7 7 0 1 0-17-14Z M31-20A9 9 0 1 0 13-20A9 9 0 1 0 31-20Z M8 24A6 6 0 1 0-4 24A6 6 0 1 0 8 24Z M-17-15L13-19 M-20-8L-1 19 M18-12L4 19"
+          ></path>
+        </svg>
+        <span class="folio-waypoint__label">graph</span>
       </a>
       <a href="/about" class="folio-waypoint folio-waypoint--about">
         <svg viewBox="-40 -40 80 80" aria-hidden="true">
