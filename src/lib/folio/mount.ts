@@ -138,7 +138,7 @@ export function mountFolio(root: HTMLElement): (() => void) | null {
     mobile = bounds.width < 900;
     const parts = Array.from(
       document.querySelectorAll<HTMLElement>(
-        '.home-hero__name, .home-hero__tagline',
+        '.home-hero__name, .home-hero__tagline, .home-hero__contact',
       ),
       (part) => part.getBoundingClientRect(),
     );

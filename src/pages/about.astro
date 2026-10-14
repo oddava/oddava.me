@@ -4,12 +4,6 @@ import Base from '@layouts/Base.astro';
 import { Guestbook } from '../components/Guestbook';
 import '../styles/components/_prose.css';
 import '../styles/components/_about.css';
-
-const links = [
-  { label: 'email', href: 'mailto:hello@oddava.me' },
-  { label: 'github', href: 'https://github.com/oddava' },
-  { label: 'x', href: 'https://x.com/oddava' },
-];
 ---
 
 <Base
@@ -64,31 +58,6 @@ const links = [
       this site is where i keep my <a href="/notes">notes</a> and anything else worth
       remembering.
     </p>
-
-    <footer class="about__contact">
-      <h2 class="about__label">say hi</h2>
-      <ul class="about__links">
-        {
-          links.map((link) => {
-            const isExternal = link.href.startsWith('http');
-            return (
-              <li>
-                <a
-                  href={link.href}
-                  target={isExternal ? '_blank' : undefined}
-                  rel={isExternal ? 'noopener noreferrer' : undefined}
-                  aria-label={
-                    isExternal ? `${link.label} (opens in new tab)` : undefined
-                  }
-                >
-                  {link.label}
-                </a>
-              </li>
-            );
-          })
-        }
-      </ul>
-    </footer>
   </article>
 
   <Guestbook client:idle />
