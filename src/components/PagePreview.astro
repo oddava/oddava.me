@@ -7,7 +7,6 @@ import '../styles/components/_page-preview.css';
   class="page-preview"
   popover="manual"
   role="tooltip"
-  aria-live="polite"
   hidden
 >
   <div class="page-preview__frame">
@@ -15,12 +14,10 @@ import '../styles/components/_page-preview.css';
       <div class="page-preview__skeleton" aria-hidden="true">
         <span class="page-preview__bar page-preview__bar--title"></span>
         <span class="page-preview__bar"></span>
-        <span class="page-preview__bar"></span>
+        <span class="page-preview__bar page-preview__bar--short"></span>
       </div>
-      <div class="page-preview__body">
-        <p class="page-preview__title" data-page-preview-title></p>
-        <p class="page-preview__excerpt" data-page-preview-excerpt></p>
-      </div>
+      <p class="page-preview__title" data-page-preview-title></p>
+      <p class="page-preview__excerpt" data-page-preview-excerpt></p>
       <p class="page-preview__meta" data-page-preview-meta></p>
     </div>
   </div>
@@ -28,16 +25,18 @@ import '../styles/components/_page-preview.css';
 
 <script>
   import {
+    classifyPreviewResponse,
     composePreviewContent,
     previewPageUrl,
     resolvePreviewPlacement,
-    type PreviewContent,
     type PreviewRect,
+    type PreviewResult,
+    type PreviewSide,
   } from '../lib/page-preview';
 
   const preview = document.querySelector<HTMLElement>('#page-preview');
-  const frame = preview?.querySelector<HTMLElement>('.page-preview__frame');
   const sheet = preview?.querySelector<HTMLElement>('.page-preview__sheet');
+  const frame = preview?.querySelector<HTMLElement>('.page-preview__frame');
   const titleEl = preview?.querySelector<HTMLElement>(
     '[data-page-preview-title]',
   );
@@ -50,25 +49,40 @@ import '../styles/components/_page-preview.css';
 
   if (preview && frame && sheet && titleEl && excerptEl && metaEl) {
     /** Nothing is open yet, so the reader still has to mean it. */
-    const COLD_INTENT_MS = 130;
+    const COLD_INTENT_MS = 110;
     /** A sheet is already open; scanning down a list should feel immediate. */
-    const WARM_INTENT_MS = 45;
-    /** Leaving a link is not the same as leaving the links — cross the gap
-        between two neighbours and the sheet swaps instead of blinking shut. */
-    const CLOSE_GRACE_MS = 90;
+    const WARM_INTENT_MS = 50;
+    /**
+     * A pointer that travelled further than this while the intent timer ran
+     * is passing through, not settling — the timer starts over from where it
+     * is now. It is what keeps a sweep across a paragraph from popping sheets.
+     */
+    const INTENT_TOLERANCE_PX = 7;
+    /** Hovering this long starts the fetch, ahead of the sheet opening. */
+    const PREFETCH_DWELL_MS = 40;
+    /**
+     * How long a sheet waits for its page before settling for a skeleton. A
+     * fast response opens straight into its content, so most hovers never
+     * see a loading frame at all.
+     */
+    const PATIENCE_MS = 160;
+    /** Time to cross the gap between a link and its sheet, or between two
+        neighbouring links, without the sheet blinking shut. */
+    const CLOSE_GRACE_MS = 120;
     /** Long enough to cover the translate and block-size transitions. */
-    const GLIDE_MS = 280;
+    const GLIDE_MS = 240;
     const MAX_CACHE_ENTRIES = 24;
+    const FETCH_TIMEOUT_MS = 5000;
     const EDGE_MARGIN = 12;
     /** How far the sheet's leading edge sits ahead of the attachment point. */
-    const PANEL_LEAD = 28;
+    const PANEL_LEAD = 24;
     /** A link needs this much of itself on screen to still be worth pointing at. */
     const VISIBLE_SLACK = 8;
 
     interface CacheEntry {
-      promise: Promise<PreviewContent | null>;
+      promise: Promise<PreviewResult>;
       /** Set once resolved, so a revisit renders without a loading frame. */
-      settled?: PreviewContent | null;
+      settled?: PreviewResult;
     }
 
     const cssNumber = (
@@ -83,8 +97,8 @@ import '../styles/components/_page-preview.css';
     };
 
     // The stylesheet owns these dimensions; read them once so the geometry and
-    // the leader line cannot drift apart.
-    const GAP = cssNumber(preview, '--preview-gap', 10);
+    // the hover bridge across the gap cannot drift apart.
+    const GAP = cssNumber(preview, '--preview-gap', 8);
     const FRAME_BORDERS =
       cssNumber(frame, 'border-top-width', 1) +
       cssNumber(frame, 'border-bottom-width', 1);
@@ -93,21 +107,35 @@ import '../styles/components/_page-preview.css';
     const previewsDisabled = window.matchMedia(
       '(max-width: 720px), (hover: none), (pointer: coarse)',
     );
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const cache = new Map<string, CacheEntry>();
 
+    /** The link whose sheet is showing. */
     let activeLink: HTMLAnchorElement | null = null;
+    /** The link under the pointer, if any. */
     let hoveredLink: HTMLAnchorElement | null = null;
+    /** Waiting out intent or patience; becomes active once it shows. */
+    let pendingLink: HTMLAnchorElement | null = null;
     /** Dismissed with Escape; stays quiet until the reader leaves it. */
     let suppressedLink: HTMLAnchorElement | null = null;
+    /** Arrived under the pointer by scrolling; wakes on the next real move. */
+    let dormantLink: HTMLAnchorElement | null = null;
     let describedLink: HTMLAnchorElement | null = null;
     let previousDescription: string | null = null;
     let pointerX: number | null = null;
     let pointerY: number | null = null;
+    let armedX = 0;
+    let armedY = 0;
     let intentTimer = 0;
+    let prefetchTimer = 0;
     let closeTimer = 0;
     let glideTimer = 0;
     let placementFrame = 0;
     let requestToken = 0;
+    /** Hover changes after a scroll come from content moving under a still
+        pointer, not from the reader — until the pointer itself moves. */
+    let scrolledSinceMove = false;
+    let overSheet = false;
     let isOpen = false;
 
     const eligibleLink = (target: EventTarget | null) => {
@@ -122,13 +150,18 @@ import '../styles/components/_page-preview.css';
         !link ||
         link.hasAttribute('download') ||
         link.hasAttribute('data-page-preview-ignore') ||
-        link.closest('[role="dialog"], dialog') ||
-        (link.target && link.target !== '_self')
+        link.closest('[role="dialog"], dialog, #page-preview') ||
+        (link.target && link.target !== '_self') ||
+        // A card already carries its own title; a sheet would repeat it.
+        link.querySelector('h1, h2, h3, h4, h5, h6')
       ) {
         return null;
       }
       return previewPageUrl(link.href, window.location.href) ? link : null;
     };
+
+    const inSheet = (node: EventTarget | null) =>
+      node instanceof Node && preview.contains(node);
 
     /* --- Geometry ------------------------------------------------------- */
 
@@ -170,7 +203,8 @@ import '../styles/components/_page-preview.css';
       preview.style.setProperty(name, value);
     };
 
-    const place = () => {
+    /** `keepSide` holds an open sheet on its current side while it still fits. */
+    const place = (keepSide = true) => {
       if (!activeLink) return;
       const anchor = anchorRect(activeLink);
       if (
@@ -192,12 +226,15 @@ import '../styles/components/_page-preview.css';
         margin: EDGE_MARGIN,
         gap: GAP,
         lead: PANEL_LEAD,
+        prefer: keepSide
+          ? (preview.dataset.placement as PreviewSide | undefined)
+          : undefined,
       });
 
       preview.dataset.placement = placement.side;
       setVar('--preview-x', `${Math.round(placement.x)}px`);
       setVar('--preview-y', `${Math.round(placement.y)}px`);
-      setVar('--preview-tether-x', `${Math.round(placement.tetherX)}px`);
+      setVar('--preview-origin-x', `${Math.round(placement.originX)}px`);
     };
 
     const syncHeight = () => {
@@ -205,8 +242,9 @@ import '../styles/components/_page-preview.css';
     };
 
     /** Ease the next placement and resize, then go back to tracking instantly
-        so scroll repositioning never trails the link it belongs to. */
+        so a resize never leaves the sheet trailing its link. */
     const glide = () => {
+      if (reducedMotion.matches) return;
       preview.classList.add('page-preview--glide');
       window.clearTimeout(glideTimer);
       glideTimer = window.setTimeout(() => {
@@ -214,44 +252,44 @@ import '../styles/components/_page-preview.css';
       }, GLIDE_MS);
     };
 
-    const settle = () => {
-      preview.classList.remove('page-preview--settling');
+    /** Fade fresh contents in under an already-open sheet. */
+    const swapIn = () => {
+      if (reducedMotion.matches) return;
+      preview.classList.remove('page-preview--swap');
       void preview.offsetWidth;
-      preview.classList.add('page-preview--settling');
+      preview.classList.add('page-preview--swap');
     };
 
-    preview.addEventListener('animationend', () => {
-      preview.classList.remove('page-preview--settling');
+    preview.addEventListener('animationend', (event) => {
+      if (event.animationName === 'page-preview-swap') {
+        preview.classList.remove('page-preview--swap');
+      }
     });
 
     /* --- Content -------------------------------------------------------- */
 
-    const renderLoading = () => {
-      preview.dataset.state = 'loading';
-      titleEl.textContent = '';
-      excerptEl.textContent = '';
-      excerptEl.hidden = true;
-      metaEl.textContent = '';
+    const setText = (element: HTMLElement, text: string) => {
+      if (element.textContent !== text) element.textContent = text;
+      element.hidden = !text;
     };
 
-    const renderContent = (content: PreviewContent) => {
-      preview.dataset.state = 'ready';
-      titleEl.textContent = content.title;
-      excerptEl.textContent = content.excerpt;
-      excerptEl.hidden = !content.excerpt;
-      metaEl.textContent = content.meta;
-      // A page with no date and too little text to time leaves no footer to
-      // rule off, so the rule goes too rather than closing an empty row.
-      metaEl.hidden = !content.meta;
-    };
-
-    const renderUnavailable = () => {
-      preview.dataset.state = 'empty';
-      titleEl.textContent = 'no preview for this page';
-      excerptEl.textContent = '';
-      excerptEl.hidden = true;
-      metaEl.textContent = '';
-      metaEl.hidden = true;
+    const render = (result: PreviewResult | undefined) => {
+      if (!result) {
+        preview.dataset.state = 'loading';
+        setText(titleEl, '');
+        setText(excerptEl, '');
+        setText(metaEl, '');
+      } else if (result.kind === 'ready') {
+        preview.dataset.state = 'ready';
+        setText(titleEl, result.content.title);
+        setText(excerptEl, result.content.excerpt);
+        setText(metaEl, result.content.meta);
+      } else {
+        preview.dataset.state = 'missing';
+        setText(titleEl, 'page not found');
+        setText(excerptEl, '');
+        setText(metaEl, '');
+      }
     };
 
     const firstParagraph = (root: ParentNode) => {
@@ -267,14 +305,14 @@ import '../styles/components/_page-preview.css';
     const countWords = (text: string) =>
       text.trim().split(/\s+/).filter(Boolean).length;
 
-    const readPreview = (html: string) => {
+    const readPreview = (html: string): PreviewResult => {
       const parsed = new DOMParser().parseFromString(html, 'text/html');
       const main = parsed.querySelector('main') ?? parsed.body;
       // A note page puts its related notes and local map inside <main>
       // alongside the article. Read the document itself, so neither the
       // opening line nor the reading time comes from the rail beside it.
       const body = main?.querySelector('article') ?? main;
-      return composePreviewContent({
+      const content = composePreviewContent({
         heading: main?.querySelector('h1')?.textContent,
         documentTitle: parsed.title,
         description: parsed.querySelector<HTMLMetaElement>(
@@ -284,6 +322,29 @@ import '../styles/components/_page-preview.css';
         updated: main?.querySelector('time[datetime]')?.textContent,
         wordCount: countWords(body?.textContent ?? ''),
       });
+      return content ? { kind: 'ready', content } : { kind: 'failed' };
+    };
+
+    const fetchPreview = async (url: string): Promise<PreviewResult> => {
+      try {
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          credentials: 'same-origin',
+          headers: { Accept: 'text/html' },
+        });
+        if (new URL(response.url).origin !== window.location.origin) {
+          return { kind: 'failed' };
+        }
+        const verdict = classifyPreviewResponse({
+          ok: response.ok,
+          status: response.status,
+          contentType: response.headers.get('content-type'),
+        });
+        if (verdict !== 'read') return { kind: verdict };
+        return readPreview(await response.text());
+      } catch {
+        return { kind: 'failed' };
+      }
     };
 
     const loadPreview = (url: string): CacheEntry => {
@@ -296,25 +357,14 @@ import '../styles/components/_page-preview.css';
         return cached;
       }
 
-      const entry: CacheEntry = {
-        promise: fetch(url, {
-          signal: AbortSignal.timeout(5000),
-          credentials: 'same-origin',
-          headers: { Accept: 'text/html' },
-        })
-          .then(async (response): Promise<PreviewContent | null> => {
-            if (!response.ok) return null;
-            if (!response.headers.get('content-type')?.includes('text/html')) {
-              return null;
-            }
-            const responseUrl = new URL(response.url);
-            if (responseUrl.origin !== window.location.origin) return null;
-            return readPreview(await response.text());
-          })
-          .catch(() => null),
-      };
-      entry.promise.then((content) => {
-        entry.settled = content;
+      const entry: CacheEntry = { promise: fetchPreview(url) };
+      entry.promise.then((result) => {
+        entry.settled = result;
+        // A timeout or a dropped connection says nothing about the page, so
+        // it is not remembered: the next hover gets a fresh attempt.
+        if (result.kind === 'failed' && cache.get(url) === entry) {
+          cache.delete(url);
+        }
       });
 
       cache.set(url, entry);
@@ -348,96 +398,321 @@ import '../styles/components/_page-preview.css';
       previousDescription = null;
     };
 
-    const openPanel = () => {
-      if (isOpen) return;
-      // The attribute only guards the pre-script state; after the first open
-      // the popover's own closed state handles display — and leaving it off
-      // is what lets the exit transition run at all.
-      preview.hidden = false;
-      preview.classList.remove('page-preview--glide');
-      if (!preview.matches(':popover-open')) preview.showPopover();
-      isOpen = true;
+    const setActive = (link: HTMLAnchorElement | null) => {
+      if (activeLink === link) return;
+      activeLink?.classList.remove('page-preview-link');
+      undescribe();
+      activeLink = link;
+      link?.classList.add('page-preview-link');
+    };
+
+    const cancelPending = () => {
+      window.clearTimeout(intentTimer);
+      window.clearTimeout(prefetchTimer);
+      pendingLink = null;
+      requestToken += 1;
+    };
+
+    const cancelClose = () => {
+      window.clearTimeout(closeTimer);
+      closeTimer = 0;
     };
 
     const closePanel = () => {
-      window.clearTimeout(intentTimer);
-      window.clearTimeout(closeTimer);
+      cancelPending();
+      cancelClose();
       window.clearTimeout(glideTimer);
-      requestToken += 1;
-      activeLink?.classList.remove('page-preview-link');
-      undescribe();
-      activeLink = null;
+      setActive(null);
       isOpen = false;
-      preview.classList.remove('page-preview--glide');
-      preview.classList.remove('page-preview--settling');
+      preview.classList.remove('page-preview--glide', 'page-preview--swap');
       if (preview.matches(':popover-open')) preview.hidePopover();
     };
 
-    const show = async (link: HTMLAnchorElement, resolved: string) => {
-      if (!link.isConnected || eligibleLink(link) !== link) return;
-      const wasOpen = isOpen;
-      if (activeLink && activeLink !== link) {
-        activeLink.classList.remove('page-preview-link');
-        undescribe();
-      }
-      activeLink = link;
-      link.classList.add('page-preview-link');
+    /** Close unless the pointer comes back to the link or onto the sheet. */
+    const closeSoon = () => {
+      if (!isOpen || closeTimer) return;
+      closeTimer = window.setTimeout(() => {
+        closeTimer = 0;
+        closePanel();
+      }, CLOSE_GRACE_MS);
+    };
 
-      const token = ++requestToken;
-      const entry = loadPreview(resolved);
+    const dismiss = () => {
+      overSheet = false;
+      hoveredLink = null;
+      suppressedLink = null;
+      dormantLink = null;
+      closePanel();
+    };
+
+    /** Put the sheet on screen for `link`, already filled and placed. */
+    const present = (
+      link: HTMLAnchorElement,
+      result: PreviewResult | undefined,
+    ) => {
+      const wasOpen = isOpen;
+      const changed = wasOpen && activeLink !== link;
+      setActive(link);
+      render(result);
 
       // The sheet has to be rendered before it can be measured, and the
       // browser cannot paint between here and the end of this task — so it is
       // shown, filled, sized, and placed without ever being seen misplaced.
-      openPanel();
-      if (wasOpen) glide();
-      // A page already in the cache skips the loading frame entirely: the
-      // sheet simply becomes the next document.
-      if (entry.settled !== undefined) {
-        if (entry.settled) renderContent(entry.settled);
-        else renderUnavailable();
+      if (!wasOpen) {
+        // The attribute only guards the pre-script state; after the first
+        // open the popover's own closed state handles display — and leaving
+        // it off is what lets the exit transition run at all.
+        preview.hidden = false;
+        preview.classList.remove('page-preview--glide', 'page-preview--swap');
+        if (!preview.matches(':popover-open')) preview.showPopover();
+        isOpen = true;
       } else {
-        renderLoading();
+        glide();
       }
       syncHeight();
-      place();
-      if (wasOpen) settle();
-      if (entry.settled !== undefined) {
-        if (entry.settled) describe(link);
+      place(wasOpen);
+      if (changed) swapIn();
+      if (result?.kind === 'ready') describe(link);
+    };
+
+    const show = async (link: HTMLAnchorElement) => {
+      const url = previewPageUrl(link.href, window.location.href);
+      if (!url || !link.isConnected || eligibleLink(link) !== link) return;
+
+      const token = ++requestToken;
+      const entry = loadPreview(url);
+      const stale = () => token !== requestToken || pendingLink !== link;
+
+      if (entry.settled === undefined) {
+        // Hold off briefly: an open sheet keeps its current page, a closed
+        // one stays closed, and a quick answer skips the skeleton entirely.
+        await Promise.race([
+          entry.promise,
+          new Promise((resolve) => window.setTimeout(resolve, PATIENCE_MS)),
+        ]);
+        if (stale()) return;
+      }
+
+      if (entry.settled?.kind === 'failed') {
+        pendingLink = null;
+        if (isOpen) closePanel();
         return;
       }
 
-      const content = await entry.promise;
-      if (token !== requestToken || activeLink !== link) return;
-      if (content) {
-        renderContent(content);
-        describe(link);
-      } else {
-        renderUnavailable();
+      pendingLink = null;
+      cancelClose();
+      present(link, entry.settled);
+      if (entry.settled !== undefined) return;
+
+      // Only the sheet showing this link cares now. Not the request token: a
+      // swap the pointer abandoned on its way back here must not strand the
+      // skeleton.
+      const result = await entry.promise;
+      if (activeLink !== link || !isOpen) return;
+      if (result.kind === 'failed') {
+        closePanel();
+        return;
       }
       glide();
+      render(result);
       syncHeight();
       place();
-      settle();
+      swapIn();
+      if (result.kind === 'ready') describe(link);
     };
 
+    /**
+     * Wait for the pointer to settle on `link`, then show it. A pointer still
+     * travelling when the timer runs out re-arms it from where it is now.
+     */
     const schedule = (link: HTMLAnchorElement, delay: number) => {
-      const resolved = previewPageUrl(link.href, window.location.href);
-      if (!resolved) return;
-      window.clearTimeout(intentTimer);
-      window.clearTimeout(closeTimer);
-      intentTimer = window.setTimeout(() => {
-        void show(link, resolved);
-      }, delay);
+      const url = previewPageUrl(link.href, window.location.href);
+      if (!url) return;
+      cancelPending();
+      pendingLink = link;
+
+      if (pointerX === null || pointerY === null) {
+        void show(link);
+        return;
+      }
+
+      prefetchTimer = window.setTimeout(() => {
+        loadPreview(url);
+      }, PREFETCH_DWELL_MS);
+
+      const arm = () => {
+        armedX = pointerX ?? 0;
+        armedY = pointerY ?? 0;
+        intentTimer = window.setTimeout(() => {
+          if (pendingLink !== link) return;
+          const travelled = Math.hypot(
+            (pointerX ?? armedX) - armedX,
+            (pointerY ?? armedY) - armedY,
+          );
+          if (travelled > INTENT_TOLERANCE_PX) arm();
+          else void show(link);
+        }, delay);
+      };
+      arm();
     };
 
-    /* --- Events --------------------------------------------------------- */
+    /* --- Pointer -------------------------------------------------------- */
 
-    const dismiss = () => {
-      hoveredLink = null;
-      suppressedLink = null;
+    const hoverLink = (link: HTMLAnchorElement | null, force = false) => {
+      if (link === hoveredLink && !force) return;
+      hoveredLink = link;
+      dormantLink = null;
+      if (link !== suppressedLink) suppressedLink = null;
+
+      if (!link) {
+        // On plain page now. Abandon anything not yet shown, and let an open
+        // sheet go unless the pointer is only crossing to it.
+        if (pendingLink) cancelPending();
+        closeSoon();
+        return;
+      }
+      if (link === suppressedLink) {
+        if (pendingLink) cancelPending();
+        closeSoon();
+        return;
+      }
+      if (link === activeLink) {
+        // Back on the open sheet's own link: it stays exactly where it was.
+        if (pendingLink) cancelPending();
+        cancelClose();
+        return;
+      }
+      if (scrolledSinceMove) {
+        // The page moved under a still pointer. Wait for the reader to move.
+        dormantLink = link;
+        if (pendingLink) cancelPending();
+        closeSoon();
+        return;
+      }
+      // A neighbour while a sheet is open: keep the current one up until the
+      // swap is confirmed, so a pass across the link costs nothing.
+      cancelClose();
+      schedule(link, isOpen ? WARM_INTENT_MS : COLD_INTENT_MS);
+    };
+
+    document.addEventListener(
+      'pointerover',
+      (event) => {
+        if (!finePointer.matches || event.pointerType === 'touch') return;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        if (inSheet(event.target)) {
+          // Reading the sheet holds it open, and abandons any swap the
+          // pointer brushed past on its way here.
+          overSheet = true;
+          hoveredLink = null;
+          if (pendingLink) cancelPending();
+          cancelClose();
+          return;
+        }
+        const leftSheet = overSheet;
+        overSheet = false;
+        hoverLink(eligibleLink(event.target), leftSheet);
+      },
+      { passive: true },
+    );
+
+    document.addEventListener(
+      'pointerout',
+      (event) => {
+        // Leaving the window entirely.
+        if (!event.relatedTarget) dismiss();
+      },
+      { passive: true },
+    );
+
+    document.addEventListener(
+      'pointermove',
+      (event) => {
+        // Only a real move counts: the synthetic hover update a browser sends
+        // after scrolling carries no movement.
+        if (scrolledSinceMove && (event.movementX || event.movementY)) {
+          scrolledSinceMove = false;
+        }
+        // Bound to an active hover, so this is a pair of assignments while the
+        // pointer is over a link and nothing at all otherwise.
+        if (!hoveredLink) return;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        if (dormantLink && !scrolledSinceMove) {
+          const link = dormantLink;
+          dormantLink = null;
+          hoveredLink = null;
+          hoverLink(link);
+        }
+      },
+      { passive: true },
+    );
+
+    // The sheet stands in for its link: a click on it follows the link, and a
+    // modified or middle click opens it in a new tab the way the link would.
+    const follow = (event: MouseEvent) => {
+      const link = activeLink;
+      if (!link || !isOpen) return;
+      if (event.button === 1 || event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        window.open(link.href, '_blank', 'noopener');
+        return;
+      }
+      if (event.button !== 0) return;
+      link.click();
       closePanel();
     };
+    preview.addEventListener('click', follow);
+    preview.addEventListener('auxclick', follow);
+
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (!inSheet(event.target)) dismiss();
+      },
+      { passive: true },
+    );
+
+    /* --- Keyboard ------------------------------------------------------- */
+
+    document.addEventListener('focusin', (event) => {
+      const link = eligibleLink(event.target);
+      if (!link) {
+        if (
+          !hoveredLink ||
+          (event.target instanceof Element &&
+            event.target.closest('[role="dialog"], dialog'))
+        )
+          dismiss();
+        return;
+      }
+      // Only keyboard focus opens a preview; a click's focus would otherwise
+      // reopen the sheet the reader is already navigating away from.
+      if (!link.matches(':focus-visible')) return;
+      if (link === suppressedLink || link === activeLink) return;
+      pointerX = null;
+      pointerY = null;
+      cancelClose();
+      schedule(link, 0);
+    });
+
+    document.addEventListener('focusout', (event) => {
+      const link = eligibleLink(event.target);
+      if (!link || link.contains(event.relatedTarget as Node | null)) return;
+      if (link === suppressedLink) suppressedLink = null;
+      if (link === pendingLink) cancelPending();
+      if (link !== activeLink || hoveredLink === link) return;
+      closePanel();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !(isOpen || pendingLink)) return;
+      suppressedLink = activeLink ?? pendingLink ?? hoveredLink;
+      closePanel();
+    });
+
+    /* --- Page lifecycle ------------------------------------------------- */
 
     // Opening search by keyboard need not produce a pointerout. Its overlay
     // also cannot cover a popover in the browser's top layer.
@@ -450,6 +725,30 @@ import '../styles/components/_page-preview.css';
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) dismiss();
     });
+
+    // Scrolling moves the link out from under the sheet; a sheet chasing it
+    // reads as lag, so it simply goes.
+    window.addEventListener(
+      'scroll',
+      () => {
+        scrolledSinceMove = true;
+        if (isOpen || pendingLink) dismiss();
+      },
+      { passive: true, capture: true },
+    );
+
+    window.addEventListener(
+      'resize',
+      () => {
+        if (!activeLink || placementFrame) return;
+        placementFrame = window.requestAnimationFrame(() => {
+          placementFrame = 0;
+          syncHeight();
+          place();
+        });
+      },
+      { passive: true },
+    );
 
     /**
      * Links inside running text that will open a sheet carry a mark before
@@ -475,112 +774,8 @@ import '../styles/components/_page-preview.css';
     markPreviewableLinks();
 
     previewsDisabled.addEventListener('change', () => {
-      if (previewsDisabled.matches) closePanel();
+      if (previewsDisabled.matches) dismiss();
       markPreviewableLinks();
     });
-
-    document.addEventListener(
-      'pointermove',
-      (event) => {
-        // Bound to an active hover, so this is a pair of assignments while the
-        // pointer is over a previewable link and nothing at all otherwise.
-        if (!hoveredLink) return;
-        if (eligibleLink(event.target) !== hoveredLink) {
-          dismiss();
-          return;
-        }
-        pointerX = event.clientX;
-        pointerY = event.clientY;
-      },
-      { passive: true },
-    );
-
-    document.addEventListener('pointerover', (event) => {
-      if (!finePointer.matches) return;
-      const link = eligibleLink(event.target);
-      if (!link || link.contains(event.relatedTarget as Node | null)) return;
-
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      hoveredLink = link;
-      if (link === suppressedLink) return;
-      if (link === activeLink) {
-        // Re-entering the open sheet's own link cancels a pending close; the
-        // sheet stays exactly where the reader left it.
-        window.clearTimeout(closeTimer);
-        window.clearTimeout(intentTimer);
-        return;
-      }
-      schedule(link, isOpen ? WARM_INTENT_MS : COLD_INTENT_MS);
-    });
-
-    document.addEventListener('pointerout', (event) => {
-      if (!event.relatedTarget) {
-        dismiss();
-        return;
-      }
-      const link = eligibleLink(event.target);
-      if (!link || link.contains(event.relatedTarget as Node | null)) return;
-      if (link === hoveredLink) hoveredLink = null;
-      if (link === suppressedLink) suppressedLink = null;
-      window.clearTimeout(intentTimer);
-      if (link !== activeLink) return;
-      window.clearTimeout(closeTimer);
-      closeTimer = window.setTimeout(closePanel, CLOSE_GRACE_MS);
-    });
-
-    document.addEventListener('focusin', (event) => {
-      const link = eligibleLink(event.target);
-      if (!link) {
-        if (
-          !hoveredLink ||
-          (event.target instanceof Element &&
-            event.target.closest('[role="dialog"], dialog'))
-        )
-          dismiss();
-        return;
-      }
-      // Only keyboard focus opens a preview; a click's focus would otherwise
-      // reopen the sheet the reader is already navigating away from.
-      if (!link.matches(':focus-visible')) return;
-      if (link === suppressedLink || link === activeLink) return;
-      pointerX = null;
-      pointerY = null;
-      schedule(link, 0);
-    });
-
-    document.addEventListener('focusout', (event) => {
-      const link = eligibleLink(event.target);
-      if (!link || link.contains(event.relatedTarget as Node | null)) return;
-      if (link === suppressedLink) suppressedLink = null;
-      if (link !== activeLink) {
-        window.clearTimeout(intentTimer);
-        return;
-      }
-      if (hoveredLink === link) return;
-      closePanel();
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape') return;
-      suppressedLink = activeLink ?? hoveredLink;
-      closePanel();
-    });
-
-    document.addEventListener('pointerdown', dismiss, { passive: true });
-
-    const trackPlacement = () => {
-      if (!activeLink || placementFrame) return;
-      placementFrame = window.requestAnimationFrame(() => {
-        placementFrame = 0;
-        place();
-      });
-    };
-
-    window.addEventListener('scroll', dismiss, {
-      passive: true,
-      capture: true,
-    });
-    window.addEventListener('resize', trackPlacement, { passive: true });
   }
 </script>

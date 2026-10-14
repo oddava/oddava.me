@@ -51,8 +51,8 @@ export function previewPageUrl(
    Placement geometry
 
    Kept pure and DOM-free so the interesting part — which side of the link the
-   sheet takes, how it avoids the viewport edges, where the leader line meets
-   it — is testable without a browser. The component supplies measured rects.
+   sheet takes, how it avoids the viewport edges, where it grows from — is
+   testable without a browser. The component supplies measured rects.
    --------------------------------------------------------------------------- */
 
 export type PreviewSide = 'above' | 'below';
@@ -77,18 +77,24 @@ export interface PreviewPlacementInput {
   gap: number;
   /** How far the sheet's leading edge sits ahead of the attachment point. */
   lead: number;
+  /**
+   * The side an already-open sheet is on. Kept whenever it still fits, so
+   * moving between neighbouring links never flips the sheet across the text.
+   */
+  prefer?: PreviewSide;
 }
 
 export interface PreviewPlacement {
   x: number;
   y: number;
   side: PreviewSide;
-  /** Where the leader line meets the sheet, relative to its leading edge. */
-  tetherX: number;
+  /** Where the sheet attaches, relative to its leading edge — the point it
+      grows out of when it opens. */
+  originX: number;
 }
 
-/** Keeps the leader line from landing on a rounded corner. */
-const TETHER_INSET = 14;
+/** Keeps the attachment point off the rounded corners. */
+const ORIGIN_INSET = 14;
 /** Keyboard focus has no pointer, so attach a little way into the link text. */
 const KEYBOARD_ORIGIN_OFFSET = 32;
 
@@ -108,25 +114,30 @@ export function resolvePreviewPlacement(
 ): PreviewPlacement {
   const { anchor, panel, viewport, margin, gap, lead } = input;
 
-  const originX =
+  const attachX =
     input.pointerX === null
       ? Math.min(anchor.left + KEYBOARD_ORIGIN_OFFSET, anchor.right)
       : clamp(input.pointerX, anchor.left, anchor.right);
 
   const maxX = Math.max(margin, viewport.width - panel.width - margin);
-  const x = clamp(originX - lead, margin, maxX);
+  const x = clamp(attachX - lead, margin, maxX);
 
   const below = anchor.bottom + gap;
   const above = anchor.top - gap - panel.height;
+  const fitsBelow = panel.height <= viewport.height - margin - below;
+  const fitsAbove = above >= margin;
   const roomBelow = viewport.height - margin - below;
   const roomAbove = anchor.top - gap - margin;
 
   let side: PreviewSide;
   let y: number;
-  if (panel.height <= roomBelow) {
+  if (input.prefer === 'above' && fitsAbove) {
+    side = 'above';
+    y = above;
+  } else if (fitsBelow) {
     side = 'below';
     y = below;
-  } else if (above >= margin) {
+  } else if (fitsAbove) {
     side = 'above';
     y = above;
   } else if (roomAbove > roomBelow) {
@@ -143,10 +154,10 @@ export function resolvePreviewPlacement(
     x,
     y,
     side,
-    tetherX: clamp(
-      originX - x,
-      TETHER_INSET,
-      Math.max(TETHER_INSET, panel.width - TETHER_INSET),
+    originX: clamp(
+      attachX - x,
+      ORIGIN_INSET,
+      Math.max(ORIGIN_INSET, panel.width - ORIGIN_INSET),
     ),
   };
 }
@@ -176,6 +187,27 @@ export interface PreviewContent {
 }
 
 /**
+ * What a hover can turn into. A missing page is an answer worth showing — the
+ * link is broken — and is cached like content. A failed fetch is not an
+ * answer at all: the sheet stays shut and the next hover asks again.
+ */
+export type PreviewResult =
+  | { kind: 'ready'; content: PreviewContent }
+  | { kind: 'missing' }
+  | { kind: 'failed' };
+
+/** Classify a fetched response before any HTML is read. */
+export function classifyPreviewResponse(response: {
+  ok: boolean;
+  status: number;
+  contentType: string | null;
+}): 'read' | 'missing' | 'failed' {
+  if (response.status === 404 || response.status === 410) return 'missing';
+  if (!response.ok) return 'failed';
+  return response.contentType?.includes('text/html') ? 'read' : 'failed';
+}
+
+/**
  * The descriptions the site falls back to when a page never wrote its own.
  * They describe the site, not the destination, so a preview showing one would
  * say the same thing about every link on the page — the page's own opening
@@ -188,7 +220,11 @@ const BOILERPLATE_DESCRIPTIONS = new Set(
 );
 
 const SITE_TITLE_SUFFIX = /\s*[|·—-]\s*oddava(?:\.me)?\s*$/i;
-const EXCERPT_LIMIT = 190;
+/**
+ * About three lines of the sheet's excerpt. Cutting here, at a word, keeps
+ * the stylesheet's line clamp from having to cut mid-word instead.
+ */
+const EXCERPT_LIMIT = 135;
 const WORDS_PER_MINUTE = 220;
 /** Below this a reading time says nothing useful, so it is left off. */
 const READING_TIME_FLOOR = 80;
