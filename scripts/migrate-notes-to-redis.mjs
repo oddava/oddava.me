@@ -17,9 +17,9 @@ import {
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_ROOTS = ['src/content/notes', 'public/images/notes'];
 const MEDIA_EXTENSIONS = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
-// `.mdx` is accepted alongside `.md` because a store written before the rename
-// still holds `.mdx` keys. Import treats those as managed, so they are pruned
-// and replaced by their `.md` equivalents — that prune is the key migration.
+// `.mdx` is accepted alongside `.md` so exports and backups from before the
+// rename still import: files are stored under their `.md` key, and with
+// `--prune` any `.mdx` key left in the store is dropped.
 const NOTE_EXTENSIONS = new Set(['.md', '.mdx']);
 
 function noteId(path) {

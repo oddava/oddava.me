@@ -21,7 +21,8 @@ import {
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_ROOTS = ['src/content/notes', 'public/images/notes'];
 const MEDIA_EXTENSIONS = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
-// Export mirrors the store, which may still hold legacy `.mdx` keys.
+// Export mirrors whatever the store holds; a store written before the rename to
+// `.md` (production was migrated on 2026-10-14) can still have `.mdx` keys.
 const NOTE_EXTENSIONS = new Set(['.md', '.mdx']);
 const arguments_ = process.argv.slice(2);
 assertKnownArgs(arguments_, ['--dry-run', '--keep-removed', '--target']);

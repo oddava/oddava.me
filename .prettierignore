@@ -5,3 +5,7 @@ dist
 node_modules
 package-lock.json
 public
+# Notes are an export of the live store (notes:export), not source: they must
+# mirror it byte for byte so the export → migrate round trip is lossless, and
+# Studio, which authors them, does not run Prettier.
+src/content/notes

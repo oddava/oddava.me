@@ -190,11 +190,10 @@ export interface FolderDocument {
  * A folder's page as it is actually stored, under whichever read extension it
  * was written with, or null.
  *
- * Looking only at the canonical `.md` path would miss a page the live store
- * still holds as `.mdx`, and callers treat "not found" as "create it" — which
- * would leave two files whose note ids collide. Every read, move, and delete of
- * a folder page therefore resolves through here rather than assuming an
- * extension.
+ * Callers treat "not found" as "create it", so assuming one extension would
+ * leave two files whose note ids collide if another read extension were ever
+ * in use. Every read, move, and delete of a folder page therefore resolves
+ * through here rather than assuming an extension.
  */
 export async function findFolderDocument(
   provider: ContentProvider,
