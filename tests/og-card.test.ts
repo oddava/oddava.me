@@ -30,7 +30,19 @@ vi.mock('@lib/server/content', () => ({
 
 vi.mock('@lib/server/core', () => ({
   isStorageUnavailableError: () => false,
+  withEdgeCache: (
+    _key: string,
+    _waitUntil: unknown,
+    produce: () => Promise<Response>,
+  ) => produce(),
 }));
+
+const routeContext = (path: string) =>
+  ({
+    params: { path },
+    url: new URL(`https://oddava.me/og/${path}.png`),
+    locals: {},
+  }) as never;
 
 vi.mock('../src/lib/server/content/redis-store', () => ({
   readRedisBinaryFile: async () => null,
@@ -132,7 +144,7 @@ describe('/og/[...path].png', () => {
     );
 
     const { GET } = await loadRoute();
-    const response = await GET({ params: { path: 'reading/books' } } as never);
+    const response = await GET(routeContext('reading/books'));
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/png');
@@ -148,14 +160,12 @@ describe('/og/[...path].png', () => {
     runtime.cards.set(`index.${fingerprint}`, new Uint8Array([1]));
 
     const { GET } = await loadRoute();
-    expect((await GET({ params: { path: 'index' } } as never)).status).toBe(
-      200,
-    );
+    expect((await GET(routeContext('index'))).status).toBe(200);
   });
 
   it('falls back to the default card when a note has none yet', async () => {
     const { GET } = await loadRoute();
-    const response = await GET({ params: { path: 'reading/books' } } as never);
+    const response = await GET(routeContext('reading/books'));
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/og-default.png');
@@ -167,19 +177,15 @@ describe('/og/[...path].png', () => {
     runtime.cards.set('reading/books.stale00', new Uint8Array([1]));
 
     const { GET } = await loadRoute();
-    expect(
-      (await GET({ params: { path: 'reading/books' } } as never)).status,
-    ).toBe(302);
+    expect((await GET(routeContext('reading/books'))).status).toBe(302);
   });
 
   it('falls back for an unknown note and for an unavailable store', async () => {
     const { GET } = await loadRoute();
-    expect((await GET({ params: { path: 'nope' } } as never)).status).toBe(302);
+    expect((await GET(routeContext('nope'))).status).toBe(302);
 
     runtime.storeDown = true;
-    expect(
-      (await GET({ params: { path: 'reading/books' } } as never)).status,
-    ).toBe(302);
+    expect((await GET(routeContext('reading/books'))).status).toBe(302);
   });
 });
 

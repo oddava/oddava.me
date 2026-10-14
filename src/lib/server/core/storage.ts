@@ -76,7 +76,7 @@ export async function redisCommand<T = unknown>(
   const namespacedCommand = namespaceRedisCommand(command);
 
   if (shouldUseLocalRedis()) {
-    const { executeLocalRedisCommand } = await import('../local-redis');
+    const { executeLocalRedisCommand } = await import('./local-redis');
     return executeLocalRedisCommand<T>(
       namespacedCommand,
       getLocalRedisUrl(),

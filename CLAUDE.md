@@ -3,9 +3,9 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 `AGENTS.md` holds the full contributor guide (style, commit conventions, domain
-boundaries). `docs/architecture.md` and `docs/development.md` go deeper on module
-boundaries, data flow, and operations. This file covers what you need most often
-plus the constraints that are easy to violate.
+boundaries). `docs/` holds feature notes (`interactive-graph.md`,
+`samsung-emoji.md`). This file covers what you need most often plus the
+constraints that are easy to violate.
 
 ## Commands
 
@@ -167,7 +167,7 @@ Astro emits a hashed, page-specific CSP (configured in `astro.config.mjs`;
 Middleware adds baseline headers and header-only `frame-ancestors` to dynamic
 responses; `public/_headers` applies the same policy to asset-first prerendered
 pages; admin pages are `no-store` and API routes own their cache policy. Secrets
-are read only through `src/lib/server/env.ts`.
+are read only through `src/lib/server/core/env.ts`.
 
 ## Conventions
 

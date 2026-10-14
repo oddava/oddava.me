@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applySecurityHeaders,
   shouldApplyContentSecurityPolicy,
-} from '../src/lib/server/security-headers';
+} from '../src/lib/server/core/security-headers';
 
 describe('security header middleware helpers', () => {
   it('applies baseline security headers and CSP to public HTTPS pages', async () => {

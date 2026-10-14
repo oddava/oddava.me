@@ -1,6 +1,9 @@
 import type { APIRoute } from 'astro';
-import { isStorageUnavailableError } from '../../../lib/server/core';
-import { readRedisBinaryFile } from '../../../lib/server/content';
+import {
+  isStorageUnavailableError,
+  withEdgeCache,
+} from '../../../lib/server/core';
+import { readNoteMedia } from '../../../lib/server/content';
 
 const CONTENT_TYPES: Record<string, string> = {
   gif: 'image/gif',
@@ -20,17 +23,12 @@ function safeMediaPath(path: string): boolean {
   );
 }
 
-/** Serves Studio uploads that exist only in the runtime content store. */
-export const GET: APIRoute = async ({ params }) => {
-  const path = params.path ?? '';
-  const extension = path.split('.').at(-1)?.toLowerCase() ?? '';
-  const contentType = CONTENT_TYPES[extension];
-  if (!contentType || !safeMediaPath(path)) {
-    return new Response('Not found', { status: 404 });
-  }
-
+async function readMediaResponse(
+  path: string,
+  contentType: string,
+): Promise<Response> {
   try {
-    const bytes = await readRedisBinaryFile(`public/images/notes/${path}`);
+    const bytes = await readNoteMedia(path);
     if (!bytes) return new Response('Not found', { status: 404 });
     return new Response(bytes as BodyInit, {
       headers: {
@@ -52,4 +50,22 @@ export const GET: APIRoute = async ({ params }) => {
       headers: { 'Cache-Control': 'no-store', 'Retry-After': '5' },
     });
   }
+}
+
+/** Serves Studio uploads that exist only in the runtime content store. */
+export const GET: APIRoute = async ({ params, url, locals }) => {
+  const path = params.path ?? '';
+  const extension = path.split('.').at(-1)?.toLowerCase() ?? '';
+  const contentType = CONTENT_TYPES[extension];
+  if (!contentType || !safeMediaPath(path)) {
+    return new Response('Not found', { status: 404 });
+  }
+
+  // The path is content-addressed (see above), so it is the whole cache key;
+  // the query string is dropped so `?v=` variants share one entry.
+  return withEdgeCache(
+    `${url.origin}${url.pathname}`,
+    locals.cfContext?.waitUntil.bind(locals.cfContext),
+    () => readMediaResponse(path, contentType),
+  );
 };

@@ -6,6 +6,8 @@ export {
   readUrlEncodedBody,
   requestBodyErrorResponse,
 } from './core/body';
+export { delay } from './core/delay';
+export { withEdgeCache, type WaitUntil } from './core/edge-cache';
 export { fetchWithTimeout, json } from './core/http';
 export {
   ensureSameOrigin,
@@ -22,7 +24,9 @@ export {
 } from './core/storage';
 export {
   getClientFingerprint,
+  getSigningSecret,
   hasSigningSecret,
   rejectIfSigningUnavailable,
 } from './core/signing';
 export { sanitizePlainText } from './core/sanitize';
+export { applySecurityHeaders } from './core/security-headers';

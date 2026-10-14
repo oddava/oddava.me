@@ -35,6 +35,17 @@ export async function sha256Hex(value: string): Promise<string> {
   ).join('');
 }
 
+/**
+ * Derives a stable, non-reversible key for credential-dependent caches. A
+ * cryptographic digest makes accidental collisions negligible and never keeps
+ * the raw joined secret as the cache key.
+ */
+export function credentialFingerprint(
+  values: Array<string | undefined>,
+): Promise<string> {
+  return sha256Hex(values.map((value) => value ?? '').join('\u0000'));
+}
+
 export function constantTimeCompare(left: string, right: string): boolean {
   if (left.length !== right.length) return false;
   let mismatch = 0;

@@ -2,6 +2,7 @@ import { adminJson } from '../admin/response';
 import { readJsonBody, requestBodyErrorResponse } from '../core/body';
 import {
   contentWithOrder,
+  entriesFromFiles,
   findEntry,
   folderExists,
   folderRepositoryPath,
@@ -16,12 +17,17 @@ import { duplicateFolderTree } from './folders';
 import {
   contentConflictResponse,
   contentFolderErrorResponse,
+  folderAlreadyExists,
+  folderNotFound,
   invalidFolder,
+  invalidFolderMove,
   invalidSlug,
   methodNotAllowed,
   missingCollection,
   missingEntry,
+  readRevision,
   revisionRequired,
+  slugExists,
   validationError,
 } from './http';
 import {
@@ -37,6 +43,7 @@ import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError } from './types';
 import type {
   BatchTextWrite,
+  ContentCollectionDefinition,
   ContentProvider,
   ContentWriteResult,
 } from './types';
@@ -59,6 +66,23 @@ function rootEntryResponse(): Response {
   );
 }
 
+/**
+ * The entry as this request just wrote it. Every handler runs under the content
+ * mutation lock, so the write's own content and revision are what a re-read
+ * would return — reading the file back would only add a round trip while the
+ * lock is held.
+ */
+function writtenEntry(
+  collection: ContentCollectionDefinition,
+  path: string,
+  content: string,
+  result: ContentWriteResult,
+) {
+  return result.revision
+    ? toDetail(collection, { path, content, revision: result.revision })
+    : null;
+}
+
 function headingSlug(body: string): string {
   const heading = body.match(/^#{1,6}\s+(.+?)\s*#*\s*$/m)?.[1] ?? '';
   return slugify(heading);
@@ -67,7 +91,14 @@ function headingSlug(body: string): string {
 export async function handleContentCollections(
   store: ContentProvider,
 ): Promise<Response> {
-  const count = (await readEntries(store, NOTES_COLLECTION)).length;
+  // Paths only: a count does not need every note's content. Notes are always
+  // written as text, so every path here is an entry.
+  const count = (
+    await store.listFilePaths(
+      NOTES_COLLECTION.sourceDir,
+      NOTES_COLLECTION.readExtensions,
+    )
+  ).length;
   return adminJson({
     collections: [{ ...publicCollection(NOTES_COLLECTION), count }],
   });
@@ -109,18 +140,12 @@ export async function handleContentCollection(
   const folder = normalizeFolderPath(body.folder ?? '');
   if (!isValidFolderPath(folder)) return invalidFolder();
   if (!(await folderExists(store, collection, folder))) {
-    return adminJson(
-      { error: 'Choose a folder that still exists.', code: 'folder_not_found' },
-      { status: 404 },
-    );
+    return folderNotFound('Choose a folder that still exists.');
   }
 
   const entries = await readEntries(store, collection);
   if (entries.some((entry) => entry.id === slug)) {
-    return adminJson(
-      { error: 'A note already uses that file name.', code: 'slug_exists' },
-      { status: 409 },
-    );
+    return slugExists('A note already uses that file name.');
   }
 
   let validatedFields: Record<string, unknown>;
@@ -138,20 +163,20 @@ export async function handleContentCollection(
     collection.extension,
     folder,
   );
+  const content = serializeContentDocument(validatedFields, contentBody);
   let result: ContentWriteResult;
   try {
     result = await store.writeTextFile(
       path,
-      serializeContentDocument(validatedFields, contentBody),
+      content,
       `content: create ${collection.id}/${slug}`,
     );
   } catch (error) {
     return contentConflictResponse(error);
   }
 
-  const saved = await store.readFile(path);
   return adminJson(
-    { entry: saved ? toDetail(collection, saved) : null, result },
+    { entry: writtenEntry(collection, path, content, result), result },
     { status: 201 },
   );
 }
@@ -190,8 +215,7 @@ export async function handleContentEntry(
     } catch (error) {
       return requestBodyErrorResponse(error);
     }
-    const revision =
-      typeof body.revision === 'string' ? body.revision.trim() : '';
+    const revision = readRevision(body);
     if (!revision) return revisionRequired();
 
     // Deleting a folder's page is deleting the folder: leaving the directory
@@ -236,8 +260,7 @@ export async function handleContentEntry(
     return requestBodyErrorResponse(error);
   }
 
-  const revision =
-    typeof body.revision === 'string' ? body.revision.trim() : '';
+  const revision = readRevision(body);
   if (!revision) return revisionRequired();
 
   let fields: Record<string, unknown>;
@@ -248,16 +271,16 @@ export async function handleContentEntry(
   }
   fields.updated = new Date().toISOString();
 
+  const content = serializeContentDocument(fields, String(body.body ?? ''));
   try {
     const result = await store.writeTextFile(
       existing.path,
-      serializeContentDocument(fields, String(body.body ?? '')),
+      content,
       `content: update ${collection.id}/${id}`,
       revision,
     );
-    const saved = await store.readFile(existing.path);
     return adminJson({
-      entry: saved ? toDetail(collection, saved) : null,
+      entry: writtenEntry(collection, existing.path, content, result),
       result,
     });
   } catch (error) {
@@ -291,8 +314,7 @@ export async function handleContentMove(
   const nextId = String(body.nextId ?? id);
   const folder = normalizeFolderPath(String(body.folder ?? ''));
   const operation = body.operation === 'duplicate' ? 'duplicate' : 'move';
-  const revision =
-    typeof body.revision === 'string' ? body.revision.trim() : '';
+  const revision = readRevision(body);
   if (!isValidSlug(id) || !isValidSlug(nextId)) return invalidSlug();
   if (!isValidFolderPath(folder)) return invalidFolder();
   if (!revision) return revisionRequired();
@@ -300,10 +322,7 @@ export async function handleContentMove(
     return rootEntryResponse();
   }
   if (!(await folderExists(store, collection, folder))) {
-    return adminJson(
-      { error: 'Choose a folder that still exists.', code: 'folder_not_found' },
-      { status: 404 },
-    );
+    return folderNotFound('Choose a folder that still exists.');
   }
 
   const existing = await findEntry(store, collection, id);
@@ -315,10 +334,7 @@ export async function handleContentMove(
   }
   const entries = await readEntries(store, collection);
   if (nextId !== id && entries.some((entry) => entry.id === nextId)) {
-    return adminJson(
-      { error: 'A note already uses that file name.', code: 'slug_exists' },
-      { status: 409 },
-    );
+    return slugExists('A note already uses that file name.');
   }
 
   const currentFolder = entryFolderFromPath(
@@ -326,10 +342,7 @@ export async function handleContentMove(
     collection.sourceDir,
   );
   if (operation === 'duplicate' && nextId === id) {
-    return adminJson(
-      { error: 'Choose a new file name for the copy.', code: 'slug_exists' },
-      { status: 409 },
-    );
+    return slugExists('Choose a new file name for the copy.');
   }
   if (operation === 'move' && currentFolder === folder && nextId === id) {
     return adminJson({ entry: toDetail(collection, existing) });
@@ -358,19 +371,12 @@ export async function handleContentMove(
         folder === pairedFolder ||
         folder.startsWith(`${pairedFolder}/`)
       ) {
-        return adminJson(
-          {
-            error: `A folder cannot be ${operation === 'duplicate' ? 'copied' : 'moved'} inside itself.`,
-            code: 'invalid_folder_move',
-          },
-          { status: 400 },
+        return invalidFolderMove(
+          `A folder cannot be ${operation === 'duplicate' ? 'copied' : 'moved'} inside itself.`,
         );
       }
       if (await folderExists(store, collection, nextPairedFolder)) {
-        return adminJson(
-          { error: 'That folder already exists.', code: 'folder_exists' },
-          { status: 409 },
-        );
+        return folderAlreadyExists();
       }
 
       if (operation === 'duplicate') {
@@ -408,18 +414,18 @@ export async function handleContentMove(
     }
 
     if (operation === 'duplicate') {
+      const content = contentWithOrder(
+        collection,
+        existing.content,
+        nextSiblingOrder(entries, folder),
+      );
       const result = await store.writeTextFile(
         nextPath,
-        contentWithOrder(
-          collection,
-          existing.content,
-          nextSiblingOrder(entries, folder),
-        ),
+        content,
         `content: duplicate ${collection.id}/${id} as ${nextId}`,
       );
-      const duplicated = await store.readFile(nextPath);
       return adminJson({
-        entry: duplicated ? toDetail(collection, duplicated) : null,
+        entry: writtenEntry(collection, nextPath, content, result),
         result,
       });
     }
@@ -430,9 +436,8 @@ export async function handleContentMove(
       `content: move ${collection.id}/${id} to ${folder || 'root'}/${nextId}`,
       revision,
     );
-    const moved = await store.readFile(nextPath);
     return adminJson({
-      entry: moved ? toDetail(collection, moved) : null,
+      entry: writtenEntry(collection, nextPath, existing.content, result),
       result,
     });
   } catch (error) {
@@ -469,13 +474,17 @@ export async function handleContentReorder(
   }
   if (!isValidFolderPath(folder)) return invalidFolder();
   if (!(await folderExists(store, collection, folder))) {
-    return adminJson(
-      { error: 'That folder no longer exists.', code: 'folder_not_found' },
-      { status: 404 },
-    );
+    return folderNotFound();
   }
 
-  const entries = await readEntries(store, collection);
+  // Read every note once, in one batch: the sibling list and the contents to
+  // rewrite come from the same snapshot, and these round trips run while the
+  // global mutation lock is held.
+  const files = await store.listFiles(
+    collection.sourceDir,
+    collection.readExtensions,
+  );
+  const entries = entriesFromFiles(collection, files);
   const siblings = entries.filter(
     (entry) =>
       entry.folder === folder && !(folder === '' && entry.id === 'index'),
@@ -499,14 +508,7 @@ export async function handleContentReorder(
   const writes: BatchTextWrite[] = [];
   const pathsById = new Map<string, string>();
 
-  // Read every sibling's content in one batch rather than a serial GET per
-  // sibling: those round trips run while the global mutation lock is held, so
-  // an N-note reorder held the store N Upstash hops longer than it needed to.
-  const filesByPath = new Map(
-    (
-      await store.listFiles(collection.sourceDir, collection.readExtensions)
-    ).map((file) => [file.path, file]),
-  );
+  const filesByPath = new Map(files.map((file) => [file.path, file]));
 
   for (const [order, id] of ids.entries()) {
     const entry = byId.get(id)!;

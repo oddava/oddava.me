@@ -3,9 +3,12 @@ import {
   encodeTextToBase64Url,
   signHmac,
   verifyHmac,
-} from '../crypto';
+} from '../core/crypto';
 
-export { constantTimeCompare, sha256Hex as computeTokenHash } from '../crypto';
+export {
+  constantTimeCompare,
+  sha256Hex as computeTokenHash,
+} from '../core/crypto';
 
 export const ADMIN_COOKIE = 'oddava-admin-session';
 export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -21,21 +24,6 @@ export interface AdminSession {
   issuedAt: number;
 }
 
-export function signSessionValue(
-  value: string,
-  secret: string,
-): Promise<string> {
-  return signHmac(value, secret);
-}
-
-function verifySessionSignature(
-  value: string,
-  signature: string,
-  secret: string,
-): Promise<boolean> {
-  return verifyHmac(value, signature, secret);
-}
-
 export async function parseSessionValue(
   value: string | undefined,
   secret: string,
@@ -46,7 +34,7 @@ export async function parseSessionValue(
 
   const body = value.slice(0, separator);
   const signature = value.slice(separator + 1);
-  if (!(await verifySessionSignature(body, signature, secret))) return null;
+  if (!(await verifyHmac(body, signature, secret))) return null;
 
   try {
     const parsed = JSON.parse(
@@ -76,7 +64,7 @@ export async function createSignedSessionValue(
   secret: string,
 ): Promise<string> {
   const body = encodeTextToBase64Url(JSON.stringify(session));
-  return `${body}.${await signSessionValue(body, secret)}`;
+  return `${body}.${await signHmac(body, secret)}`;
 }
 
 export async function verifySession(

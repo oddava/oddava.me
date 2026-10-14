@@ -10,11 +10,15 @@ export {
 export {
   ContentMutationBusyError,
   hasContentStore,
-  readRedisBinaryFile,
   readRedisNoteFiles,
   readStableContentVersion,
   withRedisContentMutationLock,
 } from './content/redis-store';
+export {
+  contentStoreErrorResponse,
+  contentStoreUnavailable,
+} from './content/http';
+export { readNoteMedia } from './content/media';
 export { parseContentDocument } from './content/serializers';
 export {
   listSocialCardKeys,

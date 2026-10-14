@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
-import { hasRedisConfig, redisCommand } from '../core';
+import { delay, hasRedisConfig, redisCommand } from '../core';
 import { assertSafeRepositoryPath, matchesExtension } from './paths';
+import { NOTES_COLLECTION } from './registry';
 import {
   ContentConflictError,
   ContentFolderNotEmptyError,
@@ -14,13 +15,6 @@ import type {
   LinkedFileDelete,
   LinkedFileMove,
 } from './types';
-
-export const NOTES_SOURCE_DIR = 'src/content/notes';
-export const NOTES_EXTENSION = 'md';
-// Reads accept both: keys written before the move to `.md` are still `.mdx` in
-// the live store until `notes:migrate` rewrites them. See
-// ContentCollectionDefinition.readExtensions.
-export const NOTE_READ_EXTENSIONS = ['md', 'mdx'] as const;
 
 /**
  * The content store's key layout. `scripts/lib/redis-content.mjs` mirrors these
@@ -67,6 +61,9 @@ interface StoredFile {
   createdAt: string;
   updatedAt: string;
 }
+
+/** What a write sends; the script adds `createdAt` (see WITH_CREATED_AT). */
+type StoredFileWrite = Omit<StoredFile, 'createdAt'>;
 
 interface RedisContentProviderOptions {
   command?: RedisCommand;
@@ -204,41 +201,66 @@ async function readStoredFiles(
   return records;
 }
 
-const WRITE_FILE_SCRIPT = `
+/**
+ * Writes take the record without `createdAt` and the script completes it: an
+ * update keeps the stored file's own value, so the caller never has to read the
+ * file first just to carry one field across. The record is spliced rather than
+ * decoded and re-encoded, so its content bytes reach Redis exactly as
+ * JSON.stringify wrote them.
+ */
+const WITH_CREATED_AT = `
+local function withCreatedAt(record, createdAt)
+  return string.sub(record, 1, -2) .. ',"createdAt":' .. cjson.encode(createdAt) .. '}'
+end
+`;
+
+// ARGV: path, mode, expected revision, record, fallback createdAt, then the
+// directory ancestors to register.
+const WRITE_FILE_SCRIPT = `${WITH_CREATED_AT}
 local current = redis.call('GET', KEYS[1])
+local createdAt = ARGV[5]
 if ARGV[2] == 'create' then
   if current then return 'path_exists' end
 else
   if not current then return 'not_found' end
   local ok, decoded = pcall(cjson.decode, current)
   if not ok or decoded.rev ~= ARGV[3] then return 'revision_conflict' end
+  if type(decoded.createdAt) == 'string' then createdAt = decoded.createdAt end
 end
-redis.call('SET', KEYS[1], ARGV[4])
+redis.call('SET', KEYS[1], withCreatedAt(ARGV[4], createdAt))
 redis.call('SADD', KEYS[2], ARGV[1])
-for index = 5, #ARGV do redis.call('SADD', KEYS[3], ARGV[index]) end
+for index = 6, #ARGV do redis.call('SADD', KEYS[3], ARGV[index]) end
 redis.call('INCR', KEYS[4])
 return 'ok'
 `;
 
 // Two phases, like MOVE_DIRECTORY_SCRIPT: check every revision before writing
 // any of them, so the script cannot commit a prefix and then discover a
-// conflict. KEYS are the file keys, then VERSION_KEY last. ARGV is three
-// entries per file: expected revision, next revision, record.
-const WRITE_FILES_SCRIPT = `
+// conflict. KEYS are the file keys, then VERSION_KEY last. ARGV is two entries
+// per file — expected revision, record — then the fallback createdAt.
+const WRITE_FILES_SCRIPT = `${WITH_CREATED_AT}
 local fileCount = #KEYS - 1
 local versionKey = KEYS[#KEYS]
+local fallbackCreatedAt = ARGV[#ARGV]
+local createdAt = {}
 
 for index = 1, fileCount do
   local current = redis.call('GET', KEYS[index])
   if not current then return 'not_found' end
   local ok, decoded = pcall(cjson.decode, current)
-  if not ok or decoded.rev ~= ARGV[((index - 1) * 3) + 1] then
+  if not ok or decoded.rev ~= ARGV[((index - 1) * 2) + 1] then
     return 'revision_conflict'
   end
+  createdAt[index] = fallbackCreatedAt
+  if type(decoded.createdAt) == 'string' then createdAt[index] = decoded.createdAt end
 end
 
 for index = 1, fileCount do
-  redis.call('SET', KEYS[index], ARGV[((index - 1) * 3) + 3])
+  redis.call(
+    'SET',
+    KEYS[index],
+    withCreatedAt(ARGV[((index - 1) * 2) + 2], createdAt[index])
+  )
 end
 redis.call('INCR', versionKey)
 return 'ok'
@@ -446,14 +468,12 @@ export function createRedisContentProvider(
     expectedRevision?: string,
   ): Promise<ContentWriteResult> {
     assertSafeRepositoryPath(path);
-    const existing = await readStoredFile(command, path);
     const timestamp = now().toISOString();
     const revision = newRevision();
-    const record: StoredFile = {
+    const record: StoredFileWrite = {
       content,
       enc: encoding,
       rev: revision,
-      createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
     };
     const outcome = await command<string>([
@@ -468,6 +488,7 @@ export function createRedisContentProvider(
       expectedRevision ? 'update' : 'create',
       expectedRevision ?? '',
       JSON.stringify(record),
+      timestamp,
       ...directoryAncestors(parentDirectory(path)),
     ]);
     if (outcome !== 'ok') mutationError(outcome);
@@ -662,34 +683,25 @@ export function createRedisContentProvider(
       if (files.length === 0) return { message, revisions: {} };
       for (const file of files) assertSafeRepositoryPath(file.path);
 
-      const existing = await readStoredFiles(
-        command,
-        files.map((file) => file.path),
-      );
       const timestamp = now().toISOString();
       const revisions: Record<string, string> = {};
       const keys: RedisArgument[] = files.map((file) => fileKey(file.path));
       const arguments_: RedisArgument[] = [];
 
       for (const file of files) {
-        const current = existing.get(file.path);
-        // The script re-checks this against the live value; this only avoids
-        // sending a record we already know is stale.
-        if (!current) throw new ContentNotFoundError();
         const revision = newRevision();
         revisions[file.path] = revision;
         arguments_.push(
           file.revision,
-          revision,
           JSON.stringify({
             content: file.content,
             enc: 'utf8',
             rev: revision,
-            createdAt: current.createdAt,
             updatedAt: timestamp,
-          } satisfies StoredFile),
+          } satisfies StoredFileWrite),
         );
       }
+      arguments_.push(timestamp);
       keys.push(VERSION_KEY);
 
       const outcome = await command<string>([
@@ -730,10 +742,10 @@ export function createRedisContentProvider(
   };
 }
 
-/** `src/content/notes/reading/books.md` -> `reading/books`, either extension. */
+/** `src/content/notes/reading/books.md` -> `reading/books`, any read extension. */
 function noteSourceId(path: string): string {
-  const relative = path.slice(NOTES_SOURCE_DIR.length + 1);
-  for (const extension of NOTE_READ_EXTENSIONS) {
+  const relative = path.slice(NOTES_COLLECTION.sourceDir.length + 1);
+  for (const extension of NOTES_COLLECTION.readExtensions) {
     const suffix = `.${extension}`;
     if (relative.toLowerCase().endsWith(suffix)) {
       return relative.slice(0, -suffix.length);
@@ -747,8 +759,8 @@ export async function readRedisNoteFiles(
 ): Promise<RedisNoteFile[]> {
   const provider = createRedisContentProvider({ command });
   const files = await provider.listFiles(
-    NOTES_SOURCE_DIR,
-    NOTE_READ_EXTENSIONS,
+    NOTES_COLLECTION.sourceDir,
+    NOTES_COLLECTION.readExtensions,
   );
   return files
     .filter((file) => file.encoding === 'utf8')
@@ -788,24 +800,6 @@ export async function readStableContentVersion(
     : null;
 }
 
-function wait(delayMs: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timeout);
-      reject(signal?.reason);
-    };
-    const timeout = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, delayMs);
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
 export async function withRedisContentMutationLock<T>(
   operation: () => Promise<T>,
   options: { command?: RedisCommand; signal?: AbortSignal } = {},
@@ -827,8 +821,8 @@ export async function withRedisContentMutationLock<T>(
     if (acquired === 'OK') break;
     if (Date.now() >= deadline) throw new ContentMutationBusyError();
     attempt += 1;
-    const delay = Math.min(50 * 2 ** Math.min(attempt, 4), 400);
-    await wait(delay + Math.floor(Math.random() * 40), options.signal);
+    const backoff = Math.min(50 * 2 ** Math.min(attempt, 4), 400);
+    await delay(backoff + Math.floor(Math.random() * 40), options.signal);
   }
 
   try {

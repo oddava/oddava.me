@@ -4,7 +4,7 @@ import {
   readRedisNoteFiles,
   readStableContentVersion,
 } from '../server/content';
-import { isStorageUnavailableError } from '../server/core';
+import { delay, isStorageUnavailableError } from '../server/core';
 import { buildGardenIndex } from './build';
 import { GardenBusyError, GardenUnavailableError } from './errors';
 import type { GardenIndex, NoteSource } from './types';
@@ -33,16 +33,15 @@ async function loadNoteSources(): Promise<NoteSource[]> {
 
 let cachedGardenIndex: { version: string; index: GardenIndex } | null = null;
 
-function waitForStableContent(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 100));
-}
+const STABLE_READ_ATTEMPTS = 20;
+const STABLE_READ_RETRY_MS = 100;
 
 export async function getGardenIndex(): Promise<GardenIndex> {
   // The index must be built from one stable snapshot. The mutation
   // lock covers compound Studio operations; checking the version again after
   // the build also catches a write that began between the first check and the
   // file reads. Only plain data is cached globally—never request-bound I/O.
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < STABLE_READ_ATTEMPTS; attempt += 1) {
     let version: string | null;
     try {
       version = await readStableContentVersion();
@@ -52,7 +51,7 @@ export async function getGardenIndex(): Promise<GardenIndex> {
     }
     if (version === null) {
       if (cachedGardenIndex) return cachedGardenIndex.index;
-      await waitForStableContent();
+      await delay(STABLE_READ_RETRY_MS);
       continue;
     }
     if (cachedGardenIndex?.version === version) {
@@ -77,7 +76,7 @@ export async function getGardenIndex(): Promise<GardenIndex> {
       cachedGardenIndex = { version, index };
       return index;
     }
-    await waitForStableContent();
+    await delay(STABLE_READ_RETRY_MS);
   }
 
   if (cachedGardenIndex) return cachedGardenIndex.index;

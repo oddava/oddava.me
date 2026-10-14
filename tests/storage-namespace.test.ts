@@ -8,7 +8,7 @@ import {
   namespaceCommand,
   storageNamespacePrefix,
 } from '../scripts/lib/redis-content.mjs';
-import { firstConfiguredSecret } from '../src/lib/server/secrets';
+import { firstConfiguredSecret } from '../src/lib/server/core/secrets';
 import {
   DIRECTORIES_SET,
   FILES_SET,

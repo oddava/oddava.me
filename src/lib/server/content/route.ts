@@ -6,9 +6,9 @@ import {
 } from '../admin';
 import {
   boundedRequest,
+  delay,
   RequestBodyError,
   ensureSameOrigin,
-  isStorageUnavailableError,
 } from '../core';
 import {
   ContentMutationBusyError,
@@ -17,21 +17,12 @@ import {
   readStableContentVersion,
   withRedisContentMutationLock,
 } from './redis-store';
+import { contentStoreErrorResponse, contentStoreUnavailable } from './http';
 import { dispatchContentRequest } from './router';
 
 const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
-
-function contentStoreUnavailable(message?: string): Response {
-  return adminJson(
-    {
-      error:
-        message ??
-        'Studio storage is not configured. Configure the production Redis credentials and try again.',
-      code: 'content_store_unavailable',
-    },
-    { status: 503 },
-  );
-}
+const STABLE_READ_ATTEMPTS = 30;
+const STABLE_READ_RETRY_MS = 100;
 
 function contentPayloadTooLarge(): Response {
   return adminJson(
@@ -41,24 +32,6 @@ function contentPayloadTooLarge(): Response {
     },
     { status: 413 },
   );
-}
-
-function waitForContentStore(signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timeout);
-      reject(signal.reason);
-    };
-    const timeout = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, 100);
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 async function dispatchRedisRequest(
@@ -85,8 +58,9 @@ async function dispatchRedisRequest(
           break;
         }
       }
-      if (attempt >= 29) throw new ContentMutationBusyError();
-      await waitForContentStore(request.signal);
+      if (attempt >= STABLE_READ_ATTEMPTS - 1)
+        throw new ContentMutationBusyError();
+      await delay(STABLE_READ_RETRY_MS, request.signal);
     }
   }
   return withAdminSecurityHeaders(response);
@@ -112,17 +86,8 @@ async function dispatch(
     ) {
       return contentPayloadTooLarge();
     }
-    if (error instanceof ContentMutationBusyError) {
-      return adminJson(
-        { error: error.message, code: error.code },
-        { status: 503, headers: { 'Retry-After': '1' } },
-      );
-    }
-    if (isStorageUnavailableError(error)) {
-      return contentStoreUnavailable(
-        'Studio could not reach its content store. Try again shortly.',
-      );
-    }
+    const storeError = contentStoreErrorResponse(error);
+    if (storeError) return storeError;
     const requestId = crypto.randomUUID();
     console.error(`[content] request failed (${requestId})`, error);
     return adminJson(

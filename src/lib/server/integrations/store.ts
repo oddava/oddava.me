@@ -1,6 +1,6 @@
 import { hasRedisConfig, redisCommand } from '../core';
-import { getServerEnv } from '../env';
-import { firstConfiguredSecret, isConfiguredSecret } from '../secrets';
+import { getServerEnv } from '../core/env';
+import { firstConfiguredSecret, isConfiguredSecret } from '../core/secrets';
 import type {
   CredentialFieldDefinition,
   CredentialFieldStatus,

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { credentialFingerprint } from '../src/lib/server/core/crypto';
 import {
-  credentialFingerprint,
   firstConfiguredSecret,
   isConfiguredSecret,
   normalizeSecret,
-} from '../src/lib/server/secrets';
+} from '../src/lib/server/core/secrets';
 
 describe('server secret boundaries', () => {
   it('normalizes values and rejects recognizable placeholders', () => {

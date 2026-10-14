@@ -258,6 +258,59 @@ describe('content document primitives', () => {
 });
 
 describe('content HTTP handlers', () => {
+  it('saves a note with one path list, one read and one write', async () => {
+    // Every Studio save holds the global mutation lock, so each provider call
+    // here is a Redis round trip every other writer waits on. The response is
+    // built from what was written, not from reading the file back.
+    const provider = new MemoryContentProvider();
+    const created = await payload<{ entry: { revision: string } }>(
+      await handleContentCollection(
+        provider,
+        'notes',
+        jsonRequest('POST', 'https://oddava.me/api/admin/content/notes', {
+          slug: 'hello',
+          fields: {},
+          body: '# Hello',
+        }),
+      ),
+    );
+
+    const calls: string[] = [];
+    const counted = new Proxy(provider, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver);
+        if (typeof value !== 'function') return value;
+        return (...arguments_: unknown[]) => {
+          calls.push(String(property));
+          return value.apply(target, arguments_);
+        };
+      },
+    });
+
+    const saved = await handleContentEntry(
+      counted,
+      'notes',
+      'hello',
+      jsonRequest('PUT', 'https://oddava.me/api/admin/content/notes/hello', {
+        fields: {},
+        body: '# Hello again',
+        revision: created.entry.revision,
+      }),
+    );
+
+    expect(saved.status).toBe(200);
+    expect(calls).toEqual(['listFilePaths', 'readFile', 'writeTextFile']);
+    const body = await payload<{
+      entry: { body: string; revision: string };
+      result: { revision: string };
+    }>(saved);
+    expect(body.entry.body).toBe('# Hello again');
+    expect(body.entry.revision).toBe(body.result.revision);
+    expect(body.entry.revision).toBe(
+      (await provider.readFile('src/content/notes/hello.md'))?.revision,
+    );
+  });
+
   it('creates, reads, updates with CAS, and deletes notes', async () => {
     const provider = new MemoryContentProvider();
     const created = await handleContentCollection(

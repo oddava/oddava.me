@@ -32,10 +32,54 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
 
     afterAll(async () => {
       const { closeLocalRedisConnection } =
-        await import('../src/lib/server/local-redis');
+        await import('../src/lib/server/core/local-redis');
       await cleanupClient.flushDb();
       await closeLocalRedisConnection();
       await cleanupClient.quit();
+    });
+
+    it('never evicts an approved guestbook entry to make room for a new one', async () => {
+      const {
+        appendGuestbookEntry,
+        clearGuestbookEntries,
+        readGuestbookEntries,
+        updateGuestbookEntryStatus,
+      } = await import('../src/lib/server/guestbook');
+      await clearGuestbookEntries();
+
+      const entry = (id: string, day: number) => ({
+        id,
+        name: 'tester',
+        message: `message ${id}`,
+        createdAt: new Date(2026, 0, day).toISOString(),
+        status: 'pending' as const,
+      });
+
+      for (const id of ['kept-1', 'kept-2', 'kept-3']) {
+        await appendGuestbookEntry(entry(id, 1));
+        await updateGuestbookEntryStatus(id, 'approved');
+      }
+      // A flood of submissions: more than the moderation queue holds.
+      for (let index = 0; index < 120; index += 1) {
+        await appendGuestbookEntry(entry(`flood-${index}`, 2));
+      }
+
+      const entries = await readGuestbookEntries();
+      const approved = entries.filter((item) => item.status === 'approved');
+      const unapproved = entries.filter((item) => item.status !== 'approved');
+
+      expect(approved.map((item) => item.id).toSorted()).toEqual([
+        'kept-1',
+        'kept-2',
+        'kept-3',
+      ]);
+      // The oldest unapproved entries go first; the newest 100 remain.
+      expect(unapproved).toHaveLength(100);
+      expect(unapproved[0]?.id).toBe('flood-119');
+      expect(unapproved.at(-1)?.id).toBe('flood-20');
+
+      await clearGuestbookEntries();
+      expect(await readGuestbookEntries()).toEqual([]);
     });
 
     it('preserves concurrent guestbook appends and updates status atomically', async () => {
@@ -152,6 +196,50 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       });
       expect(versionDuringMutation).toBeNull();
       expect(await readStableContentVersion()).toEqual(expect.any(String));
+    });
+
+    it("keeps a file's createdAt across single and batched updates", async () => {
+      const { createRedisContentProvider } =
+        await import('../src/lib/server/content/redis-store');
+      let clock = Date.parse('2026-03-01T00:00:00.000Z');
+      const provider = createRedisContentProvider({
+        now: () => new Date((clock += 60_000)),
+      });
+      const path = 'src/content/notes/created-at.md';
+      const rawRecord = async () =>
+        JSON.parse((await cleanupClient.get(`dev:content:file:${path}`))!);
+      const tricky = '# t\n\nnaïve 👋 "quoted" \\ back/slash </script>\u0001';
+
+      const created = await provider.writeTextFile(path, '# t', 'create');
+      const original = await rawRecord();
+      expect(original.createdAt).toBe('2026-03-01T00:01:00.000Z');
+
+      const updated = await provider.writeTextFile(
+        path,
+        tricky,
+        'update',
+        created.revision,
+      );
+      expect(await rawRecord()).toEqual({
+        content: tricky,
+        enc: 'utf8',
+        rev: updated.revision,
+        createdAt: original.createdAt,
+        updatedAt: '2026-03-01T00:02:00.000Z',
+      });
+
+      const batched = await provider.writeTextFiles(
+        [{ path, content: `${tricky}!`, revision: updated.revision! }],
+        'batch',
+      );
+      expect(await rawRecord()).toEqual({
+        content: `${tricky}!`,
+        enc: 'utf8',
+        rev: batched.revisions[path],
+        createdAt: original.createdAt,
+        updatedAt: '2026-03-01T00:03:00.000Z',
+      });
+      expect((await provider.readFile(path))?.content).toBe(`${tricky}!`);
     });
 
     it('batches reorder writes as an all-or-nothing compare-and-set', async () => {

@@ -8,7 +8,8 @@ import {
   withAdminSecurityHeaders,
 } from '../../../lib/server/admin';
 import {
-  ContentMutationBusyError,
+  contentStoreErrorResponse,
+  contentStoreUnavailable,
   hasContentStore,
   listSocialCardKeys,
   withRedisContentMutationLock,
@@ -18,23 +19,14 @@ import {
   boundedRequest,
   RequestBodyError,
   ensureSameOrigin,
-  isStorageUnavailableError,
 } from '../../../lib/server/core';
 
 // A 1200x630 PNG of flat colour and text; the cap is generous for that and
 // still an order of magnitude under the Studio upload limit.
 const CARD_MAX_BYTES = 2 * 1024 * 1024;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-
-function contentStoreUnavailable(): Response {
-  return adminJson(
-    {
-      error: 'Studio storage is not configured.',
-      code: 'content_store_unavailable',
-    },
-    { status: 503 },
-  );
-}
+const NOTES_NOT_READY_MESSAGE =
+  'Notes are not available yet. Try again shortly.';
 
 function cardPayloadTooLarge(): Response {
   return adminJson(
@@ -62,7 +54,7 @@ async function listCards(): Promise<Response> {
   if (!hasContentStore()) return contentStoreUnavailable();
 
   const cards = await loadCards();
-  if (!cards) return contentStoreUnavailable();
+  if (!cards) return contentStoreUnavailable(NOTES_NOT_READY_MESSAGE);
   const stored = await listSocialCardKeys();
 
   return adminJson({
@@ -111,7 +103,7 @@ async function storeCard(request: Request): Promise<Response> {
   }
 
   const cards = await loadCards();
-  if (!cards) return contentStoreUnavailable();
+  if (!cards) return contentStoreUnavailable(NOTES_NOT_READY_MESSAGE);
   const card = cards.find((candidate) => candidate.path === path);
   if (!card) {
     return adminJson(
@@ -159,13 +151,8 @@ async function dispatch(context: APIContext): Promise<Response> {
     if (originError) return withAdminSecurityHeaders(originError);
     return await storeCard(request);
   } catch (error) {
-    if (error instanceof ContentMutationBusyError) {
-      return adminJson(
-        { error: error.message, code: error.code },
-        { status: 503, headers: { 'Retry-After': '1' } },
-      );
-    }
-    if (isStorageUnavailableError(error)) return contentStoreUnavailable();
+    const storeError = contentStoreErrorResponse(error);
+    if (storeError) return storeError;
     throw error;
   }
 }

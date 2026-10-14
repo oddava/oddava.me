@@ -5,7 +5,7 @@ import {
   integrationFetchJson,
   parseIntegrationJson,
 } from '../http';
-import { credentialFingerprint } from '../../secrets';
+import { credentialFingerprint } from '../../core/crypto';
 import type {
   IntegrationCredentials,
   IntegrationCheckResult,

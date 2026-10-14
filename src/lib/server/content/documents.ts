@@ -56,9 +56,15 @@ function noteHref(folder: string, id: string): string {
     .join('/')}`;
 }
 
+/** The parts of a stored file an entry is derived from. */
+export type EntrySource = Pick<
+  ContentSourceFile,
+  'path' | 'content' | 'revision'
+>;
+
 function toListItem(
   collection: ContentCollectionDefinition,
-  file: ContentSourceFile,
+  file: EntrySource,
   { fields, body } = parseContentDocument(file.content),
 ): ContentEntryListItem {
   const id = entryIdFromPath(file.path, collection.readExtensions);
@@ -80,7 +86,7 @@ function toListItem(
 
 export function toDetail(
   collection: ContentCollectionDefinition,
-  file: ContentSourceFile,
+  file: EntrySource,
 ): ContentEntryDetail {
   const parsed = parseContentDocument(file.content);
   // Writes validate strictly (see the create/update handlers); reads must not.
@@ -103,18 +109,24 @@ function sortEntries(entries: ContentEntryListItem[]): ContentEntryListItem[] {
   });
 }
 
-export async function readEntries(
-  provider: ContentProvider,
+export function entriesFromFiles(
   collection: ContentCollectionDefinition,
-): Promise<ContentEntryListItem[]> {
-  const files = await provider.listFiles(
-    collection.sourceDir,
-    collection.readExtensions,
-  );
+  files: readonly ContentSourceFile[],
+): ContentEntryListItem[] {
   return sortEntries(
     files
       .filter((file) => file.encoding === 'utf8')
       .map((file) => toListItem(collection, file)),
+  );
+}
+
+export async function readEntries(
+  provider: ContentProvider,
+  collection: ContentCollectionDefinition,
+): Promise<ContentEntryListItem[]> {
+  return entriesFromFiles(
+    collection,
+    await provider.listFiles(collection.sourceDir, collection.readExtensions),
   );
 }
 

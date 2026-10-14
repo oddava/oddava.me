@@ -36,7 +36,7 @@ describe('local Redis transport selection', () => {
     }));
 
     const { executeLocalRedisCommand, closeLocalRedisConnection } =
-      await import('../src/lib/server/local-redis');
+      await import('../src/lib/server/core/local-redis');
     await expect(
       executeLocalRedisCommand(['PING'], 'redis://127.0.0.1:6379'),
     ).resolves.toBe('PONG');
@@ -57,7 +57,7 @@ describe('local Redis transport selection', () => {
       .mockResolvedValue(Response.json({ result: 'PONG' }));
 
     const { executeLocalRedisCommand } =
-      await import('../src/lib/server/local-redis');
+      await import('../src/lib/server/core/local-redis');
     await expect(
       executeLocalRedisCommand(['PING'], 'redis://127.0.0.1:6379'),
     ).resolves.toBe('PONG');
