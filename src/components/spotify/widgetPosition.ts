@@ -33,6 +33,26 @@ export const DEFAULT_WIDGET_POSITION: WidgetPosition = {
   offsetY: 32,
 };
 
+/**
+ * On a phone the homepage nav sits as little as ~43px above the bottom edge
+ * (360x640), so the default 32px inset puts even the compact strip on top of
+ * it. Tucked into the corner, the strip clears the nav on every common size.
+ */
+const SMALL_VIEWPORT_OFFSET = 8;
+
+/** Where the widget sits until the reader drags it somewhere of their own. */
+export function defaultWidgetPosition(
+  isSmallViewport: boolean,
+): WidgetPosition {
+  return isSmallViewport
+    ? {
+        ...DEFAULT_WIDGET_POSITION,
+        offsetX: SMALL_VIEWPORT_OFFSET,
+        offsetY: SMALL_VIEWPORT_OFFSET,
+      }
+    : DEFAULT_WIDGET_POSITION;
+}
+
 const VIEWPORT_PADDING = 16;
 const OFFSCREEN_BUFFER = 60;
 

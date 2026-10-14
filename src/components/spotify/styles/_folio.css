@@ -1,5 +1,6 @@
 /* The listening object is the widget's skin on every page and at every
-   viewport size — phones get the same object as desktop, not a separate card.
+   viewport size — phones get the same object as desktop, not a separate card,
+   condensed into a single-line strip when expanded (see the end of this file).
    `body:has([data-folio], .spotify-widget-positioner)` keeps the exact
    specificity of the original homepage-only `body:has([data-folio])` scope
    (:has() takes its most specific argument; both are 0,1,0), so the skin keeps
@@ -259,6 +260,102 @@ body:has([data-folio], .spotify-widget-positioner) .action-btn:focus-visible {
 @media (hover: none) {
   body:has([data-folio], .spotify-widget-positioner) .spotify-widget-info {
     padding-right: 22px;
+  }
+}
+
+/* Phones: the expanded card becomes a 34px strip. The full card is ~70px tall,
+   and the homepage nav leaves as little as 43px below it (360x640), so the card
+   sat on top of the nav links. Same object, condensed: the orbit still draws
+   progress round the cover, so the time readout goes, and title and artist
+   share one line. Matches MOBILE_MINIMIZE_QUERY in minimizedState.ts. */
+@media (max-width: 640px) {
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-container {
+    gap: 10px;
+    min-height: 0;
+    padding: 4px 12px 4px 7px;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-album {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* 38px wide puts the ring's centre on the cover's (7px pad + 12px radius). */
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-folio-orbit {
+    width: 38px;
+    height: 38px;
+  }
+
+  /* The echo arcs reach past a 34px-tall strip and would be clipped. */
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-folio-orbit__echo {
+    display: none;
+  }
+
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-info {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0;
+    min-width: 0;
+    max-width: min(260px, calc(100vw - 96px));
+  }
+
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-title {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+
+  /* The artist gives way first, but keeps a few characters of itself. */
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-artist {
+    flex: 0 4 auto;
+    min-width: 10ch;
+    font-size: 0.65rem;
+  }
+
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-artist::before {
+    content: '·';
+    margin: 0 6px;
+    opacity: 0.6;
+  }
+
+  /* The progress bar stays (visually hidden) for assistive tech. */
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-progress-container {
+    flex: none;
+    width: 0;
+    margin: 0;
+  }
+
+  body:has([data-folio], .spotify-widget-positioner)
+    .spotify-widget-full-view
+    .spotify-widget-time {
+    display: none;
+  }
+
+  body:has([data-folio], .spotify-widget-positioner) .spotify-widget-controls {
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
   }
 }
 

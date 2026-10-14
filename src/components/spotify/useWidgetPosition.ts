@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedPointerEvent } from 'preact';
+import { MOBILE_MINIMIZE_QUERY } from './minimizedState';
 import {
   calculateDraggedWidgetPosition,
   clampWidgetPosition,
-  DEFAULT_WIDGET_POSITION,
+  defaultWidgetPosition,
   isWidgetPosition,
   POSITION_STORAGE_KEY,
 } from './widgetPosition';
@@ -15,6 +16,17 @@ interface UseWidgetPositionOptions {
 
 const CLICK_MOVEMENT_THRESHOLD = 10;
 const CLICK_SUPPRESSION_MS = 300;
+
+function currentDefaultPosition() {
+  // client:only, so window exists; matchMedia can still throw in odd embeds.
+  try {
+    return defaultWidgetPosition(
+      window.matchMedia(MOBILE_MINIMIZE_QUERY).matches,
+    );
+  } catch {
+    return defaultWidgetPosition(false);
+  }
+}
 
 function suppressClicks(preventClickRef: { current: boolean }) {
   preventClickRef.current = true;
@@ -28,7 +40,7 @@ export function useWidgetPosition({
   onExpandFromDrag,
 }: UseWidgetPositionOptions) {
   const widgetRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(DEFAULT_WIDGET_POSITION);
+  const [position, setPosition] = useState(currentDefaultPosition);
   const [isDragging, setIsDragging] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const initialPointerRef = useRef({ x: 0, y: 0 });
@@ -211,7 +223,7 @@ export function useWidgetPosition({
   }, []);
 
   const resetPosition = useCallback(() => {
-    const next = clampWidgetPosition(DEFAULT_WIDGET_POSITION, {
+    const next = clampWidgetPosition(currentDefaultPosition(), {
       width: window.innerWidth,
       height: window.innerHeight,
     });
