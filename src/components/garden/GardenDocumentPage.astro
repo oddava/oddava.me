@@ -65,11 +65,14 @@ const neighbourCount = noteNeighbourIds(document, index).length;
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
       <RelatedNotes document={document} index={index} />
       {
-        /* Narrow screens hide the graph; this card stands in for it, and
-           holds the folder explorer beside it as one object. On the wide
-           rail the wrapper dissolves and only the explorer shows. */
+        /* Narrow screens end the note with one card, reading outward: this
+           note's contents, what it links to (standing in for the hidden
+           graph), then every note by folder. The wide rail has its own
+           contents and the live graph, so there only the folder browser
+           shows, as a plain rail section. */
       }
       <div class="note-wayfinder">
+        <NoteTableOfContents headings={tocHeadings} variant="mobile" />
         <a
           class="note-wayfinder__row note-context__graph-link"
           data-page-preview-ignore
@@ -122,7 +125,6 @@ const neighbourCount = noteNeighbourIds(document, index).length;
         />
       )
     }
-    <NoteTableOfContents headings={tocHeadings} variant="mobile" />
     {
       bodyHtml && (
         <div

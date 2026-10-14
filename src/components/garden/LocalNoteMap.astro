@@ -38,14 +38,10 @@ const crumbs = compactTrail(trail);
       class="note-explorer__summary note-wayfinder__row"
       title="Browse notes by folder"
     >
-      {/* The rail's compact button. */}
-      <span class="note-explorer__heading">
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M2.5 5h6l2 2h7v9h-15Z M2.5 5V3.5h6l2 2"></path>
-        </svg>
-        Folders
-      </span>
-      {/* The narrow-screen footer row: where you are, and the tree on tap. */}
+      {
+        /* Where you are, and the tree on tap — the same row in the rail and
+          in the narrow-screen footer. */
+      }
       <svg class="note-wayfinder__icon" viewBox="0 0 20 20" aria-hidden="true">
         <path
           d="M3 6.25C3 5.28 3.78 4.5 4.75 4.5h3.1l1.9 2h5.5c.97 0 1.75.78 1.75 1.75v6c0 .97-.78 1.75-1.75 1.75H4.75C3.78 16 3 15.22 3 14.25Z"
