@@ -12,6 +12,7 @@ import NoteTableOfContents from './NoteTableOfContents.astro';
 import RelatedNotes from './RelatedNotes.astro';
 import InteractiveGraph from './InteractiveGraph';
 import { deriveNoteGraph } from '@lib/garden/graph';
+import { describeConnections, noteNeighbourIds } from '@lib/garden/wayfinder';
 import '../../styles/components/_note-prose.css';
 import NotePageIcon from '../NotePageIcon';
 
@@ -41,6 +42,8 @@ if (bodyProvidesTitleHeading(document.body)) {
   }
 }
 const isStub = !rendered.html && document.childIds.length === 0;
+
+const neighbourCount = noteNeighbourIds(document, index).length;
 ---
 
 <div class="garden-document-layout">
@@ -59,22 +62,55 @@ const isStub = !rendered.html && document.childIds.length === 0;
           currentId={document.id}
         />
       </div>
-      <a
-        class="note-context__graph-link"
-        data-page-preview-ignore
-        href={`/notes/graph#place=${encodeURIComponent(document.id)}`}
-      >
-        Explore connections <span aria-hidden="true">↗</span>
-      </a>
       <NoteTableOfContents headings={tocHeadings} variant="rail" />
       <RelatedNotes document={document} index={index} />
       {
-        /* Keep the explorer in the existing rail. Its anchor also serves the
-           landscape's nearby link; linked notes retain inbound navigation. */
-        hasLocalMap(document, index) && (
-          <LocalNoteMap document={document} index={index} />
-        )
+        /* Narrow screens end the note with one card, reading outward: this
+           note's contents, what it links to (standing in for the hidden
+           graph), then every note by folder. The wide rail has its own
+           contents and the live graph, so there only the folder browser
+           shows, as a plain rail section. */
       }
+      <div class="note-wayfinder">
+        <NoteTableOfContents headings={tocHeadings} variant="mobile" />
+        <a
+          class="note-wayfinder__row note-context__graph-link"
+          data-page-preview-ignore
+          href={`/notes/graph#place=${encodeURIComponent(document.id)}`}
+        >
+          <svg
+            class="note-wayfinder__icon"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+          >
+            <path d="M6 12.3 8.7 7.2M11.6 7l2.5 3.5M7.5 14.3l5.5-1"></path>
+            <circle cx="4.75" cy="14.75" r="2.25"></circle>
+            <circle cx="10" cy="4.75" r="2.25"></circle>
+            <circle cx="15.75" cy="12.75" r="2.25"></circle>
+          </svg>
+          <span class="note-wayfinder__text">
+            <span class="note-wayfinder__title">Connections</span>
+            <span class="note-wayfinder__meta">
+              {describeConnections(neighbourCount)}
+            </span>
+          </span>
+          <svg
+            class="note-wayfinder__affordance"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+          >
+            <path d="M5.5 10.5 10.5 5.5M6.5 5.5h4v4"></path>
+          </svg>
+        </a>
+        {
+          /* Keep the explorer in the existing rail. Its anchor also serves
+             the landscape's nearby link; linked notes retain inbound
+             navigation. */
+          hasLocalMap(document, index) && (
+            <LocalNoteMap document={document} index={index} />
+          )
+        }
+      </div>
     </div>
   </aside>
 
@@ -89,7 +125,6 @@ const isStub = !rendered.html && document.childIds.length === 0;
         />
       )
     }
-    <NoteTableOfContents headings={tocHeadings} variant="mobile" />
     {
       bodyHtml && (
         <div

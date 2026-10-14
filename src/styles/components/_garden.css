@@ -215,14 +215,12 @@
   font-size: 0.95rem;
 }
 
-/* The authored h1 is split from the rest of the rendered body so the compact
-   TOC can sit between title and prose without changing either one's markup. */
-.garden-document__body--continuation > h2:first-child {
-  margin-top: 2.8em;
-}
-
-.garden-document__body--continuation > h3:first-child {
-  margin-top: 2em;
+/* The authored h1 is rendered apart from the rest of the body, which makes
+   the body's first heading a :first-child — and `.prose > :first-child`
+   would zero its margin. Give back exactly the spacing it has in one
+   unbroken prose flow, so the split is invisible. */
+.garden-document__body--continuation > :is(h2, h3):first-child {
+  margin-top: 1.6em;
 }
 
 .garden-document__body--continuation > h4:first-child {
@@ -304,10 +302,9 @@
 
 .note-context {
   min-width: 0;
-  margin-top: clamp(2.5rem, 7vw, 4rem);
-  padding: clamp(1.25rem, 4vw, 1.75rem) 0 0;
+  margin-top: clamp(2.25rem, 7vw, 3rem);
+  padding: 0;
   border: 0;
-  border-top: 1px solid var(--color-rule);
   border-radius: 0;
   background: none;
 }
@@ -334,9 +331,8 @@
   border-top: 1px solid var(--color-rule);
 }
 
-/* One label voice for every section, in the rail and in the mobile card. */
-.note-context__label,
-.note-toc__summary {
+/* One label voice for every rail section. */
+.note-context__label {
   margin: 0 0 0.7rem;
   color: var(--color-text-secondary);
   font: 500 0.7rem var(--font-mono);
@@ -397,22 +393,6 @@
     padding-top: 0;
     border-top: 0;
   }
-}
-
-.note-toc--mobile {
-  margin: 1.25rem 0 1.75rem;
-  padding: 0.8rem 0;
-  border-top: 1px solid var(--color-rule);
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.note-toc__summary {
-  margin: 0;
-  cursor: pointer;
-}
-
-.note-toc--mobile[open] .note-toc__summary {
-  margin-bottom: 0.65rem;
 }
 
 /* Dividers separate sections, so the first one must not carry a leading rule.
@@ -569,10 +549,12 @@
 
 /* Islands render through display:contents; give the graph/outline boundary an
    explicit divider rather than relying on element-sibling adjacency. */
+/* The graph rules itself off along its bottom edge; a second rule on the
+   contents below it would double the line with a gap between. */
 .note-context__inner:has(.interactive-graph) > .note-toc--rail {
-  margin-top: 1.4rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--color-rule);
+  margin-top: 0.5rem;
+  padding-top: 0;
+  border-top: 0;
 }
 @media (min-width: 78rem) {
   .note-context:has(.interactive-graph) {
@@ -586,22 +568,6 @@
   }
 }
 
-/* Narrow layouts keep reading first; the full graph is one deliberate tap away. */
-.note-context__graph-link {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: var(--space-half);
-  min-height: 44px;
-  color: var(--color-text-interactive);
-  font: 500 var(--text-xs) var(--font-mono);
-  text-decoration: none;
-}
-.note-context__graph-link:hover {
-  color: var(--color-text-interactive-hover);
-  text-decoration: underline;
-  text-underline-offset: 0.25em;
-}
 @media (width < 78rem) {
   .note-context__graph {
     display: none;
@@ -622,4 +588,380 @@
   padding-top: 0;
   border-top: 0;
   flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Wayfinder cards.
+
+   One card language for getting around a note: the contents at its top on
+   narrow screens, the footer at its end (connections, and the path down to
+   the note), and the folder browser in the wide rail. They share the music
+   player's material (16px radius, hairline, translucent raised ground), and
+   their icons are drawn exactly like the header's search icon — 20-unit
+   grid, 1.35 stroke, muted ink — so nothing in them is a one-off.
+
+   Every row is one grid — icon, words, affordance — so icons, text, the inset
+   rule between rows, and the rows that open inside a card all share the same
+   two vertical lines.
+   --------------------------------------------------------------------------- */
+
+.note-wayfinder {
+  --wayfinder-pad: 1rem;
+  --wayfinder-icon: 1.25rem;
+  --wayfinder-gap: 0.875rem;
+  /* Where the words start; opened lists and the inset rule align to it. */
+  --wayfinder-text: calc(
+    var(--wayfinder-pad) + var(--wayfinder-icon) + var(--wayfinder-gap)
+  );
+}
+
+.note-wayfinder__row,
+.note-explorer__summary.note-wayfinder__row {
+  display: grid;
+  grid-template-columns: var(--wayfinder-icon) minmax(0, 1fr) 1rem;
+  align-items: center;
+  column-gap: var(--wayfinder-gap);
+  width: 100%;
+  min-height: 3.875rem;
+  margin: 0;
+  position: relative;
+  padding: 0.75rem var(--wayfinder-pad);
+  border-radius: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  text-decoration: none;
+  list-style: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+summary.note-wayfinder__row::-webkit-details-marker {
+  display: none;
+}
+
+/* Hover tints only where hover is real; a tapped row on a phone would
+   otherwise keep its tint after the finger lifts. */
+@media (hover: hover) {
+  .note-wayfinder__row:hover,
+  .note-explorer__summary.note-wayfinder__row:hover {
+    color: var(--color-text-secondary);
+    background: color-mix(in srgb, var(--color-overlay-soft) 60%, transparent);
+  }
+}
+
+.note-wayfinder__row:active,
+.note-explorer__summary.note-wayfinder__row:active {
+  background: var(--color-overlay-soft);
+}
+
+.note-wayfinder__row:focus-visible,
+.note-explorer__summary.note-wayfinder__row:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Open, the row stays a row: what opened below it is the change. */
+details[open] > summary.note-wayfinder__row {
+  background: none;
+}
+
+/* Icons and affordances take the row's colour, so a hover lifts the whole
+   row at once instead of each part on its own schedule. */
+.note-wayfinder__icon,
+.note-wayfinder__affordance {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.note-wayfinder__icon {
+  width: var(--wayfinder-icon);
+  height: var(--wayfinder-icon);
+  stroke-width: 1.35;
+}
+
+.note-wayfinder__affordance {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 1.35;
+  opacity: 0.7;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+details[open] > summary > .note-wayfinder__chevron {
+  transform: rotate(90deg);
+}
+
+/* --- Text --- */
+
+.note-wayfinder__text {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.note-wayfinder__title {
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.note-wayfinder__meta {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font: 0.6875rem / 1.45 var(--font-mono);
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The path reads as a breadcrumb: quiet folders, the page itself in ink.
+   A flex row, so markup whitespace never widens it and only the page's own
+   title gives way when the line runs out. */
+.note-wayfinder__trail {
+  display: flex;
+  min-width: 0;
+}
+
+.note-wayfinder__crumb {
+  flex: none;
+}
+
+.note-wayfinder__crumb + .note-wayfinder__crumb::before {
+  content: '/';
+  margin-inline: 0.45em;
+  opacity: 0.45;
+}
+
+.note-wayfinder__crumb--gap {
+  opacity: 0.7;
+}
+
+.note-wayfinder__here {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+}
+
+/* --- Contents: the list opens inside the card, aligned to the words --- */
+
+.note-wayfinder .note-toc__list {
+  gap: 0;
+  padding: 0.35rem 0 0.5rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-wayfinder .note-toc__item--depth-3,
+.note-wayfinder .note-toc__item--depth-4 {
+  padding-left: 0;
+}
+
+.note-wayfinder .note-toc__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.5rem var(--wayfinder-pad) 0.5rem var(--wayfinder-text);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.note-wayfinder .note-toc__item--depth-3 .note-toc__link {
+  padding-left: calc(var(--wayfinder-text) + 0.9rem);
+  font-size: 0.85rem;
+}
+
+.note-wayfinder .note-toc__item--depth-4 .note-toc__link {
+  padding-left: calc(var(--wayfinder-text) + 1.8rem);
+  font-size: 0.85rem;
+}
+
+@media (hover: hover) {
+  .note-wayfinder .note-toc__link:hover {
+    color: var(--color-text-primary);
+    background: color-mix(in srgb, var(--color-overlay-soft) 60%, transparent);
+  }
+}
+
+.note-wayfinder .note-toc__link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* The section being read gets a short mark in the icon column. */
+.note-wayfinder .note-toc__link[aria-current='location'] {
+  color: var(--color-text-primary);
+}
+
+.note-wayfinder .note-toc__link[aria-current='location']::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(var(--wayfinder-pad) + var(--wayfinder-icon) / 2 - 1px);
+  width: 2px;
+  height: 1.1em;
+  border-radius: 1px;
+  background: var(--color-brand);
+  translate: 0 -50%;
+}
+
+/* --- Folders: the tree opens inside the card --- */
+
+.note-context .note-wayfinder .note-explorer {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+}
+
+.note-wayfinder .note-explorer__scroll {
+  margin: 0;
+  padding: 0.4rem 0.55rem 0.7rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-wayfinder .note-explorer__references {
+  margin: 0.5rem 0.4rem 0;
+}
+
+/* --- Placement --- */
+
+@media (width < 78rem) {
+  .note-wayfinder {
+    overflow: hidden;
+    border: 1px solid
+      color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+    border-radius: 16px;
+    background: color-mix(
+      in srgb,
+      var(--color-surface-raised) 52%,
+      transparent
+    );
+  }
+
+  /* Only Related can sit above the footer card here: the graph and the
+     rail's contents are hidden at this width, so they must not space it. */
+  .note-links + .note-wayfinder {
+    margin-top: 2.25rem;
+  }
+
+  /* Rows after the first share one inset hairline, starting where the
+     words start. Sibling-of-a-row rather than :first-child, because the
+     contents brings a <script> along that may sit first. */
+  .note-wayfinder > .note-toc ~ .note-wayfinder__row::before,
+  .note-wayfinder
+    > :is(.note-toc, .note-wayfinder__row)
+    ~ .note-explorer
+    summary.note-wayfinder__row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--wayfinder-text);
+    height: 1px;
+    background: var(--color-rule);
+  }
+}
+
+/* The wide rail already has its own contents and the live graph; what is
+   left is the folder browser, and there it is a rail section like the
+   others — a mono label, the path beneath in rail type, a chevron — not a
+   card set into a column of plain sections. */
+@media (width >= 78rem) {
+  .note-context .note-wayfinder {
+    flex-shrink: 0;
+  }
+
+  .note-wayfinder .note-context__graph-link {
+    display: none;
+  }
+
+  /* Ruled off like any rail section; the graph and the contents already
+     draw a rule along their own bottom edges. */
+  .note-links + .note-wayfinder {
+    margin-top: 1.4rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-rule);
+  }
+
+  /* Hover lifts the words, as the rail's other links do — no tinted box,
+     which the rail's clipped edge would cut short anyway. */
+  .note-explorer__summary.note-wayfinder__row,
+  .note-explorer__summary.note-wayfinder__row:is(:hover, :active) {
+    grid-template-columns: minmax(0, 1fr) 1rem;
+    align-items: start;
+    min-height: 0;
+    padding: 0.25rem 0;
+    background: none;
+  }
+
+  .note-explorer__summary.note-wayfinder__row:is(:hover, :focus-visible)
+    :is(.note-wayfinder__title, .note-wayfinder__affordance) {
+    color: var(--color-text-primary);
+    opacity: 1;
+  }
+
+  .note-explorer__summary.note-wayfinder__row:is(:hover, :focus-visible)
+    .note-wayfinder__meta {
+    color: var(--color-text-secondary);
+  }
+
+  .note-explorer__summary.note-wayfinder__row:focus-visible {
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+  }
+
+  .note-explorer__summary .note-wayfinder__icon {
+    display: none;
+  }
+
+  .note-explorer__summary .note-wayfinder__text {
+    gap: 0.55rem;
+  }
+
+  .note-explorer__summary .note-wayfinder__title {
+    color: var(--color-text-secondary);
+    font: 500 0.7rem var(--font-mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .note-explorer__summary .note-wayfinder__meta {
+    color: var(--color-text-muted);
+    font: 0.8125rem / 1.45 var(--font-body);
+    letter-spacing: 0;
+  }
+
+  .note-explorer__summary .note-wayfinder__affordance {
+    margin-top: -0.1rem;
+  }
+
+  .note-wayfinder .note-explorer__scroll {
+    margin-top: 0.35rem;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .note-wayfinder .note-explorer__references {
+    margin: 0.8rem 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-wayfinder__affordance {
+    transition: none;
+  }
 }

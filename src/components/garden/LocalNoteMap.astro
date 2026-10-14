@@ -2,6 +2,7 @@
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { deriveLocalMap } from '@lib/garden/local-map';
 import { NOTES_GRAPH_PATH } from '@lib/site-routes';
+import { compactTrail, folderTrail } from '@lib/garden/wayfinder';
 import NoteExplorerNode from './NoteExplorerNode.astro';
 import '../../styles/components/_local-map.css';
 
@@ -22,6 +23,9 @@ const hiddenReferences = map
   ? map.totals.outbound + map.totals.backlinks - map.references.length
   : 0;
 const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.id)}`;
+const trail = folderTrail(document, index);
+const isRoot = trail.length === 0;
+const crumbs = compactTrail(trail);
 ---
 
 <nav
@@ -30,13 +34,54 @@ const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.i
   aria-label="Notes explorer"
 >
   <details class="note-explorer__browser">
-    <summary class="note-explorer__summary" title="Browse notes by folder">
-      <span class="note-explorer__heading">
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M2.5 5h6l2 2h7v9h-15Z M2.5 5V3.5h6l2 2"></path>
-        </svg>
-        Folders
+    <summary
+      class="note-explorer__summary note-wayfinder__row"
+      title="Browse notes by folder"
+    >
+      {
+        /* Where you are, and the tree on tap — the same row in the rail and
+          in the narrow-screen footer. */
+      }
+      <svg class="note-wayfinder__icon" viewBox="0 0 20 20" aria-hidden="true">
+        <path
+          d="M3 6.25C3 5.28 3.78 4.5 4.75 4.5h3.1l1.9 2h5.5c.97 0 1.75.78 1.75 1.75v6c0 .97-.78 1.75-1.75 1.75H4.75C3.78 16 3 15.22 3 14.25Z"
+        ></path>
+      </svg>
+      <span class="note-wayfinder__text">
+        <span class="note-wayfinder__title">Browse notes</span>
+        {
+          isRoot ? (
+            <span class="note-wayfinder__meta">
+              {index.documents.length} notes
+            </span>
+          ) : (
+            <span class="note-wayfinder__meta note-wayfinder__trail">
+              {/* set:text, not children: no markup whitespace may reach the
+                  breadcrumb, or it would widen the gaps around each "/". */}
+              {crumbs.map((title) => (
+                <span
+                  class:list={[
+                    'note-wayfinder__crumb',
+                    title === '…' && 'note-wayfinder__crumb--gap',
+                  ]}
+                  set:text={title}
+                />
+              ))}
+              <span
+                class="note-wayfinder__crumb note-wayfinder__here"
+                set:text={document.title}
+              />
+            </span>
+          )
+        }
       </span>
+      <svg
+        class="note-wayfinder__affordance note-wayfinder__chevron"
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+      >
+        <path d="m6.5 4.5 3.5 3.5-3.5 3.5"></path>
+      </svg>
     </summary>
     <div class="note-explorer__scroll">
       <ul class="note-explorer__root" role="list">
