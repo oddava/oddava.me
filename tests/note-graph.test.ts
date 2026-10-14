@@ -86,4 +86,30 @@ describe('note graph', () => {
     expect(data.edges[0].source).toBe('0');
     expect('x' in data.nodes[0]).toBe(false);
   });
+  it('warms up to rest within its budget, and hands a large graph back still cooling', () => {
+    const graph = (count: number, budget?: number) =>
+      createGraphSimulation(
+        {
+          nodes: Array.from({ length: count }, (_, i) => ({
+            id: `${i}`,
+            title: `${i}`,
+            href: `/notes/${i}`,
+            incoming: 0,
+          })),
+          edges: Array.from({ length: count - 1 }, (_, i) => ({
+            source: `${Math.floor(i / 3)}`,
+            target: `${i + 1}`,
+          })),
+        },
+        undefined,
+        budget,
+      ).simulation;
+    const small = graph(12);
+    expect(small.alpha()).toBeLessThan(small.alphaMin());
+    const started = performance.now();
+    const large = graph(1500, 5);
+    // One tick may overrun the budget; the warm-up never runs on past it.
+    expect(performance.now() - started).toBeLessThan(250);
+    expect(large.alpha()).toBeGreaterThanOrEqual(large.alphaMin());
+  });
 });

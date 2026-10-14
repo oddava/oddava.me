@@ -4,17 +4,29 @@ type Point = { x: number; y: number; radius: number };
 type Edge = { from: { x: number; y: number }; to: { x: number; y: number } };
 declare global {
   interface Window {
-    graphProbe: { points: Point[]; edges: Edge[]; draws: number };
+    graphProbe: {
+      points: Point[];
+      edges: Edge[];
+      draws: number;
+      /** The last frame each canvas drew, kept apart from the shared probe. */
+      byCanvas: WeakMap<HTMLCanvasElement, Point[]>;
+    };
   }
 }
 async function setup(page: Page, suffix = '') {
   await page.addInitScript(() => {
-    window.graphProbe = { points: [], edges: [], draws: 0 };
+    window.graphProbe = {
+      points: [],
+      edges: [],
+      draws: 0,
+      byCanvas: new WeakMap(),
+    };
     const clear = CanvasRenderingContext2D.prototype.clearRect;
     CanvasRenderingContext2D.prototype.clearRect = function (...args) {
       window.graphProbe.points = [];
       window.graphProbe.edges = [];
       window.graphProbe.draws++;
+      window.graphProbe.byCanvas.set(this.canvas, []);
       return clear.apply(this, args);
     };
     const endpoints = new WeakMap<
@@ -34,11 +46,9 @@ async function setup(page: Page, suffix = '') {
     };
     const arc = CanvasRenderingContext2D.prototype.arc;
     CanvasRenderingContext2D.prototype.arc = function (...args) {
-      window.graphProbe.points.push({
-        x: args[0],
-        y: args[1],
-        radius: args[2],
-      });
+      const point = { x: args[0], y: args[1], radius: args[2] };
+      window.graphProbe.points.push(point);
+      window.graphProbe.byCanvas.get(this.canvas)?.push(point);
       return arc.apply(this, args);
     };
   });
@@ -366,109 +376,78 @@ test('modal keeps the mini graph and the entire sidebar in place throughout the 
   await expect(viewport).toHaveCSS('border-color', border);
 });
 
+async function pausedClock(page: Page, suffix = '') {
+  await page.clock.install();
+  await setup(page, suffix);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  await page.clock.pauseAt(
+    new Date(await page.evaluate(() => Date.now() + 1000)),
+  );
+  // Let the sidebar's arrival nudge cool, so any later motion is the modal's.
+  await page.clock.runFor(3000);
+}
+/** One position per node; the current note's open centre is a second arc. */
+function nodes(page: Page) {
+  return page.evaluate(() =>
+    window.graphProbe.points.filter(
+      (point, i, points) =>
+        !points
+          .slice(0, i)
+          .some((other) => other.x === point.x && other.y === point.y),
+    ),
+  );
+}
+// The surface fades on the document timeline, which the fake clock does not drive.
+const surfaceSettled = (page: Page) =>
+  page.waitForFunction(() => document.getAnimations().length === 0);
+
 for (const mode of ['expanded', 'global'] as const) {
-  test(`${mode} graph shares exact geometry and a continuous surface in both directions`, async ({
+  test(`${mode} graph fades in at full size and fades out with nothing moving underneath`, async ({
     page,
   }) => {
-    await page.clock.install();
-    await setup(page, '?global=1');
-    await page.clock.pauseAt(
-      new Date(await page.evaluate(() => Date.now() + 1000)),
-    );
-    const state = await page.evaluateHandle((mode) => {
-      const opener = document.querySelector<HTMLButtonElement>(
-        `[aria-label="${mode === 'expanded' ? 'Expand graph' : 'Open global graph'}"]`,
-      )!;
-      const slot = document.querySelector<HTMLElement>(
-        '.interactive-graph__slot',
-      )!;
-      const home = slot.getBoundingClientRect();
-      opener.click();
+    await pausedClock(page, '?global=1');
+    // The sidebar's own canvas: the global graph draws on a canvas of its own.
+    const sidebar = () =>
+      page
+        .locator('canvas[role=group]')
+        .first()
+        .evaluate((canvas: HTMLCanvasElement) =>
+          window.graphProbe.byCanvas
+            .get(canvas)!
+            .reduce((a, b) => (a.radius > b.radius ? a : b)),
+        );
+    const mini = await sidebar();
+    const opened = await page.evaluate((mode) => {
+      document
+        .querySelector<HTMLButtonElement>(
+          `[aria-label="${mode === 'expanded' ? 'Expand graph' : 'Open global graph'}"]`,
+        )!
+        .click();
       const panel = document.querySelector<HTMLDialogElement>('dialog:modal')!;
       return {
-        panel,
-        slot,
-        home,
-        canvas: panel.querySelector('canvas[role="group"]')!,
-        start: panel.getBoundingClientRect(),
+        opacity: Number(getComputedStyle(panel).opacity),
+        // Layout size, which the entrance scale does not affect.
+        width: panel.offsetWidth,
+        height: panel.offsetHeight,
       };
     }, mode);
-    expect(
-      await state.evaluate(({ home, start }) =>
-        Math.max(
-          ...(['x', 'y', 'width', 'height'] as const).map((key) =>
-            Math.abs(home[key] - start[key]),
-          ),
-        ),
-      ),
-    ).toBeLessThan(1);
-    expect(await page.locator('.interactive-graph__transition').count()).toBe(
-      1,
-    );
-    await page.clock.runFor(350);
-    const fullWidth = await state.evaluate(
-      ({ panel }) => panel.getBoundingClientRect().width,
-    );
-    const surface = await state.evaluateHandle(({ panel }, mode) => {
-      panel
-        .querySelector<HTMLButtonElement>(`[aria-label="Close ${mode} graph"]`)!
-        .click();
-      return panel.querySelector<HTMLCanvasElement>(
-        '.interactive-graph__transition',
-      )!;
-    }, mode);
-    const samples: {
-      width: number;
-      homeWidth: number;
-      error: number;
-      visible: boolean;
-      surface: boolean;
-    }[] = [];
-    for (let elapsed = 0; elapsed <= 352; elapsed += 16) {
-      if (!(await page.locator('[data-morphing]').count())) break;
-      samples.push(
-        await state.evaluate(({ panel, slot }, surface) => {
-          const box = panel.getBoundingClientRect(),
-            home = slot.getBoundingClientRect();
-          return {
-            width: box.width,
-            homeWidth: home.width,
-            error: Math.max(
-              ...(['x', 'y', 'width', 'height'] as const).map((key) =>
-                Math.abs(box[key] - home[key]),
-              ),
-            ),
-            visible: getComputedStyle(panel).opacity === '1',
-            surface:
-              panel.querySelector('.interactive-graph__transition') ===
-                surface && surface.width > 0,
-          };
-        }, surface),
-      );
-      await page.clock.runFor(16);
-    }
-    expect(samples.length).toBeGreaterThan(2);
-    expect(samples.every((sample) => sample.surface && sample.visible)).toBe(
-      true,
-    );
-    expect(samples.at(-1)!.error).toBeLessThan(1);
-    expect(
-      samples.some(
-        (sample) =>
-          sample.width > sample.homeWidth + 10 && sample.width < fullWidth - 10,
-      ),
-    ).toBe(true);
-    expect(
-      await state.evaluate(
-        ({ panel, canvas }) =>
-          canvas === panel.querySelector('canvas[role="group"]'),
-      ),
-    ).toBe(true);
-    expect(
-      await page
-        .locator('[data-morphing], .interactive-graph__transition')
-        .count(),
-    ).toBe(0);
+    expect(opened.opacity).toBeLessThan(0.2);
+    await page.clock.runFor(900);
+    await surfaceSettled(page);
+    const landed = await page.locator('dialog:modal').evaluate((panel) => ({
+      opacity: getComputedStyle(panel).opacity,
+      width: (panel as HTMLElement).offsetWidth,
+      height: (panel as HTMLElement).offsetHeight,
+    }));
+    // The surface never resizes: it opens at its destination size.
+    expect(landed).toEqual({ ...opened, opacity: '1' });
+    await page
+      .getByRole('button', {
+        name:
+          mode === 'expanded' ? 'Close expanded graph' : 'Close global graph',
+        exact: true,
+      })
+      .click();
     await expect(page.locator('dialog:modal')).toHaveCount(0);
     await expect(
       page.getByRole('button', {
@@ -476,32 +455,32 @@ for (const mode of ['expanded', 'global'] as const) {
         exact: true,
       }),
     ).toBeFocused();
+    await page.clock.runFor(32);
+    // The sidebar comes back exactly where it was, and stays there: no jiggle.
+    const returned = await sidebar();
+    expect(Math.hypot(returned.x - mini.x, returned.y - mini.y)).toBeLessThan(
+      1,
+    );
+    await page.clock.runFor(400);
+    const later = await sidebar();
+    expect(Math.hypot(later.x - returned.x, later.y - returned.y)).toBeLessThan(
+      0.02,
+    );
   });
 }
 
-for (const mode of ['expanded', 'global'] as const) {
-  test(`${mode} graph hands control back within 350ms while subtle settling remains nonblocking`, async ({
-    page,
-  }) => {
-    await page.clock.install();
-    await setup(page, '?global=1');
-    await page.clock.pauseAt(
-      new Date(await page.evaluate(() => Date.now() + 1000)),
-    );
-    await page.evaluate((mode) => {
-      document
-        .querySelector<HTMLButtonElement>(
-          `[aria-label="${mode === 'expanded' ? 'Expand graph' : 'Open global graph'}"]`,
-        )!
-        .click();
-    }, mode);
-    await page.clock.runFor(350);
-    expect(await page.locator('.interactive-graph__transition').count()).toBe(
-      0,
-    );
-    expect(await page.locator('[data-morphing]').count()).toBe(0);
-    const canvas = page.locator('dialog:modal canvas[role="group"]');
-    const live = await canvas.evaluate((element) => {
+test('expanded graph is live at once, and the sidebar takes keyboard focus after closing', async ({
+  page,
+}) => {
+  await pausedClock(page, '?global=1');
+  await page.evaluate(() =>
+    document
+      .querySelector<HTMLButtonElement>('[aria-label="Expand graph"]')!
+      .click(),
+  );
+  const canvas = page.locator('dialog:modal canvas[role="group"]');
+  expect(
+    await canvas.evaluate((element) => {
       const bounds = element.getBoundingClientRect();
       return (
         document.elementFromPoint(
@@ -509,185 +488,101 @@ for (const mode of ['expanded', 'global'] as const) {
           bounds.y + bounds.height / 2,
         ) === element
       );
-    });
-    expect(live).toBe(true);
-    await canvas.focus();
-    await page.keyboard.press(']');
-    expect(
-      await page.locator('dialog:modal [role="status"]').textContent(),
-    ).not.toBe('');
-    await page.keyboard.press('Escape');
-    await page.clock.runFor(350);
-    expect(await page.locator('dialog:modal').count()).toBe(0);
-    expect(
-      await page
-        .locator('.interactive-graph__transition, [data-morphing]')
-        .count(),
-    ).toBe(0);
-    const mini = page.locator('canvas[role="group"]').first();
-    await mini.focus();
-    await page.keyboard.press(']');
-    expect(
-      await page
-        .locator('dialog')
-        .first()
-        .locator('[role="status"]')
-        .textContent(),
-    ).not.toBe('');
-    await page.clock.runFor(300);
-    expect(
-      await page.evaluate(
-        () =>
-          document
-            .getAnimations()
-            .filter((animation) => animation.playState === 'running').length,
-      ),
-    ).toBe(0);
-  });
-}
+    }),
+  ).toBe(true);
+  await canvas.focus();
+  await page.keyboard.press(']');
+  expect(
+    await page.locator('dialog:modal [role="status"]').textContent(),
+  ).not.toBe('');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog:modal')).toHaveCount(0);
+  const mini = page.locator('canvas[role="group"]').first();
+  await mini.focus();
+  await page.keyboard.press(']');
+  expect(
+    await page
+      .locator('dialog')
+      .first()
+      .locator('[role="status"]')
+      .textContent(),
+  ).not.toBe('');
+  await surfaceSettled(page);
+});
 
-test('expanded graph keeps forming after handoff with connected nodes and edges, then rests', async ({
+test('expanded graph blooms outward from the current note and comes to rest', async ({
   page,
 }) => {
-  await page.clock.install();
-  await setup(page);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  await page.clock.pauseAt(
-    new Date(await page.evaluate(() => Date.now() + 1000)),
-  );
-  await page.evaluate(() => {
+  await pausedClock(page);
+  await page.evaluate(() =>
     document
       .querySelector<HTMLButtonElement>('[aria-label="Expand graph"]')!
-      .click();
-  });
-  let elapsed = 0;
-  while (await page.locator('[data-morphing]').count()) {
+      .click(),
+  );
+  const spread = async () => {
+    const points = await nodes(page);
+    const seed = points.reduce((a, b) => (a.radius > b.radius ? a : b));
+    return points.map((point) =>
+      Math.hypot(point.x - seed.x, point.y - seed.y),
+    );
+  };
+  await page.clock.runFor(16);
+  const frames = [await spread()];
+  for (let elapsed = 16; elapsed < 900; elapsed += 16) {
     await page.clock.runFor(16);
-    elapsed += 16;
-    expect(elapsed).toBeLessThanOrEqual(352);
+    frames.push(await spread());
   }
-  const projection = () =>
-    page.evaluate(() => ({
-      // The current-note ring adds an arc at the same position; keep one node.
-      points: window.graphProbe.points.filter(
-        (point, i, points) =>
-          !points
-            .slice(0, i)
-            .some((other) => other.x === point.x && other.y === point.y),
-      ),
-      edges: window.graphProbe.edges,
-    }));
-  const arrival = await projection();
-  await page.clock.runFor(96);
-  const forming = await projection();
-  expect(forming.points.length).toBe(arrival.points.length);
-  const motion = forming.points.map((point, i) => ({
-    x: point.x - arrival.points[i].x,
-    y: point.y - arrival.points[i].y,
-  }));
-  expect(
-    Math.max(...motion.map((point) => Math.hypot(point.x, point.y))),
-  ).toBeGreaterThan(0.1);
-  expect(
-    Math.max(...motion.map((point) => Math.hypot(point.x, point.y))),
-  ).toBeLessThan(30);
-  expect(
-    Math.max(
-      ...motion.map((point) =>
-        Math.hypot(point.x - motion[0].x, point.y - motion[0].y),
-      ),
-    ),
-  ).toBeGreaterThan(0.05);
-  expect(forming.edges.length).toBeGreaterThan(0);
-  for (const edge of forming.edges) {
-    for (const endpoint of [edge.from, edge.to])
-      expect(
-        Math.min(
-          ...forming.points.map((point) =>
-            Math.hypot(point.x - endpoint.x, point.y - endpoint.y),
-          ),
-        ),
-      ).toBeLessThan(0.001);
-  }
-  const length = (edge: Edge) =>
-    Math.hypot(edge.to.x - edge.from.x, edge.to.y - edge.from.y);
-  expect(
-    Math.max(
-      ...forming.edges.map((edge, i) =>
-        Math.abs(length(edge) - length(arrival.edges[i])),
-      ),
-    ),
-  ).toBeGreaterThan(0.05);
-  // The geometry-triggered release starts around 100ms; allow its 500ms
-  // physical tail plus one rendering frame before asserting complete rest.
-  await page.clock.runFor(650 - elapsed - 96);
-  const settled = await projection();
+  const rest = frames.at(-1)!;
+  expect(frames.every((frame) => frame.length === rest.length)).toBe(true);
+  // Gathered at the seed on arrival, then every note only ever moves outward.
+  expect(Math.max(...frames[0])).toBeLessThan(Math.max(...rest) * 0.35);
+  for (let i = 1; i < frames.length; i++)
+    for (let node = 0; node < rest.length; node++)
+      expect(frames[i][node]).toBeGreaterThanOrEqual(frames[i - 1][node] - 0.5);
+  const settled = await nodes(page);
   await page.clock.runFor(300);
-  const resting = await projection();
-  expect(resting.points.length).toBe(settled.points.length);
+  const resting = await nodes(page);
   expect(
     Math.max(
-      ...resting.points.map((point, i) =>
-        Math.hypot(
-          point.x - settled.points[i].x,
-          point.y - settled.points[i].y,
-        ),
+      ...resting.map((point, i) =>
+        Math.hypot(point.x - settled[i].x, point.y - settled[i].y),
       ),
     ),
   ).toBeLessThan(0.02);
 });
 
-test('rapid reversal retains the same surface and current position without snapping', async ({
-  page,
-}) => {
-  await setup(page);
-  const result = await page.evaluate(async () => {
-    const opener = document.querySelector<HTMLButtonElement>(
-      '[aria-label="Open global graph"]',
-    )!;
-    opener.click();
+test('closing mid-open reverses from what is on screen', async ({ page }) => {
+  await setup(page, '?global=1');
+  const result = await page.evaluate(() => {
+    document
+      .querySelector<HTMLButtonElement>('[aria-label="Open global graph"]')!
+      .click();
     const panel = document.querySelector<HTMLDialogElement>('dialog:modal')!;
-    const surface = panel.querySelector('.interactive-graph__transition');
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    const beforeClose = panel.getBoundingClientRect();
+    // Hold the fade a third of the way in; wall-clock frames vary too much.
+    for (const animation of panel.getAnimations({ subtree: false })) {
+      animation.pause();
+      animation.currentTime = 90;
+    }
+    const before = Number(getComputedStyle(panel).opacity);
     panel
       .querySelector<HTMLButtonElement>('[aria-label="Close global graph"]')!
       .click();
-    const afterClose = panel.getBoundingClientRect();
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    const beforeOpen = panel.getBoundingClientRect();
-    opener.click();
-    const afterOpen = panel.getBoundingClientRect();
-    const error = (a: DOMRect, b: DOMRect) =>
-      Math.max(
-        ...(['x', 'y', 'width', 'height'] as const).map((key) =>
-          Math.abs(a[key] - b[key]),
-        ),
-      );
-    return {
-      closeJump: error(beforeClose, afterClose),
-      openJump: error(beforeOpen, afterOpen),
-      same: surface === panel.querySelector('.interactive-graph__transition'),
-    };
+    const after = Number(getComputedStyle(panel).opacity);
+    return { before, after };
   });
-  expect(result.closeJump).toBeLessThan(0.1);
-  expect(result.openJump).toBeLessThan(0.1);
-  expect(result.same).toBe(true);
-  await expect(page.locator('[data-morphing]')).toHaveCount(0);
-  await expect(page.locator('dialog:modal')).toHaveCount(1);
-  await page.keyboard.press('Escape');
+  expect(result.before).toBeGreaterThan(0.3);
+  expect(result.before).toBeLessThan(1);
+  expect(Math.abs(result.after - result.before)).toBeLessThan(0.02);
   await expect(page.locator('dialog:modal')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Open global graph', exact: true }),
+  ).toBeFocused();
 });
 
-test('resizing during opening preserves live formation and a continuous canvas handoff', async ({
+test('resizing during the bloom lands the constellation inside the new viewport', async ({
   page,
 }) => {
-  await page.clock.install();
-  await setup(page);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  await page.clock.pauseAt(
-    new Date(await page.evaluate(() => Date.now() + 1000)),
-  );
+  await pausedClock(page);
   await page.evaluate(() =>
     document
       .querySelector<HTMLButtonElement>('[aria-label="Expand graph"]')!
@@ -701,60 +596,21 @@ test('resizing during opening preserves live formation and a continuous canvas h
   });
   // ResizeObserver is a browser task, independent of the simulated RAF clock.
   await page.waitForTimeout(50);
-  const sample = () =>
-    page.evaluate(() => {
-      const canvas =
-        document.querySelector<HTMLCanvasElement>(
-          '.interactive-graph__transition',
-        ) ??
-        document.querySelector<HTMLCanvasElement>(
-          'dialog:modal canvas[role="group"]',
-        )!;
-      const box = canvas.getBoundingClientRect();
-      const point = window.graphProbe.points.reduce((a, b) =>
-        a.radius > b.radius ? a : b,
-      );
-      return {
-        x: box.x + point.x,
-        y: box.y + point.y,
-        width: box.width,
-        height: box.height,
-      };
-    });
-  let previous = await sample();
-  let elapsed = 64;
-  while (await page.locator('[data-morphing]').count()) {
-    previous = await sample();
-    expect(Object.values(previous).every(Number.isFinite)).toBe(true);
-    expect(previous.width).toBeGreaterThan(0);
-    expect(previous.height).toBeGreaterThan(0);
-    await page.clock.runFor(16);
-    elapsed += 16;
-    expect(elapsed).toBeLessThanOrEqual(450);
-  }
-  const arrival = await sample();
-  expect(
-    Math.hypot(arrival.x - previous.x, arrival.y - previous.y),
-  ).toBeLessThan(8);
-  expect(arrival.x).toBeGreaterThan(0);
-  expect(arrival.x).toBeLessThan(viewport.width - 32);
-  expect(arrival.y).toBeGreaterThan(0);
-  expect(arrival.y).toBeLessThan(viewport.height - 64);
-  await page.clock.runFor(64);
-  const forming = await sample();
-  expect(
-    Math.hypot(forming.x - arrival.x, forming.y - arrival.y),
-  ).toBeGreaterThan(0.02);
-  await page.clock.runFor(600 - elapsed - 64);
-  const resting = await sample();
+  await page.clock.runFor(900);
+  const box = (await page
+    .locator('dialog:modal canvas[role="group"]')
+    .boundingBox())!;
+  const point = await currentPoint(page);
+  expect(box.x + point.x).toBeGreaterThan(0);
+  expect(box.x + point.x).toBeLessThan(viewport.width - 32);
+  expect(box.y + point.y).toBeGreaterThan(0);
+  expect(box.y + point.y).toBeLessThan(viewport.height - 64);
   await page.clock.runFor(300);
-  const after = await sample();
-  expect(Math.hypot(after.x - resting.x, after.y - resting.y)).toBeLessThan(
-    0.02,
-  );
+  const after = await currentPoint(page);
+  expect(Math.hypot(after.x - point.x, after.y - point.y)).toBeLessThan(0.02);
 });
 
-test('resize retargets a closing flight and reduced motion or a hidden origin cleans up', async ({
+test('closing survives a resize, a motion preference change, or a hidden origin', async ({
   page,
 }) => {
   await setup(page);
@@ -763,7 +619,7 @@ test('resize retargets a closing flight and reduced motion or a hidden origin cl
     await page
       .getByRole('button', { name: 'Open global graph', exact: true })
       .click();
-    await expect(page.locator('[data-morphing]')).toHaveCount(0);
+    await surfaceSettled(page);
     await page.evaluate((change) => {
       if (change === 'hidden')
         document.querySelector<HTMLElement>(
@@ -778,11 +634,7 @@ test('resize retargets a closing flight and reduced motion or a hidden origin cl
     if (change === 'motion')
       await page.emulateMedia({ reducedMotion: 'reduce' });
     await expect(page.locator('dialog:modal')).toHaveCount(0);
-    await expect(
-      page.locator(
-        '[data-morphing], [data-closing], .interactive-graph__transition',
-      ),
-    ).toHaveCount(0);
+    await expect(page.locator('[data-closing]')).toHaveCount(0);
     await page
       .locator('.interactive-graph__slot')
       .evaluate((element: HTMLElement) =>
@@ -798,15 +650,14 @@ test('a responsive hidden origin releases an idle modal focus trap', async ({
   await page
     .getByRole('button', { name: 'Open global graph', exact: true })
     .click();
-  await expect(page.locator('[data-morphing]')).toHaveCount(0);
+  await surfaceSettled(page);
   await page.locator('.interactive-graph').evaluate((element: HTMLElement) => {
     element.style.display = 'none';
   });
   await expect(page.locator('dialog:modal')).toHaveCount(0);
-  await expect(page.locator('.interactive-graph__transition')).toHaveCount(0);
 });
 
-test('reduced motion opens and closes immediately without a transition surface', async ({
+test('reduced motion opens and closes immediately without animating', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -817,23 +668,31 @@ test('reduced motion opens and closes immediately without a transition surface',
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   for (const mode of ['expanded', 'global']) {
-    const result = await page.evaluate((mode) => {
+    const result = await page.evaluate(async (mode) => {
       const opener = document.querySelector<HTMLButtonElement>(
         `[aria-label="${mode === 'expanded' ? 'Expand graph' : 'Open global graph'}"]`,
       )!;
       opener.click();
       const modal = document.querySelector<HTMLDialogElement>('dialog:modal')!;
-      const noSurface = !document.querySelector(
-        '.interactive-graph__transition',
-      );
+      // Site-wide reduced motion shortens CSS transitions to 0.01ms rather
+      // than removing them; only scripted motion matters here.
+      const still = document
+        .getAnimations()
+        .every(
+          (animation) =>
+            animation instanceof CSSTransition ||
+            animation instanceof CSSAnimation,
+        );
       modal.dispatchEvent(new Event('cancel', { cancelable: true }));
+      // Closing settles in the same microtask checkpoint, before any paint.
+      await null;
       return {
-        noSurface,
+        still,
         closed: !document.querySelector('dialog:modal'),
         focused: document.activeElement === opener,
       };
     }, mode);
-    expect(result).toEqual({ noSurface: true, closed: true, focused: true });
+    expect(result).toEqual({ still: true, closed: true, focused: true });
     await page.clock.runFor(1000);
     // A real ResizeObserver may enqueue one legitimate repaint after the
     // synthetic clock advances; flush it before checking for an ongoing loop.
