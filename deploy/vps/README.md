@@ -231,6 +231,15 @@ appended to `~/backup.log`.
    (echo '15 3 * * * $HOME/oddava-storage/backup.sh >> $HOME/backup.log 2>&1') | crontab -
    ```
 
+### Alerts
+
+Set `HEALTHCHECK_URL` in `backup.env` to a [healthchecks.io](https://healthchecks.io)
+ping URL (free plan; check schedule `15 3 * * *`, timezone UTC, grace 1 hour).
+Each run pings `/start`, then `/<exit status>`, so you are alerted when a run
+fails **or never reports** — a dead VPS or a stopped cron included. Tested:
+a normal run sent `start` then `0`; a forced failure sent `start` then `10`;
+with the variable empty the script behaves as before.
+
 ### Checking on it
 
 ```bash
