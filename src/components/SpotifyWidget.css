@@ -1,13 +1,6 @@
 @import './spotify/styles/_positioning.css';
-@import './spotify/styles/_render-state.css';
-@import './spotify/styles/_controls.css';
-@import './spotify/styles/_content.css';
-@import './spotify/styles/_folio.css';
-
-@media (prefers-reduced-motion: reduce) {
-  .spotify-widget-wrapper,
-  .spotify-widget-full-view,
-  .spotify-widget-min-view {
-    transition-duration: 0.01ms !important;
-  }
-}
+@import './spotify/styles/_card.css';
+@import './spotify/styles/_moon.css';
+@import './spotify/styles/_text.css';
+@import './spotify/styles/_motion.css';
+@import './spotify/styles/_compact.css';

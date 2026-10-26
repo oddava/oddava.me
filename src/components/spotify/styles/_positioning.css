@@ -1,0 +1,41 @@
+/* The fixed, draggable frame. Everything inside is the "small moon": the
+   homepage island's face and rim, with the cover on its own orbit. */
+.spotify-widget-positioner {
+  --listening-ink: color-mix(in srgb, var(--color-accent) 64%, #586576);
+  --listening-bright: color-mix(in srgb, var(--color-accent) 70%, white);
+  /* Same recipe as the island's #folio-face / #folio-rim: lit top-left. */
+  --listening-face: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-accent) 8%, black),
+    #050608 55%,
+    #07090d
+  );
+  --listening-rim: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-accent) 52%, transparent),
+    color-mix(in srgb, var(--color-accent) 14%, transparent) 50%,
+    color-mix(in srgb, var(--color-accent) 28%, transparent)
+  );
+  --listening-shadow: 0 18px 40px -18px #000;
+  --listening-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --listening-morph: 380ms var(--listening-ease);
+  /* The moon column; every orbit measurement scales with it. */
+  --moon: 56px;
+
+  position: fixed;
+  z-index: 50;
+  border-radius: var(--radius-pill);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.spotify-widget-positioner.is-dragging {
+  cursor: grabbing;
+}
+
+.spotify-widget-positioner:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 4px;
+}

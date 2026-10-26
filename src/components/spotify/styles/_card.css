@@ -1,0 +1,152 @@
+.listening {
+  width: max-content;
+  max-width: calc(100vw - 16px);
+}
+
+.listening.is-minimized {
+  --moon: 44px;
+}
+
+/* One grid for both states: minimizing collapses the body column to 0fr, so
+   the pill closes into a circle round the moon instead of swapping views. */
+.listening__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--moon) 1fr;
+  align-items: center;
+  column-gap: 14px;
+  padding: 8px 20px 8px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background:
+    var(--listening-face) padding-box,
+    var(--listening-rim) border-box;
+  box-shadow: var(--listening-shadow);
+  transition:
+    grid-template-columns var(--listening-morph),
+    column-gap var(--listening-morph),
+    padding var(--listening-morph),
+    box-shadow 240ms ease,
+    transform 240ms var(--listening-ease);
+}
+
+/* Closing waits a beat for the text to fade, so the column never clips
+   words that are still legible. */
+.listening.is-minimized .listening__card {
+  grid-template-columns: var(--moon) 0fr;
+  column-gap: 0;
+  padding: 6px;
+  transition:
+    grid-template-columns var(--listening-morph) 70ms,
+    column-gap var(--listening-morph) 70ms,
+    padding var(--listening-morph) 70ms,
+    box-shadow 240ms ease,
+    transform 240ms var(--listening-ease);
+}
+
+.spotify-widget-positioner.is-dragging .listening__card {
+  transform: translateY(-2px);
+  box-shadow: 0 26px 48px -20px #000;
+}
+
+/* The body keeps its natural width and the column clips it, so collapsing
+   reads as the moon closing over the text rather than the text reflowing.
+   Capping its height at the moon's lets the row shrink with the moon, so the
+   pill closes into a circle rather than a tall oval. The padding/margin pair
+   gives focus rings room inside the clip. */
+.listening__body {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-height: var(--moon);
+  margin: -6px;
+  padding: 6px;
+  overflow: hidden;
+  transition:
+    max-height var(--listening-morph),
+    opacity 240ms ease 140ms;
+}
+
+.listening.is-minimized .listening__body {
+  opacity: 0;
+  transition:
+    max-height var(--listening-morph) 70ms,
+    opacity 80ms ease;
+}
+
+/* A small satellite riding the rim, shown on hover or focus, so the pill
+   keeps no empty room for it at rest. */
+.listening__control {
+  position: absolute;
+  top: -8px;
+  right: 24px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 32%, transparent);
+  border-radius: 50%;
+  background: var(--listening-face);
+  box-shadow: 0 6px 14px -6px #000;
+  color: color-mix(in srgb, var(--color-text-primary) 62%, transparent);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(3px) scale(0.9);
+  transition:
+    opacity 200ms ease,
+    transform 320ms var(--listening-ease),
+    color 200ms ease,
+    border-color 200ms ease;
+}
+
+.listening__control svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+
+.listening:is(:hover, :focus-within) .listening__control {
+  opacity: 1;
+  transform: none;
+}
+
+.listening__control:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  color: var(--listening-bright);
+}
+
+/* A comfortable tap target without changing how the button looks. */
+.listening__control::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+
+/* Without hover the control would never appear. */
+@media (hover: none) {
+  .listening__control {
+    opacity: 0.85;
+    transform: none;
+  }
+}
+
+/* Minimized, the whole circle is the expand control. */
+.listening__expand {
+  position: absolute;
+  inset: -1px;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.listening__control:focus-visible,
+.listening__expand:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

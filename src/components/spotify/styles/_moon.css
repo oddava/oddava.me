@@ -1,0 +1,116 @@
+.listening__moon {
+  position: relative;
+  display: block;
+  width: var(--moon);
+  height: var(--moon);
+  transition:
+    width var(--listening-morph),
+    height var(--listening-morph);
+}
+
+/* 14.5% leaves a ring of night between the cover and its orbit. */
+.listening__cover {
+  position: absolute;
+  inset: 14.5%;
+  width: 71%;
+  height: 71%;
+  border-radius: 50%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity 600ms ease,
+    transform 900ms var(--listening-ease);
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.listening__cover.is-loaded {
+  opacity: 1;
+  transform: none;
+}
+
+.listening__glyph,
+.listening__orbit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: var(--listening-ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.listening__glyph {
+  stroke-width: 1;
+}
+
+/* Without art the moon is still a body: a faint disc where the cover sits. */
+.listening__glyph circle {
+  fill: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  stroke: none;
+}
+
+/* The "about" crescent: centred up and left of the ring, so it tapers away
+   from the orbit like a second, older one. */
+.listening__echo {
+  stroke-width: 0.85;
+  opacity: 0.4;
+  transform-box: view-box;
+  transform-origin: 28px 28px;
+  transition:
+    transform 650ms var(--listening-ease),
+    opacity 500ms ease;
+}
+
+.listening:is(:hover, :focus-within) .listening__echo {
+  opacity: 0.75;
+  transform: rotate(-16deg);
+}
+
+.listening__track {
+  stroke-width: 0.85;
+  stroke-dasharray: 100;
+  opacity: 0.32;
+  transition: opacity 400ms ease;
+}
+
+.listening:is(:hover, :focus-within) .listening__track {
+  opacity: 0.5;
+}
+
+/* No duration: the ring takes the homepage thread's broken rhythm. */
+.listening__orbit.is-untimed .listening__track {
+  stroke-dasharray: 21 4 13 10;
+}
+
+.listening__elapsed {
+  stroke: var(--listening-bright);
+  stroke-width: 1.25;
+  opacity: 0.85;
+  /* Progress ticks once a second; a linear second turns ticks into motion. */
+  transition: stroke-dasharray 1s linear;
+}
+
+/* Rotating the group keeps the star on the arc; translating would cut chords. */
+.listening__star-orbit {
+  transform-box: view-box;
+  transform-origin: 28px 28px;
+  transition: transform 1s linear;
+}
+
+.listening__orbit.is-rewinding .listening__star-orbit,
+.listening__orbit.is-rewinding .listening__elapsed {
+  transition: none;
+}
+
+/* Filled, like the homepage's stars. */
+.listening__star {
+  fill: var(--listening-bright);
+  stroke: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}

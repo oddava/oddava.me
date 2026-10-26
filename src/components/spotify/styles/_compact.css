@@ -1,0 +1,84 @@
+/* Phones: the same object, condensed to a 34px strip. The homepage nav can sit
+   as little as 43px above the bottom edge (360x640), so the strip must stay
+   this short. Title and artist share one line; the eyebrow and the time go,
+   the orbit's strokes thicken so the smaller ring still reads as progress,
+   and the minimize control comes off the rim to sit at the strip's end.
+   Matches MOBILE_MINIMIZE_QUERY in minimizedState.ts. */
+@media (max-width: 640px) {
+  .spotify-widget-positioner {
+    --moon: 28px;
+  }
+
+  .listening.is-minimized {
+    --moon: 34px;
+  }
+
+  .listening__card {
+    grid-template-columns: var(--moon) 1fr auto;
+    column-gap: 8px;
+    padding: 2px 4px 2px 2px;
+  }
+
+  .listening.is-minimized .listening__card {
+    grid-template-columns: var(--moon) 0fr auto;
+    padding: 2px;
+  }
+
+  .listening__text {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    max-width: min(15rem, calc(100vw - 104px));
+  }
+
+  .listening__eyebrow,
+  .listening__out,
+  .listening__echo {
+    display: none;
+  }
+
+  .listening__title {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+
+  /* Never more than ~two-fifths of the line, so the title keeps the room. */
+  .listening__artist {
+    flex: 0 1 auto;
+    max-width: 42%;
+    margin: 0;
+    font-size: 0.72rem;
+  }
+
+  .listening__control {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    opacity: 0.85;
+    transform: none;
+  }
+
+  .listening__control::after {
+    inset: -6px;
+  }
+
+  .listening__track {
+    stroke-width: 1.6;
+  }
+
+  .listening__elapsed {
+    stroke-width: 2.6;
+  }
+
+  .listening__star {
+    scale: 1.25;
+  }
+}
