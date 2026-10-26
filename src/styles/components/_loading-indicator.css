@@ -1,13 +1,4 @@
-/* Establish the opening scene in HTML, before deferred modules or fonts load. */
-html:not([data-home-awakening]) .loading-indicator[data-initial] {
-  display: none;
-}
-
-html[data-home-awakening] .page {
-  visibility: hidden;
-}
-
-/* Navigation stays on the header rule; the cat belongs to the home entrance. */
+/* Navigation feedback: a thin line on the header rule. */
 .loading-indicator {
   position: fixed;
   inset: 0 0 auto;
@@ -26,61 +17,6 @@ html[data-home-awakening] .page {
 .site-nav > .loading-indicator {
   position: absolute;
   inset: auto 0 -1px;
-}
-
-.loading-indicator__composition {
-  width: 100%;
-}
-
-.loading-indicator svg {
-  display: block;
-  width: 100%;
-  overflow: visible;
-  stroke: currentColor;
-  stroke-width: 8;
-  stroke-linecap: round;
-}
-
-.loading-indicator__orbit {
-  transform-origin: 500px 400px;
-  transform: rotate(-18deg);
-}
-
-.loading-indicator__orbit ellipse {
-  opacity: 0.15;
-}
-
-.loading-indicator__arc {
-  stroke-width: 10;
-}
-
-.loading-indicator__arc--echo {
-  opacity: 0.4;
-}
-
-.loading-indicator__star,
-.loading-indicator circle {
-  fill: currentColor;
-  stroke: none;
-}
-
-.loading-indicator__island {
-  fill: #05080e;
-  stroke-opacity: 0.2;
-}
-
-.loading-indicator__trace {
-  stroke-dasharray: 740 260;
-  stroke-width: 10;
-}
-
-.loading-indicator__whiskers {
-  opacity: 0.55;
-  transform-origin: 500px 400px;
-}
-
-.loading-indicator[data-site-loader]:not([data-intro]) {
-  display: none;
 }
 
 .loading-indicator__line {
@@ -109,109 +45,18 @@ html[data-loading] .loading-indicator__line {
   }
 }
 
-html[data-loading] .loading-indicator:not([data-site-loader]),
-.loading-indicator[data-awakening] {
+html[data-loading] .loading-indicator {
   opacity: 1;
   visibility: visible;
   transition-delay: 0s;
 }
 
-:is(
-    html[data-loading] .loading-indicator:not([data-site-loader]),
-    .loading-indicator[data-awakening]
-  )
-  .loading-indicator__orbit {
-  animation: loading-orbit 9s ease-in-out infinite alternate;
-}
-
-:is(
-    html[data-loading] .loading-indicator:not([data-site-loader]),
-    .loading-indicator[data-awakening]
-  )
-  .loading-indicator__trace {
-  animation: loading-trace 4.8s ease-in-out infinite;
-}
-
-:is(
-    html[data-loading] .loading-indicator:not([data-site-loader]),
-    .loading-indicator[data-awakening]
-  )
-  .loading-indicator__whiskers {
-  animation: loading-whiskers 3.6s ease-in-out infinite alternate;
-}
-
-.loading-indicator[data-intro] {
-  inset: 0;
-  width: auto;
-  height: auto;
-  display: grid;
-  place-items: center;
-  background: var(--color-surface);
-  transition:
-    opacity 650ms cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0s 650ms;
-}
-
-.loading-indicator[data-intro][data-awakening] {
-  transition: none;
-}
-
-.loading-indicator[data-intro] svg {
-  stroke-width: 2;
-}
-
-.loading-indicator[data-intro] .loading-indicator__trace {
-  stroke-width: 3;
-}
-
-.loading-indicator[data-intro] .loading-indicator__arc {
-  stroke-width: 4;
-}
-
-.loading-indicator[data-intro] .loading-indicator__composition {
-  position: relative;
-  width: min(390px, 82vw);
-}
-
-@keyframes loading-orbit {
-  to {
-    transform: rotate(18deg);
-  }
-}
-
-@keyframes loading-trace {
-  0% {
-    stroke-dashoffset: 1000;
-    opacity: 0.35;
-  }
-  45%,
-  65% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: -1000;
-    opacity: 0.35;
-  }
-}
-
-@keyframes loading-whiskers {
-  to {
-    transform: scaleX(1.035);
-    opacity: 0.9;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .loading-indicator,
-  .loading-indicator[data-intro] {
+  .loading-indicator {
     transition: none;
   }
   .loading-indicator * {
     animation: none !important;
-  }
-  .loading-indicator__trace {
-    stroke-dasharray: none;
   }
   .loading-indicator__line {
     width: 100%;

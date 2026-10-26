@@ -1,0 +1,127 @@
+---
+import { eyeAperture, pupilSize } from '../../lib/awake/geometry';
+
+/**
+ * Two almond eyes, drawn open for first paint and no-JS. The mount loop moves
+ * the lids (the clip path), the iris and the pupil; everything else is static.
+ * Eye centres sit at x = ±66 in a 260 × 84 box (see EYE_X in mount.ts).
+ */
+const sides = [-1, 1] as const;
+const open = { open: 1, smile: 0 };
+const pupil = pupilSize(0.32);
+const fibres = Array.from({ length: 28 }, (_, i) => {
+  const a = (i / 28) * Math.PI * 2 + (i % 2 ? 0.05 : 0);
+  const r0 = 8.5 + (i % 3);
+  const r1 = 22.5 - (i % 4) * 1.4;
+  return {
+    d: `M${(Math.cos(a) * r0).toFixed(2)} ${(Math.sin(a) * r0).toFixed(2)}L${(Math.cos(a) * r1).toFixed(2)} ${(Math.sin(a) * r1).toFixed(2)}`,
+    light: i % 2 === 0,
+  };
+});
+const id = (side: -1 | 1) => `awake-aperture-${side > 0 ? 'r' : 'l'}`;
+---
+
+<svg
+  class="awake-eyes__svg"
+  viewBox="-130 -42 260 84"
+  aria-hidden="true"
+  focusable="false"
+>
+  <defs>
+    <!-- Lit from the pupil out: --color-accent to --color-brand, shading to a
+         darker brand ring at the limbus. -->
+    <radialGradient id="awake-iris" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#d6e4ff"></stop>
+      <stop offset="0.34" stop-color="#adcaff"></stop>
+      <stop offset="0.74" stop-color="#7aa7ff"></stop>
+      <stop offset="1" stop-color="#2d4675"></stop>
+    </radialGradient>
+    <filter
+      id="awake-glow"
+      x="-60%"
+      y="-90%"
+      width="220%"
+      height="280%"
+      color-interpolation-filters="sRGB"
+    >
+      <feGaussianBlur stdDeviation="7"></feGaussianBlur>
+    </filter>
+    <radialGradient id="awake-deep" cx="0.5" cy="0.5" r="0.55">
+      <stop offset="0" stop-color="#2d4675"></stop>
+      <stop offset="1" stop-color="#05080f"></stop>
+    </radialGradient>
+    {
+      sides.map((side) => (
+        <clipPath id={id(side)}>
+          <path data-eye-clip={side} d={eyeAperture(open, side).clip} />
+        </clipPath>
+      ))
+    }
+  </defs>
+  {
+    sides.map((side) => {
+      const lids = eyeAperture(open, side);
+      return (
+        <g
+          class="awake-eye"
+          data-eye={side}
+          transform={`translate(${66 * side} 2) rotate(${-5 * side})`}
+        >
+          <path
+            class="awake-eye__halo"
+            data-eye-halo
+            d={lids.clip}
+            filter="url(#awake-glow)"
+          />
+          <g clip-path={`url(#${id(side)})`}>
+            <rect
+              class="awake-eye__deep"
+              x="-44"
+              y="-34"
+              width="88"
+              height="68"
+            />
+            <g data-eye-iris>
+              <circle class="awake-eye__iris" r="25" />
+              <g class="awake-eye__fibres">
+                {fibres.map((fibre) => (
+                  <path
+                    class:list={[fibre.light && 'awake-eye__fibre--light']}
+                    d={fibre.d}
+                  />
+                ))}
+              </g>
+              <circle class="awake-eye__limbus" r="24.4" />
+              <ellipse
+                class="awake-eye__pupil"
+                data-eye-pupil
+                rx={pupil.rx}
+                ry={pupil.ry}
+              />
+            </g>
+            <path class="awake-eye__shade" data-eye-shade d={lids.upper} />
+            <g data-eye-glint>
+              <ellipse
+                class="awake-eye__glint"
+                cx={-9 + side * 1.5}
+                cy="-11"
+                rx="5.2"
+                ry="3.6"
+                transform={`rotate(${-26 + side * 8} ${-9 + side * 1.5} -11)`}
+              />
+              <circle
+                class="awake-eye__glint awake-eye__glint--soft"
+                cx={8 + side}
+                cy="9"
+                r="1.8"
+              />
+            </g>
+          </g>
+          <path class="awake-eye__crease" data-eye-crease d={lids.crease} />
+          <path class="awake-eye__lower" data-eye-lower d={lids.lower} />
+          <path class="awake-eye__lid" data-eye-lid d={lids.upper} />
+        </g>
+      );
+    })
+  }
+</svg>
