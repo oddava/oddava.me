@@ -2,76 +2,229 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import LinkIcon from '../components/LinkIcon.astro';
-import LivingFolio from '../components/LivingFolio.astro';
+import AwakeEyes from '../components/awake/AwakeEyes.astro';
+import AwakeSky from '../components/awake/AwakeSky.astro';
 import linksData from '../data/links.json';
-import '../styles/components/_home.css';
+import { headPath, innerEarPath, whiskerRoots } from '../lib/awake/geometry';
+import '../styles/components/_awake.css';
 
-// Off-site contacts only; the waypoints below already cover on-site pages.
+// Off-site contacts only; the nav below already covers on-site pages.
 const contacts = linksData.links.filter((link) => !link.url.startsWith('/'));
+
+// First-paint head; the mount script redraws it at the measured size.
+const HEAD = { width: 520, height: 520 };
+const head = headPath(HEAD.width, HEAD.height);
+const innerEars = ([-1, 1] as const).map((side) =>
+  innerEarPath(HEAD.width, HEAD.height, side),
+);
+const whiskerLength = HEAD.width * 0.27;
+const whiskers = ([-1, 1] as const).flatMap((side) =>
+  whiskerRoots(HEAD.width, HEAD.height).map((root, i) => ({
+    side,
+    i,
+    x: side > 0 ? root.x - 8 : 8,
+    y: root.y,
+    angle: (i - 1) * 9,
+  })),
+);
 ---
 
 <Base hideNav>
-  <LivingFolio slot="background" />
-  <section class="home-hero home-hero--intro">
-    <h1 class="home-hero__name">oddava</h1>
-    <p class="home-hero__tagline">
-      i write software, interrogate SI (silly intellect), and make tools for
-      small annoyances.
-    </p>
-    <ul class="home-hero__contact" aria-label="contact">
-      {
-        contacts.map((link) => {
-          const isExternal = link.url.startsWith('http');
-          return (
-            <li>
-              <a
-                href={link.url}
-                target={isExternal ? '_blank' : undefined}
-                rel={isExternal ? 'noopener noreferrer' : undefined}
-                aria-label={
-                  isExternal ? `${link.title} (opens in new tab)` : link.title
-                }
-              >
-                <LinkIcon name={link.icon} />
-              </a>
-            </li>
-          );
-        })
-      }
-    </ul>
+  <AwakeSky slot="background" />
+  <section class="awake" data-awake>
+    <div class="awake-stage">
+      <div class="awake-body" data-awake-body>
+        <svg
+          class="awake-paw"
+          data-awake-paw
+          viewBox="-40 -70 80 140"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            class="awake-paw__arm"
+            d="M-27 70L-27-18Q-29-41-17-44Q-12-58 0-55Q12-58 17-44Q29-41 27-18L27 70Z"
+          ></path>
+          <path
+            class="awake-paw__toes"
+            d="M-15-43Q-12-36-9-33M15-43Q12-36 9-33M0-55L0-41"></path>
+          <path
+            class="awake-paw__claws"
+            data-awake-claws
+            d="M-17-46Q-18-55-13-59M0-57Q-1-66 4-70M17-46Q16-55 21-58"></path>
+        </svg>
+        <svg
+          class="awake-head"
+          data-awake-head
+          viewBox={`0 0 ${HEAD.width} ${HEAD.height}`}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <defs>
+            <linearGradient id="awake-fur" x1="0" y1="0" x2="0.8" y2="1">
+              <stop offset="0" stop-color="#0b0d11"></stop>
+              <stop offset="0.55" stop-color="#050608"></stop>
+              <stop offset="1" stop-color="#07090d"></stop>
+            </linearGradient>
+            <linearGradient id="awake-rim" x1="0" y1="0" x2="0.75" y2="1">
+              <stop offset="0" stop-color="#adcaff" stop-opacity="0.65"></stop>
+              <stop offset="0.45" stop-color="#adcaff" stop-opacity="0.2"
+              ></stop>
+              <stop offset="1" stop-color="#adcaff" stop-opacity="0.4"></stop>
+            </linearGradient>
+            <linearGradient id="awake-whisker" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#adcaff" stop-opacity="0.6"></stop>
+              <stop offset="1" stop-color="#adcaff" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <path class="awake-head__fill" data-awake-shape d={head}></path>
+          {
+            innerEars.map((d, i) => (
+              <path
+                class="awake-head__inner-ear"
+                data-awake-inner={i ? 1 : -1}
+                d={d}
+              />
+            ))
+          }
+          <path class="awake-head__rim" data-awake-shape d={head} pathLength="1"
+          ></path>
+          <g class="awake-whiskers">
+            {
+              whiskers.map((w) => (
+                <g
+                  data-awake-whisker={w.side}
+                  data-i={w.i}
+                  transform={`translate(${w.x} ${w.y}) rotate(${w.side * w.angle})`}
+                >
+                  <path
+                    transform={w.side < 0 ? 'scale(-1 1)' : undefined}
+                    d={`M0 0Q${whiskerLength * 0.5} -4 ${whiskerLength} ${2 + w.i * 2}`}
+                  />
+                </g>
+              ))
+            }
+          </g>
+        </svg>
+        <div class="awake-face">
+          <div class="awake-eyes awake-in awake-in--eyes" data-awake-eyes>
+            <AwakeEyes />
+          </div>
+          <svg
+            class="awake-nose awake-in awake-in--eyes"
+            data-awake-nose
+            viewBox="-12 -7 24 17"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              class="awake-nose__tip"
+              d="M-6.4-4Q0-6.3 6.4-4Q5.6 0.4 1.3 2.5Q0 3.1-1.3 2.5Q-5.6 0.4-6.4-4Z"
+            ></path>
+            <path
+              class="awake-nose__mouth"
+              d="M0 3V5.4M0 5.4Q-1.2 8.6-4.4 8.5Q-6.6 8.3-7.6 6.5M0 5.4Q1.2 8.6 4.4 8.5Q6.6 8.3 7.6 6.5"
+            ></path>
+          </svg>
+          <h1 class="awake-name awake-in awake-in--name">oddava</h1>
+          <p class="awake-tagline awake-in awake-in--tagline">
+            i write software, interrogate SI (silly intellect), and make tools
+            for small&nbsp;annoyances.
+          </p>
+          <ul
+            class="awake-contact awake-in awake-in--contact"
+            aria-label="contact"
+          >
+            {
+              contacts.map((link) => {
+                const isExternal = link.url.startsWith('http');
+                return (
+                  <li>
+                    <a
+                      href={link.url}
+                      target={isExternal ? '_blank' : undefined}
+                      rel={isExternal ? 'noopener noreferrer' : undefined}
+                      aria-label={
+                        isExternal
+                          ? `${link.title} (opens in new tab)`
+                          : link.title
+                      }
+                      data-awake-contact
+                    >
+                      <LinkIcon name={link.icon} />
+                    </a>
+                  </li>
+                );
+              })
+            }
+          </ul>
+        </div>
+      </div>
 
-    <nav class="folio-nav" aria-label="primary" data-folio-nav>
-      <a href="/notes" class="folio-waypoint folio-waypoint--notes">
-        <svg viewBox="-40 -40 80 80" aria-hidden="true">
-          <path class="folio-waypoint__echo" d="M-28 18L4 35 34-13"></path>
-          <path
-            class="folio-waypoint__mark"
-            d="M-28 10L-3-26 27-15 0 25Z M-3-26L0 25 27-15"></path>
-        </svg>
-        <span class="folio-waypoint__label">notes</span>
-      </a>
-      <a href="/notes/graph" class="folio-waypoint folio-waypoint--graph">
-        <svg viewBox="-40 -40 80 80" aria-hidden="true">
-          <path
-            class="folio-waypoint__echo"
-            d="M8 22L27 15 M33 14A3 3 0 1 0 27 14A3 3 0 1 0 33 14Z"></path>
-          <path
-            class="folio-waypoint__mark"
-            d="M-17-14A7 7 0 1 0-31-14A7 7 0 1 0-17-14Z M31-20A9 9 0 1 0 13-20A9 9 0 1 0 31-20Z M8 24A6 6 0 1 0-4 24A6 6 0 1 0 8 24Z M-17-15L13-19 M-20-8L-1 19 M18-12L4 19"
-          ></path>
-        </svg>
-        <span class="folio-waypoint__label">graph</span>
-      </a>
-      <a href="/about" class="folio-waypoint folio-waypoint--about">
-        <svg viewBox="-40 -40 80 80" aria-hidden="true">
-          <path class="folio-waypoint__echo" d="M-23 25A33 33 0 0 0 30-11"
-          ></path>
-          <path
-            class="folio-waypoint__mark"
-            d="M-32 9A36 36 0 0 1 26-25A41 41 0 0 0-32 9Z"></path>
-        </svg>
-        <span class="folio-waypoint__label">about</span>
-      </a>
-    </nav>
+      <nav class="awake-nav" aria-label="primary">
+        <a
+          href="/about"
+          class="awake-nav__link awake-nav__link--about awake-in awake-in--nav1"
+          data-home-nav="about"
+        >
+          <svg viewBox="-20 -20 40 40" aria-hidden="true" focusable="false">
+            <path
+              d="M-11.5 0L-10.4-12.5-4.2-7Q0-8.2 4.2-7L10.4-12.5 11.5 0Q12.4 11.5 0 12.5Q-12.4 11.5-11.5 0Z"
+            ></path>
+            <path
+              class="awake-nav__fine"
+              d="M-6.2 1.4Q-4.4-0.6-2.6 1.4M2.6 1.4Q4.4-0.6 6.2 1.4M-1.2 5.2H1.2"
+            ></path>
+          </svg>
+          <span class="awake-nav__label">about</span>
+        </a>
+        <a
+          href="/notes"
+          class="awake-nav__link awake-nav__link--notes awake-in awake-in--nav2"
+          data-home-nav="notes"
+        >
+          <svg viewBox="-20 -20 40 40" aria-hidden="true" focusable="false">
+            <path d="M-9.5-13.5H4.5L10.5-7.5V13.5H-9.5Z"></path>
+            <path class="awake-nav__fine" d="M4.5-13.5V-7.5H10.5"></path>
+            <path class="awake-nav__fine" d="M-5-2.5H6M-5 2.5H6M-5 7.5H1.5"
+            ></path>
+          </svg>
+          <span class="awake-nav__label">notes</span>
+        </a>
+        <a
+          href="/notes/graph"
+          class="awake-nav__link awake-nav__link--graph awake-in awake-in--nav3"
+          data-home-nav="graph"
+        >
+          <svg viewBox="-20 -20 40 40" aria-hidden="true" focusable="false">
+            <circle cx="-9.5" cy="-6.5" r="3.4"></circle>
+            <circle cx="10" cy="-9.5" r="4"></circle>
+            <circle cx="2" cy="11" r="3.4"></circle>
+            <path
+              class="awake-nav__fine"
+              d="M-6.2-7L6-8.9M-7.8-3.6L0.4 8M8.2-5.8L3.4 7.9"></path>
+          </svg>
+          <span class="awake-nav__label">graph</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="awake-moon" data-awake-moon aria-hidden="true">
+      <svg viewBox="-36 -36 72 72" focusable="false">
+        <path
+          class="awake-moon__body"
+          d="M4-21A21 21 0 1 0 21 7A16.5 16.5 0 1 1 4-21Z"></path>
+      </svg>
+    </div>
+    <canvas class="awake-fx" data-awake-fx aria-hidden="true"></canvas>
+    <div class="awake-dim" data-awake-dim aria-hidden="true"></div>
+    <p class="sr-only" aria-live="polite" data-awake-live></p>
   </section>
 </Base>
+
+<script>
+  import { mountAwake } from '../lib/awake/mount';
+  const root = document.querySelector<HTMLElement>('[data-awake]');
+  if (root) mountAwake(root);
+</script>
