@@ -619,7 +619,8 @@ export function mountAwake(root: HTMLElement) {
       lungeX.target = 0;
       lungeY.target = 0;
     }
-    tilt.target = t < perkUntil ? 7 : moonUp ? -3 : 0;
+    // Only "pspsps" earns the curious head tilt.
+    tilt.target = t < perkUntil ? 4 : 0;
     shiver.target = out.purring ? 1 : 0;
     dim.target = out.dim;
     faceX.target = gazeX * 0.55;
