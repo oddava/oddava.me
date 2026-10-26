@@ -69,6 +69,10 @@ export function useNowPlaying() {
         anchorProgress(accepted.progressMs);
       }
 
+      // Sync the ref now, not in the effect: the poll loop picks its next
+      // interval from it as soon as this resolves, before Preact re-renders.
+      // Read stale, it saw the initial idle state and waited five minutes.
+      dataRef.current = accepted;
       setData(accepted);
     } catch {
       // Keep the last known state during transient network or API failures.

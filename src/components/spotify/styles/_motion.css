@@ -1,0 +1,89 @@
+/* Enter rises in; exit settles out. Matches the delays in
+   useSpotifyRenderState (50ms in, 300ms out). */
+.listening {
+  transition:
+    opacity 420ms ease,
+    transform 520ms var(--listening-ease);
+}
+
+.listening.is-entering {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: none;
+}
+
+.listening.is-exiting {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 240ms ease-in,
+    transform 240ms ease-in;
+}
+
+/* The text and the moon are keyed on the track, so these run on arrival and
+   again on every track change: new words rise, the orbit redraws, and the
+   star flares once, breathes for half a minute, then rests (an even count
+   ends where it began). */
+.listening__text {
+  animation: listening-rise 460ms var(--listening-ease) both;
+}
+
+.listening__orbit:not(.is-untimed) .listening__track {
+  animation: listening-draw 1100ms var(--listening-ease) 80ms both;
+}
+
+.listening__star {
+  animation:
+    listening-flare 900ms var(--listening-ease) both,
+    listening-breathe 3.6s ease-in-out 900ms 8 alternate;
+}
+
+@keyframes listening-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes listening-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes listening-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes listening-breathe {
+  to {
+    opacity: 0.6;
+    transform: scale(0.82);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listening__text,
+  .listening__track,
+  .listening__star {
+    animation: none !important;
+  }
+
+  .spotify-widget-positioner,
+  .spotify-widget-positioner * {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}

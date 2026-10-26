@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'preact/hooks';
 import type { TargetedPointerEvent } from 'preact';
 import { MOBILE_MINIMIZE_QUERY } from './minimizedState';
 import {
@@ -102,7 +108,7 @@ export function useWidgetPosition({
 
   const handlePointerDown = useCallback(
     (event: TargetedPointerEvent<HTMLElement>) => {
-      if ((event.target as HTMLElement).closest('.action-btn')) return;
+      if ((event.target as HTMLElement).closest('[data-no-drag]')) return;
 
       const currentTarget = event.currentTarget as HTMLElement;
       if (event.pointerType === 'touch') {
@@ -121,7 +127,11 @@ export function useWidgetPosition({
     [],
   );
 
-  useEffect(() => {
+  // A layout effect runs in the same microtask as the pointerdown re-render,
+  // so the listeners exist before the pointerup task. A passive effect waits
+  // for paint, and a quick click could release first, leaving the widget in
+  // drag mode, following the pointer with no button held.
+  useLayoutEffect(() => {
     if (!isDragging) return;
 
     const handleMove = (event: PointerEvent) => {
