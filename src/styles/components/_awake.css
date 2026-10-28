@@ -24,6 +24,9 @@
 
 html:has(.awake) {
   scrollbar-gutter: auto;
+  /* Taps land on the page under the cat's canvas; Android would flash its
+     blue tap highlight over whatever that is. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body:has(.awake) {
