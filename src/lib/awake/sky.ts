@@ -108,11 +108,16 @@ export function createSky(
     fx = fit(fxCanvas, w, h);
     const rand = mulberry32(7);
     const count = Math.round(Math.min(260, (w * h) / 6800));
+    // The type column stays clear of bright sparkles: next to a line of
+    // text one reads as a stray bullet, not a star.
+    const column = Math.min(340, w * 0.46);
     stars = Array.from({ length: count }, () => {
-      const big = rand() < 0.07;
+      const x = rand() * w;
+      const y = rand() * h;
+      const big = rand() < 0.07 && Math.abs(x - w / 2) > column;
       return {
-        x: rand() * w,
-        y: rand() * h,
+        x,
+        y,
         r: big ? 1.1 + rand() * 0.8 : 0.35 + rand() ** 2 * 0.9,
         a: big ? 0.75 : 0.18 + rand() * 0.5,
         phase: rand() * Math.PI * 2,

@@ -1,14 +1,16 @@
 /* ===================================================
    Awake — the home page cat.
 
-   The head is a silhouette the mount script redraws at its measured size; the
-   name, tagline and contacts sit inside it in normal flow, so the page reads
-   (and works) without any script. Site palette only: black, the brand blues,
-   the text greys, hairlines. The life is in the eyes.
+   The page is plain type: the name, the tagline, the contacts, and the three
+   pages under a hairline floor. The cat lives on a canvas behind the type and
+   moves between two surfaces the mount script measures: the top of the name
+   (its perch) and the floor. Without script the page is simply the type.
+   Site palette only: black, the brand blues, the text greys, hairlines.
    =================================================== */
 
 .awake {
-  --awake-lit: 0;
+  /* Single source of truth for the cat's size; mount.ts reads it. */
+  --awake-cat-scale: 1;
   --awake-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --awake-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
   flex: 1;
@@ -16,12 +18,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-sm) 0 var(--space-md);
+  padding: var(--space-md) 0;
   touch-action: manipulation;
 }
 
-/* The sky owns the whole viewport: no reserved scrollbar strip, and stray
-   whiskers never cause sideways scroll. */
 html:has(.awake) {
   scrollbar-gutter: auto;
 }
@@ -42,11 +42,19 @@ body:has(.awake) {
 }
 
 .awake-sky__canvas,
-.awake-fx {
+.awake-fx,
+.awake-cat {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.awake-cat {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .awake-fx {
@@ -119,217 +127,33 @@ body:has(.awake) {
   stroke-opacity: 1;
 }
 
-/* ---------- the cat ---------- */
+/* ---------- the type ---------- */
 
 .awake-stage {
   position: relative;
-  width: min(520px, calc(100vw - 32px));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  container-type: inline-size;
-}
-
-.awake-body {
-  position: relative;
   z-index: 1;
-  isolation: isolate;
-  width: 100%;
-  padding: calc(24cqw + 4px) 11cqw 10cqw;
-  transform-origin: 50% 100%;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.awake-head {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  transform-origin: 50% 100%;
-}
-
-.awake-head__fill {
-  fill: url(#awake-fur);
-  animation: awake-fade 700ms 120ms ease-out both;
-}
-
-.awake-head__rim {
-  fill: none;
-  stroke: url(#awake-rim);
-  stroke-width: 1.2;
-  vector-effect: non-scaling-stroke;
-  stroke-linejoin: round;
-  stroke-dasharray: 1 1;
-  animation: awake-draw 1150ms 60ms cubic-bezier(0.6, 0, 0.2, 1) both;
-}
-
-.awake-head__inner-ear {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-opacity: 0.14;
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  animation: awake-fade 700ms 500ms ease-out both;
-}
-
-.awake-whiskers {
-  fill: none;
-  stroke: url(#awake-whisker);
-  stroke-width: 1;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  animation: awake-fade 800ms 700ms ease-out both;
-}
-
-.awake-face {
-  position: relative;
+  width: min(600px, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 
-/* The eyes' light, falling faintly on the name and tagline. */
-.awake-face::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 2cqw;
-  z-index: -1;
-  width: 86cqw;
-  height: 64cqw;
-  translate: -50% 0;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--color-brand) 9%, transparent),
-    color-mix(in srgb, var(--color-brand) 3%, transparent) 55%,
-    transparent
-  );
-  opacity: var(--awake-lit);
-  pointer-events: none;
-}
-
-.awake-eyes {
-  width: 64cqw;
-  border-radius: 999px;
-  outline-offset: 4px;
-}
-
-.awake-eyes:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-}
-
-.awake-eyes__svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.awake-eye__halo {
-  fill: var(--color-brand);
-  opacity: 0.26;
-}
-
-.awake-eye__deep {
-  fill: url(#awake-deep);
-}
-
-.awake-eye__iris {
-  fill: url(#awake-iris);
-}
-
-.awake-eye__fibres path {
-  fill: none;
-  stroke: #2d4675;
-  stroke-opacity: 0.35;
-  stroke-width: 0.55;
-  stroke-linecap: round;
-}
-
-.awake-eye__fibres .awake-eye__fibre--light {
-  stroke: var(--color-text-interactive-hover);
-  stroke-opacity: 0.3;
-}
-
-.awake-eye__limbus {
-  fill: none;
-  stroke: #1c2d4d;
-  stroke-opacity: 0.8;
-  stroke-width: 1.4;
-}
-
-.awake-eye__pupil {
-  fill: #000;
-}
-
-.awake-eye__shade {
-  fill: none;
-  stroke: #000;
-  stroke-opacity: 0.45;
-  stroke-width: 10;
-}
-
-.awake-eye__glint {
-  fill: #fff;
-  opacity: 0.9;
-}
-
-.awake-eye__glint--soft {
-  opacity: 0.5;
-}
-
-.awake-eye__lid,
-.awake-eye__lower,
-.awake-eye__crease {
-  fill: none;
-  stroke-linecap: round;
-}
-
-.awake-eye__lid {
-  stroke: #000;
-  stroke-width: 2.6;
-}
-
-.awake-eye__lower {
-  stroke: #000;
-  stroke-width: 1.6;
-}
-
-.awake-eye__crease {
-  stroke: var(--color-accent);
-  stroke-opacity: 0.12;
-  stroke-width: 0.9;
-}
-
-.awake-nose {
-  width: 7.5cqw;
-  min-width: 26px;
-  height: auto;
-  margin: 0.4cqw 0 2.4cqw;
-  overflow: visible;
-}
-
-.awake-nose__tip,
-.awake-nose__mouth {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-opacity: 0.55;
-  stroke-width: 0.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+/* Room above the name for the cat sitting on it. */
+.awake-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: calc(var(--awake-cat-scale) * 124px);
 }
 
 .awake-name {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.5rem;
   font-family: var(--font-body);
-  font-size: clamp(1.65rem, 4.2vw, 2rem);
+  font-size: clamp(2.4rem, 6.4vw, 3.1rem);
   font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.032em;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
   color: var(--color-text-primary);
 }
 
@@ -376,153 +200,84 @@ body:has(.awake) {
   outline-offset: -2px;
 }
 
-/* The paw waits under the head until a swipe. */
-.awake-paw {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: -2;
-  width: 15cqw;
-  height: auto;
-  overflow: visible;
-  visibility: hidden;
-  pointer-events: none;
+/* ---------- the floor and the pages ---------- */
+
+/* Tall enough that a cat walking the floor clears the contacts. */
+.awake-ground {
+  width: 100%;
+  margin-top: calc(var(--awake-cat-scale) * 118px + 1rem);
 }
 
-.awake-paw__arm {
-  fill: #050608;
-  stroke: var(--color-accent);
-  stroke-opacity: 0.5;
-  stroke-width: 1.2;
-  stroke-linejoin: round;
+.awake-floor {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 38%, transparent) 18%,
+    color-mix(in srgb, var(--color-accent) 38%, transparent) 82%,
+    transparent
+  );
+  transform-origin: center;
+  animation: awake-floor 900ms 700ms var(--awake-ease) backwards;
 }
-
-.awake-paw__toes {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-opacity: 0.3;
-  stroke-width: 1;
-  stroke-linecap: round;
-}
-
-.awake-paw__claws {
-  fill: none;
-  stroke: var(--color-text-interactive-hover);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  opacity: 0;
-}
-
-/* ---------- nav ---------- */
 
 .awake-nav {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  justify-items: center;
+  margin-top: 0.15rem;
 }
 
 .awake-nav__link {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  min-width: 5.25rem;
-  min-height: 4.5rem;
-  padding: 0.55rem 0.8rem 0.5rem;
-  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  min-width: 5.5rem;
+  min-height: 2.9rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-lg);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  line-height: 1.2;
+  line-height: 1;
   color: var(--color-text-accent);
   text-decoration: none;
   transition:
     color 0.2s ease,
-    transform 0.45s var(--awake-spring);
+    transform 0.4s var(--awake-spring);
 }
 
-/* Looked at: the cat's gaze lands as a faint light. */
-.awake-nav__link::before {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  z-index: -1;
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--color-brand) 14%, transparent),
-    transparent
-  );
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-
-.awake-nav__link svg {
-  width: 2.1rem;
-  height: 2.1rem;
-  overflow: visible;
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 1.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: stroke 0.2s ease;
-}
-
-.awake-nav__fine {
-  stroke-width: 1;
-  opacity: 0.8;
+.awake-nav__link:hover,
+.awake-nav__link:focus-visible,
+.awake-nav__link.is-near {
+  color: var(--color-text-interactive-hover);
 }
 
 .awake-nav__link:hover,
 .awake-nav__link:focus-visible {
-  color: var(--color-text-interactive-hover);
-  transform: translateY(-3px);
-}
-
-.awake-nav__link:hover::before,
-.awake-nav__link:focus-visible::before {
-  opacity: 1;
-}
-
-.awake-nav__link:hover svg,
-.awake-nav__link:focus-visible svg {
-  stroke: var(--color-text-interactive-hover);
+  transform: translateY(2px);
 }
 
 .awake-nav__link:focus-visible {
   outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
+  outline-offset: 0;
 }
 
-/* Wide screens: the pages sit around the cat instead of under it. */
-@media (min-width: 900px) and (min-height: 660px) {
-  .awake-nav {
-    position: absolute;
-    inset: 0;
-    margin: 0;
-    pointer-events: none;
-  }
+/* The cat is reachable by keyboard; the canvas draws the focus ring. */
+.awake-pet {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
-  .awake-nav__link {
-    position: absolute;
-    pointer-events: auto;
-  }
-
-  .awake-nav__link--about {
-    left: calc(100% + 1cqw);
-    top: 6cqw;
-  }
-
-  .awake-nav__link--notes {
-    right: calc(100% - 2cqw);
-    top: 86cqw;
-  }
-
-  .awake-nav__link--graph {
-    left: calc(100% - 2cqw);
-    top: 82cqw;
+@media (min-width: 1100px) and (min-height: 760px) {
+  .awake {
+    --awake-cat-scale: 1.12;
   }
 }
 
@@ -532,9 +287,10 @@ body:has(.awake) {
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 639px) {
   .awake {
-    padding: 3.5rem 0 5.5rem;
+    --awake-cat-scale: 0.8;
+    padding: 4rem 0 5.5rem;
   }
 
   .awake-moon {
@@ -551,39 +307,30 @@ body:has(.awake) {
   animation: awake-rise 640ms var(--awake-ease) backwards;
 }
 
-.awake-in--eyes {
-  animation-name: awake-fade;
-  animation-duration: 320ms;
-  animation-delay: 280ms;
-}
-
-/* Without the script the eyes are simply drawn open, a beat later. */
-.awake:not(.is-live) .awake-in--eyes {
-  animation-delay: 900ms;
-}
-
+/* The cat sits on the name from the first frame, so it fades in place. */
 .awake-in--name {
-  animation-delay: 760ms;
+  animation-name: awake-fade;
+  animation-delay: 300ms;
 }
 
 .awake-in--tagline {
-  animation-delay: 860ms;
+  animation-delay: 520ms;
 }
 
 .awake-in--contact {
-  animation-delay: 960ms;
+  animation-delay: 620ms;
 }
 
 .awake-in--nav1 {
-  animation-delay: 1060ms;
+  animation-delay: 860ms;
 }
 
 .awake-in--nav2 {
-  animation-delay: 1140ms;
+  animation-delay: 940ms;
 }
 
 .awake-in--nav3 {
-  animation-delay: 1220ms;
+  animation-delay: 1020ms;
 }
 
 @keyframes awake-rise {
@@ -603,12 +350,10 @@ body:has(.awake) {
   }
 }
 
-@keyframes awake-draw {
+@keyframes awake-floor {
   from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
+    opacity: 0;
+    transform: scaleX(0.2);
   }
 }
 
@@ -619,42 +364,22 @@ body:has(.awake) {
     animation: none !important;
     transition: none !important;
   }
-
-  .awake-head__rim {
-    stroke-dasharray: none;
-  }
 }
 
 @media (forced-colors: active) {
-  .awake-head__fill,
-  .awake-paw__arm {
-    fill: Canvas;
-  }
-
-  .awake-head__rim,
-  .awake-head__inner-ear,
-  .awake-whiskers,
-  .awake-nose__tip,
-  .awake-nose__mouth {
-    stroke: CanvasText;
-  }
-
   .awake-sky,
   .awake-fx,
-  .awake-dim {
+  .awake-dim,
+  .awake-cat {
     display: none;
   }
 
-  .awake-eyes__svg {
-    forced-color-adjust: none;
+  .awake-floor {
+    background: CanvasText;
   }
 
   .awake-nav__link,
   .awake-contact a {
     color: LinkText;
-  }
-
-  .awake-nav__link svg {
-    stroke: LinkText;
   }
 }

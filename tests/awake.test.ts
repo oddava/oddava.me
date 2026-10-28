@@ -1,14 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
-  EAR_REST,
-  earPoints,
-  eyeAperture,
-  headPath,
-  innerEarPath,
-  pupilSize,
-} from '../src/lib/awake/geometry';
+  CatBody,
+  leapAt,
+  leapHeight,
+  type Goal,
+  type Surface,
+  type SurfaceId,
+} from '../src/lib/awake/body';
 import { dartScore, gazeOffset, type Sample } from '../src/lib/awake/gaze';
 import { CatMind, TIMING, wakeClosure } from '../src/lib/awake/mind';
+import {
+  gaitFoot,
+  GAIT,
+  LEGS,
+  PAW,
+  POSES,
+  skeleton,
+  solveLeg,
+  tailPoints,
+  type BodyState,
+} from '../src/lib/awake/rig';
 import {
   blinkClosure,
   SLOW_BLINK_MS,
@@ -17,65 +28,141 @@ import {
   stepSpring,
 } from '../src/lib/awake/spring';
 
-const numbers = (d: string) => (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+const dist = (a: [number, number], b: [number, number]) =>
+  Math.hypot(a[0] - b[0], a[1] - b[1]);
 
-describe('awake geometry', () => {
-  it('keeps the head inside its box with the ear tips on the top edge', () => {
-    for (const [w, h] of [
-      [520, 500],
-      [343, 420],
-    ] as const) {
-      const d = headPath(w, h);
-      expect(d.startsWith('M')).toBe(true);
-      expect(d.endsWith('Z')).toBe(true);
-      const values = numbers(d);
-      const xs = values.filter((_, i) => i % 2 === 0);
-      const ys = values.filter((_, i) => i % 2 === 1);
-      expect(Math.min(...xs)).toBeGreaterThanOrEqual(-0.01);
-      expect(Math.max(...xs)).toBeLessThanOrEqual(w + 0.01);
-      expect(Math.min(...ys)).toBeGreaterThanOrEqual(-0.01);
-      expect(Math.max(...ys)).toBeLessThanOrEqual(h + 0.01);
-      expect(earPoints(w, h, 1).tip[1]).toBeCloseTo(0, 5);
-      expect(earPoints(w, h, -1).tip[1]).toBeCloseTo(0, 5);
+function state(over: Partial<BodyState> = {}): BodyState {
+  return {
+    x: 400,
+    y: 300,
+    scale: 1,
+    face: 1,
+    tilt: 0,
+    pose: POSES.stand,
+    walk: 0,
+    phase: 0,
+    time: 0,
+    breath: 0,
+    tail: { wave: 0, lash: 0 },
+    ...over,
+  };
+}
+
+describe('cat rig', () => {
+  it('keeps both leg bones their length and reaches a reachable foot', () => {
+    const top: [number, number] = [0, 50];
+    const foot: [number, number] = [6, 0];
+    for (const bend of [1, -1] as const) {
+      const { knee, foot: reached } = solveLeg(top, foot, LEGS.hind, bend);
+      expect(dist(top, knee)).toBeCloseTo(LEGS.hind[0], 4);
+      expect(dist(knee, reached)).toBeCloseTo(LEGS.hind[1], 4);
+      expect(dist(reached, foot)).toBeLessThan(1e-6);
     }
+    // Out of reach: the leg straightens toward the foot instead of breaking.
+    const far = solveLeg(top, [200, 0], LEGS.front, 1);
+    expect(dist(top, far.foot)).toBeCloseTo(LEGS.front[0] + LEGS.front[1], 2);
   });
 
-  it('mirrors the ears and swivels them outward for a positive rotation', () => {
-    const w = 520;
-    const h = 500;
-    const right = earPoints(w, h, 1);
-    const left = earPoints(w, h, -1);
-    expect(right.tip[0] + left.tip[0]).toBeCloseTo(w, 5);
-    const out = { rot: 0.4, len: 1 };
-    expect(earPoints(w, h, 1, out).tip[0]).toBeGreaterThan(right.tip[0]);
-    expect(earPoints(w, h, -1, out).tip[0]).toBeLessThan(left.tip[0]);
-    // A perked ear is taller; the pose never moves the ear's base.
-    const perked = earPoints(w, h, 1, { rot: 0, len: 1.1 });
-    expect(perked.tip[1]).toBeLessThan(right.tip[1]);
-    expect(perked.outer).toEqual(right.outer);
-    expect(headPath(w, h, EAR_REST, out)).not.toBe(headPath(w, h));
-    expect(innerEarPath(w, h, 1)).toMatch(/^M/);
+  it('plants every foot on the ground when standing and sitting', () => {
+    const standing = skeleton(state({ pose: POSES.stand }));
+    expect(standing.legs).toHaveLength(4);
+    // Sitting, the back legs fold into the haunch; the front legs stand.
+    const sitting = skeleton(state({ pose: POSES.sit }));
+    expect(sitting.legs).toHaveLength(2);
+    expect(sitting.haunch).not.toBeNull();
+    // Paw centres sit one paw radius above the line, so paws rest on it.
+    for (const leg of [...standing.legs, ...sitting.legs])
+      expect(leg.foot[1]).toBeCloseTo(300 - PAW, 0);
   });
 
-  it('closes the eye to a seam and opens it to an almond', () => {
-    const open = eyeAperture({ open: 1, smile: 0 }, 1);
-    const shut = eyeAperture({ open: 0, smile: 0 }, 1);
-    expect(open.upperPeak).toBeLessThan(-20);
-    // Shut, the upper lid rests on (just above) the lower lid curve.
-    expect(shut.upperPeak).toBeGreaterThan(18);
-    const smiling = eyeAperture({ open: 0, smile: 1 }, 1);
-    expect(smiling.upperPeak).toBeLessThan(shut.upperPeak);
-    // Out-of-range poses are clamped rather than inverting the lids.
-    expect(eyeAperture({ open: 2, smile: 0 }, 1).clip).toBe(open.clip);
+  it('folds the legs away for a loaf and keeps the tail off the floor', () => {
+    const sk = skeleton(state({ pose: POSES.loaf }));
+    expect(sk.legs).toHaveLength(0);
+    for (const [, y] of sk.tail) expect(y).toBeLessThanOrEqual(300 - 2);
   });
 
-  it('narrows the pupil to a slit and widens it to near round', () => {
-    const slit = pupilSize(0);
-    const wide = pupilSize(1);
-    expect(slit.rx).toBeLessThan(2);
-    expect(slit.ry).toBeGreaterThan(20);
-    expect(wide.rx).toBeGreaterThan(15);
-    expect(wide.rx / wide.ry).toBeGreaterThan(0.8);
+  it('mirrors the body when the cat turns round', () => {
+    const right = skeleton(state({ face: 1 }));
+    const left = skeleton(state({ face: -1 }));
+    expect(right.head[0] - 400).toBeCloseTo(400 - left.head[0], 6);
+    expect(right.head[0]).toBeGreaterThan(400);
+  });
+
+  it('holds a planted foot still in the world while the body walks', () => {
+    // In stance the foot slides back by exactly the distance walked.
+    const stride = GAIT.stride;
+    const a = gaitFoot(0.1, stride);
+    const b = gaitFoot(0.3, stride);
+    expect(a[1]).toBe(0);
+    expect(b[1]).toBe(0);
+    expect(a[0] - b[0]).toBeCloseTo(stride * 0.2, 6);
+    // In swing it lifts.
+    expect(gaitFoot(GAIT.duty + (1 - GAIT.duty) / 2, stride)[1]).toBeCloseTo(
+      GAIT.lift,
+      6,
+    );
+  });
+
+  it('keeps the tail its full length', () => {
+    const pts = tailPoints([0, 40], 2.2, 1, 0, { wave: 0, lash: 0 });
+    let length = 0;
+    for (let i = 1; i < pts.length; i++) length += dist(pts[i - 1]!, pts[i]!);
+    expect(length).toBeCloseTo(78, 4);
+  });
+});
+
+describe('cat body', () => {
+  const surfaces: Record<SurfaceId, Surface> = {
+    perch: { x0: 600, x1: 800, y: 300 },
+    floor: { x0: 400, x1: 1000, y: 620 },
+  };
+  const run = (body: CatBody, goal: Goal, ms: number) => {
+    const events: string[] = [];
+    for (let t = 16; t <= ms; t += 16)
+      events.push(...body.step(0.016, t, goal));
+    return events;
+  };
+
+  it('walks along a surface and arrives facing the way it went', () => {
+    const body = new CatBody(surfaces, { surface: 'floor', x: 500 }, 1);
+    const events = run(body, { surface: 'floor', x: 800, rest: 'sit' }, 4000);
+    expect(body.x).toBeCloseTo(800, 0);
+    expect(body.facing).toBe(1);
+    expect(body.mode).toBe('rest');
+    expect(events).toContain('arrived');
+    expect(events).not.toContain('takeoff');
+  });
+
+  it('jumps between surfaces and lands on the new one', () => {
+    const body = new CatBody(surfaces, { surface: 'perch', x: 700 }, 1);
+    const events = run(body, { surface: 'floor', x: 900, rest: 'sit' }, 3000);
+    expect(events).toContain('takeoff');
+    expect(events).toContain('landed');
+    expect(body.surface).toBe('floor');
+    expect(body.y).toBe(620);
+  });
+
+  it('clears the higher end of a jump up', () => {
+    const h = leapHeight(620, 300, 1);
+    const leap = {
+      x0: 500,
+      y0: 620,
+      x1: 700,
+      y1: 300,
+      height: h,
+      start: 0,
+      duration: 500,
+      to: 'perch' as const,
+      pounce: false,
+    };
+    const ys = Array.from({ length: 101 }, (_, i) => leapAt(leap, i / 100)[1]);
+    expect(Math.min(...ys)).toBeLessThan(300);
+  });
+
+  it('keeps clear of a surface end', () => {
+    const body = new CatBody(surfaces, { surface: 'floor', x: 500 }, 1);
+    run(body, { surface: 'floor', x: 5000, rest: 'sit' }, 8000);
+    expect(body.x).toBeLessThan(1000);
   });
 });
 
