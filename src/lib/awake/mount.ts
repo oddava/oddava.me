@@ -643,9 +643,10 @@ export function mountAwake(root: HTMLElement) {
       }
       // A pointer right in its face is bright: the pupils go to slits.
       if (d < 70 * scale && interest === null) pupilTo = 0.04;
-    } else if (body.mode === 'walk') {
-      yawTo = body.facing * 0.45;
     }
+    // On the move it looks where it's going: the head turns three-quarter.
+    if (body.mode === 'walk' || body.mode === 'air' || body.mode === 'windup')
+      yawTo = body.facing * 0.8;
     if (out.hunting > 0) {
       pupilTo = Math.max(pupilTo, 0.6 + out.hunting * 0.4);
       earsTo = [0.85, 0.85];
@@ -704,6 +705,7 @@ export function mountAwake(root: HTMLElement) {
       tilt: body.tilt,
       pose: body.drawPose(),
       walk: body.walk,
+      gait: body.gait,
       phase: body.phase,
       time: t / 1000,
       breath,
@@ -778,6 +780,7 @@ export function mountAwake(root: HTMLElement) {
       tilt: 0,
       pose: body.pose,
       walk: 0,
+      gait: 0,
       phase: 0,
       time: 0,
       breath: 0,

@@ -11,7 +11,8 @@ import { dartScore, gazeOffset, type Sample } from '../src/lib/awake/gaze';
 import { CatMind, TIMING, wakeClosure } from '../src/lib/awake/mind';
 import {
   gaitFoot,
-  GAIT,
+  GAITS,
+  META,
   LEGS,
   PAW,
   POSES,
@@ -40,6 +41,7 @@ function state(over: Partial<BodyState> = {}): BodyState {
     tilt: 0,
     pose: POSES.stand,
     walk: 0,
+    gait: 0,
     phase: 0,
     time: 0,
     breath: 0,
@@ -51,7 +53,7 @@ function state(over: Partial<BodyState> = {}): BodyState {
 describe('cat rig', () => {
   it('keeps both leg bones their length and reaches a reachable foot', () => {
     const top: [number, number] = [0, 50];
-    const foot: [number, number] = [6, 0];
+    const foot: [number, number] = [6, 22];
     for (const bend of [1, -1] as const) {
       const { knee, foot: reached } = solveLeg(top, foot, LEGS.hind, bend);
       expect(dist(top, knee)).toBeCloseTo(LEGS.hind[0], 4);
@@ -90,17 +92,41 @@ describe('cat rig', () => {
 
   it('holds a planted foot still in the world while the body walks', () => {
     // In stance the foot slides back by exactly the distance walked.
-    const stride = GAIT.stride;
-    const a = gaitFoot(0.1, stride);
-    const b = gaitFoot(0.3, stride);
-    expect(a[1]).toBe(0);
-    expect(b[1]).toBe(0);
-    expect(a[0] - b[0]).toBeCloseTo(stride * 0.2, 6);
-    // In swing it lifts.
-    expect(gaitFoot(GAIT.duty + (1 - GAIT.duty) / 2, stride)[1]).toBeCloseTo(
-      GAIT.lift,
-      6,
-    );
+    for (const gait of [GAITS.walk, GAITS.trot]) {
+      const a = gaitFoot(0.05, gait);
+      const b = gaitFoot(0.3, gait);
+      expect(a[1]).toBe(0);
+      expect(b[1]).toBe(0);
+      expect(a[0] - b[0]).toBeCloseTo(gait.stride * 0.25, 6);
+      // In swing it lifts, and lands where the next stance begins.
+      const mid = gaitFoot(gait.duty + (1 - gait.duty) / 2, gait);
+      expect(mid[1]).toBeGreaterThan(gait.lift * 0.8);
+      expect(gaitFoot(0.999999, gait)[0]).toBeCloseTo(gaitFoot(0, gait)[0], 3);
+    }
+  });
+
+  it('walks in a lateral sequence and trots on diagonal pairs', () => {
+    const [hindNear, frontNear, hindFar, frontFar] = GAITS.walk.offsets;
+    expect([hindNear, frontNear, hindFar, frontFar]).toEqual([
+      0, 0.25, 0.5, 0.75,
+    ]);
+    const trot = GAITS.trot.offsets;
+    expect(trot[0]).toBe(trot[3]); // near hind with far front
+    expect(trot[1]).toBe(trot[2]); // near front with far hind
+    expect(Math.abs(trot[0] - trot[1])).toBe(0.5);
+  });
+
+  it('gives each back leg a raised heel, its foot bone at full length', () => {
+    const sk = skeleton(state({ pose: POSES.walk, walk: 1, phase: 0.3 }));
+    const hind = sk.legs.filter((leg) => leg.hock);
+    expect(hind).toHaveLength(2);
+    for (const leg of hind) {
+      expect(dist(leg.hock!, leg.foot)).toBeCloseTo(META, 4);
+      // The heel stands above the paw (smaller y is higher on screen).
+      expect(leg.hock![1]).toBeLessThan(leg.foot[1] - 6);
+      // The knee points forward of the hip-to-heel line, like a cat's stifle.
+      expect(leg.knee[0]).toBeGreaterThan(Math.min(leg.top[0], leg.hock![0]));
+    }
   });
 
   it('keeps the tail its full length', () => {

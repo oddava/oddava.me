@@ -2,7 +2,7 @@ import {
   approachPose,
   blendPose,
   clonePose,
-  GAIT,
+  gaitAt,
   POSES,
   type Pose,
   type PoseName,
@@ -53,9 +53,10 @@ interface Leap {
 }
 
 export const MOTION = {
-  walk: 150,
-  trot: 270,
-  accel: 900,
+  /** px/s at scale 1. A cat's walk is unhurried; it trots to go places. */
+  walk: 105,
+  trot: 235,
+  accel: 760,
   windup: 170,
   wiggle: 520,
   land: 210,
@@ -96,6 +97,8 @@ export class CatBody {
   pose: Pose;
   phase = 0;
   walk = 0;
+  /** 0 walking, 1 trotting; follows speed. */
+  gait = 0;
   /** 0..1 how far into a pounce wind-up (for the butt wiggle). */
   wiggle = 0;
   private modeAt = 0;
@@ -247,7 +250,7 @@ export class CatBody {
         const stepX = this.vx * dt;
         this.x = Math.abs(stepX) >= Math.abs(dx) ? goalX : this.x + stepX;
         if (Math.abs(this.vx) > 8 * k) this.facing = this.vx > 0 ? 1 : -1;
-        const stride = GAIT.stride * k * (goal.hurry ? 1.3 : 1);
+        const stride = gaitAt(this.gait).stride * k;
         this.phase = (this.phase + Math.abs(stepX) / stride) % 1;
       } else {
         this.vx = 0;
@@ -265,6 +268,8 @@ export class CatBody {
     const speed = Math.abs(this.vx) / k;
     const walkTarget = this.mode === 'walk' ? Math.min(1, speed / 60) : 0;
     this.walk += (walkTarget - this.walk) * (1 - Math.exp(-12 * dt));
+    const gaitTarget = Math.min(1, Math.max(0, (speed - 125) / 70));
+    this.gait += (gaitTarget - this.gait) * (1 - Math.exp(-6 * dt));
     if (this.mode !== 'air')
       this.tilt += (0 - this.tilt) * (1 - Math.exp(-10 * dt));
     this.face += (this.facing - this.face) * (1 - Math.exp(-11 * dt));

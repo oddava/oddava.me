@@ -25,6 +25,10 @@ export interface Pose {
   tuck: number;
   /** The same for the back legs alone (a sitting cat sits on them). */
   hindTuck: number;
+  /** 0 the back foot stands on its toes, 1 it lies flat (a crouch). */
+  hockFlat: number;
+  /** 0 normal, 1 the whole back leg streams out in line (mid-leap). */
+  hockReach: number;
   /** Tail base direction (radians, local, 0 = forward, π = straight back). */
   tailAngle: number;
   /** Total turn along the tail; positive curls the tip up and forward. */
@@ -45,45 +49,51 @@ export type PoseName =
 export const POSES: Record<PoseName, Pose> = {
   sit: {
     hip: [-10, 24],
-    shoulder: [4, 55],
+    shoulder: [4, 51],
     rHip: 23,
     rShoulder: 15.5,
     haunch: 26,
-    head: [9, 83],
+    head: [9, 79],
     front: [13, 0],
     hind: [4, 0],
     tuck: 0,
     hindTuck: 1,
+    hockFlat: 0,
+    hockReach: 0,
     tailAngle: -1.95,
     tailCurl: 2.45,
   },
   stand: {
-    hip: [-29, 53],
+    hip: [-29, 54],
     shoulder: [27, 50],
-    rHip: 20,
-    rShoulder: 19,
+    rHip: 18.5,
+    rShoulder: 20,
     haunch: 0,
-    head: [43, 77],
+    head: [46, 70],
     front: [29, 0],
-    hind: [-30, 0],
+    hind: [-31, 0],
     tuck: 0,
     hindTuck: 0,
+    hockFlat: 0,
+    hockReach: 0,
     tailAngle: 2.2,
     tailCurl: 0.9,
   },
   walk: {
-    hip: [-29, 52],
-    shoulder: [27, 48],
-    rHip: 20,
-    rShoulder: 19,
+    hip: [-29, 53],
+    shoulder: [27, 49],
+    rHip: 18.5,
+    rShoulder: 20,
     haunch: 0,
-    head: [45, 73],
+    head: [48, 65],
     front: [29, 0],
-    hind: [-30, 0],
+    hind: [-31, 0],
     tuck: 0,
     hindTuck: 0,
-    tailAngle: 2.05,
-    tailCurl: 1.1,
+    hockFlat: 0,
+    hockReach: 0,
+    tailAngle: 2.25,
+    tailCurl: 0.75,
   },
   crouch: {
     hip: [-25, 33],
@@ -96,6 +106,8 @@ export const POSES: Record<PoseName, Pose> = {
     hind: [-22, 0],
     tuck: 0,
     hindTuck: 0,
+    hockFlat: 0.75,
+    hockReach: 0,
     tailAngle: 3.05,
     tailCurl: 0.35,
   },
@@ -110,6 +122,8 @@ export const POSES: Record<PoseName, Pose> = {
     hind: [-64, 30],
     tuck: 0,
     hindTuck: 0,
+    hockFlat: 0,
+    hockReach: 0.85,
     tailAngle: 2.95,
     tailCurl: 0.25,
   },
@@ -124,6 +138,8 @@ export const POSES: Record<PoseName, Pose> = {
     hind: [-26, 0],
     tuck: 0,
     hindTuck: 0,
+    hockFlat: 0.35,
+    hockReach: 0,
     tailAngle: 2.5,
     tailCurl: 0.8,
   },
@@ -138,6 +154,8 @@ export const POSES: Record<PoseName, Pose> = {
     hind: [-18, 2],
     tuck: 1,
     hindTuck: 1,
+    hockFlat: 0,
+    hockReach: 0,
     tailAngle: -1.75,
     tailCurl: 2.5,
   },
@@ -152,6 +170,8 @@ export const POSES: Record<PoseName, Pose> = {
     hind: [-18, 2],
     tuck: 1,
     hindTuck: 1,
+    hockFlat: 0,
+    hockReach: 0,
     tailAngle: -1.7,
     tailCurl: 2.7,
   },
@@ -166,6 +186,8 @@ export const POSES: Record<PoseName, Pose> = {
     hind: [-30, 0],
     tuck: 0,
     hindTuck: 0,
+    hockFlat: 0,
+    hockReach: 0,
     tailAngle: 1.65,
     tailCurl: 0.7,
   },
@@ -197,6 +219,8 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
     hind: lerpVec(a.hind, b.hind, t),
     tuck: lerp(a.tuck, b.tuck, t),
     hindTuck: lerp(a.hindTuck, b.hindTuck, t),
+    hockFlat: lerp(a.hockFlat, b.hockFlat, t),
+    hockReach: lerp(a.hockReach, b.hockReach, t),
     tailAngle: lerpAngle(a.tailAngle, b.tailAngle, t),
     tailCurl: lerp(a.tailCurl, b.tailCurl, t),
   };
@@ -224,8 +248,13 @@ export function approachPose(
 /** Paw radius (local units): feet rest this far above the line. */
 export const PAW = 4.8;
 
-/** Leg lengths (upper, lower), local units. */
-export const LEGS = { front: [27, 26] as Vec, hind: [29, 29] as Vec };
+/**
+ * Leg bones, local units. The front leg is two bones; the back leg is three —
+ * thigh, shin, and the long foot up to the hock, which is what makes a cat's
+ * hind leg a Z with the heel high off the ground.
+ */
+export const LEGS = { front: [21, 20] as Vec, hind: [18, 19] as Vec };
+export const META = 15;
 
 /**
  * Two-bone inverse kinematics. Returns the knee for a leg from `a` to `foot`
@@ -252,30 +281,60 @@ export function solveLeg(
   };
 }
 
-/** Stance share of a stride, and the order the feet move in (a cat's walk). */
-export const GAIT = {
-  duty: 0.62,
-  stride: 44,
-  lift: 9,
-  /** hind-near, front-near, hind-far, front-far */
-  offsets: [0, 0.25, 0.5, 0.75] as const,
+export interface Gait {
+  /** Share of a stride a foot spends on the ground. */
+  duty: number;
+  /** Distance the body travels per full cycle, local units. */
+  stride: number;
+  lift: number;
+  /** Phase of each foot: hind-near, front-near, hind-far, front-far. */
+  offsets: readonly [number, number, number, number];
+}
+
+/**
+ * A cat walks in a lateral sequence — back foot, then the front foot on the
+ * same side, then the other side — with three feet down most of the time. It
+ * trots on diagonal pairs. Both strides are short next to the body.
+ */
+export const GAITS: { walk: Gait; trot: Gait } = {
+  walk: { duty: 0.64, stride: 50, lift: 5.5, offsets: [0, 0.25, 0.5, 0.75] },
+  trot: { duty: 0.46, stride: 74, lift: 8.5, offsets: [0, 0.5, 0.5, 0] },
 };
+
+/** Blend between the walk (0) and the trot (1). */
+export function gaitAt(mix: number): Gait {
+  const t = Math.min(1, Math.max(0, mix));
+  const { walk, trot } = GAITS;
+  return {
+    duty: lerp(walk.duty, trot.duty, t),
+    stride: lerp(walk.stride, trot.stride, t),
+    lift: lerp(walk.lift, trot.lift, t),
+    offsets: walk.offsets.map((o, i) => lerp(o, trot.offsets[i]!, t)) as [
+      number,
+      number,
+      number,
+      number,
+    ],
+  };
+}
 
 /**
  * Foot offset (dx, lift) from its rest position for a leg at gait phase
  * `p` (0..1). In stance the foot slides back at exactly body speed, so on the
- * ground it stays put; in swing it arcs forward.
+ * ground it stays put; in swing it lifts early and reaches forward late, the
+ * way a paw is picked up and set down rather than dragged.
  */
-export function gaitFoot(p: number, stride = GAIT.stride): Vec {
+export function gaitFoot(p: number, gait: Gait = GAITS.walk): Vec {
   const q = ((p % 1) + 1) % 1;
-  const reach = (stride * GAIT.duty) / 2;
-  if (q < GAIT.duty) {
-    const u = q / GAIT.duty;
+  const reach = (gait.stride * gait.duty) / 2;
+  if (q < gait.duty) {
+    const u = q / gait.duty;
     return [reach * (1 - 2 * u), 0];
   }
-  const u = (q - GAIT.duty) / (1 - GAIT.duty);
-  const ease = (1 - Math.cos(Math.PI * u)) / 2;
-  return [-reach + 2 * reach * ease, Math.sin(Math.PI * u) * GAIT.lift];
+  const u = (q - gait.duty) / (1 - gait.duty);
+  const ease = u * u * (3 - 2 * u);
+  const lift = Math.sin(Math.PI * Math.min(1, u * 1.15)) * gait.lift;
+  return [-reach + 2 * reach * ease, Math.max(0, lift)];
 }
 
 export interface TailState {
@@ -324,6 +383,8 @@ export interface BodyState {
   pose: Pose;
   /** 0..1 how much the walk cycle drives the feet. */
   walk: number;
+  /** 0 walking, 1 trotting. */
+  gait: number;
   phase: number;
   /** Seconds, for the tail and breathing. */
   time: number;
@@ -336,6 +397,8 @@ export interface BodyState {
 export interface Leg {
   top: Vec;
   knee: Vec;
+  /** Back legs only: the heel. */
+  hock?: Vec;
   foot: Vec;
   width: [number, number];
   near: boolean;
@@ -356,6 +419,8 @@ export interface Skeleton {
   legs: Leg[];
   tail: Vec[];
   scale: number;
+  /** +1 facing right on screen, −1 left. */
+  facing: 1 | -1;
   /** World bounding box, for hit testing. */
   box: { x0: number; y0: number; x1: number; y1: number };
 }
@@ -379,27 +444,30 @@ export function skeleton(s: BodyState): Skeleton {
     return [s.x + tx * sx * scale, s.y - ty * scale];
   };
 
-  const bob = -Math.cos(s.phase * Math.PI * 4) * 1.3 * s.walk;
+  const gait = gaitAt(s.gait);
+  // Two footfalls a cycle lift the back a little; a trot bounces more.
+  const bob =
+    -Math.cos(s.phase * Math.PI * 4) * lerp(0.7, 1.5, s.gait) * s.walk;
   const hipL: Vec = [pose.hip[0], pose.hip[1] + bob];
   const shoulderL: Vec = [pose.shoulder[0], pose.shoulder[1] + bob * 0.7];
   const headL: Vec = [pose.head[0], pose.head[1] + bob * 0.4 + breathe * 0.4];
 
   const legs: Leg[] = [];
   const legSpecs = [
-    { kind: 'hind' as const, near: true, offset: GAIT.offsets[0] },
-    { kind: 'front' as const, near: true, offset: GAIT.offsets[1] },
-    { kind: 'hind' as const, near: false, offset: GAIT.offsets[2] },
-    { kind: 'front' as const, near: false, offset: GAIT.offsets[3] },
+    { front: false, near: true, offset: gait.offsets[0] },
+    { front: true, near: true, offset: gait.offsets[1] },
+    { front: false, near: false, offset: gait.offsets[2] },
+    { front: true, near: false, offset: gait.offsets[3] },
   ];
-  for (const spec of legSpecs) {
-    const front = spec.kind === 'front';
+  const stance = (gait.stride * gait.duty) / 2;
+  for (const { front, near, offset } of legSpecs) {
     const anchor = front ? shoulderL : hipL;
     const r = front ? pose.rShoulder : pose.rHip;
     const top: Vec = [anchor[0] + (front ? 2 : 3), anchor[1] - r * 0.35];
     const rest = front ? pose.front : pose.hind;
-    const [gx, gy] = gaitFoot(s.phase + spec.offset);
-    // Far legs sit a touch further along so the pair reads as two.
-    const spread = spec.near ? 0 : front ? -4 : 4;
+    const [gx, gy] = gaitFoot(s.phase + offset, gait);
+    // The far pair stands a touch inward so the two read as two.
+    const spread = near ? 0 : front ? -3 : 3;
     // Paws are discs; lift their centres so they rest on the line.
     let foot: Vec = [
       rest[0] + spread + gx * s.walk,
@@ -408,22 +476,45 @@ export function skeleton(s: BodyState): Skeleton {
     // Folding away: the foot is drawn up under its joint.
     const tuck = front ? pose.tuck : Math.max(pose.tuck, pose.hindTuck);
     foot = lerpVec(foot, [top[0], top[1] - 4], tuck);
-    const lengths = front ? LEGS.front : LEGS.hind;
-    const solved = solveLeg(top, foot, lengths, front ? -1 : 1);
-    let worldFoot = world(solved.foot);
-    let worldKnee = world(solved.knee);
-    if (s.swat && front && spec.near && s.swat.weight > 0) {
+    if (tuck > 0.85) continue;
+
+    let knee: Vec;
+    let hock: Vec | undefined;
+    if (front) {
+      ({ knee, foot } = solveLeg(top, foot, LEGS.front, -1));
+    } else {
+      // The heel rises as the foot pushes off behind and as it swings.
+      const push = Math.max(0, -(gx * s.walk) / (stance || 1));
+      const swing = gait.lift ? (gy * s.walk) / gait.lift : 0;
+      let dir: Vec = [-5.5 + 10 * push + 7 * swing, 13];
+      dir = lerpVec(dir, [-12, 3], pose.hockFlat);
+      const toTop: Vec = [top[0] - foot[0], top[1] - foot[1]];
+      dir = lerpVec(dir, toTop, pose.hockReach);
+      const len = Math.hypot(dir[0], dir[1]) || 1;
+      hock = [foot[0] + (dir[0] / len) * META, foot[1] + (dir[1] / len) * META];
+      const solved = solveLeg(top, hock, LEGS.hind, 1);
+      // Out of reach, the whole foot comes along with the heel.
+      foot = [
+        foot[0] + solved.foot[0] - hock[0],
+        foot[1] + solved.foot[1] - hock[1],
+      ];
+      hock = solved.foot;
+      knee = solved.knee;
+    }
+    let worldFoot = world(foot);
+    let worldKnee = world(knee);
+    if (s.swat && front && near && s.swat.weight > 0) {
       const w = s.swat.weight;
       worldFoot = lerpVec(worldFoot, s.swat.at, w);
       worldKnee = lerpVec(worldKnee, lerpVec(world(top), s.swat.at, 0.5), w);
     }
-    if (tuck > 0.85) continue;
     legs.push({
       top: world(top),
       knee: worldKnee,
+      hock: hock && world(hock),
       foot: worldFoot,
-      width: front ? [11 * scale, 8 * scale] : [13 * scale, 8 * scale],
-      near: spec.near,
+      width: front ? [10.5 * scale, 7.5 * scale] : [14 * scale, 7.5 * scale],
+      near,
     });
   }
   // Draw far legs first so they read as behind.
@@ -471,6 +562,10 @@ export function skeleton(s: BodyState): Skeleton {
   for (const leg of legs) {
     xs.push(leg.foot[0], leg.knee[0]);
     ys.push(leg.foot[1], leg.knee[1]);
+    if (leg.hock) {
+      xs.push(leg.hock[0]);
+      ys.push(leg.hock[1]);
+    }
   }
   const pad = 24 * scale;
   return {
@@ -491,10 +586,10 @@ export function skeleton(s: BodyState): Skeleton {
             r: pose.haunch * scale,
           }
         : null,
-    // Bridges hip and shoulder so the back is one line, not two humps; the
-    // belly hangs a little lower than the back rises.
+    // Bridges hip and shoulder so the back is one line, not two humps. It
+    // sits toward the chest, which is deeper than the waist.
     belly: {
-      at: [mid[0], mid[1] + 1.5 * scale],
+      at: [mid[0] + (shoulder[0] - hip[0]) * 0.08, mid[1] + 1.5 * scale],
       rx: span / 2 + 3 * scale,
       ry: ((pose.rHip + pose.rShoulder) / 2) * scale * 0.97,
       angle: bodyAngle,
@@ -505,6 +600,7 @@ export function skeleton(s: BodyState): Skeleton {
     legs,
     tail,
     scale,
+    facing: dir,
     box: {
       x0: Math.min(...xs) - pad,
       y0: Math.min(...ys) - pad,

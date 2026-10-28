@@ -36,6 +36,7 @@ export interface Paint {
 }
 
 const FUR = '#090b10';
+const FUR_FAR = '#06070b';
 const ACCENT = '173, 202, 255';
 const BRAND = '122, 167, 255';
 const LIGHT = '214, 228, 255';
@@ -61,11 +62,24 @@ function disc(ctx: CanvasRenderingContext2D, [x, y]: Vec, r: number) {
   ctx.fill();
 }
 
-/** Ear triangle in head units for side −1 (left) or 1 (right). */
-function earPath(side: -1 | 1, pose: number): Vec[] {
-  const inner: Vec = [side * 5.5, -13.5];
-  const outer: Vec = [side * 19, -4.5];
-  const tip: Vec = [side * 16.5, -30];
+/** How far round the head is turned (0 facing us, 1 in profile). */
+const turn = (face: Face) => Math.min(1, Math.abs(face.yaw));
+/** The side of the face turned away from us, or 0 when facing us. */
+const farSide = (face: Face) =>
+  face.yaw > 0.05 ? -1 : face.yaw < -0.05 ? 1 : 0;
+
+/**
+ * Ear triangle in head units for side −1 (left) or 1 (right). Turning the head
+ * slides both ears back and narrows the far one.
+ */
+function earPath(side: -1 | 1, pose: number, face?: Face): Vec[] {
+  const a = face ? turn(face) : 0;
+  const shift = face ? -face.yaw * 3 : 0;
+  const squeeze = face && side === farSide(face) ? 1 - 0.3 * a : 1;
+  const x = (v: number) => shift + side * (v - 5.5) * squeeze + side * 5.5;
+  const inner: Vec = [x(5.5), -13.5];
+  const outer: Vec = [x(19), -4.5];
+  const tip: Vec = [x(16.5), -30];
   // Flattening swings the tip out and down; pricking stands it up a little.
   const angle = side * (pose < 0 ? -pose * 0.75 : -pose * 0.12);
   const cx = (inner[0] + outer[0]) / 2;
@@ -80,14 +94,54 @@ function earPath(side: -1 | 1, pose: number): Vec[] {
   return [inner, rot([tip[0], cy + (tip[1] - cy) * lift]), outer];
 }
 
+function legShape(
+  ctx: CanvasRenderingContext2D,
+  leg: Skeleton['legs'][number],
+  grow: number,
+  facing: 1 | -1,
+) {
+  const [upper, lower] = leg.width;
+  strokeLine(ctx, leg.top, leg.knee, upper + grow * 2);
+  if (leg.hock) {
+    // Shin to the heel, then the long narrow foot down to the toes.
+    strokeLine(ctx, leg.knee, leg.hock, (upper + lower) / 2 + grow * 2);
+    strokeLine(ctx, leg.hock, leg.foot, lower * 0.92 + grow * 2);
+  } else {
+    strokeLine(ctx, leg.knee, leg.foot, lower + grow * 2);
+  }
+  // A small oval paw, toes forward.
+  ctx.beginPath();
+  ctx.ellipse(
+    leg.foot[0] + facing * lower * 0.18,
+    leg.foot[1] + lower * 0.12,
+    lower * 0.72 + grow,
+    lower * 0.5 + grow,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+}
+
+/**
+ * One layer of the silhouette. The far legs are their own layer, painted
+ * first, so the body and near legs draw their outline across them and a
+ * stride reads as four legs instead of one tangle.
+ */
 function silhouette(
   ctx: CanvasRenderingContext2D,
   sk: Skeleton,
   face: Face,
   mode: Mode,
+  layer: 'far' | 'main',
 ) {
   const grow = mode === 'glow' ? 3 : mode === 'rim' ? 1.1 : 0;
   const k = sk.scale;
+  if (layer === 'far') {
+    for (const leg of sk.legs)
+      if (!leg.near) legShape(ctx, leg, grow, sk.facing);
+    return;
+  }
 
   // Tail, tapering.
   for (let i = 1; i < sk.tail.length; i++) {
@@ -95,12 +149,7 @@ function silhouette(
     const w = (8.5 - 4 * u) * k;
     strokeLine(ctx, sk.tail[i - 1]!, sk.tail[i]!, w + grow * 2);
   }
-  // Legs: thigh, shin, paw.
-  for (const leg of sk.legs) {
-    strokeLine(ctx, leg.top, leg.knee, leg.width[0] + grow * 2);
-    strokeLine(ctx, leg.knee, leg.foot, leg.width[1] + grow * 2);
-    disc(ctx, leg.foot, leg.width[1] * 0.62 + grow);
-  }
+  for (const leg of sk.legs) if (leg.near) legShape(ctx, leg, grow, sk.facing);
   // Torso.
   disc(ctx, sk.hip, sk.rHip + grow);
   disc(ctx, sk.shoulder, sk.rShoulder + grow);
@@ -133,12 +182,17 @@ function silhouette(
   ctx.rotate(face.roll);
   ctx.scale(k, k);
   const g = grow / k;
+  const a = turn(face);
+  const far = farSide(face);
   ctx.beginPath();
-  ctx.ellipse(0, 0, 20 + g, 16.5 + g, 0, 0, Math.PI * 2);
+  ctx.ellipse(face.yaw * 2, 0, 20 - a * 1.5 + g, 16.5 + g, 0, 0, Math.PI * 2);
   ctx.fill();
+  // Turned, the muzzle leads.
+  if (a > 0.05) disc(ctx, [face.yaw * 13, 6], 4 + 5.5 * a + g);
   for (const side of [-1, 1] as const) {
-    disc(ctx, [side * 12, 5.5], 10.5 + g);
-    const ear = earPath(side, face.ears[side < 0 ? 0 : 1]);
+    const cheek = side === far ? 1 - 0.35 * a : 1;
+    disc(ctx, [side * 12 + face.yaw * 3, 5.5], 10.5 * cheek + g);
+    const ear = earPath(side, face.ears[side < 0 ? 0 : 1], face);
     ctx.beginPath();
     ctx.moveTo(ear[0]![0], ear[0]![1] + 3);
     for (const p of ear) ctx.lineTo(p[0], p[1]);
@@ -159,9 +213,10 @@ function eye(
   face: Face,
   k: number,
 ) {
-  const ex = side * 7.6 + face.yaw * 4;
+  const a = turn(face);
+  const ex = side * 7.6 * (1 - 0.3 * a) + face.yaw * 6.5;
   const ey = -0.6;
-  const rx = 5.5 * (1 - side * face.yaw * 0.16);
+  const rx = 5.5 * (side === farSide(face) ? 1 - 0.45 * a : 1 + 0.05 * a);
   const ry = 4.1;
   const open = Math.min(1, Math.max(0, face.open));
   const hair = 0.85 / k;
@@ -242,7 +297,11 @@ function details(ctx: CanvasRenderingContext2D, sk: Skeleton, face: Face) {
   ctx.strokeStyle = `rgba(${ACCENT}, 0.26)`;
   ctx.lineWidth = hair;
   for (const side of [-1, 1] as const) {
-    const [inner, tip, outer] = earPath(side, face.ears[side < 0 ? 0 : 1]);
+    const [inner, tip, outer] = earPath(
+      side,
+      face.ears[side < 0 ? 0 : 1],
+      face,
+    );
     const towards = (p: Vec, t: number): Vec => [
       p[0] + (tip![0] - p[0]) * t,
       p[1] + (tip![1] - p[1]) * t,
@@ -260,7 +319,9 @@ function details(ctx: CanvasRenderingContext2D, sk: Skeleton, face: Face) {
   eye(ctx, 1, face, k);
 
   // Nose and mouth.
-  const nx = face.yaw * 5;
+  const nx = face.yaw * 10;
+  const a = turn(face);
+  const far = farSide(face);
   ctx.fillStyle = `rgba(${ACCENT}, 0.5)`;
   ctx.beginPath();
   ctx.moveTo(nx - 1.9, 4.6);
@@ -284,14 +345,16 @@ function details(ctx: CanvasRenderingContext2D, sk: Skeleton, face: Face) {
     for (let i = 0; i < 3; i++) {
       const tremble =
         face.shiver * Math.sin(face.time * 38 + i * 1.7 + side) * 1.1;
-      const rootX = nx + side * 4.6;
+      // The far whiskers are foreshortened when the head is turned.
+      const len = side === far ? 1 - 0.55 * a : 1;
+      const rootX = nx + side * 4.6 * (1 - 0.3 * a);
       const rootY = 6.2 + i * 1.3;
       ctx.beginPath();
       ctx.moveTo(rootX, rootY);
       ctx.quadraticCurveTo(
-        rootX + side * (11 + i * 1.5),
+        rootX + side * (11 + i * 1.5) * len,
         rootY - 1.6 + i * 1.6 + tremble,
-        rootX + side * (24 + i * 2),
+        rootX + side * (24 + i * 2) * len,
         rootY - 0.8 + i * 3.6 + tremble * 1.6,
       );
       ctx.stroke();
@@ -318,12 +381,18 @@ export function drawCat(
   rim.addColorStop(0.5, `rgba(${ACCENT}, 0.34)`);
   rim.addColorStop(1, `rgba(${ACCENT}, 0.5)`);
 
+  // Far legs: dimmer rim and a shade darker, as if a little in shadow.
+  ctx.fillStyle = ctx.strokeStyle = `rgba(${ACCENT}, 0.3)`;
+  silhouette(ctx, sk, face, 'rim', 'far');
+  ctx.fillStyle = ctx.strokeStyle = FUR_FAR;
+  silhouette(ctx, sk, face, 'fill', 'far');
+
   ctx.fillStyle = ctx.strokeStyle = `rgba(${BRAND}, 0.06)`;
-  silhouette(ctx, sk, face, 'glow');
+  silhouette(ctx, sk, face, 'glow', 'main');
   ctx.fillStyle = ctx.strokeStyle = rim;
-  silhouette(ctx, sk, face, 'rim');
+  silhouette(ctx, sk, face, 'rim', 'main');
   ctx.fillStyle = ctx.strokeStyle = FUR;
-  silhouette(ctx, sk, face, 'fill');
+  silhouette(ctx, sk, face, 'fill', 'main');
   details(ctx, sk, face);
 
   if (paint.focus) {
