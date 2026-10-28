@@ -3,6 +3,7 @@ import {
   CatBody,
   leapAt,
   leapHeight,
+  leapProgress,
   type Goal,
   type Surface,
   type SurfaceId,
@@ -178,11 +179,43 @@ describe('cat body', () => {
       height: h,
       start: 0,
       duration: 500,
-      to: 'perch' as const,
+      to: 'perch',
       pounce: false,
+      float: false,
     };
     const ys = Array.from({ length: 101 }, (_, i) => leapAt(leap, i / 100)[1]);
     expect(Math.min(...ys)).toBeLessThan(300);
+  });
+
+  it('hangs at the top of a floating leap and still lands on time', () => {
+    expect(leapProgress(0, true)).toBe(0);
+    expect(leapProgress(1, true)).toBeCloseTo(1, 9);
+    // Slower through the middle than a plain leap: the hang time.
+    const mid = (f: boolean) => leapProgress(0.55, f) - leapProgress(0.45, f);
+    expect(mid(true)).toBeLessThan(mid(false) * 0.7);
+    for (let t = 0; t < 1; t += 0.05)
+      expect(leapProgress(t + 0.05, true)).toBeGreaterThan(
+        leapProgress(t, true),
+      );
+  });
+
+  it('dangles when carried and floats down onto a platform when dropped', () => {
+    const body = new CatBody(surfaces, { surface: 'floor', x: 500 }, 1);
+    body.grab(0);
+    body.holdAt(700, 200, 0.016);
+    run(body, { surface: 'floor', x: 500, rest: 'sit' }, 300);
+    expect(body.mode).toBe('held');
+    expect(body.y).toBeGreaterThan(200);
+    body.setSurfaces({ ...surfaces, p1: { x0: 600, x1: 800, y: 320 } });
+    body.drop(400, 'p1');
+    const events = [];
+    for (let t = 416; t <= 2000; t += 16)
+      events.push(
+        ...body.step(0.016, t, { surface: 'p1', x: 700, rest: 'sit' }),
+      );
+    expect(events).toContain('landed');
+    expect(body.surface).toBe('p1');
+    expect(body.y).toBe(320);
   });
 
   it('keeps clear of a surface end', () => {

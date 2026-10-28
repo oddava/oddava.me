@@ -39,6 +39,19 @@ interface Mote {
   hold: number;
 }
 
+/** Sparkle dust and the sleeping cat's drifting "z"s. */
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  born: number;
+  life: number;
+  size: number;
+  glyph?: string;
+  sway: number;
+}
+
 /** --color-text-interactive-hover (#d6e4ff) and --color-brand (#7aa7ff). */
 const STAR = '214, 228, 255';
 const BRAND = '122, 167, 255';
@@ -98,6 +111,7 @@ export function createSky(
   let stars: Star[] = [];
   const rings: Ring[] = [];
   const motes: Mote[] = [];
+  const particles: Particle[] = [];
   let lastStars = -Infinity;
   let fxDirty = false;
 
@@ -182,15 +196,53 @@ export function createSky(
     }
   }
 
+  function drawParticles(
+    ctx: CanvasRenderingContext2D,
+    now: number,
+    dt: number,
+  ) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]!;
+      const age = (now - p.born) / p.life;
+      if (age >= 1) {
+        particles.splice(i, 1);
+        continue;
+      }
+      if (age < 0) continue;
+      if (!p.glyph) {
+        p.vx *= Math.exp(-1.6 * dt);
+        p.vy *= Math.exp(-1.6 * dt);
+      }
+      p.x += p.vx * dt + Math.sin(now / 520 + p.sway) * p.size * 0.012;
+      p.y += p.vy * dt;
+      const a = Math.min(1, age * 6) * (1 - age) ** 1.4;
+      if (p.glyph) {
+        // A soft blue halo under a blue-white letter, growing as it rises.
+        const size = p.size * (0.7 + age * 0.6);
+        ctx.font = `700 ${size.toFixed(1)}px 'M PLUS Rounded 1c', system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = size * 0.22;
+        ctx.strokeStyle = `rgba(${BRAND}, ${(a * 0.28).toFixed(3)})`;
+        ctx.strokeText(p.glyph, p.x, p.y);
+        ctx.fillStyle = `rgba(${STAR}, ${(a * 0.95).toFixed(3)})`;
+        ctx.fillText(p.glyph, p.x, p.y);
+      } else {
+        sparkleAt(ctx, p.x, p.y, p.size, a, STAR);
+      }
+    }
+  }
+
   function drawFx(now: number, dt: number) {
     if (!fx) return false;
-    if (!motes.length) {
+    if (!motes.length && !particles.length) {
       if (fxDirty) fx.clearRect(0, 0, w, h);
       fxDirty = false;
       return false;
     }
     fxDirty = true;
     fx.clearRect(0, 0, w, h);
+    drawParticles(fx, now, dt);
     for (let i = motes.length - 1; i >= 0; i--) {
       const m = motes[i]!;
       const age = now - m.born - m.delay;
@@ -248,6 +300,49 @@ export function createSky(
         life: 2600,
         strength,
         reach: Math.hypot(Math.max(x, w - x), Math.max(y, h - y)) + 60,
+      });
+    },
+    /** A puff of sparkle dust. */
+    dust(
+      x: number,
+      y: number,
+      count = 6,
+      spread = 60,
+      now = performance.now(),
+    ) {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = spread * (0.4 + Math.random() * 0.6);
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(a) * v,
+          vy: Math.sin(a) * v * 0.6 - 12,
+          born: now + Math.random() * 80,
+          life: 700 + Math.random() * 500,
+          size: 0.5 + Math.random() * 0.6,
+          sway: Math.random() * 6,
+        });
+      }
+    },
+    /** One drifting "z" from a sleeping cat. */
+    zee(
+      x: number,
+      y: number,
+      size: number,
+      glyph = 'z',
+      now = performance.now(),
+    ) {
+      particles.push({
+        x,
+        y,
+        vx: 6 + Math.random() * 6,
+        vy: -22 - Math.random() * 6,
+        born: now,
+        life: 2600,
+        size,
+        glyph,
+        sway: Math.random() * 6,
       });
     },
     sparkle(x: number, y: number, now = performance.now()) {

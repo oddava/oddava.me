@@ -57,28 +57,26 @@ const pages = [
         </ul>
       </div>
 
-      <div class="awake-ground">
-        <div class="awake-floor" data-awake-floor aria-hidden="true"></div>
-        <nav class="awake-nav" aria-label="primary">
-          {
-            pages.map((page, i) => (
-              <a
-                href={page.href}
-                class:list={[
-                  'awake-nav__link',
-                  'awake-in',
-                  `awake-in--nav${i + 1}`,
-                ]}
-                data-home-nav={page.name}
-              >
-                {page.name}
-              </a>
-            ))
-          }
-        </nav>
-      </div>
+      <nav class="awake-nav" aria-label="primary">
+        {
+          pages.map((page, i) => (
+            <a
+              href={page.href}
+              class:list={[
+                'awake-nav__link',
+                'awake-in',
+                `awake-in--nav${i + 1}`,
+              ]}
+              data-home-nav={page.name}
+            >
+              {page.name}
+            </a>
+          ))
+        }
+      </nav>
     </div>
 
+    <div class="awake-ground" data-awake-ground aria-hidden="true"></div>
     <button class="awake-pet" type="button" data-awake-pet>pet the cat</button>
     <div class="awake-moon" data-awake-moon aria-hidden="true">
       <svg viewBox="-36 -36 72 72" focusable="false">

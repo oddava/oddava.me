@@ -139,12 +139,10 @@ body:has(.awake) {
   text-align: center;
 }
 
-/* Room above the name for the cat sitting on it. */
 .awake-intro {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: calc(var(--awake-cat-scale) * 124px);
 }
 
 .awake-name {
@@ -202,30 +200,30 @@ body:has(.awake) {
 
 /* ---------- the floor and the pages ---------- */
 
-/* Tall enough that a cat walking the floor clears the contacts. */
+/* The cat's home: a hairline of horizon along the bottom of the screen. */
 .awake-ground {
-  width: 100%;
-  margin-top: calc(var(--awake-cat-scale) * 118px + 1rem);
-}
-
-.awake-floor {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 0;
   height: 1px;
+  pointer-events: none;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--color-accent) 38%, transparent) 18%,
-    color-mix(in srgb, var(--color-accent) 38%, transparent) 82%,
+    color-mix(in srgb, var(--color-accent) 30%, transparent) 15%,
+    color-mix(in srgb, var(--color-accent) 30%, transparent) 85%,
     transparent
   );
-  transform-origin: center;
   animation: awake-floor 900ms 700ms var(--awake-ease) backwards;
 }
 
 .awake-nav {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  justify-items: center;
-  margin-top: 0.15rem;
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 1.4rem;
 }
 
 .awake-nav__link {
@@ -374,8 +372,8 @@ body:has(.awake) {
     display: none;
   }
 
-  .awake-floor {
-    background: CanvasText;
+  .awake-ground {
+    display: none;
   }
 
   .awake-nav__link,

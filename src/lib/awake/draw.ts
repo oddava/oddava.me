@@ -412,3 +412,60 @@ export function drawCat(
   }
   ctx.restore();
 }
+
+export interface Platform {
+  x0: number;
+  x1: number;
+  y: number;
+  /** When it starts to appear, and when it starts to dissolve. */
+  born: number;
+  dieAt: number;
+}
+
+/**
+ * A conjured platform: a hairline of light that grows from its middle with a
+ * little overshoot, glows softly underneath, and fades when it is left.
+ */
+export function drawPlatform(
+  ctx: CanvasRenderingContext2D,
+  p: Platform,
+  now: number,
+) {
+  const age = (now - p.born) / 320;
+  if (age <= 0) return;
+  const grow = age >= 1 ? 1 : 1 + 2.2 * (age - 1) ** 3 + 1.2 * (age - 1) ** 2;
+  const fade = Math.max(0, 1 - Math.max(0, now - p.dieAt) / 650);
+  const a = Math.min(1, age) * fade;
+  if (a <= 0) return;
+  const cx = (p.x0 + p.x1) / 2;
+  const half = ((p.x1 - p.x0) / 2) * grow;
+  const glow = ctx.createRadialGradient(cx, p.y, 0, cx, p.y, half);
+  glow.addColorStop(0, `rgba(${BRAND}, ${(0.16 * a).toFixed(3)})`);
+  glow.addColorStop(1, `rgba(${BRAND}, 0)`);
+  ctx.save();
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(cx, p.y + 3, half, half * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const line = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+  line.addColorStop(0, `rgba(${ACCENT}, 0)`);
+  line.addColorStop(0.5, `rgba(${LIGHT}, ${(0.8 * a).toFixed(3)})`);
+  line.addColorStop(1, `rgba(${ACCENT}, 0)`);
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(cx - half, p.y + 0.5);
+  ctx.lineTo(cx + half, p.y + 0.5);
+  ctx.stroke();
+  // Three motes twinkle along it.
+  for (let i = 0; i < 3; i++) {
+    const t = now / 700 + i * 2.1;
+    const x = cx + half * 0.7 * Math.sin(t * 0.6 + i * 2);
+    const tw = (0.5 + 0.5 * Math.sin(t * 2.3)) * a;
+    ctx.fillStyle = `rgba(${LIGHT}, ${(0.7 * tw).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(x, p.y - 2 - (i % 2) * 3, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}

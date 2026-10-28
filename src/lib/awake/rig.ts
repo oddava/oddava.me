@@ -44,7 +44,8 @@ export type PoseName =
   | 'land'
   | 'loaf'
   | 'sleep'
-  | 'stretch';
+  | 'stretch'
+  | 'dangle';
 
 export const POSES: Record<PoseName, Pose> = {
   sit: {
@@ -191,7 +192,27 @@ export const POSES: Record<PoseName, Pose> = {
     tailAngle: 1.65,
     tailCurl: 0.7,
   },
+  // Carried by the scruff: hanging straight down, legs loose, tail limp.
+  dangle: {
+    hip: [-1, 42],
+    shoulder: [3, 82],
+    rHip: 17.5,
+    rShoulder: 17,
+    haunch: 0,
+    head: [6, 101],
+    front: [11, 44],
+    hind: [1, 3],
+    tuck: 0,
+    hindTuck: 0,
+    hockFlat: 0,
+    hockReach: 0,
+    tailAngle: -1.62,
+    tailCurl: 0.45,
+  },
 };
+
+/** Where a held cat is held (its scruff), local units. */
+export const SCRUFF: Vec = [4, 96];
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpVec = (a: Vec, b: Vec, t: number): Vec => [

@@ -5,7 +5,7 @@ import {
   type Surface,
   type SurfaceId,
 } from './body';
-import { drawCat, type Face } from './draw';
+import { drawCat, drawPlatform, type Face, type Platform } from './draw';
 import { dartScore, gazeOffset, nearerEar, type Sample } from './gaze';
 import { CatMind, type MindEvent, type MindOutput } from './mind';
 import { skeleton, type BodyState, type Skeleton, type Vec } from './rig';
@@ -13,11 +13,13 @@ import { createSky } from './sky';
 import { bump, clamp } from './spring';
 
 /**
- * Wires the cat to the page. The cat lives on a canvas behind the type and
- * moves between two measured surfaces — the top of the name and the floor
- * line over the nav. Each frame it picks one goal, in priority order: a page
- * it was asked about (hover, focus, touch), a spot it was called to, a cursor
- * worth hunting, or home on the name. The mind (moods, blinks, the slow-blink
+ * Wires the cat to the page. The cat lives on a canvas behind the type, at
+ * home on a hairline along the bottom of the screen, and goes anywhere else
+ * on platforms of light it conjures as it lands. Each frame it picks one
+ * goal, in priority order: a page it was asked about (hover, focus), a spot
+ * it leapt or was dropped to, or whatever it felt like doing next — wander,
+ * sit, stretch, loaf, a visit to the name. Shake the cursor and it leaps at
+ * it; grab it and it dangles. The mind (moods, blinks, the slow-blink
  * exchange) and the body (walking, jumping) are pure; this file is the glue.
  */
 
@@ -25,10 +27,16 @@ type Interest =
   | { kind: 'nav'; el: HTMLAnchorElement }
   | { kind: 'moon' | 'contact' | 'point'; x: number; y: number };
 
-const HOME_DELAY = 3200;
 const NAV_LINGER = 2600;
-const CALL_LINGER = 6500;
 const NAV_DELAY = 320;
+/** How long it stays up on a platform with nothing going on. */
+const PLATFORM_STAY = 6500;
+const LEAP_COOLDOWN = 1100;
+const ZEES = [
+  ['z', 13],
+  ['z', 17],
+  ['Z', 22],
+] as const;
 
 function fit(canvas: HTMLCanvasElement, w: number, h: number) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -52,9 +60,9 @@ export function mountAwake(root: HTMLElement) {
   const skyCanvas = $<HTMLCanvasElement>('[data-awake-sky-canvas]');
   const fxCanvas = $<HTMLCanvasElement>('[data-awake-fx]');
   const perchEl = $<HTMLElement>('[data-awake-perch]');
-  const floorEl = $<HTMLElement>('[data-awake-floor]');
+  const groundEl = $<HTMLElement>('[data-awake-ground]');
   const petButton = $<HTMLButtonElement>('[data-awake-pet]');
-  if (!catCanvas || !skyCanvas || !fxCanvas || !perchEl || !floorEl) return;
+  if (!catCanvas || !skyCanvas || !fxCanvas || !perchEl || !groundEl) return;
   const navLinks = [
     ...document.querySelectorAll<HTMLAnchorElement>('[data-home-nav]'),
   ];
@@ -81,11 +89,12 @@ export function mountAwake(root: HTMLElement) {
   let scale = 1;
   let home = 0;
   let navAt = new Map<HTMLAnchorElement, Vec>();
-  let floorBand: [number, number] = [0, 0];
   let surfaces: Record<SurfaceId, Surface> = {
     perch: { x0: 0, x1: 0, y: 0 },
-    floor: { x0: 0, x1: 0, y: 0 },
+    ground: { x0: 0, x1: 0, y: 0 },
   };
+  const platforms = new Map<string, Platform>();
+  let platformCount = 0;
   const measureCanvas = document.createElement('canvas').getContext('2d')!;
 
   function measure() {
@@ -127,17 +136,15 @@ export function mountAwake(root: HTMLElement) {
     }
     range.detach();
     home = restX;
-    // The line draws in with a scaleX transform; its box is the ground's.
-    const floor = (floorEl!.parentElement ?? floorEl!).getBoundingClientRect();
     surfaces = {
       perch: { x0: wordBox.left - 6, x1: wordBox.right + 6, y: inkTop + 1.5 },
-      floor: {
-        x0: floor.left + floor.width * 0.08,
-        x1: floor.right - floor.width * 0.08,
-        y: floorEl!.getBoundingClientRect().top + 0.5,
+      ground: {
+        x0: 4,
+        x1: innerWidth - 4,
+        y: groundEl!.getBoundingClientRect().top + 0.5,
       },
     };
-    floorBand = [surfaces.floor.y - 150 * scale, surfaces.floor.y + 70];
+    for (const [id, p] of platforms) surfaces[id] = p;
     navAt = new Map(
       navLinks.map((link) => {
         const r = link.getBoundingClientRect();
@@ -151,7 +158,11 @@ export function mountAwake(root: HTMLElement) {
   const mind = new CatMind(now());
   const body = new CatBody(
     surfaces,
-    { surface: 'perch', x: home, pose: reduced() ? 'sit' : 'loaf' },
+    {
+      surface: 'ground',
+      x: innerWidth * 0.3,
+      pose: reduced() ? 'sit' : 'loaf',
+    },
     scale,
   );
 
@@ -165,8 +176,17 @@ export function mountAwake(root: HTMLElement) {
   let interestUntil = 0;
   let navTarget: HTMLAnchorElement | null = null;
   let navUntil = 0;
-  let call: { x: number; until: number } | null = null;
-  let awayUntil = 0;
+  /** Where it was sent (shake, tap, pspsps, a drop) and until when. */
+  let sent: { surface: SurfaceId; x: number; until: number } | null = null;
+  let lastLeap = -Infinity;
+  let drag: { x: number; y: number; on: boolean } | null = null;
+  /** What it decided to do on its own, and until when. */
+  let whim: {
+    rest: Rest;
+    surface: SurfaceId;
+    x: number;
+    until: number;
+  } | null = null;
   let pounceNav: HTMLAnchorElement | null = null;
   let tiltUntil = 0;
   let typed = '';
@@ -193,6 +213,12 @@ export function mountAwake(root: HTMLElement) {
     samples.push({ x, y, t });
     while (samples.length && t - samples[0]!.t > 900) samples.shift();
     stir();
+    if (drag && !drag.on && Math.hypot(x - drag.x, y - drag.y) > 6) {
+      drag.on = true;
+      body.grab(t);
+      sent = null;
+      whim = null;
+    }
     const over = Boolean(lastSkeleton && inside(lastSkeleton, x, y, 6));
     if (over !== hoverCat) {
       hoverCat = over;
@@ -207,7 +233,6 @@ export function mountAwake(root: HTMLElement) {
       navUntil = Infinity;
       interest = { kind: 'nav', el: link };
       interestUntil = Infinity;
-      call = null;
     } else {
       navUntil = now() + linger;
       interestUntil = now() + 900;
@@ -228,10 +253,38 @@ export function mountAwake(root: HTMLElement) {
     refresh();
   }
 
-  function callTo(x: number) {
-    call = { x, until: now() + CALL_LINGER };
+  /** Conjure a platform (or use the ground) for a landing at (x, y). */
+  function landingAt(x: number, y: number, appearIn = 360): SurfaceId {
+    const ground = surfaces.ground;
+    if (y > ground.y - 70 * scale) return 'ground';
+    const top = 150 * scale;
+    const py = Math.max(top, y);
+    const half = 66 * scale;
+    const cx = Math.min(width - half - 6, Math.max(half + 6, x));
+    const id = `p${++platformCount}`;
+    const t = now();
+    platforms.set(id, {
+      x0: cx - half,
+      x1: cx + half,
+      y: py,
+      born: t + appearIn,
+      dieAt: Infinity,
+    });
+    // Old platforms that are already fading go; keep the scene light.
+    for (const [key, p] of platforms)
+      if (p.dieAt + 800 < t || platforms.size > 6) platforms.delete(key);
+    surfaces[id] = platforms.get(id)!;
+    body.setSurfaces(surfaces, scale);
+    return id;
+  }
+
+  /** Send the cat to (x, y): walk if it's on the ground, else leap. */
+  function sendTo(x: number, y: number) {
+    const surface = landingAt(x, y);
+    sent = { surface, x, until: now() + PLATFORM_STAY };
     navTarget = null;
-    awayUntil = now() + CALL_LINGER + HOME_DELAY;
+    whim = null;
+    lastLeap = now();
     stir();
     run();
   }
@@ -269,12 +322,7 @@ export function mountAwake(root: HTMLElement) {
     if (typed === 'pspsps') {
       typed = '';
       tiltUntil = now() + 1400;
-      if (pointer && pointer[1] > floorBand[0]) callTo(pointer[0]);
-      else {
-        call = null;
-        navTarget = null;
-        awayUntil = 0;
-      }
+      if (pointer) sendTo(pointer[0], surfaces.ground.y);
       run();
     }
   });
@@ -350,7 +398,7 @@ export function mountAwake(root: HTMLElement) {
     });
   }
 
-  // Clicks and taps on the page: pet the cat, call it, or point at the sky.
+  // Clicks and taps: grab or pet the cat, or send it to the spot.
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     const target = e.target as Element | null;
@@ -358,36 +406,41 @@ export function mountAwake(root: HTMLElement) {
     const x = e.clientX;
     const y = e.clientY;
     if (lastSkeleton && inside(lastSkeleton, x, y, coarse ? 14 : 4)) {
-      poke();
+      // Pressed on the cat: a drag picks it up, a click pets it. No text
+      // selection while carrying it across the page.
+      e.preventDefault();
+      drag = { x, y, on: false };
+      if (reduced()) poke();
       return;
     }
     if (reduced()) return;
-    const floor = surfaces.floor;
-    if (
-      y >= floorBand[0] &&
-      y <= floorBand[1] &&
-      x >= floor.x0 - 30 &&
-      x <= floor.x1 + 30
-    ) {
-      callTo(x);
-      return;
-    }
-    const perch = perchEl!.getBoundingClientRect();
-    if (
-      y >= perch.top - 140 * scale &&
-      y <= perch.bottom &&
-      x >= perch.left - 40 &&
-      x <= perch.right + 40
-    ) {
-      call = null;
-      navTarget = null;
-      awayUntil = 0;
-      stir();
-      run();
-      return;
-    }
-    look('point', x, y, 1300);
+    sendTo(x, y);
   });
+  const release = () => {
+    if (!drag) return;
+    const was = drag;
+    drag = null;
+    if (!was.on) {
+      if (!reduced()) poke();
+      return;
+    }
+    // Let go: a platform appears under its paws, or it lands on the ground.
+    const surface = landingAt(body.x, body.y + 4, 0);
+    body.drop(now(), surface);
+    sent = { surface, x: body.x, until: now() + PLATFORM_STAY };
+    sky.dust(body.x, body.y, 8, 70);
+    run();
+  };
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+  // While carrying on a touch screen, the page must not scroll.
+  addEventListener(
+    'touchmove',
+    (e) => {
+      if (drag?.on) e.preventDefault();
+    },
+    { passive: false },
+  );
 
   petButton?.addEventListener('click', () => poke());
   petButton?.addEventListener('focus', () => {
@@ -404,10 +457,11 @@ export function mountAwake(root: HTMLElement) {
     if (!e.persisted) return;
     pounceNav = null;
     navTarget = null;
-    call = null;
+    sent = null;
+    drag = null;
     measure();
     body.setSurfaces(surfaces, scale);
-    body.place('perch', home, 'sit');
+    body.place('ground', width * 0.3, 'sit');
     run();
   });
 
@@ -423,7 +477,7 @@ export function mountAwake(root: HTMLElement) {
   }
 
   function headPoint(): Vec {
-    return lastSkeleton?.head ?? [home, surfaces.perch.y - 90 * scale];
+    return lastSkeleton?.head ?? [body.x, body.y - 90 * scale];
   }
 
   function poke() {
@@ -483,11 +537,13 @@ export function mountAwake(root: HTMLElement) {
     time: 0,
   };
   let breath = 0;
+  let lastDust = 0;
+  let lastZee = 0;
+  let zee = 0;
   let frame = 0;
   let last = 0;
   let lastDraw = 0;
   let dim = 0;
-  let lastBox: Skeleton['box'] | null = null;
   const born = now();
   catCanvas.style.transition = reduced() ? 'none' : 'opacity 520ms ease-out';
   catCanvas.style.opacity = '1';
@@ -499,6 +555,50 @@ export function mountAwake(root: HTMLElement) {
     }
   }
 
+  /** Something to do of its own accord. Weighted, so never quite the same. */
+  function nextWhim(t: number): NonNullable<typeof whim> {
+    const r = Math.random();
+    const ground = surfaces.ground;
+    const span = ground.x1 - ground.x0;
+    const near = (d: number) =>
+      Math.min(ground.x1 - 40, Math.max(ground.x0 + 40, body.x + d));
+    if (r < 0.4)
+      return {
+        rest: 'sit',
+        surface: 'ground',
+        x: ground.x0 + span * (0.08 + Math.random() * 0.84),
+        until: t + 4000 + Math.random() * 4000,
+      };
+    if (r < 0.62)
+      return {
+        rest: 'sit',
+        surface: body.bound,
+        x: body.x,
+        until: t + 2500 + Math.random() * 3500,
+      };
+    if (r < 0.74)
+      return {
+        rest: 'stretch',
+        surface: body.bound,
+        x: body.x,
+        until: t + 1500,
+      };
+    if (r < 0.86)
+      return {
+        rest: 'loaf',
+        surface: body.bound,
+        x: near(0),
+        until: t + 5000 + Math.random() * 4000,
+      };
+    // Now and then: up onto the name for a look round.
+    return {
+      rest: 'sit',
+      surface: 'perch',
+      x: home,
+      until: t + 6000 + Math.random() * 5000,
+    };
+  }
+
   function chooseGoal(t: number, out: MindOutput): { goal: Goal; rest?: Rest } {
     const sleepy: Rest | undefined =
       out.phase === 'asleep'
@@ -506,73 +606,59 @@ export function mountAwake(root: HTMLElement) {
         : out.phase === 'drowsy'
           ? 'loaf'
           : undefined;
-    // The opening: curled up on the name, then it sits up.
-    if (t - born < 1000)
-      return { goal: { surface: 'perch', x: home, rest: 'loaf' } };
+    const here = { surface: body.bound, x: body.x };
+    // The opening: curled up, then it sits up.
+    if (t - born < 1000) return { goal: { ...here, rest: 'loaf' } };
     if (navTarget && t > navUntil) navTarget = null;
-    if (call && t > call.until) call = null;
     const centre = width / 2;
 
-    if (pounceNav) {
-      const x = navAt.get(pounceNav)?.[0] ?? centre;
+    if (pounceNav || navTarget) {
+      const link = (pounceNav ?? navTarget)!;
+      const x = navAt.get(link)?.[0] ?? centre;
+      whim = null;
       return {
         goal: {
-          surface: 'floor',
+          surface: 'ground',
           x,
-          rest: 'crouch',
+          rest: pounceNav ? 'crouch' : 'sit',
           hurry: true,
-          pounce: body.surface === 'floor',
-        },
-      };
-    }
-    if (navTarget) {
-      const x = navAt.get(navTarget)?.[0] ?? centre;
-      awayUntil = t + HOME_DELAY;
-      return {
-        goal: {
-          surface: 'floor',
-          x,
-          rest: 'sit',
-          hurry: true,
+          float: true,
+          pounce: Boolean(pounceNav) && body.surface === 'ground',
           face: x < centre - 4 ? 1 : x > centre + 4 ? -1 : undefined,
         },
       };
     }
-    if (call) {
-      return {
-        goal: { surface: 'floor', x: call.x, rest: 'sit', hurry: false },
-        rest: sleepy,
-      };
+    if (sent) {
+      // Up on a platform with nothing going on: after a while, float down.
+      if (t > sent.until && out.phase === 'awake') sent = null;
+      else
+        return {
+          goal: {
+            surface: sent.surface,
+            x: sent.x,
+            rest: 'sit',
+            hurry: true,
+            float: true,
+          },
+          rest: sleepy,
+        };
     }
-    // A cursor near the floor, moving like prey, is worth hunting.
+    if (sleepy) return { goal: { ...here, rest: 'sit' }, rest: sleepy };
+    if (!whim || t > whim.until) whim = nextWhim(t);
     if (
-      pointer &&
-      out.phase === 'awake' &&
-      pointer[1] >= floorBand[0] &&
-      pointer[1] <= floorBand[1] &&
-      t - pointer.t < 1800 &&
-      out.hunting > 0.15
-    ) {
-      awayUntil = t + HOME_DELAY;
-      const still = t - pointer.t > 320;
-      const close = Math.abs(pointer[0] - body.x) < 150 * scale;
-      return {
-        goal: {
-          surface: 'floor',
-          x: pointer[0],
-          rest: 'crouch',
-          hurry: true,
-          pounce: still && close && body.surface === 'floor',
-        },
-      };
-    }
-    if (body.surface !== 'perch' && t < awayUntil) {
-      return {
-        goal: { surface: body.surface, x: body.x, rest: 'sit' },
-        rest: sleepy,
-      };
-    }
-    return { goal: { surface: 'perch', x: home, rest: 'sit' }, rest: sleepy };
+      whim.surface !== 'ground' &&
+      whim.surface !== 'perch' &&
+      !surfaces[whim.surface]
+    )
+      whim.surface = 'ground';
+    return {
+      goal: {
+        surface: whim.surface,
+        x: whim.x,
+        rest: whim.rest,
+        float: whim.surface !== body.surface,
+      },
+    };
   }
 
   function lookTarget(t: number, sk: Skeleton | null): Vec | null {
@@ -602,24 +688,80 @@ export function mountAwake(root: HTMLElement) {
     });
     for (const event of out.events) handle(event, t);
 
+    // Shaking the cursor: it winds up and leaps at it, anywhere.
+    if (
+      pointer &&
+      !drag?.on &&
+      out.phase === 'awake' &&
+      out.hunting > 0.7 &&
+      t - lastLeap > LEAP_COOLDOWN &&
+      !body.airborne &&
+      t - born > 1000
+    ) {
+      const recent = samples.filter((p) => t - p.t < 320);
+      const cx = recent.reduce((a, p) => a + p.x, 0) / (recent.length || 1);
+      const cy = recent.reduce((a, p) => a + p.y, 0) / (recent.length || 1);
+      sendTo(cx, cy + 34 * scale);
+    }
+
+    if (drag?.on && pointer) body.holdAt(pointer[0], pointer[1], dt);
     const { goal, rest } = chooseGoal(t, out);
     const resting = body.mode === 'rest' || body.mode === 'walk';
+    const wasFloat = body.leap?.float;
     for (const event of body.step(
       dt,
       t,
       goal,
-      out.hunting,
+      drag?.on ? 0 : out.hunting,
       resting ? rest : undefined,
     )) {
+      if (event === 'landed') {
+        sky.dust(body.x, body.y, wasFloat ? 8 : 4, wasFloat ? 70 : 40);
+        // Landed by the cursor it was after: a swat, and maybe a catch.
+        if (
+          pointer &&
+          Math.hypot(pointer[0] - body.x, pointer[1] - body.y) < 140 * scale
+        )
+          swat = { at: t, x: pointer[0], y: pointer[1], caught: false };
+      }
       if (
         event === 'pounced' &&
         pointer &&
         Math.abs(pointer[0] - body.x) < 40 * scale
-      ) {
+      )
         sky.sparkle(pointer[0], pointer[1]);
-      }
+    }
+    if (body.mode === 'air' && body.leap?.float && t - lastDust > 70) {
+      lastDust = t;
+      sky.dust(body.x, body.y - 30 * scale, 1, 18);
     }
     if (pounceNav && body.mode === 'rest') pounceNav = null;
+    // Platforms it has left dissolve into dust.
+    for (const [id, p] of platforms) {
+      const used =
+        body.surface === id || body.bound === id || sent?.surface === id;
+      if (!used && p.dieAt === Infinity) {
+        p.dieAt = t;
+        for (let i = 0; i < 4; i++)
+          sky.dust(p.x0 + ((p.x1 - p.x0) * (i + 0.5)) / 4, p.y, 2, 25);
+      }
+      if (p.dieAt + 800 < t) {
+        platforms.delete(id);
+        delete surfaces[id];
+      }
+    }
+    // Asleep: z, z, Z, drifting up from its head.
+    if (out.phase === 'asleep' && t - lastZee > 1150) {
+      lastZee = t;
+      const [glyph, size] = ZEES[zee++ % ZEES.length]!;
+      const [hx0, hy0] = headPoint();
+      sky.zee(
+        hx0 + body.facing * 16 * scale,
+        hy0 - 24 * scale,
+        size * scale,
+        glyph,
+      );
+    }
 
     // ---- face ----
     const target = lookTarget(t, lastSkeleton);
@@ -647,6 +789,11 @@ export function mountAwake(root: HTMLElement) {
     // On the move it looks where it's going: the head turns three-quarter.
     if (body.mode === 'walk' || body.mode === 'air' || body.mode === 'windup')
       yawTo = body.facing * 0.8;
+    // Carried: eyes wide, ears back, a little indignant.
+    if (body.mode === 'held') {
+      pupilTo = 0.9;
+      earsTo = [-0.45, -0.45];
+    }
     if (out.hunting > 0) {
       pupilTo = Math.max(pupilTo, 0.6 + out.hunting * 0.4);
       earsTo = [0.85, 0.85];
@@ -711,7 +858,13 @@ export function mountAwake(root: HTMLElement) {
       breath,
       tail: {
         wave:
-          out.phase === 'asleep' ? 0.03 : body.mode === 'walk' ? 0.14 : 0.09,
+          out.phase === 'asleep'
+            ? 0.03
+            : body.mode === 'held'
+              ? 0.3
+              : body.mode === 'walk'
+                ? 0.14
+                : 0.09,
         lash: out.hunting * 0.35 + (body.wiggle > 0 ? 0.25 : 0),
       },
       swat: swat ? { at: [swat.x, swat.y], weight: swatWeight } : undefined,
@@ -721,6 +874,7 @@ export function mountAwake(root: HTMLElement) {
 
     // Idle frames can run at half rate; motion runs every frame.
     const moving =
+      platforms.size > 0 ||
       body.mode !== 'rest' ||
       t - lastInput < 1500 ||
       swat ||
@@ -734,7 +888,7 @@ export function mountAwake(root: HTMLElement) {
     for (const link of navLinks)
       link.classList.toggle(
         'is-near',
-        body.surface === 'floor' &&
+        body.surface === 'ground' &&
           body.mode === 'rest' &&
           Math.abs((navAt.get(link)?.[0] ?? -1e4) - body.x) < 30 * scale,
       );
@@ -752,17 +906,24 @@ export function mountAwake(root: HTMLElement) {
     if (!document.hidden) frame = requestAnimationFrame(tick);
   }
 
+  let dirty: Skeleton['box'][] = [];
+
   function paint(sk: Skeleton) {
-    if (lastBox) {
-      ctx.clearRect(
-        lastBox.x0 - 8,
-        lastBox.y0 - 8,
-        lastBox.x1 - lastBox.x0 + 16,
-        lastBox.y1 - lastBox.y0 + 16,
-      );
+    for (const b of dirty)
+      ctx.clearRect(b.x0 - 8, b.y0 - 8, b.x1 - b.x0 + 16, b.y1 - b.y0 + 16);
+    dirty = [{ ...sk.box }];
+    const t = now();
+    for (const p of platforms.values()) {
+      drawPlatform(ctx, p, t);
+      const half = (p.x1 - p.x0) / 2;
+      dirty.push({
+        x0: p.x0 - half * 0.3,
+        y0: p.y - 14,
+        x1: p.x1 + half * 0.3,
+        y1: p.y + 18,
+      });
     }
     drawCat(ctx, sk, face, { focus: petFocus });
-    lastBox = { ...sk.box };
   }
 
   // ---------- reduced motion: a still portrait ----------
@@ -770,7 +931,7 @@ export function mountAwake(root: HTMLElement) {
   function staticFrame(petted = false) {
     measure();
     body.setSurfaces(surfaces, scale);
-    body.place('perch', home, 'sit');
+    body.place('ground', width * 0.3, 'sit');
     const target = lookTarget(now(), lastSkeleton);
     const sk0 = skeleton({
       x: body.x,
@@ -800,7 +961,7 @@ export function mountAwake(root: HTMLElement) {
     lastSkeleton = sk0;
     ctx.clearRect(0, 0, width, height);
     drawCat(ctx, sk0, face, { focus: petFocus });
-    lastBox = { ...sk0.box };
+    dirty = [{ ...sk0.box }];
     sky.frame(now(), 0, true);
     if (petted) setTimeout(() => staticFrame(false), 1400);
   }
@@ -811,7 +972,7 @@ export function mountAwake(root: HTMLElement) {
     width = innerWidth;
     height = innerHeight;
     ctx = fit(catCanvas!, width, height);
-    lastBox = null;
+    dirty = [];
     sky.resize();
     measure();
     body.setSurfaces(surfaces, scale);

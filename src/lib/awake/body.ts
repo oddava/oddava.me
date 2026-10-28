@@ -4,6 +4,7 @@ import {
   clonePose,
   gaitAt,
   POSES,
+  SCRUFF,
   type Pose,
   type PoseName,
 } from './rig';
@@ -14,7 +15,8 @@ import {
  * the mount loop says where to go, this answers with a body to draw.
  */
 
-export type SurfaceId = 'perch' | 'floor';
+/** 'ground' (the page bottom), 'perch' (the name), or a conjured platform. */
+export type SurfaceId = string;
 
 export interface Surface {
   x0: number;
@@ -23,7 +25,7 @@ export interface Surface {
   y: number;
 }
 
-export type Rest = 'sit' | 'stand' | 'loaf' | 'sleep' | 'crouch';
+export type Rest = 'sit' | 'stand' | 'loaf' | 'sleep' | 'crouch' | 'stretch';
 
 export interface Goal {
   surface: SurfaceId;
@@ -35,12 +37,14 @@ export interface Goal {
   hurry?: boolean;
   /** Arrive by pouncing: wiggle, then hop onto `x`. */
   pounce?: boolean;
+  /** A magic jump: slow at the top, landing on a conjured platform. */
+  float?: boolean;
 }
 
-export type Mode = 'rest' | 'walk' | 'windup' | 'air' | 'land';
+export type Mode = 'rest' | 'walk' | 'windup' | 'air' | 'land' | 'held';
 export type BodyEvent = 'takeoff' | 'landed' | 'arrived' | 'pounced';
 
-interface Leap {
+export interface Leap {
   x0: number;
   y0: number;
   x1: number;
@@ -50,6 +54,7 @@ interface Leap {
   duration: number;
   to: SurfaceId;
   pounce: boolean;
+  float: boolean;
 }
 
 export const MOTION = {
@@ -77,6 +82,12 @@ export function leapHeight(y0: number, y1: number, scale: number, hop = false) {
   return 44 * scale + Math.max(0, rise) * 0.55 + Math.max(0, -rise) * 0.12;
 }
 
+/** Leap progress for elapsed share τ; a float hangs at the top. */
+export function leapProgress(tau: number, float: boolean) {
+  const t = Math.min(1, Math.max(0, tau));
+  return float ? t + (0.42 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI) : t;
+}
+
 /** Position along a leap at progress u (0..1). */
 export function leapAt(leap: Leap, u: number): [number, number] {
   return [
@@ -101,9 +112,12 @@ export class CatBody {
   gait = 0;
   /** 0..1 how far into a pounce wind-up (for the butt wiggle). */
   wiggle = 0;
+  leap: Leap | null = null;
   private modeAt = 0;
-  private leap: Leap | null = null;
   private arrived = true;
+  private swing = 0;
+  private swingV = 0;
+  private heldVx = 0;
 
   constructor(
     public surfaces: Record<SurfaceId, Surface>,
@@ -112,7 +126,7 @@ export class CatBody {
   ) {
     this.surface = start.surface;
     this.x = start.x;
-    this.y = surfaces[start.surface].y;
+    this.y = surfaces[start.surface]!.y;
     this.facing = start.face ?? 1;
     this.face = this.facing;
     this.pose = clonePose(POSES[start.pose ?? 'sit']);
@@ -122,9 +136,15 @@ export class CatBody {
     return this.mode === 'air' || this.mode === 'windup';
   }
 
+  /** The surface it is on or about to land on. */
+  get bound(): SurfaceId {
+    return this.leap?.to ?? this.surface;
+  }
+
   /** Where `goal.x` lands once kept clear of the surface's ends. */
   clampTo(id: SurfaceId, x: number) {
     const s = this.surfaces[id];
+    if (!s) return x;
     const m = MOTION.margin * this.scale;
     if (s.x1 - s.x0 <= m * 2) return (s.x0 + s.x1) / 2;
     return Math.min(s.x1 - m, Math.max(s.x0 + m, x));
@@ -134,14 +154,17 @@ export class CatBody {
   setSurfaces(surfaces: Record<SurfaceId, Surface>, scale = this.scale) {
     this.surfaces = surfaces;
     this.scale = scale;
-    if (this.mode === 'air' || this.mode === 'windup') {
-      if (this.leap) {
-        this.leap.y1 = surfaces[this.leap.to].y;
+    if (this.mode === 'held') return;
+    if (this.leap) {
+      const to = surfaces[this.leap.to];
+      if (to) {
+        this.leap.y1 = to.y;
         this.leap.x1 = this.clampTo(this.leap.to, this.leap.x1);
       }
       return;
     }
-    this.y = surfaces[this.surface].y;
+    if (!surfaces[this.surface]) return;
+    this.y = surfaces[this.surface]!.y;
     this.x = this.clampTo(this.surface, this.x);
   }
 
@@ -149,7 +172,7 @@ export class CatBody {
   place(surface: SurfaceId, x: number, pose: PoseName, face?: 1 | -1) {
     this.surface = surface;
     this.x = this.clampTo(surface, x);
-    this.y = this.surfaces[surface].y;
+    this.y = this.surfaces[surface]?.y ?? this.y;
     this.vx = 0;
     this.mode = 'rest';
     this.leap = null;
@@ -158,6 +181,47 @@ export class CatBody {
     if (face) this.facing = face;
     this.face = this.facing;
     this.pose = clonePose(POSES[pose]);
+  }
+
+  /** Picked up by the scruff. */
+  grab(now: number) {
+    // Off whatever it stood on, so that platform can dissolve.
+    this.surface = 'held';
+    this.leap = null;
+    this.vx = this.walk = this.wiggle = this.swing = this.swingV = 0;
+    this.setMode('held', now);
+  }
+
+  /** Follow the hand at the scruff; the body swings behind like a pendulum. */
+  holdAt(sx: number, sy: number, dt: number) {
+    const x = sx - SCRUFF[0] * this.facing * this.scale;
+    const y = sy + SCRUFF[1] * this.scale;
+    const vx = dt > 0 ? (x - this.x) / dt : 0;
+    this.heldVx += (vx - this.heldVx) * Math.min(1, dt * 12);
+    this.x = x;
+    this.y = y;
+  }
+
+  /** Let go: float down onto `surface` (usually a fresh platform). */
+  drop(now: number, surface: SurfaceId) {
+    const to = this.surfaces[surface];
+    if (!to) return;
+    const x1 = this.clampTo(surface, this.x);
+    const distance = Math.hypot(x1 - this.x, to.y - this.y);
+    this.leap = {
+      x0: this.x,
+      y0: this.y,
+      x1,
+      y1: to.y,
+      height: 0,
+      start: now,
+      duration: Math.min(900, 300 + (distance / this.scale) * 1.1),
+      to: surface,
+      pounce: false,
+      float: true,
+    };
+    this.arrived = false;
+    this.setMode('air', now);
   }
 
   private setMode(mode: Mode, now: number) {
@@ -182,18 +246,32 @@ export class CatBody {
     const goalX = this.clampTo(goal.surface, goal.x);
     const since = now - this.modeAt;
 
+    if (this.mode === 'held') {
+      // A damped pendulum, pushed by the hand's motion.
+      this.swingV +=
+        (-26 * Math.sin(this.swing) - (this.heldVx / k) * 0.02) * dt;
+      this.swingV *= Math.exp(-2.4 * dt);
+      this.swing = Math.max(-0.7, Math.min(0.7, this.swing + this.swingV * dt));
+      this.heldVx *= Math.exp(-6 * dt);
+      this.tilt = this.swing * this.facing;
+      approachPose(this.pose, POSES.dangle, dt, 12);
+      return events;
+    }
+
     if (this.mode === 'air' && this.leap) {
-      const u = Math.min(1, (now - this.leap.start) / this.leap.duration);
+      const tau = (now - this.leap.start) / this.leap.duration;
+      const float = this.leap.float;
+      const u = leapProgress(tau, float);
       const [x, y] = leapAt(this.leap, u);
-      const [px, py] = leapAt(this.leap, Math.max(0, u - 0.04));
+      const [px, py] = leapAt(this.leap, leapProgress(tau - 0.04, float));
       this.x = x;
       this.y = y;
       const climb = -(y - py);
       const run = Math.abs(x - px) + 1e-3;
       this.tilt = Math.max(-0.5, Math.min(0.5, Math.atan2(climb, run) * 0.7));
-      if (u >= 1) {
+      if (tau >= 1) {
         this.surface = this.leap.to;
-        this.y = this.surfaces[this.surface].y;
+        this.y = this.surfaces[this.surface]?.y ?? y;
         this.tilt = 0;
         this.vx = 0;
         events.push('landed');
@@ -220,9 +298,11 @@ export class CatBody {
       const elsewhere = goal.surface !== this.surface;
       const dx = goalX - this.x;
       const pounce = Boolean(goal.pounce) && Math.abs(dx) > 18 * k;
-      if (elsewhere || pounce) {
-        const y1 = this.surfaces[goal.surface].y;
+      const dest = this.surfaces[goal.surface];
+      if ((elsewhere || pounce) && dest) {
+        const y1 = dest.y;
         const distance = Math.hypot(goalX - this.x, y1 - this.y);
+        const float = Boolean(goal.float) && elsewhere;
         this.leap = {
           x0: this.x,
           y0: this.y,
@@ -230,15 +310,18 @@ export class CatBody {
           y1,
           height: leapHeight(this.y, y1, k, !elsewhere),
           start: now,
-          duration: leapDuration(distance, k) * (elsewhere ? 1 : 0.8),
+          duration: float
+            ? Math.min(1250, Math.max(700, 480 + (distance / k) * 0.75))
+            : leapDuration(distance, k) * (elsewhere ? 1 : 0.8),
           to: goal.surface,
           pounce: !elsewhere,
+          float,
         };
         if (Math.abs(goalX - this.x) > 4) this.facing = goalX > this.x ? 1 : -1;
         this.vx = 0;
         this.arrived = false;
         this.setMode('windup', now);
-      } else if (Math.abs(dx) > MOTION.near) {
+      } else if (!elsewhere && Math.abs(dx) > MOTION.near) {
         if (this.mode !== 'walk') this.setMode('walk', now);
         this.arrived = false;
         const top = (goal.hurry ? MOTION.trot : MOTION.walk) * k;
@@ -254,7 +337,7 @@ export class CatBody {
         this.phase = (this.phase + Math.abs(stepX) / stride) % 1;
       } else {
         this.vx = 0;
-        this.x = goalX;
+        if (!elsewhere) this.x = goalX;
         if (this.mode !== 'rest') this.setMode('rest', now);
         if (goal.face) this.facing = goal.face;
         if (!this.arrived) {
