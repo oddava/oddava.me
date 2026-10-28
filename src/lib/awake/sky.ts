@@ -113,7 +113,15 @@ export function createSky(
   const motes: Mote[] = [];
   const particles: Particle[] = [];
   let lastStars = -Infinity;
-  let fxDirty = false;
+  /** The area the particles covered last frame: the only part to clear. */
+  let fxBox: [number, number, number, number] | null = null;
+  let box: [number, number, number, number] = [0, 0, 0, 0];
+  const grow = (x: number, y: number, pad: number) => {
+    box[0] = Math.min(box[0], x - pad);
+    box[1] = Math.min(box[1], y - pad);
+    box[2] = Math.max(box[2], x + pad);
+    box[3] = Math.max(box[3], y + pad);
+  };
 
   function resize() {
     w = window.innerWidth;
@@ -141,18 +149,42 @@ export function createSky(
       };
     });
     lastStars = -Infinity;
+    paintStill();
   }
 
   const ringRadius = (ring: Ring, age: number) =>
     ring.reach * (1 - (1 - age) ** 2.4);
 
-  function drawStars(now: number, still: boolean) {
+  /** Stars that never change, drawn once; only twinklers redraw. */
+  let fixedLayer: HTMLCanvasElement | null = null;
+
+  function paintStill() {
+    fixedLayer = document.createElement('canvas');
+    fixedLayer.width = skyCanvas.width;
+    fixedLayer.height = skyCanvas.height;
+    const ctx = fixedLayer.getContext('2d')!;
+    ctx.setTransform(skyCanvas.width / w, 0, 0, skyCanvas.height / h, 0, 0);
+    const keep = sky;
+    sky = ctx;
+    drawStars(0, true, (s) => !s.twinkles);
+    sky = keep;
+  }
+
+  function drawStars(
+    now: number,
+    frozen: boolean,
+    only?: (s: Star) => boolean,
+  ) {
     if (!sky) return;
+    // No ring passing: blit the fixed stars and redraw only the twinklers.
+    const cached = !only && !rings.length && fixedLayer && !frozen;
     sky.clearRect(0, 0, w, h);
+    if (cached) sky.drawImage(fixedLayer!, 0, 0, w, h);
     const t = now / 1000;
     for (const s of stars) {
+      if (only ? !only(s) : cached && !s.twinkles) continue;
       let a = s.a;
-      if (s.twinkles && !still)
+      if (s.twinkles && !frozen)
         a *= 0.62 + 0.38 * Math.sin(t * s.speed + s.phase);
       // A purr ring passing over a star makes it flare.
       let flare = 0;
@@ -216,6 +248,7 @@ export function createSky(
       p.x += p.vx * dt + Math.sin(now / 520 + p.sway) * p.size * 0.012;
       p.y += p.vy * dt;
       const a = Math.min(1, age * 6) * (1 - age) ** 1.4;
+      grow(p.x, p.y, p.glyph ? p.size * 1.6 : 10);
       if (p.glyph) {
         // A soft blue halo under a blue-white letter, growing as it rises.
         const size = p.size * (0.7 + age * 0.6);
@@ -236,12 +269,24 @@ export function createSky(
   function drawFx(now: number, dt: number) {
     if (!fx) return false;
     if (!motes.length && !particles.length) {
-      if (fxDirty) fx.clearRect(0, 0, w, h);
-      fxDirty = false;
+      if (fxBox)
+        fx.clearRect(
+          fxBox[0],
+          fxBox[1],
+          fxBox[2] - fxBox[0],
+          fxBox[3] - fxBox[1],
+        );
+      fxBox = null;
       return false;
     }
-    fxDirty = true;
-    fx.clearRect(0, 0, w, h);
+    if (fxBox)
+      fx.clearRect(
+        fxBox[0],
+        fxBox[1],
+        fxBox[2] - fxBox[0],
+        fxBox[3] - fxBox[1],
+      );
+    box = [Infinity, Infinity, -Infinity, -Infinity];
     drawParticles(fx, now, dt);
     for (let i = motes.length - 1; i >= 0; i--) {
       const m = motes[i]!;
@@ -268,7 +313,9 @@ export function createSky(
       const fadeOut = 1 - Math.max(0, (age - m.hold) / (m.life - m.hold));
       const tw = 0.75 + 0.25 * Math.sin(now / 90 + m.r * 40);
       sparkleAt(fx, m.x, m.y, m.r, fadeIn * fadeOut * tw, STAR);
+      grow(m.x, m.y, 12);
     }
+    fxBox = box[0] < box[2] ? box : null;
     return true;
   }
 
@@ -279,7 +326,7 @@ export function createSky(
       for (let i = rings.length - 1; i >= 0; i--)
         if (now - rings[i]!.born > rings[i]!.life) rings.splice(i, 1);
       const ringing = rings.length > 0;
-      if (ringing || (!still && now - lastStars >= 33) || lastStars < 0) {
+      if (ringing || (!still && now - lastStars >= 90) || lastStars < 0) {
         drawStars(now, still);
         lastStars = now;
       }

@@ -387,8 +387,6 @@ export function drawCat(
   ctx.fillStyle = ctx.strokeStyle = FUR_FAR;
   silhouette(ctx, sk, face, 'fill', 'far');
 
-  ctx.fillStyle = ctx.strokeStyle = `rgba(${BRAND}, 0.06)`;
-  silhouette(ctx, sk, face, 'glow', 'main');
   ctx.fillStyle = ctx.strokeStyle = rim;
   silhouette(ctx, sk, face, 'rim', 'main');
   ctx.fillStyle = ctx.strokeStyle = FUR;

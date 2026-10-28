@@ -537,6 +537,8 @@ export function mountAwake(root: HTMLElement) {
     time: 0,
   };
   let breath = 0;
+  let lastDim = '';
+  let lastBlink = '';
   let lastDust = 0;
   let lastZee = 0;
   let zee = 0;
@@ -873,14 +875,18 @@ export function mountAwake(root: HTMLElement) {
     lastSkeleton = sk;
 
     // Idle frames can run at half rate; motion runs every frame.
+    // Platforms only need full rate while growing in or dissolving.
+    let settling = false;
+    for (const pl of platforms.values())
+      if (t - pl.born < 400 || pl.dieAt !== Infinity) settling = true;
     const moving =
-      platforms.size > 0 ||
+      settling ||
       body.mode !== 'rest' ||
       t - lastInput < 1500 ||
       swat ||
       purring ||
       out.offering;
-    if (moving || t - lastDraw > 32) {
+    if (moving || t - lastDraw > 48) {
       paint(sk);
       lastDraw = t;
     }
@@ -893,14 +899,17 @@ export function mountAwake(root: HTMLElement) {
           Math.abs((navAt.get(link)?.[0] ?? -1e4) - body.x) < 30 * scale,
       );
 
+    // DOM writes only when the value changes: each one costs a style pass.
     dim += ((out.dim ? 0.1 : 0) - dim) * ease(out.dim ? 0.6 : 5);
-    if (dimEl) dimEl.style.opacity = dim.toFixed(3);
+    const dimText = dim < 0.002 ? '0' : dim.toFixed(2);
+    if (dimEl && dimText !== lastDim) dimEl.style.opacity = lastDim = dimText;
     const friendBlink = t < friendUntil ? 1 - out.closure * 0.92 : 1;
-    for (const f of friendEyes)
-      f.el.setAttribute(
-        'transform',
-        `${f.base} scale(1 ${friendBlink.toFixed(3)})`,
-      );
+    const blinkText = friendBlink.toFixed(2);
+    if (blinkText !== lastBlink) {
+      lastBlink = blinkText;
+      for (const f of friendEyes)
+        f.el.setAttribute('transform', `${f.base} scale(1 ${blinkText})`);
+    }
 
     sky.frame(t, dt, false);
     if (!document.hidden) frame = requestAnimationFrame(tick);
