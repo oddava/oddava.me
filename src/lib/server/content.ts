@@ -8,6 +8,10 @@ export {
   adminContentReorderRoute,
 } from './content/route';
 export {
+  notesCollectionRoute,
+  notesEntryRoute,
+} from './content/notes-api-route';
+export {
   ContentMutationBusyError,
   hasContentStore,
   readRedisNoteFiles,
