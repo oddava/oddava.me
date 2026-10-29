@@ -53,6 +53,19 @@ search, and the graph.
 `src/content/notes` is only a backup. `pnpm notes:export` dumps Redis into it so changes show
 up in git, and `pnpm notes:migrate` pushes it back if I ever need to restore.
 
+## Editing notes from somewhere else
+
+Studio is the browser editor. `/api/notes` is a separate token API for clients
+that are not a browser (an Obsidian plugin, a CLI). It is off until
+`NOTES_API_TOKEN` is set, and the admin panel token is not accepted there.
+
+```bash
+pnpm exec wrangler secret put NOTES_API_TOKEN
+```
+
+Endpoints, curl examples, and how conflicts work are in
+[docs/notes-api.md](docs/notes-api.md).
+
 ## Running it locally
 
 You'll need Node 22.12+, pnpm 10, and Docker (for Redis).
