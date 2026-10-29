@@ -49,12 +49,12 @@ export type PoseName =
 
 export const POSES: Record<PoseName, Pose> = {
   sit: {
-    hip: [-10, 24],
-    shoulder: [4, 51],
-    rHip: 23,
-    rShoulder: 15.5,
-    haunch: 26,
-    head: [9, 79],
+    hip: [-11, 23],
+    shoulder: [5, 50],
+    rHip: 24.5,
+    rShoulder: 16.5,
+    haunch: 28,
+    head: [10, 82],
     front: [13, 0],
     hind: [4, 0],
     tuck: 0,
@@ -65,12 +65,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 2.45,
   },
   stand: {
-    hip: [-29, 54],
-    shoulder: [27, 50],
-    rHip: 18.5,
-    rShoulder: 20,
+    hip: [-30, 53],
+    shoulder: [28, 50],
+    rHip: 19.5,
+    rShoulder: 21,
     haunch: 0,
-    head: [46, 70],
+    head: [47, 72],
     front: [29, 0],
     hind: [-31, 0],
     tuck: 0,
@@ -81,12 +81,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.9,
   },
   walk: {
-    hip: [-29, 53],
-    shoulder: [27, 49],
-    rHip: 18.5,
-    rShoulder: 20,
+    hip: [-30, 52],
+    shoulder: [28, 49],
+    rHip: 19.5,
+    rShoulder: 21,
     haunch: 0,
-    head: [48, 65],
+    head: [49, 67],
     front: [29, 0],
     hind: [-31, 0],
     tuck: 0,
@@ -97,12 +97,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.75,
   },
   crouch: {
-    hip: [-25, 33],
-    shoulder: [23, 26],
-    rHip: 20,
-    rShoulder: 18,
-    haunch: 6,
-    head: [40, 40],
+    hip: [-25, 32],
+    shoulder: [24, 26],
+    rHip: 21,
+    rShoulder: 19,
+    haunch: 7,
+    head: [41, 41],
     front: [33, 0],
     hind: [-22, 0],
     tuck: 0,
@@ -114,11 +114,11 @@ export const POSES: Record<PoseName, Pose> = {
   },
   leap: {
     hip: [-32, 44],
-    shoulder: [32, 50],
-    rHip: 19,
-    rShoulder: 18,
+    shoulder: [33, 50],
+    rHip: 19.5,
+    rShoulder: 18.5,
     haunch: 0,
-    head: [49, 68],
+    head: [50, 69],
     front: [62, 28],
     hind: [-64, 30],
     tuck: 0,
@@ -129,12 +129,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.25,
   },
   land: {
-    hip: [-26, 38],
-    shoulder: [25, 34],
-    rHip: 21,
-    rShoulder: 19,
-    haunch: 4,
-    head: [42, 54],
+    hip: [-26, 37],
+    shoulder: [26, 34],
+    rHip: 22,
+    rShoulder: 19.5,
+    haunch: 5,
+    head: [43, 55],
     front: [30, 0],
     hind: [-26, 0],
     tuck: 0,
@@ -145,12 +145,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.8,
   },
   loaf: {
-    hip: [-23, 20],
-    shoulder: [21, 21],
-    rHip: 21,
-    rShoulder: 20,
-    haunch: 9,
-    head: [35, 34],
+    hip: [-24, 19],
+    shoulder: [22, 20],
+    rHip: 22.5,
+    rShoulder: 21.5,
+    haunch: 11,
+    head: [36, 35],
     front: [24, 2],
     hind: [-18, 2],
     tuck: 1,
@@ -161,12 +161,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 2.5,
   },
   sleep: {
-    hip: [-23, 19],
-    shoulder: [21, 19],
-    rHip: 21,
-    rShoulder: 20,
-    haunch: 10,
-    head: [34, 24],
+    hip: [-24, 18],
+    shoulder: [22, 18],
+    rHip: 22.5,
+    rShoulder: 21.5,
+    haunch: 12,
+    head: [35, 24],
     front: [24, 2],
     hind: [-18, 2],
     tuck: 1,
@@ -177,12 +177,12 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 2.7,
   },
   stretch: {
-    hip: [-27, 55],
-    shoulder: [25, 24],
-    rHip: 19,
-    rShoulder: 18,
+    hip: [-28, 54],
+    shoulder: [26, 24],
+    rHip: 19.5,
+    rShoulder: 18.5,
     haunch: 0,
-    head: [45, 32],
+    head: [46, 33],
     front: [50, 0],
     hind: [-30, 0],
     tuck: 0,
@@ -195,11 +195,11 @@ export const POSES: Record<PoseName, Pose> = {
   // Carried by the scruff: hanging straight down, legs loose, tail limp.
   dangle: {
     hip: [-1, 42],
-    shoulder: [3, 82],
-    rHip: 17.5,
-    rShoulder: 17,
+    shoulder: [3, 84],
+    rHip: 18,
+    rShoulder: 17.5,
     haunch: 0,
-    head: [6, 101],
+    head: [6, 104],
     front: [11, 44],
     hind: [1, 3],
     tuck: 0,
@@ -212,7 +212,7 @@ export const POSES: Record<PoseName, Pose> = {
 };
 
 /** Where a held cat is held (its scruff), local units. */
-export const SCRUFF: Vec = [4, 96];
+export const SCRUFF: Vec = [4, 99];
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpVec = (a: Vec, b: Vec, t: number): Vec => [
@@ -527,14 +527,15 @@ export function skeleton(s: BodyState): Skeleton {
     if (s.swat && front && near && s.swat.weight > 0) {
       const w = s.swat.weight;
       worldFoot = lerpVec(worldFoot, s.swat.at, w);
-      worldKnee = lerpVec(worldKnee, lerpVec(world(top), s.swat.at, 0.5), w);
+      // Keep the knee near the chest so the reach is a forearm, not a second body.
+      worldKnee = lerpVec(worldKnee, lerpVec(world(top), s.swat.at, 0.28), w);
     }
     legs.push({
       top: world(top),
       knee: worldKnee,
       hock: hock && world(hock),
       foot: worldFoot,
-      width: front ? [10.5 * scale, 7.5 * scale] : [14 * scale, 7.5 * scale],
+      width: front ? [11 * scale, 8 * scale] : [14.5 * scale, 8 * scale],
       near,
     });
   }
@@ -547,10 +548,8 @@ export function skeleton(s: BodyState): Skeleton {
   const mid: Vec = [(hip[0] + shoulder[0]) / 2, (hip[1] + shoulder[1]) / 2];
   const bodyAngle = Math.atan2(shoulder[1] - hip[1], shoulder[0] - hip[0]);
   const span = Math.hypot(shoulder[0] - hip[0], shoulder[1] - hip[1]);
-  const tailBase: Vec = [
-    pose.hip[0] - pose.rHip * 0.8,
-    pose.hip[1] + pose.rHip * 0.15 + bob,
-  ];
+  // Rooted inside the rump so the body fill swallows the join.
+  const tailBase: Vec = [pose.hip[0] - pose.rHip * 0.2, pose.hip[1] + bob];
   const tail = tailPoints(
     tailBase,
     pose.tailAngle,
@@ -559,13 +558,13 @@ export function skeleton(s: BodyState): Skeleton {
     s.tail,
   ).map(world);
 
-  const headR = 19 * scale;
+  const headR = 20.5 * scale;
   const rHip = pose.rHip * scale * (1 + breathe * 0.012);
   const rShoulder = pose.rShoulder * scale * (1 + breathe * 0.016);
   const nx = -Math.sin(bodyAngle);
   const ny = Math.cos(bodyAngle);
   // The head's reach includes whiskers and ears, which leave its circle.
-  const reach = 42 * scale;
+  const reach = 44 * scale;
   const xs = [
     hip[0],
     shoulder[0],
@@ -610,12 +609,12 @@ export function skeleton(s: BodyState): Skeleton {
     // Bridges hip and shoulder so the back is one line, not two humps. It
     // sits toward the chest, which is deeper than the waist.
     belly: {
-      at: [mid[0] + (shoulder[0] - hip[0]) * 0.08, mid[1] + 1.5 * scale],
-      rx: span / 2 + 3 * scale,
-      ry: ((pose.rHip + pose.rShoulder) / 2) * scale * 0.97,
+      at: [mid[0] + (shoulder[0] - hip[0]) * 0.1, mid[1] + 2 * scale],
+      rx: span / 2 + 4 * scale,
+      ry: ((pose.rHip + pose.rShoulder) / 2) * scale * 1.02,
       angle: bodyAngle,
     },
-    neck: [shoulder, head, 15 * scale],
+    neck: [shoulder, head, 13.5 * scale],
     head,
     headR,
     legs,
