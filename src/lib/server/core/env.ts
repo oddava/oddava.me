@@ -12,6 +12,7 @@ export interface RuntimeEnv {
   LOCAL_REDIS_PROXY_TOKEN?: string;
   LOCAL_REDIS_PROXY_URL?: string;
   LOCAL_REDIS_URL?: string;
+  NOTES_API_TOKEN?: string;
   REDIS_MODE?: string;
   SPOTIFY_CLIENT_ID?: string;
   SPOTIFY_CLIENT_SECRET?: string;

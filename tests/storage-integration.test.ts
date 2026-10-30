@@ -392,5 +392,159 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       await provider.deleteFile(mediaPath, 'delete pixel', media.revision!);
       expect(await readRedisBinaryFile(mediaPath)).toBeNull();
     });
+
+    it('renames with collapsed redirects and round-trips a soft delete', async () => {
+      const {
+        createRedisContentProvider,
+        readRedisNoteFiles,
+        readRetiredNoteIndex,
+      } = await import('../src/lib/server/content/redis-store');
+      const { retargetRedirects } =
+        await import('../src/lib/server/content/note-archive');
+      const provider = createRedisContentProvider();
+      const notes = 'src/content/notes';
+      const tricky = '# hello\n\nnaïve 👋 "quoted" \\ back/slash';
+      const created = await provider.writeTextFile(
+        `${notes}/archive-flow/a.md`,
+        tricky,
+        'create archive-flow a',
+      );
+      const createdAt = JSON.parse(
+        (await cleanupClient.get(
+          `dev:content:file:${notes}/archive-flow/a.md`,
+        ))!,
+      ).createdAt as string;
+
+      const moved = await provider.moveArchivedNote({
+        fromStorePath: `${notes}/archive-flow/a.md`,
+        toStorePath: `${notes}/archive-flow/b.md`,
+        fromPublic: 'archive-flow/a',
+        toPublic: 'archive-flow/b',
+        revision: created.revision!,
+        message: 'move a to b',
+      });
+      const again = await provider.moveArchivedNote({
+        fromStorePath: `${notes}/archive-flow/b.md`,
+        toStorePath: `${notes}/archive-flow/c.md`,
+        fromPublic: 'archive-flow/b',
+        toPublic: 'archive-flow/c',
+        revision: moved.revision!,
+        message: 'move b to c',
+      });
+      const expected = retargetRedirects(
+        retargetRedirects(new Map(), 'archive-flow/a', 'archive-flow/b'),
+        'archive-flow/b',
+        'archive-flow/c',
+      );
+      expect(
+        [...(await provider.listRedirects()).entries()].toSorted(),
+      ).toEqual([...expected.entries()].toSorted());
+      expect(
+        (await provider.readFile(`${notes}/archive-flow/c.md`))?.content,
+      ).toBe(tricky);
+      expect(await provider.readFile(`${notes}/archive-flow/a.md`)).toBeNull();
+
+      await expect(
+        provider.moveArchivedNote({
+          fromStorePath: `${notes}/archive-flow/c.md`,
+          toStorePath: `${notes}/archive-flow/d.md`,
+          fromPublic: 'archive-flow/c',
+          toPublic: 'archive-flow/d',
+          revision: 'stale',
+          message: 'stale move',
+        }),
+      ).rejects.toMatchObject({ code: 'revision_conflict' });
+      expect(
+        [...(await provider.listRedirects()).entries()].toSorted(),
+      ).toEqual([...expected.entries()].toSorted());
+
+      await provider.writeTextFile(
+        `${notes}/archive-flow/taken.md`,
+        '# taken',
+        'create taken',
+      );
+      await expect(
+        provider.moveArchivedNote({
+          fromStorePath: `${notes}/archive-flow/c.md`,
+          toStorePath: `${notes}/archive-flow/taken.md`,
+          fromPublic: 'archive-flow/c',
+          toPublic: 'archive-flow/taken',
+          revision: again.revision!,
+          message: 'move onto a live note',
+        }),
+      ).rejects.toMatchObject({ code: 'path_exists' });
+
+      const tombstone = await provider.softDeleteNote({
+        storePath: `${notes}/archive-flow/c.md`,
+        publicPath: 'archive-flow/c',
+        revision: again.revision!,
+        message: 'delete c',
+      });
+      expect(tombstone.content).toBe(tricky);
+      expect(tombstone.createdAt).toBe(createdAt);
+      expect(
+        (await readRedisNoteFiles()).some(
+          (file) => file.sourceId === 'archive-flow/c',
+        ),
+      ).toBe(false);
+      const retired = await readRetiredNoteIndex();
+      expect(retired?.tombstones.has('archive-flow/c')).toBe(true);
+      expect(retired?.redirects.get('archive-flow/a')).toBe('archive-flow/c');
+
+      await expect(
+        provider.moveArchivedNote({
+          fromStorePath: `${notes}/archive-flow/taken.md`,
+          toStorePath: `${notes}/archive-flow/c.md`,
+          fromPublic: 'archive-flow/taken',
+          toPublic: 'archive-flow/c',
+          revision: (await provider.readFile(`${notes}/archive-flow/taken.md`))!
+            .revision,
+          message: 'move onto trash',
+        }),
+      ).rejects.toMatchObject({ code: 'deleted' });
+
+      const restored = await provider.restoreArchivedNote({
+        storePath: `${notes}/archive-flow/c.md`,
+        publicPath: 'archive-flow/c',
+        revision: tombstone.rev,
+        record: JSON.stringify({
+          content: tombstone.content,
+          enc: 'utf8',
+          rev: tombstone.rev,
+          createdAt: tombstone.createdAt,
+          updatedAt: tombstone.updatedAt,
+        }),
+        message: 'restore c',
+      });
+      const restoredFile = await provider.readFile(
+        `${notes}/archive-flow/c.md`,
+      );
+      expect(restoredFile?.content).toBe(tricky);
+      expect(restoredFile?.revision).toBe(restored.revision);
+      expect(
+        JSON.parse(
+          (await cleanupClient.get(
+            `dev:content:file:${notes}/archive-flow/c.md`,
+          ))!,
+        ).createdAt,
+      ).toBe(createdAt);
+      expect(await provider.readTombstone('archive-flow/c')).toBeNull();
+
+      await expect(
+        provider.restoreArchivedNote({
+          storePath: `${notes}/archive-flow/c.md`,
+          publicPath: 'archive-flow/c',
+          revision: tombstone.rev,
+          record: JSON.stringify({
+            content: tricky,
+            enc: 'utf8',
+            rev: tombstone.rev,
+            createdAt,
+            updatedAt: tombstone.updatedAt,
+          }),
+          message: 'restore a missing tombstone',
+        }),
+      ).rejects.toMatchObject({ code: 'not_found' });
+    });
   },
 );

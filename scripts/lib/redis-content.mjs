@@ -19,6 +19,8 @@ export const CONTENT_KEYS = {
   files: 'content:files',
   directories: 'content:dirs',
   version: 'content:version',
+  redirects: 'content:note-redirects',
+  tombstones: 'content:note-tombstones',
   file: (path) => `content:file:${path}`,
 };
 

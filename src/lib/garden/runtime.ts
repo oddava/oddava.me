@@ -2,9 +2,11 @@ import { noteDataSchema } from '../content/schemas';
 import {
   parseContentDocument,
   readRedisNoteFiles,
+  readRetiredNoteIndex,
   readStableContentVersion,
 } from '../server/content';
 import { delay, isStorageUnavailableError } from '../server/core';
+import type { RetiredNoteIndex } from '../server/content/note-archive';
 import { buildGardenIndex } from './build';
 import { GardenBusyError, GardenUnavailableError } from './errors';
 import type { GardenIndex, NoteSource } from './types';
@@ -35,6 +37,19 @@ let cachedGardenIndex: { version: string; index: GardenIndex } | null = null;
 
 const STABLE_READ_ATTEMPTS = 20;
 const STABLE_READ_RETRY_MS = 100;
+
+export async function readPublicNoteRetirement(): Promise<
+  { ok: true; retired: RetiredNoteIndex } | { ok: false }
+> {
+  try {
+    const retired = await readRetiredNoteIndex();
+    if (!retired) return { ok: false };
+    return { ok: true, retired };
+  } catch (error) {
+    if (isStorageUnavailableError(error)) return { ok: false };
+    throw error;
+  }
+}
 
 export async function getGardenIndex(): Promise<GardenIndex> {
   // The index must be built from one stable snapshot. The mutation

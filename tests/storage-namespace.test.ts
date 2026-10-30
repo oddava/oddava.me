@@ -15,6 +15,8 @@ import {
   fileKey,
   MUTATION_LOCK_KEY as STORE_LOCK_KEY,
   MUTATION_LOCK_TTL_MS,
+  NOTE_REDIRECTS_KEY,
+  NOTE_TOMBSTONES_KEY,
   VERSION_KEY,
 } from '../src/lib/server/content/redis-store';
 import { namespaceCommandWith } from '../src/lib/server/core/storage';
@@ -97,6 +99,8 @@ describe('content key layout agrees between the app and the sync scripts', () =>
     expect(CONTENT_KEYS.files).toBe(FILES_SET);
     expect(CONTENT_KEYS.directories).toBe(DIRECTORIES_SET);
     expect(CONTENT_KEYS.version).toBe(VERSION_KEY);
+    expect(CONTENT_KEYS.redirects).toBe(NOTE_REDIRECTS_KEY);
+    expect(CONTENT_KEYS.tombstones).toBe(NOTE_TOMBSTONES_KEY);
   });
 
   it('derives the same per-file key', () => {
