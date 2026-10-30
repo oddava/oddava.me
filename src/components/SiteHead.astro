@@ -30,7 +30,7 @@ const {
   modifiedTime,
 } = Astro.props;
 
-const pageTitle = title === SITE_NAME ? SITE_TITLE : `${title} — ${SITE_NAME}`;
+const pageTitle = title === SITE_NAME ? SITE_TITLE : `${title} | ${SITE_NAME}`;
 // Pin canonical to the site origin + pathname so trailing-slash drift
 // (and dev/preview host drift) cannot split the canonical from production.
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
@@ -91,7 +91,7 @@ const structuredData =
 <link
   rel="alternate"
   type="application/rss+xml"
-  title={`${SITE_NAME} — notes`}
+  title={`${SITE_NAME} | notes`}
   href="/rss.xml"
 />
 <link rel="sitemap" href="/sitemap-index.xml" />

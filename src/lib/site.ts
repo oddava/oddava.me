@@ -2,7 +2,7 @@ export const SITE_NAME = 'oddava';
 /** The one way the site describes its author; every page, card and feed reuses it. */
 export const SITE_ROLE = 'backend developer';
 /** The homepage title, and what search results and link previews lead with. */
-export const SITE_TITLE = `${SITE_NAME} — ${SITE_ROLE}`;
+export const SITE_TITLE = `${SITE_NAME} | ${SITE_ROLE}`;
 export const SITE_URL = 'https://oddava.me';
 export const SITE_DESCRIPTION = `${SITE_NAME} is a ${SITE_ROLE}. Notes on the software I build, the books I read, and what I learn along the way.`;
 /** Stands in for a note that never wrote its own summary. */
