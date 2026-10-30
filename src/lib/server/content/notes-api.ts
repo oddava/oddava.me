@@ -8,6 +8,12 @@ import {
 } from './documents';
 import { methodNotAllowed, missingEntry, validationError } from './http';
 import {
+  followNoteRedirect,
+  NoteArchiveError,
+  tombstoneFile,
+} from './note-archive';
+import type { NotesStore, StoredTombstone } from './note-archive';
+import {
   entryIdFromPath,
   isValidFolderPath,
   isValidSlug,
@@ -16,7 +22,7 @@ import {
 import { NOTES_COLLECTION } from './registry';
 import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError, ContentNotFoundError } from './types';
-import type { ContentProvider, ContentSourceFile } from './types';
+import type { ContentSourceFile } from './types';
 
 /**
  * How large a notes API JSON body may be. Studio's content route allows 6 MB
@@ -36,8 +42,14 @@ export interface NoteRecord extends NoteSummary {
   content: string;
 }
 
+export interface DeletedNoteSummary extends NoteSummary {
+  deletedAt: string;
+}
+
 interface WriteBody {
   path?: unknown;
+  from?: unknown;
+  to?: unknown;
   content?: unknown;
   revision?: unknown;
 }
@@ -120,6 +132,8 @@ export function resolveNotePath(input: string): {
   storePath: string;
   slug: string;
   folder: string;
+  /** Garden path without `.md`, such as `diary/hello`. */
+  publicPath: string;
 } | null {
   let value = input.trim().replace(/\\/g, '/').replace(/^\/+/, '');
   const prefix = `${NOTES_COLLECTION.sourceDir}/`;
@@ -153,6 +167,7 @@ export function resolveNotePath(input: string): {
     storePath,
     slug,
     folder,
+    publicPath: folder ? `${folder}/${slug}` : slug,
   };
 }
 
@@ -257,9 +272,7 @@ function storedFile(
   };
 }
 
-export async function handleListNotes(
-  provider: ContentProvider,
-): Promise<Response> {
+export async function handleListNotes(provider: NotesStore): Promise<Response> {
   const files = (
     await provider.listFiles(
       NOTES_COLLECTION.sourceDir,
@@ -269,22 +282,27 @@ export async function handleListNotes(
   const notes = files
     .map((file) => summarize(file))
     .toSorted((left, right) => left.path.localeCompare(right.path));
-  return json({ notes });
+  const deleted = (await provider.listTombstones())
+    .map(({ publicPath, tombstone }) => deletedSummary(publicPath, tombstone))
+    .toSorted((left, right) => left.path.localeCompare(right.path));
+  return json({ notes, deleted });
 }
 
 export async function handleReadNote(
-  provider: ContentProvider,
+  provider: NotesStore,
   pathParam: string,
 ): Promise<Response> {
   const resolved = resolveNotePath(pathParam);
   if (!resolved) return invalidPath();
   const file = await provider.readFile(resolved.storePath);
-  if (!file || file.encoding !== 'utf8') return missingEntry();
-  return noteJson(recordFrom(file), 200);
+  if (file && file.encoding === 'utf8') return noteJson(recordFrom(file), 200);
+  return (
+    (await retiredResponse(provider, resolved.publicPath)) ?? missingEntry()
+  );
 }
 
 export async function handleCreateNote(
-  provider: ContentProvider,
+  provider: NotesStore,
   request: Request,
 ): Promise<Response> {
   const body = await readWriteBody(request);
@@ -293,6 +311,10 @@ export async function handleCreateNote(
 
   const resolved = resolveNotePath(body.path);
   if (!resolved) return invalidPath();
+  const retired = await retiredResponse(provider, resolved.publicPath, {
+    write: true,
+  });
+  if (retired) return retired;
   const content = markdownContent(body);
   if (isResponse(content)) return content;
   // `revision` on create is ignored. Create means "this path must not exist";
@@ -338,7 +360,7 @@ export async function handleCreateNote(
 }
 
 export async function handleUpdateNote(
-  provider: ContentProvider,
+  provider: NotesStore,
   pathParam: string,
   request: Request,
 ): Promise<Response> {
@@ -349,7 +371,11 @@ export async function handleUpdateNote(
   if (isResponse(body)) return body;
 
   const existing = await provider.readFile(resolved.storePath);
-  if (!existing || existing.encoding !== 'utf8') return missingEntry();
+  if (!existing || existing.encoding !== 'utf8') {
+    return (
+      (await retiredResponse(provider, resolved.publicPath)) ?? missingEntry()
+    );
+  }
 
   const content = markdownContent(body);
   if (isResponse(content)) return content;
@@ -388,7 +414,7 @@ export async function handleUpdateNote(
 }
 
 async function writeError(
-  provider: ContentProvider,
+  provider: NotesStore,
   storePath: string,
   error: unknown,
 ): Promise<Response> {
@@ -414,6 +440,376 @@ async function writeError(
     if (other) return conflict('slug_exists', other);
   }
   throw error;
+}
+
+function isGardenRoot(resolved: { slug: string; folder: string }): boolean {
+  return resolved.slug === 'index' && resolved.folder === '';
+}
+
+function rootNoteResponse(): Response {
+  return json(
+    {
+      error: 'The Notes root cannot be moved, renamed, or deleted.',
+      code: 'root_entry',
+    },
+    { status: 400 },
+  );
+}
+
+function deletedSummary(
+  publicPath: string,
+  tombstone: StoredTombstone,
+): DeletedNoteSummary {
+  const resolved = resolveNotePath(publicPath);
+  const file = tombstoneFile(
+    resolved?.storePath ?? `${NOTES_COLLECTION.sourceDir}/${publicPath}.md`,
+    tombstone,
+  );
+  return {
+    ...summarize(file),
+    path: resolved?.relative ?? `${publicPath}.md`,
+    deletedAt: tombstone.deletedAt,
+  };
+}
+
+function goneResponse(
+  publicPath: string,
+  tombstone: StoredTombstone,
+): Response {
+  const note = deletedSummary(publicPath, tombstone);
+  return json(
+    {
+      error: 'This note was removed.',
+      code: 'gone',
+      note: { ...note, content: tombstone.content },
+    },
+    { status: 410 },
+  );
+}
+
+function deletedConflict(
+  publicPath: string,
+  tombstone: StoredTombstone,
+): Response {
+  return json(
+    {
+      error:
+        'A deleted note still holds that path. Restore it, or choose a different path.',
+      code: 'deleted',
+      note: deletedSummary(publicPath, tombstone),
+    },
+    { status: 409 },
+  );
+}
+
+function movedResponse(file: ContentSourceFile): Response {
+  return json(
+    {
+      error: 'That note now lives at a different path.',
+      code: 'moved',
+      location: relativeNotePath(file.path),
+      note: summarize(file),
+    },
+    { status: 409 },
+  );
+}
+
+/**
+ * A path with no live file. Writes onto a tombstone conflict (`deleted`);
+ * reads, updates, and deletes of one are `gone`. A redirect chain that ends
+ * at a live note is `moved`. A chain that ends in the trash is `gone`.
+ */
+async function retiredResponse(
+  provider: NotesStore,
+  publicPath: string,
+  options?: { write?: boolean },
+): Promise<Response | null> {
+  const tombstone = await provider.readTombstone(publicPath);
+  if (tombstone) {
+    return options?.write
+      ? deletedConflict(publicPath, tombstone)
+      : goneResponse(publicPath, tombstone);
+  }
+
+  const followed = followNoteRedirect(
+    publicPath,
+    await provider.listRedirects(),
+  );
+  if (!followed.hopped || followed.cycle) return null;
+
+  const destinationTombstone = await provider.readTombstone(followed.path);
+  if (destinationTombstone) {
+    return goneResponse(followed.path, destinationTombstone);
+  }
+
+  const destination = resolveNotePath(followed.path);
+  if (!destination) return null;
+  const live = await provider.readFile(destination.storePath);
+  if (!live || live.encoding !== 'utf8') return null;
+  return movedResponse(live);
+}
+
+async function folderPageHasNotes(
+  provider: NotesStore,
+  storePath: string,
+): Promise<boolean> {
+  const prefix = `${storePath.slice(0, -'.md'.length)}/`;
+  const files = await provider.listFiles(
+    NOTES_COLLECTION.sourceDir,
+    NOTES_COLLECTION.readExtensions,
+  );
+  return files.some((file) => file.path.startsWith(prefix));
+}
+
+async function readOptionalObject(
+  request: Request,
+): Promise<WriteBody | Response> {
+  const text = await request.clone().text();
+  if (!text.trim()) return {};
+  return readWriteBody(request);
+}
+
+function samePathResponse(): Response {
+  return json(
+    { error: 'Destination is the same path.', code: 'invalid_request' },
+    { status: 400 },
+  );
+}
+
+function folderNotEmptyResponse(): Response {
+  return json(
+    {
+      error: 'Move the notes out of this folder before deleting it.',
+      code: 'folder_not_empty',
+    },
+    { status: 409 },
+  );
+}
+
+export async function handleMoveNote(
+  provider: NotesStore,
+  request: Request,
+): Promise<Response> {
+  const body = await readWriteBody(request);
+  if (isResponse(body)) return body;
+  if (typeof body.from !== 'string' || typeof body.to !== 'string') {
+    return invalidPath();
+  }
+
+  const source = resolveNotePath(body.from);
+  const target = resolveNotePath(body.to);
+  if (!source || !target) return invalidPath();
+  if (isGardenRoot(source) || isGardenRoot(target)) return rootNoteResponse();
+  if (source.storePath === target.storePath) return samePathResponse();
+
+  const existing = await provider.readFile(source.storePath);
+  if (!existing || existing.encoding !== 'utf8') {
+    return (
+      (await retiredResponse(provider, source.publicPath)) ?? missingEntry()
+    );
+  }
+
+  const revision = expectedRevision(body);
+  if (isResponse(revision)) return revision;
+  if (revision !== undefined && revision !== existing.revision) {
+    return conflict('revision_conflict', existing);
+  }
+
+  const targetTombstone = await provider.readTombstone(target.publicPath);
+  if (targetTombstone) {
+    return deletedConflict(target.publicPath, targetTombstone);
+  }
+  const targetFile = await provider.readFile(target.storePath);
+  if (targetFile && targetFile.encoding === 'utf8') {
+    return conflict('path_exists', targetFile);
+  }
+
+  const taken = (await readEntries(provider, NOTES_COLLECTION)).find(
+    (entry) => entry.id === target.slug && entry.path !== source.storePath,
+  );
+  if (taken) {
+    const other = await provider.readFile(taken.path);
+    if (!other) return missingEntry();
+    return conflict(
+      taken.path === target.storePath ? 'path_exists' : 'slug_exists',
+      other,
+    );
+  }
+
+  try {
+    const result = await provider.moveArchivedNote({
+      fromStorePath: source.storePath,
+      toStorePath: target.storePath,
+      fromPublic: source.publicPath,
+      toPublic: target.publicPath,
+      revision: existing.revision,
+      message: `notes-api: move ${source.relative} to ${target.relative}`,
+    });
+    if (!result.revision) {
+      throw new Error('The content store did not return a revision.');
+    }
+    const fields = parseContentDocument(existing.content).fields;
+    const updatedAt =
+      typeof fields.updated === 'string' && fields.updated.trim()
+        ? fields.updated
+        : existing.updatedAt;
+    return json(
+      {
+        from: source.relative,
+        note: recordFrom({
+          path: target.storePath,
+          content: existing.content,
+          encoding: 'utf8',
+          byteLength: existing.byteLength,
+          updatedAt,
+          revision: result.revision,
+        }),
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof NoteArchiveError && error.code === 'deleted') {
+      const tombstone = await provider.readTombstone(target.publicPath);
+      if (tombstone) return deletedConflict(target.publicPath, tombstone);
+    }
+    if (error instanceof NoteArchiveError && error.code === 'gone') {
+      return (
+        (await retiredResponse(provider, source.publicPath)) ?? missingEntry()
+      );
+    }
+    return writeError(provider, source.storePath, error);
+  }
+}
+
+export async function handleDeleteNote(
+  provider: NotesStore,
+  pathParam: string,
+  request: Request,
+): Promise<Response> {
+  const resolved = resolveNotePath(pathParam);
+  if (!resolved) return invalidPath();
+  if (isGardenRoot(resolved)) return rootNoteResponse();
+
+  const body = await readOptionalObject(request);
+  if (isResponse(body)) return body;
+
+  const existing = await provider.readFile(resolved.storePath);
+  if (!existing || existing.encoding !== 'utf8') {
+    return (
+      (await retiredResponse(provider, resolved.publicPath)) ?? missingEntry()
+    );
+  }
+
+  const revision = expectedRevision(body);
+  if (isResponse(revision)) return revision;
+  if (revision !== undefined && revision !== existing.revision) {
+    return conflict('revision_conflict', existing);
+  }
+  if (await folderPageHasNotes(provider, resolved.storePath)) {
+    return folderNotEmptyResponse();
+  }
+
+  try {
+    const tombstone = await provider.softDeleteNote({
+      storePath: resolved.storePath,
+      publicPath: resolved.publicPath,
+      revision: existing.revision,
+      message: `notes-api: delete ${resolved.relative}`,
+    });
+    return json(
+      { note: deletedSummary(resolved.publicPath, tombstone) },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof NoteArchiveError && error.code === 'gone') {
+      return (
+        (await retiredResponse(provider, resolved.publicPath)) ?? missingEntry()
+      );
+    }
+    return writeError(provider, resolved.storePath, error);
+  }
+}
+
+export async function handleRestoreNote(
+  provider: NotesStore,
+  request: Request,
+): Promise<Response> {
+  const body = await readOptionalObject(request);
+  if (isResponse(body)) return body;
+  if (typeof body.path !== 'string') return invalidPath();
+
+  const resolved = resolveNotePath(body.path);
+  if (!resolved) return invalidPath();
+  if (isGardenRoot(resolved)) return rootNoteResponse();
+
+  const live = await provider.readFile(resolved.storePath);
+  if (live && live.encoding === 'utf8') return conflict('path_exists', live);
+
+  const tombstone = await provider.readTombstone(resolved.publicPath);
+  if (!tombstone) return missingEntry();
+
+  const revision = expectedRevision(body);
+  if (isResponse(revision)) return revision;
+  if (revision !== undefined && revision !== tombstone.rev) {
+    return conflict(
+      'revision_conflict',
+      tombstoneFile(resolved.storePath, tombstone),
+    );
+  }
+
+  const taken = (await readEntries(provider, NOTES_COLLECTION)).find(
+    (entry) => entry.id === resolved.slug,
+  );
+  if (taken) {
+    const other = await provider.readFile(taken.path);
+    if (!other) return missingEntry();
+    return conflict('slug_exists', other);
+  }
+
+  try {
+    const result = await provider.restoreArchivedNote({
+      storePath: resolved.storePath,
+      publicPath: resolved.publicPath,
+      revision,
+      record: JSON.stringify({
+        content: tombstone.content,
+        enc: 'utf8',
+        rev: tombstone.rev,
+        createdAt: tombstone.createdAt,
+        updatedAt: tombstone.updatedAt,
+      }),
+      message: `notes-api: restore ${resolved.relative}`,
+    });
+    if (!result.revision) {
+      throw new Error('The content store did not return a revision.');
+    }
+    const fields = parseContentDocument(tombstone.content).fields;
+    return noteJson(
+      recordFrom(
+        storedFile(
+          resolved.storePath,
+          tombstone.content,
+          fields,
+          result.revision,
+        ),
+      ),
+      200,
+    );
+  } catch (error) {
+    if (
+      error instanceof ContentConflictError &&
+      error.code === 'revision_conflict'
+    ) {
+      const current = await provider.readTombstone(resolved.publicPath);
+      if (current) {
+        return conflict(
+          'revision_conflict',
+          tombstoneFile(resolved.storePath, current),
+        );
+      }
+    }
+    return writeError(provider, resolved.storePath, error);
+  }
 }
 
 export function pathFromParams(path: string | string[] | undefined): string {

@@ -1,5 +1,23 @@
 import { Buffer } from 'node:buffer';
 import { delay, hasRedisConfig, redisCommand } from '../core';
+import {
+  LIST_REDIRECTS_SCRIPT,
+  LIST_TOMBSTONES_SCRIPT,
+  MOVE_ARCHIVED_NOTE_SCRIPT,
+  NOTE_REDIRECTS_KEY,
+  NOTE_TOMBSTONES_KEY,
+  READ_RETIRED_SCRIPT,
+  RESTORE_ARCHIVED_NOTE_SCRIPT,
+  SOFT_DELETE_NOTE_SCRIPT,
+  throwArchiveScript,
+} from './note-archive-store';
+import {
+  parseRetiredPayload,
+  parseTombstone,
+  redirectsFromScript,
+  tombstonesFromScript,
+} from './note-archive';
+import type { NotesStore, RetiredNoteIndex } from './note-archive';
 import { assertSafeRepositoryPath, matchesExtension } from './paths';
 import { NOTES_COLLECTION } from './registry';
 import {
@@ -9,18 +27,22 @@ import {
 } from './types';
 import type {
   ContentEncoding,
-  ContentProvider,
   ContentSourceFile,
   ContentWriteResult,
   LinkedFileDelete,
   LinkedFileMove,
 } from './types';
 
+export { NOTE_REDIRECTS_KEY, NOTE_TOMBSTONES_KEY };
+
 /**
  * The content store's key layout. `scripts/lib/redis-content.mjs` mirrors these
  * under CONTENT_KEYS because the sync scripts run under bare `node` and cannot
  * import this module; tests/storage-namespace.test.ts fails if they drift.
  * These name live production data — changing one is a migration, not a rename.
+ * `content:note-redirects` and `content:note-tombstones` are newer keys beside
+ * that set. They are not a rename of it. Studio and the garden list
+ * `content:files` only, so a trashed note stays out of both.
  */
 export const FILES_SET = 'content:files';
 export const DIRECTORIES_SET = 'content:dirs';
@@ -454,7 +476,7 @@ export function hasContentStore(): boolean {
 
 export function createRedisContentProvider(
   options: RedisContentProviderOptions = {},
-): ContentProvider {
+): NotesStore {
   const command = options.command ?? defaultContentCommand;
   const now = options.now ?? (() => new Date());
   const newRevision =
@@ -739,6 +761,126 @@ export function createRedisContentProvider(
       if (outcome !== 'ok') mutationError(outcome);
       return result(message);
     },
+
+    async listRedirects() {
+      return redirectsFromScript(
+        await command<unknown>([
+          'EVAL',
+          LIST_REDIRECTS_SCRIPT,
+          1,
+          NOTE_REDIRECTS_KEY,
+        ]),
+      );
+    },
+
+    async readTombstone(publicPath) {
+      const raw = await command<unknown>([
+        'HGET',
+        NOTE_TOMBSTONES_KEY,
+        publicPath,
+      ]);
+      return parseTombstone(raw);
+    },
+
+    async listTombstones() {
+      return tombstonesFromScript(
+        await command<unknown>([
+          'EVAL',
+          LIST_TOMBSTONES_SCRIPT,
+          1,
+          NOTE_TOMBSTONES_KEY,
+        ]),
+      );
+    },
+
+    async moveArchivedNote({
+      fromStorePath,
+      toStorePath,
+      fromPublic,
+      toPublic,
+      revision,
+      message,
+    }) {
+      assertSafeRepositoryPath(fromStorePath);
+      assertSafeRepositoryPath(toStorePath);
+      const nextRevision = newRevision();
+      const outcome = await command<string>([
+        'EVAL',
+        MOVE_ARCHIVED_NOTE_SCRIPT,
+        7,
+        fileKey(fromStorePath),
+        fileKey(toStorePath),
+        FILES_SET,
+        DIRECTORIES_SET,
+        VERSION_KEY,
+        NOTE_REDIRECTS_KEY,
+        NOTE_TOMBSTONES_KEY,
+        fromStorePath,
+        toStorePath,
+        revision,
+        nextRevision,
+        fromPublic,
+        toPublic,
+        ...directoryAncestors(parentDirectory(toStorePath)),
+      ]);
+      if (outcome !== 'ok') throwArchiveScript(outcome);
+      return result(message, nextRevision);
+    },
+
+    async softDeleteNote({ storePath, publicPath, revision }) {
+      assertSafeRepositoryPath(storePath);
+      const outcome = await command<string>([
+        'EVAL',
+        SOFT_DELETE_NOTE_SCRIPT,
+        5,
+        fileKey(storePath),
+        FILES_SET,
+        VERSION_KEY,
+        NOTE_REDIRECTS_KEY,
+        NOTE_TOMBSTONES_KEY,
+        storePath,
+        revision,
+        publicPath,
+        newRevision(),
+        now().toISOString(),
+      ]);
+      if (typeof outcome === 'string' && outcome.startsWith('{')) {
+        const tombstone = parseTombstone(outcome);
+        if (tombstone) return tombstone;
+      }
+      throwArchiveScript(outcome);
+    },
+
+    async restoreArchivedNote({
+      storePath,
+      publicPath,
+      revision,
+      record,
+      message,
+    }) {
+      assertSafeRepositoryPath(storePath);
+      const nextRevision = newRevision();
+      const parsed = JSON.parse(record) as { rev?: string };
+      parsed.rev = nextRevision;
+      const outcome = await command<string>([
+        'EVAL',
+        RESTORE_ARCHIVED_NOTE_SCRIPT,
+        6,
+        fileKey(storePath),
+        FILES_SET,
+        DIRECTORIES_SET,
+        VERSION_KEY,
+        NOTE_REDIRECTS_KEY,
+        NOTE_TOMBSTONES_KEY,
+        storePath,
+        publicPath,
+        revision ?? '',
+        JSON.stringify(parsed),
+        ...directoryAncestors(parentDirectory(storePath)),
+      ]);
+      if (outcome !== 'ok') throwArchiveScript(outcome);
+      return result(message, nextRevision);
+    },
   };
 }
 
@@ -778,6 +920,36 @@ export async function readRedisBinaryFile(
   const file = await createRedisContentProvider({ command }).readFile(path);
   if (!file || file.encoding !== 'base64') return null;
   return new Uint8Array(Buffer.from(file.content, 'base64'));
+}
+
+const RETIRED_READ_ATTEMPTS = 20;
+const RETIRED_READ_RETRY_MS = 100;
+
+/**
+ * Redirects and trashed paths from one stable snapshot. Null while a mutation
+ * holds the content lock for the whole retry window — the caller should answer
+ * 503 rather than guess that a missing note was never there.
+ */
+export async function readRetiredNoteIndex(
+  command: RedisCommand = defaultContentCommand,
+): Promise<RetiredNoteIndex | null> {
+  for (let attempt = 0; attempt < RETIRED_READ_ATTEMPTS; attempt += 1) {
+    const version = await readStableContentVersion(command);
+    if (version !== null) {
+      const raw = await command<unknown>([
+        'EVAL',
+        READ_RETIRED_SCRIPT,
+        2,
+        NOTE_REDIRECTS_KEY,
+        NOTE_TOMBSTONES_KEY,
+      ]);
+      if ((await readStableContentVersion(command)) === version) {
+        return parseRetiredPayload(raw);
+      }
+    }
+    await delay(RETIRED_READ_RETRY_MS);
+  }
+  return null;
 }
 
 /**

@@ -4,7 +4,12 @@ export {
   GardenEmptyError,
   GardenBusyError,
 } from './errors';
-export { getGardenIndexOrUnavailable, type GardenIndexResult } from './runtime';
+export {
+  getGardenIndexOrUnavailable,
+  readPublicNoteRetirement,
+  type GardenIndexResult,
+} from './runtime';
+export { decidePublicNote, type PublicNoteDecision } from './retired';
 export {
   buildAffinityPaths,
   getRelatedNotes,
