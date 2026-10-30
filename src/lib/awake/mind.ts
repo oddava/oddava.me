@@ -54,7 +54,7 @@ export interface MindInput {
   quietFor: number;
   /** 0..1 prey-likeness of recent pointer motion (see `dartScore`). */
   dart: number;
-  /** Looking at something specific (a nav node, the moon) — no offers. */
+  /** Looking at something specific (a nav node) — no offers. */
   interested: boolean;
   /** The visitor has shown they're here (moved, touched, tabbed, or simply
    *  stayed a while); the cat doesn't slow-blink at an empty room. */

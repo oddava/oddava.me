@@ -1,7 +1,7 @@
 /* ===================================================
    Awake — the home page cat.
 
-   The page is plain type: the name, the tagline, the contacts, and the three
+   The page is plain type: the name, the tagline, the contacts, and the two
    pages under a hairline floor. The cat lives on a canvas behind the type and
    moves between two surfaces the mount script measures: the top of the name
    (its perch) and the floor. Without script the page is simply the type.
@@ -73,61 +73,6 @@ body:has(.awake) {
   background: #000;
   opacity: 0;
   pointer-events: none;
-}
-
-.awake-friend {
-  position: absolute;
-  left: max(3vw, calc(50vw - 640px));
-  top: 30vh;
-  width: 118px;
-  overflow: visible;
-  opacity: 0.85;
-  animation: awake-fade 1200ms 500ms ease-out both;
-}
-
-.awake-friend__lines line {
-  stroke: var(--color-accent);
-  stroke-opacity: 0.22;
-  stroke-width: 0.8;
-}
-
-.awake-friend__star {
-  fill: var(--color-accent);
-  fill-opacity: 0.55;
-}
-
-.awake-friend__eye {
-  fill: var(--color-text-interactive-hover);
-}
-
-.awake-moon {
-  position: fixed;
-  top: clamp(14px, 7vh, 84px);
-  left: max(12px, calc(50vw - 600px));
-  z-index: 2;
-  width: 48px;
-  height: 48px;
-  animation: awake-fade 900ms 300ms ease-out both;
-}
-
-.awake-moon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.awake-moon__body {
-  fill: var(--color-surface);
-  stroke: var(--color-accent);
-  stroke-opacity: 0.7;
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-  transition: stroke-opacity 0.4s ease;
-}
-
-.awake-moon:hover .awake-moon__body {
-  stroke-opacity: 1;
 }
 
 /* ---------- the type ---------- */
@@ -282,23 +227,10 @@ body:has(.awake) {
   }
 }
 
-@media (max-width: 899px), (max-height: 659px) {
-  .awake-friend {
-    display: none;
-  }
-}
-
 @media (max-width: 639px) {
   .awake {
     --awake-cat-scale: 0.8;
     padding: 4rem 0 5.5rem;
-  }
-
-  .awake-moon {
-    width: 44px;
-    height: 44px;
-    top: 14px;
-    left: 14px;
   }
 }
 
@@ -328,10 +260,6 @@ body:has(.awake) {
 
 .awake-in--nav2 {
   animation-delay: 940ms;
-}
-
-.awake-in--nav3 {
-  animation-delay: 1020ms;
 }
 
 @keyframes awake-rise {

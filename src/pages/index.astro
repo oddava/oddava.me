@@ -12,7 +12,6 @@ const contacts = linksData.links.filter((link) => !link.url.startsWith('/'));
 const pages = [
   { href: '/about', name: 'about' },
   { href: '/notes', name: 'notes' },
-  { href: '/notes/graph', name: 'graph' },
 ] as const;
 ---
 
@@ -78,13 +77,6 @@ const pages = [
 
     <div class="awake-ground" data-awake-ground aria-hidden="true"></div>
     <button class="awake-pet" type="button" data-awake-pet>pet the cat</button>
-    <div class="awake-moon" data-awake-moon aria-hidden="true">
-      <svg viewBox="-36 -36 72 72" focusable="false">
-        <path
-          class="awake-moon__body"
-          d="M4-21A21 21 0 1 0 21 7A16.5 16.5 0 1 1 4-21Z"></path>
-      </svg>
-    </div>
     <canvas class="awake-fx" data-awake-fx aria-hidden="true"></canvas>
     <div class="awake-dim" data-awake-dim aria-hidden="true"></div>
     <p class="sr-only" aria-live="polite" data-awake-live></p>

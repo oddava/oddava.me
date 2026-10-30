@@ -25,7 +25,7 @@ import { bump, clamp } from './spring';
 
 type Interest =
   | { kind: 'nav'; el: HTMLAnchorElement }
-  | { kind: 'moon' | 'contact' | 'point'; x: number; y: number };
+  | { kind: 'contact' | 'point'; x: number; y: number };
 
 const NAV_LINGER = 2600;
 const NAV_DELAY = 320;
@@ -69,12 +69,8 @@ export function mountAwake(root: HTMLElement) {
   const contactLinks = [
     ...document.querySelectorAll<HTMLAnchorElement>('.awake-contact a'),
   ];
-  const moon = $<HTMLElement>('[data-awake-moon]');
   const dimEl = $<HTMLElement>('[data-awake-dim]');
   const live = $<HTMLElement>('[data-awake-live]');
-  const friendEyes = [
-    ...document.querySelectorAll<SVGGElement>('[data-awake-friend-eye]'),
-  ].map((el) => ({ el, base: el.getAttribute('transform') ?? '' }));
   const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
   const coarse = matchMedia('(pointer: coarse)').matches;
   const now = () => performance.now();
@@ -190,7 +186,6 @@ export function mountAwake(root: HTMLElement) {
   let pounceNav: HTMLAnchorElement | null = null;
   let tiltUntil = 0;
   let typed = '';
-  let friendUntil = -Infinity;
   let petFocus = false;
   let lastSkeleton: Skeleton | null = null;
   let hoverCat = false;
@@ -241,12 +236,7 @@ export function mountAwake(root: HTMLElement) {
     refresh();
   }
 
-  function look(
-    kind: 'moon' | 'contact' | 'point',
-    x: number,
-    y: number,
-    ms: number,
-  ) {
+  function look(kind: 'contact' | 'point', x: number, y: number, ms: number) {
     interest = { kind, x, y };
     interestUntil = ms === Infinity ? Infinity : now() + ms;
     stir();
@@ -380,24 +370,6 @@ export function mountAwake(root: HTMLElement) {
     link.addEventListener('pointerleave', off);
     link.addEventListener('blur', off);
   }
-  if (moon) {
-    const at = () => {
-      const r = moon.getBoundingClientRect();
-      look('moon', r.left + r.width / 2, r.top + r.height / 2, Infinity);
-      friendUntil = Infinity;
-    };
-    moon.addEventListener('pointerenter', at);
-    moon.addEventListener('pointerleave', () => {
-      if (interest?.kind === 'moon') interestUntil = now() + 600;
-      friendUntil = now() + 2400;
-    });
-    moon.addEventListener('pointerdown', () => {
-      at();
-      interestUntil = now() + 2600;
-      friendUntil = now() + 3400;
-    });
-  }
-
   // Clicks and taps: grab or pet the cat, or send it to the spot.
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
@@ -538,7 +510,6 @@ export function mountAwake(root: HTMLElement) {
   };
   let breath = 0;
   let lastDim = '';
-  let lastBlink = '';
   let lastDust = 0;
   let lastZee = 0;
   let zee = 0;
@@ -779,11 +750,10 @@ export function mountAwake(root: HTMLElement) {
       yawTo = clamp(dx / 320, -1, 1) * 0.85;
       gazeTo = gazeOffset(dx, dy, 2.3, 1.5, 180);
       const d = Math.hypot(dx, dy);
-      if (interest?.kind === 'nav' || interest?.kind === 'moon') {
+      if (interest?.kind === 'nav') {
         pupilTo = 0.72;
         const ear = nearerEar(target[0], hx);
         earsTo = ear < 0 ? [0.7, 0.25] : [0.25, 0.7];
-        if (interest.kind === 'moon') earsTo = [0.9, 0.9];
       }
       // A pointer right in its face is bright: the pupils go to slits.
       if (d < 70 * scale && interest === null) pupilTo = 0.04;
@@ -903,14 +873,6 @@ export function mountAwake(root: HTMLElement) {
     dim += ((out.dim ? 0.1 : 0) - dim) * ease(out.dim ? 0.6 : 5);
     const dimText = dim < 0.002 ? '0' : dim.toFixed(2);
     if (dimEl && dimText !== lastDim) dimEl.style.opacity = lastDim = dimText;
-    const friendBlink = t < friendUntil ? 1 - out.closure * 0.92 : 1;
-    const blinkText = friendBlink.toFixed(2);
-    if (blinkText !== lastBlink) {
-      lastBlink = blinkText;
-      for (const f of friendEyes)
-        f.el.setAttribute('transform', `${f.base} scale(1 ${blinkText})`);
-    }
-
     sky.frame(t, dt, false);
     if (!document.hidden) frame = requestAnimationFrame(tick);
   }
