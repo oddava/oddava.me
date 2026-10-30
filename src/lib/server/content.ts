@@ -10,11 +10,14 @@ export {
 export {
   notesCollectionRoute,
   notesEntryRoute,
+  notesMoveRoute,
+  notesRestoreRoute,
 } from './content/notes-api-route';
 export {
   ContentMutationBusyError,
   hasContentStore,
   readRedisNoteFiles,
+  readRetiredNoteIndex,
   readStableContentVersion,
   withRedisContentMutationLock,
 } from './content/redis-store';

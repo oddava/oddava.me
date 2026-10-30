@@ -15,6 +15,10 @@ vi.mock('../src/lib/server/content/redis-store', () => ({
     return structuredClone(runtime.files);
   },
   readStableContentVersion: async () => String(runtime.version),
+  readRetiredNoteIndex: async () => ({
+    redirects: new Map(),
+    tombstones: new Set(),
+  }),
 }));
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));

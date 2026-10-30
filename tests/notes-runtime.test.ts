@@ -19,6 +19,10 @@ const runtime = vi.hoisted(() => ({
 vi.mock('../src/lib/server/content/redis-store', () => ({
   readRedisNoteFiles: async () => structuredClone(runtime.files),
   readStableContentVersion: async () => String(runtime.version),
+  readRetiredNoteIndex: async () => ({
+    redirects: new Map(),
+    tombstones: new Set(),
+  }),
 }));
 
 describe('Redis-backed notes runtime', () => {

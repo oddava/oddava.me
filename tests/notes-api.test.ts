@@ -1,9 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readEntries } from '../src/lib/server/content/documents';
+import { decidePublicNote } from '../src/lib/garden/retired';
+import {
+  NoteArchiveError,
+  retargetRedirects,
+} from '../src/lib/server/content/note-archive';
+import type {
+  NotesStore,
+  StoredTombstone,
+} from '../src/lib/server/content/note-archive';
 import {
   handleCreateNote,
+  handleDeleteNote,
   handleListNotes,
+  handleMoveNote,
   handleReadNote,
+  handleRestoreNote,
   handleUpdateNote,
   MAX_NOTES_API_BYTES,
 } from '../src/lib/server/content/notes-api';
@@ -15,7 +27,6 @@ import {
   ContentNotFoundError,
 } from '../src/lib/server/content/types';
 import type {
-  ContentProvider,
   ContentSourceFile,
   ContentWriteResult,
 } from '../src/lib/server/content/types';
@@ -27,6 +38,8 @@ const ORIGIN = 'https://oddava.me';
 
 class MemoryContentProvider {
   readonly files = new Map<string, ContentSourceFile>();
+  readonly redirects = new Map<string, string>();
+  readonly tombstones = new Map<string, StoredTombstone>();
   writes = 0;
   private revision = 0;
 
@@ -54,6 +67,113 @@ class MemoryContentProvider {
     return this.files.get(path) ?? null;
   }
 
+  async listRedirects() {
+    return new Map(this.redirects);
+  }
+
+  async readTombstone(publicPath: string) {
+    return this.tombstones.get(publicPath) ?? null;
+  }
+
+  async listTombstones() {
+    return [...this.tombstones].map(([publicPath, tombstone]) => ({
+      publicPath,
+      tombstone,
+    }));
+  }
+
+  async moveArchivedNote(input: {
+    fromStorePath: string;
+    toStorePath: string;
+    fromPublic: string;
+    toPublic: string;
+    revision: string;
+    message: string;
+  }): Promise<ContentWriteResult> {
+    const current = this.files.get(input.fromStorePath);
+    if (!current) {
+      if (this.tombstones.has(input.fromPublic))
+        throw new NoteArchiveError('gone');
+      throw new ContentNotFoundError();
+    }
+    if (current.revision !== input.revision) {
+      throw new ContentConflictError('revision_conflict');
+    }
+    if (this.tombstones.has(input.toPublic))
+      throw new NoteArchiveError('deleted');
+    if (this.files.has(input.toStorePath)) {
+      throw new ContentConflictError('path_exists');
+    }
+    const moved = this.nextFile(input.toStorePath, current.content);
+    this.files.delete(input.fromStorePath);
+    this.files.set(input.toStorePath, moved);
+    const redirects = retargetRedirects(
+      this.redirects,
+      input.fromPublic,
+      input.toPublic,
+    );
+    this.redirects.clear();
+    for (const [from, to] of redirects) this.redirects.set(from, to);
+    return { message: input.message, revision: moved.revision };
+  }
+
+  async softDeleteNote(input: {
+    storePath: string;
+    publicPath: string;
+    revision: string;
+    message: string;
+  }): Promise<StoredTombstone> {
+    const current = this.files.get(input.storePath);
+    if (!current) {
+      if (this.tombstones.has(input.publicPath))
+        throw new NoteArchiveError('gone');
+      throw new ContentNotFoundError();
+    }
+    if (current.revision !== input.revision) {
+      throw new ContentConflictError('revision_conflict');
+    }
+    this.revision += 1;
+    const tombstone: StoredTombstone = {
+      content: current.content,
+      enc: 'utf8',
+      rev: `r${this.revision}`,
+      createdAt: current.updatedAt,
+      updatedAt: current.updatedAt,
+      deletedAt: '2026-10-30T00:00:00.000Z',
+    };
+    this.tombstones.set(input.publicPath, tombstone);
+    this.redirects.delete(input.publicPath);
+    this.files.delete(input.storePath);
+    void input.message;
+    return tombstone;
+  }
+
+  async restoreArchivedNote(input: {
+    storePath: string;
+    publicPath: string;
+    revision: string | undefined;
+    record: string;
+    message: string;
+  }): Promise<ContentWriteResult> {
+    const tombstone = this.tombstones.get(input.publicPath);
+    if (!tombstone) throw new ContentNotFoundError();
+    if (input.revision && tombstone.rev !== input.revision) {
+      throw new ContentConflictError('revision_conflict');
+    }
+    if (this.files.has(input.storePath)) {
+      throw new ContentConflictError('path_exists');
+    }
+    const record = JSON.parse(input.record) as { content?: string };
+    const file = this.nextFile(
+      input.storePath,
+      typeof record.content === 'string' ? record.content : tombstone.content,
+    );
+    this.files.set(input.storePath, file);
+    this.tombstones.delete(input.publicPath);
+    this.redirects.delete(input.publicPath);
+    return { message: input.message, revision: file.revision };
+  }
+
   async writeTextFile(
     path: string,
     content: string,
@@ -75,8 +195,8 @@ class MemoryContentProvider {
     return { message, revision: file.revision };
   }
 
-  asProvider(): ContentProvider {
-    return this as unknown as ContentProvider;
+  asProvider(): NotesStore {
+    return this as unknown as NotesStore;
   }
 }
 
@@ -473,6 +593,385 @@ describe('notes API writes', () => {
       'title',
       'updated',
     ]);
+    expect(listed.deleted).toEqual([]);
+  });
+
+  it('moves a note, collapses rename chains, and keeps a stale revision from writing', async () => {
+    const provider = new MemoryContentProvider();
+    const store = provider.asProvider();
+    const created = await bodyOf(
+      await handleCreateNote(
+        store,
+        request('POST', `${ORIGIN}/api/notes`, {
+          path: 'diary/hello.md',
+          content: '# hello\n\nstill learning.',
+        }),
+      ),
+    );
+    const revision = (created.note as { revision: string }).revision;
+
+    const stale = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'diary/hello.md',
+        to: 'reading/hello.md',
+        revision: 'stale',
+      }),
+    );
+    expect(stale.status).toBe(409);
+    expect(await bodyOf(stale)).toMatchObject({ code: 'revision_conflict' });
+    expect(provider.files.has('src/content/notes/diary/hello.md')).toBe(true);
+    expect(provider.redirects.size).toBe(0);
+
+    const moved = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'diary/hello.md',
+        to: 'reading/hello.md',
+        revision,
+      }),
+    );
+    expect(moved.status).toBe(200);
+    const movedNote = (await bodyOf(moved)).note as {
+      path: string;
+      revision: string;
+      content: string;
+    };
+    expect(movedNote.path).toBe('reading/hello.md');
+    expect(movedNote.content).toContain('still learning');
+
+    const renamed = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'reading/hello',
+        to: 'reading/goodbye.md',
+        revision: movedNote.revision,
+      }),
+    );
+    expect(renamed.status).toBe(200);
+
+    expect([...provider.redirects.entries()].toSorted()).toEqual([
+      ['diary/hello', 'reading/goodbye'],
+      ['reading/hello', 'reading/goodbye'],
+    ]);
+    const documents = [
+      {
+        path: 'reading/goodbye',
+        sourceId: 'reading/goodbye',
+        href: '/notes/reading/goodbye',
+      },
+    ];
+    const retired = {
+      redirects: provider.redirects,
+      tombstones: new Set<string>(),
+    };
+    expect(decidePublicNote('diary/hello', documents, retired)).toEqual({
+      kind: 'redirect',
+      href: '/notes/reading/goodbye',
+    });
+    expect(decidePublicNote('reading/hello', documents, retired)).toEqual({
+      kind: 'redirect',
+      href: '/notes/reading/goodbye',
+    });
+
+    const old = await handleReadNote(store, 'diary/hello.md');
+    expect(old.status).toBe(409);
+    expect(await bodyOf(old)).toMatchObject({
+      code: 'moved',
+      location: 'reading/goodbye.md',
+    });
+
+    await handleCreateNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'projects/taken.md',
+        content: '# taken\n',
+      }),
+    );
+    const blocked = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'reading/goodbye.md',
+        to: 'projects/taken.md',
+      }),
+    );
+    expect(blocked.status).toBe(409);
+    expect(await bodyOf(blocked)).toMatchObject({ code: 'path_exists' });
+    expect(provider.files.has('src/content/notes/reading/goodbye.md')).toBe(
+      true,
+    );
+
+    const samePath = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'reading/goodbye.md',
+        to: 'reading/goodbye',
+      }),
+    );
+    expect(samePath.status).toBe(400);
+    expect(await bodyOf(samePath)).toMatchObject({ code: 'invalid_request' });
+
+    const slug = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'reading/goodbye.md',
+        to: 'diary/taken.md',
+      }),
+    );
+    expect(slug.status).toBe(409);
+    expect(await bodyOf(slug)).toMatchObject({ code: 'slug_exists' });
+
+    provider.files.set('src/content/notes/diary/plain.md', {
+      path: 'src/content/notes/diary/plain.md',
+      content: '# plain\n\nno frontmatter',
+      encoding: 'utf8',
+      byteLength: Buffer.byteLength('# plain\n\nno frontmatter'),
+      updatedAt: '2026-02-02T00:00:00.000Z',
+      revision: 'r-plain',
+    });
+    const plain = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'diary/plain.md',
+        to: 'diary/plain-moved.md',
+        revision: 'r-plain',
+      }),
+    );
+    expect(plain.status).toBe(200);
+    expect(await bodyOf(plain)).toMatchObject({
+      note: { updated: '2026-02-02T00:00:00.000Z' },
+    });
+  });
+
+  it('soft-deletes a note, hides it from Studio, and restores it', async () => {
+    const provider = new MemoryContentProvider();
+    const store = provider.asProvider();
+    const created = await bodyOf(
+      await handleCreateNote(
+        store,
+        request('POST', `${ORIGIN}/api/notes`, {
+          path: 'diary/hello.md',
+          content: '# hello\n\nstill learning.',
+        }),
+      ),
+    );
+    const revision = (created.note as { revision: string }).revision;
+
+    const stale = await handleDeleteNote(
+      store,
+      'diary/hello.md',
+      request('DELETE', `${ORIGIN}/api/notes/diary/hello.md`, {
+        revision: 'stale',
+      }),
+    );
+    expect(stale.status).toBe(409);
+    expect(await bodyOf(stale)).toMatchObject({ code: 'revision_conflict' });
+    expect(provider.files.has('src/content/notes/diary/hello.md')).toBe(true);
+
+    const deleted = await handleDeleteNote(
+      store,
+      'diary/hello',
+      request('DELETE', `${ORIGIN}/api/notes/diary/hello.md`, { revision }),
+    );
+    expect(deleted.status).toBe(200);
+    const deletedNote = (await bodyOf(deleted)).note as {
+      path: string;
+      deletedAt: string;
+      revision: string;
+    };
+    expect(deletedNote.path).toBe('diary/hello.md');
+    expect(deletedNote.deletedAt).toEqual(expect.any(String));
+    expect(provider.files.has('src/content/notes/diary/hello.md')).toBe(false);
+
+    const listed = await bodyOf(await handleListNotes(store));
+    expect(listed.notes).toEqual([]);
+    expect(listed.deleted).toEqual([
+      expect.objectContaining({
+        path: 'diary/hello.md',
+        title: 'hello',
+        deletedAt: deletedNote.deletedAt,
+      }),
+    ]);
+    expect(
+      (await readEntries(store, NOTES_COLLECTION)).map((entry) => entry.path),
+    ).not.toContain('src/content/notes/diary/hello.md');
+
+    const fetched = await handleReadNote(store, 'diary/hello.md');
+    expect(fetched.status).toBe(410);
+    expect(await bodyOf(fetched)).toMatchObject({
+      code: 'gone',
+      note: { content: expect.stringContaining('still learning') },
+    });
+    const updated = await handleUpdateNote(
+      store,
+      'diary/hello.md',
+      request('PUT', `${ORIGIN}/api/notes/diary/hello.md`, {
+        content: '# hello\n\nresurrected by a blind write.',
+      }),
+    );
+    expect(updated.status).toBe(410);
+    expect(provider.files.size).toBe(0);
+
+    const recreated = await handleCreateNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'diary/hello.md',
+        content: '# hello\n\nnew note.',
+      }),
+    );
+    expect(recreated.status).toBe(409);
+    expect(await bodyOf(recreated)).toMatchObject({ code: 'deleted' });
+
+    const conflicted = await handleRestoreNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/restore`, {
+        path: 'diary/hello.md',
+        revision: 'stale',
+      }),
+    );
+    expect(conflicted.status).toBe(409);
+    expect(await bodyOf(conflicted)).toMatchObject({
+      code: 'revision_conflict',
+    });
+    expect(provider.tombstones.has('diary/hello')).toBe(true);
+
+    const restored = await handleRestoreNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/restore`, {
+        path: 'diary/hello.md',
+        revision: deletedNote.revision,
+      }),
+    );
+    expect(restored.status).toBe(200);
+    expect(await bodyOf(restored)).toMatchObject({
+      note: {
+        path: 'diary/hello.md',
+        content: expect.stringContaining('still learning'),
+      },
+    });
+    expect(provider.tombstones.size).toBe(0);
+    expect((await bodyOf(await handleListNotes(store))).deleted).toEqual([]);
+    expect(
+      decidePublicNote('diary/hello', [], {
+        redirects: new Map(),
+        tombstones: new Set(['diary/hello']),
+      }).kind,
+    ).toBe('gone');
+  });
+
+  it('follows a rename into the trash and back out again', async () => {
+    const provider = new MemoryContentProvider();
+    const store = provider.asProvider();
+    const created = await bodyOf(
+      await handleCreateNote(
+        store,
+        request('POST', `${ORIGIN}/api/notes`, {
+          path: 'diary/hello.md',
+          content: '# hello\n',
+        }),
+      ),
+    );
+    const moved = await bodyOf(
+      await handleMoveNote(
+        store,
+        request('POST', `${ORIGIN}/api/notes/move`, {
+          from: 'diary/hello.md',
+          to: 'reading/hello.md',
+          revision: (created.note as { revision: string }).revision,
+        }),
+      ),
+    );
+    await handleDeleteNote(
+      store,
+      'reading/hello.md',
+      request('DELETE', `${ORIGIN}/api/notes/reading/hello.md`, {
+        revision: (moved.note as { revision: string }).revision,
+      }),
+    );
+
+    const retired = {
+      redirects: await store.listRedirects(),
+      tombstones: new Set(
+        (await store.listTombstones()).map((entry) => entry.publicPath),
+      ),
+    };
+    expect(decidePublicNote('diary/hello', [], retired).kind).toBe('gone');
+    expect(decidePublicNote('reading/hello', [], retired).kind).toBe('gone');
+    expect((await handleReadNote(store, 'diary/hello')).status).toBe(410);
+
+    const restored = await handleRestoreNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/restore`, {
+        path: 'reading/hello.md',
+      }),
+    );
+    expect(restored.status).toBe(200);
+    const documents = [
+      {
+        path: 'reading/hello',
+        sourceId: 'reading/hello',
+        href: '/notes/reading/hello',
+      },
+    ];
+    expect(
+      decidePublicNote('diary/hello', documents, {
+        redirects: await store.listRedirects(),
+        tombstones: new Set(),
+      }),
+    ).toEqual({ kind: 'redirect', href: '/notes/reading/hello' });
+  });
+
+  it('refuses to delete or rename the root, or a folder page that still has notes', async () => {
+    const provider = new MemoryContentProvider();
+    const store = provider.asProvider();
+    await handleCreateNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'index.md',
+        content: '# notes\n',
+      }),
+    );
+    await handleCreateNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'reading.md',
+        content: '# reading\n',
+      }),
+    );
+    await handleCreateNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'reading/book.md',
+        content: '# book\n',
+      }),
+    );
+
+    const root = await handleDeleteNote(
+      store,
+      'index.md',
+      request('DELETE', `${ORIGIN}/api/notes/index.md`),
+    );
+    expect(root.status).toBe(400);
+    expect(await bodyOf(root)).toMatchObject({ code: 'root_entry' });
+
+    const renamed = await handleMoveNote(
+      store,
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'index.md',
+        to: 'home.md',
+      }),
+    );
+    expect(renamed.status).toBe(400);
+    expect(await bodyOf(renamed)).toMatchObject({ code: 'root_entry' });
+
+    const folder = await handleDeleteNote(
+      store,
+      'reading.md',
+      request('DELETE', `${ORIGIN}/api/notes/reading.md`),
+    );
+    expect(folder.status).toBe(409);
+    expect(await bodyOf(folder)).toMatchObject({ code: 'folder_not_empty' });
+    expect(provider.files.has('src/content/notes/reading.md')).toBe(true);
   });
 });
 
@@ -558,6 +1057,10 @@ describe('notes API route', () => {
     expect(entry.GET).toBe(route.notesEntryRoute);
     expect(entry.PUT).toBe(route.notesEntryRoute);
     expect(entry.DELETE).toBe(route.notesEntryRoute);
+    const move = await import('../src/pages/api/notes/move');
+    const restore = await import('../src/pages/api/notes/restore');
+    expect(move.POST).toBe(route.notesMoveRoute);
+    expect(restore.POST).toBe(route.notesRestoreRoute);
   });
 
   it('is disabled when NOTES_API_TOKEN is unset', async () => {
@@ -710,7 +1213,7 @@ describe('notes API route', () => {
     expect(lock).not.toHaveBeenCalled();
   });
 
-  it('answers 405 for delete and does not remove the note', async () => {
+  it('answers 405 for collection delete and for move methods other than POST', async () => {
     vi.stubEnv('NOTES_API_TOKEN', TOKEN);
     const { provider } = installStore();
     provider.files.set('src/content/notes/diary/hello.md', {
@@ -721,22 +1224,19 @@ describe('notes API route', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
       revision: 'r1',
     });
-    const { notesCollectionRoute, notesEntryRoute } = await loadRoutes();
+    const { notesCollectionRoute, notesMoveRoute } = await loadRoutes();
 
     const collection = await notesCollectionRoute(
       mockContext('DELETE', '/api/notes', { token: TOKEN }),
     );
-    const entry = await notesEntryRoute(
-      mockContext('DELETE', '/api/notes/diary/hello.md', {
-        token: TOKEN,
-        params: { path: 'diary/hello.md' },
-      }),
+    const move = await notesMoveRoute(
+      mockContext('DELETE', '/api/notes/move', { token: TOKEN }),
     );
 
     expect(collection.status).toBe(405);
     expect(collection.headers.get('Allow')).toBe('GET, POST');
-    expect(entry.status).toBe(405);
-    expect(entry.headers.get('Allow')).toBe('GET, PUT');
+    expect(move.status).toBe(405);
+    expect(move.headers.get('Allow')).toBe('POST');
     expect(provider.files.has('src/content/notes/diary/hello.md')).toBe(true);
   });
 
@@ -789,5 +1289,124 @@ describe('notes API route', () => {
 
     expect(response.status).toBe(401);
     expect(await bodyOf(response)).toMatchObject({ code: 'unauthorized' });
+  });
+
+  it('requires the bearer token to move, delete, or restore a note', async () => {
+    vi.stubEnv('NOTES_API_TOKEN', TOKEN);
+    const { provider, lock } = installStore();
+    provider.files.set('src/content/notes/diary/hello.md', {
+      path: 'src/content/notes/diary/hello.md',
+      content: '# hello\n',
+      encoding: 'utf8',
+      byteLength: 8,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      revision: 'r1',
+    });
+    const { notesEntryRoute, notesMoveRoute, notesRestoreRoute } =
+      await loadRoutes();
+
+    const responses = await Promise.all([
+      notesMoveRoute(
+        mockContext('POST', '/api/notes/move', {
+          body: { from: 'diary/hello.md', to: 'reading/hello.md' },
+        }),
+      ),
+      notesEntryRoute(
+        mockContext('DELETE', '/api/notes/diary/hello.md', {
+          params: { path: 'diary/hello.md' },
+        }),
+      ),
+      notesRestoreRoute(
+        mockContext('POST', '/api/notes/restore', {
+          body: { path: 'diary/hello.md' },
+        }),
+      ),
+    ]);
+
+    for (const response of responses) {
+      expect(response.status).toBe(401);
+      expect(await bodyOf(response)).toMatchObject({ code: 'unauthorized' });
+    }
+    expect(lock).not.toHaveBeenCalled();
+    expect(provider.files.has('src/content/notes/diary/hello.md')).toBe(true);
+    expect(provider.tombstones.size).toBe(0);
+    expect(provider.redirects.size).toBe(0);
+  });
+
+  it('moves, soft-deletes, and restores through the token routes', async () => {
+    vi.stubEnv('NOTES_API_TOKEN', TOKEN);
+    const { provider, lock } = installStore();
+    const {
+      notesCollectionRoute,
+      notesEntryRoute,
+      notesMoveRoute,
+      notesRestoreRoute,
+    } = await loadRoutes();
+
+    const created = await notesCollectionRoute(
+      mockContext('POST', '/api/notes', {
+        token: TOKEN,
+        body: { path: 'diary/hello.md', content: '# hello\n\nfrom the route' },
+      }),
+    );
+    expect(created.status).toBe(201);
+    const revision = ((await bodyOf(created)).note as { revision: string })
+      .revision;
+
+    const moved = await notesMoveRoute(
+      mockContext('POST', '/api/notes/move', {
+        token: TOKEN,
+        body: {
+          from: 'diary/hello.md',
+          to: 'reading/hello.md',
+          revision,
+        },
+      }),
+    );
+    expect(moved.status).toBe(200);
+    const movedRevision = ((await bodyOf(moved)).note as { revision: string })
+      .revision;
+    expect(provider.redirects.get('diary/hello')).toBe('reading/hello');
+
+    const removed = await notesEntryRoute(
+      mockContext('DELETE', '/api/notes/reading/hello.md', {
+        token: TOKEN,
+        params: { path: 'reading/hello.md' },
+        body: { revision: movedRevision },
+      }),
+    );
+    expect(removed.status).toBe(200);
+    expect(provider.files.has('src/content/notes/reading/hello.md')).toBe(
+      false,
+    );
+    expect(provider.tombstones.has('reading/hello')).toBe(true);
+
+    const restored = await notesRestoreRoute(
+      mockContext('POST', '/api/notes/restore', {
+        token: TOKEN,
+        body: { path: 'reading/hello.md' },
+      }),
+    );
+    expect(restored.status).toBe(200);
+    expect(provider.files.has('src/content/notes/reading/hello.md')).toBe(true);
+    expect(provider.tombstones.size).toBe(0);
+    expect(lock.mock.calls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('is disabled for move when the token is unset', async () => {
+    vi.stubEnv('NOTES_API_TOKEN', '');
+    const { lock } = installStore();
+    const { notesMoveRoute } = await loadRoutes();
+    const response = await notesMoveRoute(
+      mockContext('POST', '/api/notes/move', {
+        token: TOKEN,
+        body: { from: 'diary/hello.md', to: 'reading/hello.md' },
+      }),
+    );
+    expect(response.status).toBe(503);
+    expect(await bodyOf(response)).toMatchObject({
+      code: 'notes_api_disabled',
+    });
+    expect(lock).not.toHaveBeenCalled();
   });
 });

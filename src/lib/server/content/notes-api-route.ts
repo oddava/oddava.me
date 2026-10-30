@@ -6,8 +6,11 @@ import { enforceRedisRateLimit } from '../core/rate-limit';
 import { contentStoreErrorResponse, contentStoreUnavailable } from './http';
 import {
   handleCreateNote,
+  handleDeleteNote,
   handleListNotes,
+  handleMoveNote,
   handleReadNote,
+  handleRestoreNote,
   handleUpdateNote,
   MAX_NOTES_API_BYTES,
   notesMethodNotAllowed,
@@ -25,7 +28,7 @@ import {
   readStableContentVersion,
   withRedisContentMutationLock,
 } from './redis-store';
-import type { ContentProvider } from './types';
+import type { NotesStore } from './note-archive';
 
 // Same snapshot barrier as the Studio content route: a reader retries until
 // the content version is unchanged across the read, so a folder move in
@@ -40,7 +43,8 @@ const STABLE_READ_RETRY_MS = 100;
 const NOTES_API_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 
 const COLLECTION_METHODS = ['GET', 'POST'];
-const ENTRY_METHODS = ['GET', 'PUT'];
+const ENTRY_METHODS = ['GET', 'PUT', 'DELETE'];
+const ACTION_METHODS = ['POST'];
 
 async function rejectIfNotAllowed(request: Request): Promise<Response | null> {
   // Checked before the bearer compare so a copied `.env.example` (or a
@@ -61,7 +65,7 @@ async function rejectIfNotAllowed(request: Request): Promise<Response | null> {
 async function withStore(
   request: Request,
   mutation: boolean,
-  run: (provider: ContentProvider) => Promise<Response>,
+  run: (provider: NotesStore) => Promise<Response>,
 ): Promise<Response> {
   if (!hasContentStore()) {
     return contentStoreUnavailable(
@@ -93,7 +97,7 @@ async function dispatch(
   request: Request,
   allowed: readonly string[],
   mutation: boolean,
-  run: (provider: ContentProvider, request: Request) => Promise<Response>,
+  run: (provider: NotesStore, request: Request) => Promise<Response>,
 ): Promise<Response> {
   const denied = await rejectIfNotAllowed(request);
   if (denied) return denied;
@@ -148,20 +152,37 @@ export function notesCollectionRoute(context: APIContext): Promise<Response> {
 }
 
 /**
- * `GET /api/notes/<path>` reads one note. `PUT /api/notes/<path>` updates it.
- * There is no delete: removing a note stays in Studio, where the folder
- * rules (a folder page, a non-empty folder) already live.
+ * `GET /api/notes/<path>` reads one note. `PUT` updates it. `DELETE` soft-deletes
+ * it. A missing file that was renamed or trashed answers `moved` or `gone`
+ * instead of `not_found`, so a sync client does not recreate the old path.
  */
 export function notesEntryRoute(context: APIContext): Promise<Response> {
   const path = pathFromParams(context.params.path);
-  const mutation = context.request.method === 'PUT';
+  const method = context.request.method;
+  const mutation = method === 'PUT' || method === 'DELETE';
   return dispatch(
     context.request,
     ENTRY_METHODS,
     mutation,
-    (provider, request) =>
-      request.method === 'GET'
-        ? handleReadNote(provider, path)
-        : handleUpdateNote(provider, path, request),
+    (provider, request) => {
+      if (request.method === 'GET') return handleReadNote(provider, path);
+      if (request.method === 'DELETE')
+        return handleDeleteNote(provider, path, request);
+      return handleUpdateNote(provider, path, request);
+    },
+  );
+}
+
+/** `POST /api/notes/move` renames a note and records a public redirect. */
+export function notesMoveRoute(context: APIContext): Promise<Response> {
+  return dispatch(context.request, ACTION_METHODS, true, (provider, request) =>
+    handleMoveNote(provider, request),
+  );
+}
+
+/** `POST /api/notes/restore` puts a soft-deleted note back at its path. */
+export function notesRestoreRoute(context: APIContext): Promise<Response> {
+  return dispatch(context.request, ACTION_METHODS, true, (provider, request) =>
+    handleRestoreNote(provider, request),
   );
 }

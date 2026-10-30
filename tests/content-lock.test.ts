@@ -23,6 +23,10 @@ vi.mock('../src/lib/server/content/redis-store', () => ({
     if (runtime.versionError) throw runtime.versionError;
     return runtime.version;
   },
+  readRetiredNoteIndex: async () => ({
+    redirects: new Map(),
+    tombstones: new Set(),
+  }),
 }));
 
 describe('a cold read while the mutation lock is held', () => {
