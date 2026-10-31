@@ -1,0 +1,168 @@
+/* ===================================================
+   PROJECTS — An index of things built
+   =================================================== */
+
+.projects-page h1 {
+  margin-bottom: var(--space-xs);
+}
+
+.projects-page__lead {
+  margin: 0 0 var(--space-2-5);
+  color: var(--color-text-secondary);
+}
+
+.projects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Each row is one link: the name's hit area is stretched over the whole row
+   (plus a little bleed), and the secondary links sit above it. */
+.project {
+  position: relative;
+  transition: opacity 0.25s ease;
+}
+
+.project + .project {
+  margin-top: var(--space-2-5);
+}
+
+/* --- Head: name, a hairline leader, and the year --- */
+
+.project__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.project__name {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.project__name a {
+  color: var(--color-text-primary);
+}
+
+.project__name a::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-sm));
+  border-radius: var(--radius-lg);
+}
+
+.project__name a:focus-visible {
+  outline: none;
+}
+
+.project__name a:focus-visible::after {
+  outline: 2px solid var(--color-focus-ring);
+}
+
+.project__rule {
+  flex: 1;
+  align-self: center;
+  min-width: var(--space-md);
+  height: 1px;
+  background: var(--color-rule);
+  transition: background-color 0.25s ease;
+}
+
+.project__year {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.project__year--now {
+  color: var(--color-text-accent);
+}
+
+/* --- Body --- */
+
+.project__description {
+  margin: var(--space-half) 0 0;
+  max-width: 34rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.project__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-quarter) var(--space-sm);
+  margin-top: var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.project__stack,
+.project__links {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.project__stack {
+  gap: 0 0.6rem;
+  color: var(--color-text-disabled);
+}
+
+.project__links {
+  gap: 0 var(--space-sm);
+  margin-left: auto;
+}
+
+.project__links a {
+  position: relative;
+  z-index: 1;
+  color: var(--color-text-muted);
+}
+
+.project__links a span {
+  display: inline-block;
+  margin-left: 0.15em;
+  transition: transform 0.2s ease;
+}
+
+/* --- Interaction: the row in hand lights up, the rest step back --- */
+
+.project:hover .project__rule,
+.project:focus-within .project__rule {
+  background: color-mix(in srgb, var(--color-brand) 55%, transparent);
+}
+
+.project:hover .project__name a,
+.project:focus-within .project__name a {
+  color: var(--color-text-interactive-hover);
+}
+
+.project__links a:hover,
+.project__links a:focus-visible {
+  color: var(--color-text-interactive-hover);
+}
+
+.project__links a:hover span,
+.project__links a:focus-visible span {
+  transform: translate(1px, -1px);
+}
+
+@media (hover: hover) {
+  .projects:has(.project:hover) .project:not(:hover) {
+    opacity: 0.45;
+  }
+}
+
+@media (forced-colors: active) {
+  .project__rule {
+    background: CanvasText;
+  }
+}

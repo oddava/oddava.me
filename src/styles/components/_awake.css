@@ -262,6 +262,10 @@ body:has(.awake) {
   animation-delay: 940ms;
 }
 
+.awake-in--nav3 {
+  animation-delay: 1020ms;
+}
+
 @keyframes awake-rise {
   from {
     opacity: 0;

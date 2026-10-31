@@ -1,5 +1,84 @@
 ---
 export const prerender = true;
+import Base from '@layouts/Base.astro';
+import { projects } from '../../data/projects';
+import '../../styles/components/_projects.css';
 
-return Astro.redirect('/notes', 301);
+const hostOf = (url: string) => new URL(url).host;
 ---
+
+<Base
+  title="Projects"
+  description="Software oddava has built: Ishbay, this site, its Obsidian plugin, and AniShows."
+>
+  <article class="projects-page">
+    <h1>projects</h1>
+    <p class="projects-page__lead">
+      things i've built, mostly for small annoyances.
+    </p>
+
+    <ol class="projects">
+      {
+        projects.map((project) => {
+          const href = project.site ?? project.source;
+          return (
+            <li class="project">
+              <div class="project__head">
+                <h2 class="project__name">
+                  <a href={href} target="_blank" rel="noopener noreferrer">
+                    {project.name}
+                  </a>
+                </h2>
+                <span class="project__rule" aria-hidden="true" />
+                <span
+                  class:list={[
+                    'project__year',
+                    project.year === 'now' && 'project__year--now',
+                  ]}
+                >
+                  {project.year}
+                </span>
+              </div>
+              <p class="project__description">{project.description}</p>
+              <div class="project__meta">
+                {project.stack && (
+                  <ul class="project__stack" aria-label="built with">
+                    {project.stack.map((tool) => (
+                      <li>{tool}</li>
+                    ))}
+                  </ul>
+                )}
+                <ul class="project__links">
+                  {project.site && (
+                    <li>
+                      <a
+                        href={project.site}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {hostOf(project.site)}
+                        <span aria-hidden="true">↗</span>
+                      </a>
+                    </li>
+                  )}
+                  {project.source && (
+                    <li>
+                      <a
+                        href={project.source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${project.name} source on GitHub`}
+                      >
+                        source<span aria-hidden="true">↗</span>
+                      </a>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </li>
+          );
+        })
+      }
+    </ol>
+  </article>
+</Base>

@@ -8,6 +8,7 @@ export const NOTES_GRAPH_PATH = '/notes/graph';
 
 const PUBLIC_NAVIGATION_ROUTES = [
   { href: '/', label: 'oddava', isHome: true },
+  { href: '/projects', label: 'projects', isHome: false },
   { href: '/notes', label: 'notes', isHome: false },
   { href: '/about', label: 'about', isHome: false },
 ] as const satisfies readonly PublicNavigationRoute[];
