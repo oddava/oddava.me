@@ -5,7 +5,7 @@
  * is a CSS transform on its canvas.
  */
 
-import { drawCat, type Face } from './draw';
+import { drawCat, restingFace } from './draw';
 import { POSES, skeleton } from './rig';
 import { paintQuietSky } from './sky';
 
@@ -13,17 +13,14 @@ const NAP_SCALE = 0.62;
 /** Room round the silhouette for the rim stroke and the tail tip. */
 const PAD = 6;
 
-const SLEEPING: Face = {
+const SLEEPING = restingFace({
   yaw: 0.35,
   roll: 0.1,
-  gaze: [0, 0],
+  pitch: 0.15,
   open: 0,
-  pupil: 0.35,
+  smile: 0.3,
   ears: [-0.2, -0.2],
-  shiver: 0,
-  glow: 0,
-  time: 0,
-};
+});
 
 function napAt(x: number, y: number) {
   return skeleton({

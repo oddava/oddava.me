@@ -64,6 +64,11 @@ body:has(.awake) {
   opacity: 0;
 }
 
+/* Carried across the page, the cat passes in front of the words. */
+.awake-cat.is-lifted {
+  z-index: 20;
+}
+
 .awake-fx {
   position: fixed;
   z-index: 30;

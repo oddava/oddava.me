@@ -9,16 +9,27 @@ import {
   type SurfaceId,
 } from '../src/lib/awake/body';
 import { dartScore, gazeOffset, type Sample } from '../src/lib/awake/gaze';
+import {
+  CatLife,
+  noise,
+  TailChain,
+  type ActKind,
+  type LifeInput,
+} from '../src/lib/awake/life';
 import { CatMind, TIMING, wakeClosure } from '../src/lib/awake/mind';
 import {
+  clonePose,
   gaitFoot,
   GAITS,
   META,
   LEGS,
   PAW,
   POSES,
+  PoseSpring,
   skeleton,
   solveLeg,
+  TAIL,
+  tailFromAngles,
   tailPoints,
   type BodyState,
 } from '../src/lib/awake/rig';
@@ -134,7 +145,49 @@ describe('cat rig', () => {
     const pts = tailPoints([0, 40], 2.2, 1, 0, { wave: 0, lash: 0 });
     let length = 0;
     for (let i = 1; i < pts.length; i++) length += dist(pts[i - 1]!, pts[i]!);
-    expect(length).toBeCloseTo(78, 4);
+    expect(length).toBeCloseTo(TAIL.length, 4);
+  });
+
+  it('springs between poses: the head leads, the hips follow, it settles', () => {
+    const spring = new PoseSpring(POSES.sit);
+    let headFirst = false;
+    for (let i = 0; i < 12; i++) {
+      const p = spring.step(POSES.stand, 1 / 60, 12);
+      const head =
+        (p.head[0] - POSES.sit.head[0]) /
+        (POSES.stand.head[0] - POSES.sit.head[0]);
+      const hip =
+        (p.hip[0] - POSES.sit.hip[0]) / (POSES.stand.hip[0] - POSES.sit.hip[0]);
+      if (i === 5) headFirst = head > hip;
+    }
+    expect(headFirst).toBe(true);
+    for (let i = 0; i < 240; i++) spring.step(POSES.stand, 1 / 60, 12);
+    expect(spring.pose.head[0]).toBeCloseTo(POSES.stand.head[0], 2);
+    // Angles settle the short way round, so compare directions.
+    expect(Math.cos(spring.pose.tailAngle)).toBeCloseTo(
+      Math.cos(POSES.stand.tailAngle),
+      2,
+    );
+    expect(Math.sin(spring.pose.tailAngle)).toBeCloseTo(
+      Math.sin(POSES.stand.tailAngle),
+      2,
+    );
+    // Overshoot never pushes the feet or the folds out of range.
+    expect(spring.pose.front[1]).toBeGreaterThanOrEqual(0);
+    expect(spring.pose.tuck).toBeGreaterThanOrEqual(0);
+  });
+
+  it('lifts a placed paw to the face and draws it over the head', () => {
+    const sit = clonePose(POSES.sit);
+    const at: [number, number] = [sit.head[0] + 7, sit.head[1] - 17];
+    const sk = skeleton(
+      state({ pose: sit, paws: { near: { at, weight: 1 } } }),
+    );
+    const paw = sk.legs.find((leg) => leg.front && leg.near)!;
+    expect(paw.over).toBe(true);
+    // World y is down from the ground at 300; local y is up.
+    expect(paw.foot[1]).toBeCloseTo(300 - at[1], 0);
+    expect(dist(paw.top, paw.knee)).toBeCloseTo(LEGS.front[0], 4);
   });
 });
 
@@ -216,6 +269,19 @@ describe('cat body', () => {
     expect(events).toContain('landed');
     expect(body.surface).toBe('p1');
     expect(body.y).toBe(320);
+  });
+
+  it('never arcs off the top of the screen on a high leap', () => {
+    const high = { ...surfaces, p1: { x0: 400, x1: 600, y: 150 } };
+    const body = new CatBody(high, { surface: 'floor', x: 500 }, 1);
+    let top = Infinity;
+    for (let t = 16; t <= 3000; t += 16) {
+      body.step(0.016, t, { surface: 'p1', x: 500, rest: 'sit' });
+      top = Math.min(top, body.y);
+    }
+    expect(body.surface).toBe('p1');
+    // The feet clear the screen top by at least the cat's own height.
+    expect(top).toBeGreaterThanOrEqual(120);
   });
 
   it('keeps clear of a surface end', () => {
@@ -349,6 +415,17 @@ describe('awake mind', () => {
     expect(after.events).toContain('wake');
   });
 
+  it('blinks on request, but never through a slow blink or asleep', () => {
+    const mind = new CatMind(0, () => 0.5);
+    run(mind, 0, 3000, 3000);
+    mind.blink(3000);
+    expect(mind.tick(input(3090, 0)).closure).toBe(1);
+    const sleepy = new CatMind(0, () => 0.5);
+    run(sleepy, 0, 30_000, 0);
+    sleepy.blink(30_000);
+    expect(sleepy.tick(input(30_090, 30_090)).closure).toBe(0);
+  });
+
   it('hunts twitchy motion, swipes, and never offers mid-hunt', () => {
     const mind = new CatMind(0, () => 0.5);
     run(mind, 0, 1500, 1500);
@@ -364,5 +441,141 @@ describe('awake mind', () => {
     // Calm returns quickly once the darting stops.
     for (let t = 3500; t < 4100; t += 16) out = mind.tick(input(t, t - 3500));
     expect(out!.hunting).toBe(0);
+  });
+});
+
+describe('awake life', () => {
+  const seeded =
+    (seed = 7) =>
+    () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+  const base = (now: number, over: Partial<LifeInput> = {}): LifeInput => ({
+    now,
+    dt: 1 / 60,
+    mode: 'rest',
+    rest: 'sit',
+    phase: 'awake',
+    hunting: 0,
+    purring: false,
+    attentive: false,
+    head: POSES.sit.head,
+    front: POSES.sit.front,
+    tailAngle: POSES.sit.tailAngle,
+    tailCurl: POSES.sit.tailCurl,
+    vx: 0,
+    vy: 0,
+    scale: 1,
+    facing: 1,
+    ...over,
+  });
+  const live = (
+    life: CatLife,
+    from: number,
+    to: number,
+    over: Partial<LifeInput> = {},
+  ) => {
+    const acts: ActKind[] = [];
+    let last = life.current;
+    let out = life.tick(base(from, over));
+    for (let t = from; t <= to; t += 1000 / 60) {
+      out = life.tick(base(t, over));
+      const now = life.current;
+      if (now && now !== last) acts.push(now);
+      last = now;
+    }
+    return { acts, out };
+  };
+
+  it('keeps itself busy with a varied, irregular repertoire', () => {
+    const life = new CatLife(0, seeded());
+    const { acts } = live(life, 0, 5 * 60_000);
+    expect(new Set(acts).size).toBeGreaterThanOrEqual(6);
+    expect(acts.length).toBeGreaterThan(25);
+    // Habits, not a loop: the same act rarely comes twice running.
+    let repeats = 0;
+    for (let i = 1; i < acts.length; i++)
+      if (acts[i] === acts[i - 1]) repeats++;
+    expect(repeats / acts.length).toBeLessThan(0.15);
+  });
+
+  it('never plays two acts at once', () => {
+    const life = new CatLife(0, seeded(3));
+    for (let t = 0; t < 120_000; t += 1000 / 60) {
+      life.tick(base(t));
+      const running = (
+        life as unknown as { acts: { cancelAt: number }[] }
+      ).acts.filter((a) => a.cancelAt === Infinity);
+      expect(running.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('eases an act away when the cat gets up, instead of snapping', () => {
+    const life = new CatLife(0, seeded());
+    live(life, 0, 2000);
+    life.trigger('groom', 2000);
+    const { out: mid } = live(life, 2000, 3500);
+    expect(life.current).toBe('groom');
+    expect(mid.paws.near?.weight).toBeGreaterThan(0.9);
+    // It starts walking: the paw comes down over the release, not at once.
+    const first = life.tick(base(3520, { mode: 'walk' }));
+    expect(first.paws.near?.weight ?? 0).toBeGreaterThan(0.5);
+    const { out: after } = live(life, 3540, 4200, { mode: 'walk' });
+    expect(after.paws.near).toBeUndefined();
+    expect(after.mouth).toBe(0);
+    expect(life.current).toBeNull();
+  });
+
+  it('only dreams while asleep, and keeps private habits for quiet moments', () => {
+    const asleep = new CatLife(0, seeded());
+    const { acts } = live(asleep, 0, 120_000, {
+      phase: 'asleep',
+      rest: 'sleep',
+    });
+    expect(acts.length).toBeGreaterThan(0);
+    expect(new Set(acts)).toEqual(new Set(['dream']));
+    const watched = new CatLife(0, seeded());
+    const seen = live(watched, 0, 120_000, { attentive: true }).acts;
+    for (const kind of ['groom', 'look', 'stretch', 'knead', 'shuffle'])
+      expect(seen).not.toContain(kind);
+  });
+
+  it('reacts on request, as soon as nothing else is playing', () => {
+    const life = new CatLife(0, seeded());
+    live(life, 0, 500);
+    life.trigger('sneeze', 500);
+    live(life, 500, 600);
+    expect(life.current).toBe('sneeze');
+    // A sneeze ends in a shake.
+    const { acts } = live(life, 600, 4000);
+    expect(acts).toContain('shake');
+  });
+
+  it('swings the tail with the body and lets it settle back', () => {
+    const rest = Array.from({ length: TAIL.segments }, (_, i) => 2 + i * 0.05);
+    const tail = new TailChain(rest);
+    // Lurch forward: the tip lags behind the root.
+    tail.step(rest, 0.05, [3000, 0]);
+    const tipMoved = Math.abs(tail.angles.at(-1)! - rest.at(-1)!);
+    const rootMoved = Math.abs(tail.angles[0]! - rest[0]!);
+    expect(tipMoved).toBeGreaterThan(rootMoved);
+    for (let i = 0; i < 300; i++) tail.step(rest, 1 / 60, [0, 0]);
+    tail.angles.forEach((a, i) => expect(a).toBeCloseTo(rest[i]!, 3));
+    // Its length never changes, whatever the angles.
+    const pts = tailFromAngles([0, 40], tail.angles);
+    let length = 0;
+    for (let i = 1; i < pts.length; i++) length += dist(pts[i - 1]!, pts[i]!);
+    expect(length).toBeCloseTo(TAIL.length, 4);
+  });
+
+  it('wanders smoothly: noise is bounded and continuous', () => {
+    let prev = noise(0, 3);
+    for (let t = 0.01; t < 20; t += 0.01) {
+      const v = noise(t, 3);
+      expect(Math.abs(v)).toBeLessThanOrEqual(1);
+      expect(Math.abs(v - prev)).toBeLessThan(0.08);
+      prev = v;
+    }
   });
 });

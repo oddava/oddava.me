@@ -1,8 +1,8 @@
 import {
-  approachPose,
   blendPose,
   clonePose,
   gaitAt,
+  PoseSpring,
   POSES,
   SCRUFF,
   type Pose,
@@ -105,7 +105,8 @@ export class CatBody {
   facing: 1 | -1;
   tilt = 0;
   mode: Mode = 'rest';
-  pose: Pose;
+  /** The resting pose it is in or settling into. */
+  rest: Rest = 'sit';
   phase = 0;
   walk = 0;
   /** 0 walking, 1 trotting; follows speed. */
@@ -118,6 +119,7 @@ export class CatBody {
   private swing = 0;
   private swingV = 0;
   private heldVx = 0;
+  private readonly spring: PoseSpring;
 
   constructor(
     public surfaces: Record<SurfaceId, Surface>,
@@ -129,7 +131,12 @@ export class CatBody {
     this.y = surfaces[start.surface]!.y;
     this.facing = start.face ?? 1;
     this.face = this.facing;
-    this.pose = clonePose(POSES[start.pose ?? 'sit']);
+    this.spring = new PoseSpring(POSES[start.pose ?? 'sit']);
+  }
+
+  /** The body's pose as it springs between targets. */
+  get pose(): Pose {
+    return this.spring.pose;
   }
 
   get airborne() {
@@ -180,7 +187,7 @@ export class CatBody {
     this.tilt = 0;
     if (face) this.facing = face;
     this.face = this.facing;
-    this.pose = clonePose(POSES[pose]);
+    this.spring.snap(POSES[pose]);
   }
 
   /** Picked up by the scruff. */
@@ -254,7 +261,7 @@ export class CatBody {
       this.swing = Math.max(-0.7, Math.min(0.7, this.swing + this.swingV * dt));
       this.heldVx *= Math.exp(-6 * dt);
       this.tilt = this.swing * this.facing;
-      approachPose(this.pose, POSES.dangle, dt, 12);
+      this.spring.step(POSES.dangle, dt, 20, 0.6);
       return events;
     }
 
@@ -308,7 +315,11 @@ export class CatBody {
           y0: this.y,
           x1: goalX,
           y1,
-          height: leapHeight(this.y, y1, k, !elsewhere),
+          // The arc may not carry the cat off the top of the screen.
+          height: Math.min(
+            leapHeight(this.y, y1, k, !elsewhere),
+            Math.max(8 * k, Math.min(this.y, y1) - 125 * k),
+          ),
           start: now,
           duration: float
             ? Math.min(1250, Math.max(700, 480 + (distance / k) * 0.75))
@@ -357,39 +368,47 @@ export class CatBody {
       this.tilt += (0 - this.tilt) * (1 - Math.exp(-10 * dt));
     this.face += (this.facing - this.face) * (1 - Math.exp(-11 * dt));
 
+    // Natural frequency (rad/s) and damping per move: quick and springy
+    // into the air, slow and soft settling down to sleep.
     let target: Pose;
-    let rate = 7;
+    let omega = 13;
+    let zeta = 0.78;
     switch (this.mode) {
       case 'air':
         target = POSES.leap;
-        rate = 16;
+        omega = 26;
+        zeta = 0.75;
         break;
       case 'windup':
         target = POSES.crouch;
-        rate = 14;
+        omega = 24;
         break;
       case 'land':
         target = POSES.land;
-        rate = 18;
+        omega = 30;
+        zeta = 0.62;
         break;
       case 'walk':
         target = blendPose(POSES.walk, POSES.crouch, hunting * 0.7);
-        rate = 10;
+        omega = 17;
         break;
       default: {
         const rest = restOverride ?? goal.rest;
+        this.rest = rest;
         target = blendPose(POSES[rest], POSES.crouch, hunting * 0.5);
-        rate = rest === 'sleep' || rest === 'loaf' ? 3.2 : 7;
+        const settle = rest === 'sleep' || rest === 'loaf';
+        omega = settle ? 5.5 : rest === 'stretch' ? 7 : 12;
+        zeta = settle ? 0.95 : 0.74;
       }
     }
-    approachPose(this.pose, target, dt, rate);
+    this.spring.step(target, dt, omega, zeta);
     return events;
   }
 
   /** The pose to draw: the eased pose plus the butt wiggle before a pounce. */
   drawPose(): Pose {
-    if (this.wiggle <= 0) return this.pose;
     const pose = clonePose(this.pose);
+    if (this.wiggle <= 0) return pose;
     pose.hip[0] += Math.sin(this.wiggle * Math.PI * 9) * 2.6;
     pose.tailCurl += Math.sin(this.wiggle * Math.PI * 5) * 0.3;
     return pose;

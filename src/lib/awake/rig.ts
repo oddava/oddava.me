@@ -1,10 +1,12 @@
 /**
- * The cat's body as pure geometry: named poses, a blend between them, a walk
- * cycle, two-bone legs and an analytic tail. Nothing here touches the DOM —
+ * The cat's body as pure geometry: named poses, a springy blend between them,
+ * a walk cycle, two-bone legs and a tail. Nothing here touches the DOM —
  * `skeleton()` turns a state into world-space points for the renderer.
  *
  * Local units: the ground point between the feet is the origin, +x points the
  * way the cat faces and +y points up. At scale 1 a sitting cat is ~120px tall.
+ * The proportions are a small anime cat's: a big round head on a compact,
+ * soft body, short sturdy legs and a long, expressive tail.
  */
 
 export type Vec = [number, number];
@@ -49,14 +51,14 @@ export type PoseName =
 
 export const POSES: Record<PoseName, Pose> = {
   sit: {
-    hip: [-11, 23],
-    shoulder: [5, 50],
-    rHip: 24.5,
-    rShoulder: 16.5,
-    haunch: 28,
-    head: [10, 82],
-    front: [13, 0],
-    hind: [4, 0],
+    hip: [-10, 24],
+    shoulder: [5, 43],
+    rHip: 23,
+    rShoulder: 15.5,
+    haunch: 25,
+    head: [8, 73],
+    front: [12, 0],
+    hind: [3, 0],
     tuck: 0,
     hindTuck: 1,
     hockFlat: 0,
@@ -65,46 +67,46 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 2.45,
   },
   stand: {
-    hip: [-30, 53],
-    shoulder: [28, 50],
-    rHip: 19.5,
-    rShoulder: 21,
+    hip: [-24, 44],
+    shoulder: [21, 42],
+    rHip: 18.5,
+    rShoulder: 18,
     haunch: 0,
-    head: [47, 72],
-    front: [29, 0],
-    hind: [-31, 0],
+    head: [38, 64],
+    front: [22, 0],
+    hind: [-25, 0],
     tuck: 0,
     hindTuck: 0,
     hockFlat: 0,
     hockReach: 0,
-    tailAngle: 2.2,
-    tailCurl: 0.9,
-  },
-  walk: {
-    hip: [-30, 52],
-    shoulder: [28, 49],
-    rHip: 19.5,
-    rShoulder: 21,
-    haunch: 0,
-    head: [49, 67],
-    front: [29, 0],
-    hind: [-31, 0],
-    tuck: 0,
-    hindTuck: 0,
-    hockFlat: 0,
-    hockReach: 0,
-    tailAngle: 2.25,
+    tailAngle: 2.05,
     tailCurl: 0.75,
   },
+  walk: {
+    hip: [-24, 43],
+    shoulder: [21, 41],
+    rHip: 18.5,
+    rShoulder: 18,
+    haunch: 0,
+    head: [40, 60],
+    front: [22, 0],
+    hind: [-25, 0],
+    tuck: 0,
+    hindTuck: 0,
+    hockFlat: 0,
+    hockReach: 0,
+    tailAngle: 1.95,
+    tailCurl: 0.5,
+  },
   crouch: {
-    hip: [-25, 32],
-    shoulder: [24, 26],
-    rHip: 21,
-    rShoulder: 19,
-    haunch: 7,
-    head: [41, 41],
-    front: [33, 0],
-    hind: [-22, 0],
+    hip: [-21, 27],
+    shoulder: [19, 22],
+    rHip: 19.5,
+    rShoulder: 17,
+    haunch: 6,
+    head: [35, 35],
+    front: [27, 0],
+    hind: [-19, 0],
     tuck: 0,
     hindTuck: 0,
     hockFlat: 0.75,
@@ -113,14 +115,14 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.35,
   },
   leap: {
-    hip: [-32, 44],
-    shoulder: [33, 50],
-    rHip: 19.5,
-    rShoulder: 18.5,
+    hip: [-26, 39],
+    shoulder: [26, 44],
+    rHip: 18,
+    rShoulder: 17,
     haunch: 0,
-    head: [50, 69],
-    front: [62, 28],
-    hind: [-64, 30],
+    head: [41, 61],
+    front: [50, 24],
+    hind: [-53, 26],
     tuck: 0,
     hindTuck: 0,
     hockFlat: 0,
@@ -129,14 +131,14 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.25,
   },
   land: {
-    hip: [-26, 37],
-    shoulder: [26, 34],
-    rHip: 22,
-    rShoulder: 19.5,
-    haunch: 5,
-    head: [43, 55],
-    front: [30, 0],
-    hind: [-26, 0],
+    hip: [-22, 32],
+    shoulder: [20, 29],
+    rHip: 20,
+    rShoulder: 18,
+    haunch: 4,
+    head: [36, 47],
+    front: [25, 0],
+    hind: [-22, 0],
     tuck: 0,
     hindTuck: 0,
     hockFlat: 0.35,
@@ -145,14 +147,14 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 0.8,
   },
   loaf: {
-    hip: [-24, 19],
-    shoulder: [22, 20],
-    rHip: 22.5,
-    rShoulder: 21.5,
-    haunch: 11,
-    head: [36, 35],
-    front: [24, 2],
-    hind: [-18, 2],
+    hip: [-19, 21],
+    shoulder: [17, 21],
+    rHip: 21,
+    rShoulder: 19.5,
+    haunch: 10,
+    head: [29, 37],
+    front: [20, 2],
+    hind: [-15, 2],
     tuck: 1,
     hindTuck: 1,
     hockFlat: 0,
@@ -161,14 +163,14 @@ export const POSES: Record<PoseName, Pose> = {
     tailCurl: 2.5,
   },
   sleep: {
-    hip: [-24, 18],
-    shoulder: [22, 18],
-    rHip: 22.5,
-    rShoulder: 21.5,
-    haunch: 12,
-    head: [35, 24],
-    front: [24, 2],
-    hind: [-18, 2],
+    hip: [-19, 21],
+    shoulder: [17, 20],
+    rHip: 21,
+    rShoulder: 19.5,
+    haunch: 11,
+    head: [28, 24],
+    front: [20, 2],
+    hind: [-15, 2],
     tuck: 1,
     hindTuck: 1,
     hockFlat: 0,
@@ -176,31 +178,32 @@ export const POSES: Record<PoseName, Pose> = {
     tailAngle: -1.7,
     tailCurl: 2.7,
   },
+  // The play bow: front paws reaching far ahead, chest low, rump high.
   stretch: {
-    hip: [-28, 54],
-    shoulder: [26, 24],
-    rHip: 19.5,
-    rShoulder: 18.5,
+    hip: [-23, 47],
+    shoulder: [19, 18],
+    rHip: 18,
+    rShoulder: 16,
     haunch: 0,
-    head: [46, 33],
-    front: [50, 0],
-    hind: [-30, 0],
+    head: [38, 25],
+    front: [52, 0],
+    hind: [-25, 0],
     tuck: 0,
     hindTuck: 0,
     hockFlat: 0,
     hockReach: 0,
-    tailAngle: 1.65,
-    tailCurl: 0.7,
+    tailAngle: 1.6,
+    tailCurl: 0.9,
   },
   // Carried by the scruff: hanging straight down, legs loose, tail limp.
   dangle: {
-    hip: [-1, 42],
-    shoulder: [3, 84],
-    rHip: 18,
-    rShoulder: 17.5,
+    hip: [-1, 36],
+    shoulder: [3, 70],
+    rHip: 17,
+    rShoulder: 15.5,
     haunch: 0,
-    head: [6, 104],
-    front: [11, 44],
+    head: [6, 92],
+    front: [10, 36],
     hind: [1, 3],
     tuck: 0,
     hindTuck: 0,
@@ -212,7 +215,7 @@ export const POSES: Record<PoseName, Pose> = {
 };
 
 /** Where a held cat is held (its scruff), local units. */
-export const SCRUFF: Vec = [4, 99];
+export const SCRUFF: Vec = [4, 96];
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpVec = (a: Vec, b: Vec, t: number): Vec => [
@@ -220,12 +223,12 @@ const lerpVec = (a: Vec, b: Vec, t: number): Vec => [
   lerp(a[1], b[1], t),
 ];
 
-/** Shortest-way blend of two angles. */
-function lerpAngle(a: number, b: number, t: number) {
+/** Signed shortest turn from angle `a` to angle `b`. */
+export function angleDelta(a: number, b: number) {
   let d = (b - a) % (Math.PI * 2);
   if (d > Math.PI) d -= Math.PI * 2;
   if (d < -Math.PI) d += Math.PI * 2;
-  return a + d * t;
+  return d;
 }
 
 export function blendPose(a: Pose, b: Pose, t: number): Pose {
@@ -242,7 +245,7 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
     hindTuck: lerp(a.hindTuck, b.hindTuck, t),
     hockFlat: lerp(a.hockFlat, b.hockFlat, t),
     hockReach: lerp(a.hockReach, b.hockReach, t),
-    tailAngle: lerpAngle(a.tailAngle, b.tailAngle, t),
+    tailAngle: a.tailAngle + angleDelta(a.tailAngle, b.tailAngle) * t,
     tailCurl: lerp(a.tailCurl, b.tailCurl, t),
   };
 }
@@ -266,16 +269,118 @@ export function approachPose(
   return current;
 }
 
+/** Pose channels in a fixed order, for the spring below. */
+const CHANNELS = 20;
+const TAIL_ANGLE = 18;
+
+function poseArray(p: Pose, out: number[]) {
+  out[0] = p.hip[0];
+  out[1] = p.hip[1];
+  out[2] = p.shoulder[0];
+  out[3] = p.shoulder[1];
+  out[4] = p.rHip;
+  out[5] = p.rShoulder;
+  out[6] = p.haunch;
+  out[7] = p.head[0];
+  out[8] = p.head[1];
+  out[9] = p.front[0];
+  out[10] = p.front[1];
+  out[11] = p.hind[0];
+  out[12] = p.hind[1];
+  out[13] = p.tuck;
+  out[14] = p.hindTuck;
+  out[15] = p.hockFlat;
+  out[16] = p.hockReach;
+  out[17] = p.tailCurl;
+  out[18] = p.tailAngle;
+  out[19] = 0;
+  return out;
+}
+
+function writePose(a: readonly number[], p: Pose) {
+  p.hip = [a[0]!, a[1]!];
+  p.shoulder = [a[2]!, a[3]!];
+  p.rHip = Math.max(8, a[4]!);
+  p.rShoulder = Math.max(8, a[5]!);
+  p.haunch = Math.max(0, a[6]!);
+  p.head = [a[7]!, a[8]!];
+  p.front = [a[9]!, Math.max(0, a[10]!)];
+  p.hind = [a[11]!, Math.max(0, a[12]!)];
+  p.tuck = Math.min(1, Math.max(0, a[13]!));
+  p.hindTuck = Math.min(1, Math.max(0, a[14]!));
+  p.hockFlat = Math.min(1, Math.max(0, a[15]!));
+  p.hockReach = Math.min(1, Math.max(0, a[16]!));
+  p.tailCurl = a[17]!;
+  p.tailAngle = a[18]!;
+}
+
+/**
+ * How quickly each channel answers, relative to the whole pose. The head
+ * leads and the hips and tail follow, so a change of pose ripples through the
+ * body — overlapping action — instead of every joint arriving at once.
+ */
+const LEAD = [
+  0.78, 0.78, 1, 1, 0.85, 1, 0.8, 1.3, 1.3, 1.1, 1.1, 0.9, 0.9, 1, 0.85, 1, 1.2,
+  0.7, 0.7, 1,
+];
+
+/**
+ * A pose on springs. Settling with a little overshoot reads as weight; an
+ * exponential ease reads as a puppet.
+ */
+export class PoseSpring {
+  readonly pose: Pose;
+  private x: number[];
+  private v: number[] = new Array(CHANNELS).fill(0);
+  private goal: number[] = new Array(CHANNELS).fill(0);
+
+  constructor(start: Pose) {
+    this.pose = clonePose(start);
+    this.x = poseArray(start, new Array(CHANNELS));
+  }
+
+  /** Jump straight to a pose, at rest. */
+  snap(p: Pose) {
+    poseArray(p, this.x);
+    this.v.fill(0);
+    writePose(this.x, this.pose);
+  }
+
+  /**
+   * Advance by `dt` seconds toward `target`. `omega` is the natural
+   * frequency (rad/s); `zeta` < 1 lets it overshoot a touch.
+   */
+  step(target: Pose, dt: number, omega: number, zeta = 0.78) {
+    poseArray(target, this.goal);
+    let left = Math.min(Math.max(dt, 0), 0.064);
+    while (left > 1e-9) {
+      const h = Math.min(1 / 240, left);
+      for (let i = 0; i < CHANNELS; i++) {
+        const w = omega * LEAD[i]!;
+        const d =
+          i === TAIL_ANGLE
+            ? angleDelta(this.x[i]!, this.goal[i]!)
+            : this.goal[i]! - this.x[i]!;
+        this.v[i]! += (w * w * d - 2 * zeta * w * this.v[i]!) * h;
+        this.x[i]! += this.v[i]! * h;
+      }
+      left -= h;
+    }
+    writePose(this.x, this.pose);
+    return this.pose;
+  }
+}
+
 /** Paw radius (local units): feet rest this far above the line. */
-export const PAW = 4.8;
+export const PAW = 5.2;
 
 /**
  * Leg bones, local units. The front leg is two bones; the back leg is three —
  * thigh, shin, and the long foot up to the hock, which is what makes a cat's
  * hind leg a Z with the heel high off the ground.
  */
-export const LEGS = { front: [21, 20] as Vec, hind: [18, 19] as Vec };
-export const META = 15;
+export const LEGS = { front: [18, 17] as Vec, hind: [16, 16] as Vec };
+export const META = 13;
 
 /**
  * Two-bone inverse kinematics. Returns the knee for a leg from `a` to `foot`
@@ -318,8 +423,8 @@ export interface Gait {
  * trots on diagonal pairs. Both strides are short next to the body.
  */
 export const GAITS: { walk: Gait; trot: Gait } = {
-  walk: { duty: 0.64, stride: 50, lift: 5.5, offsets: [0, 0.25, 0.5, 0.75] },
-  trot: { duty: 0.46, stride: 74, lift: 8.5, offsets: [0, 0.5, 0.5, 0] },
+  walk: { duty: 0.64, stride: 44, lift: 5.5, offsets: [0, 0.25, 0.5, 0.75] },
+  trot: { duty: 0.46, stride: 66, lift: 8, offsets: [0, 0.5, 0.5, 0] },
 };
 
 /** Blend between the walk (0) and the trot (1). */
@@ -364,32 +469,64 @@ export interface TailState {
   lash: number;
 }
 
-export const TAIL = { segments: 12, length: 78 };
+export const TAIL = { segments: 12, length: 74 };
+/** Tail half-width at the root and how much it tapers to the tip (local). */
+export const TAIL_WIDTH: Vec = [6.6, 4.6];
 
-/** Tail points from its base, local. The tail never goes below the ground. */
-export function tailPoints(
-  base: Vec,
+/**
+ * The tail's rest shape as one absolute angle per segment (local radians):
+ * the base direction, an even curl along its length, and a slow travelling
+ * wave with a quicker lash in the tip.
+ */
+export function tailTargets(
   angle: number,
   curl: number,
   t: number,
   { wave, lash }: TailState,
-): Vec[] {
+): number[] {
   const n = TAIL.segments;
-  const step = TAIL.length / n;
-  const pts: Vec[] = [base];
-  let [x, y] = base;
+  const out: number[] = [];
   for (let i = 0; i < n; i++) {
     const k = (i + 1) / n;
     const sway =
       Math.sin(t * 1.7 - i * 0.42) * wave * (0.35 + 0.65 * k) +
       Math.sin(t * 7.5 - i * 0.6) * lash * k * k;
-    const a = angle + curl * k + sway;
+    out.push(angle + curl * k + sway);
+  }
+  return out;
+}
+
+/** Walk the segment angles out from the base. The tail never goes below the ground. */
+export function tailFromAngles(base: Vec, angles: readonly number[]): Vec[] {
+  const step = TAIL.length / angles.length;
+  const pts: Vec[] = [base];
+  let [x, y] = base;
+  angles.forEach((a, i) => {
     x += Math.cos(a) * step;
     y += Math.sin(a) * step;
-    if (y < 2.5) y = 2.5;
+    // Its edge, not its middle, rests on the floor (see TAIL_WIDTH).
+    const floor = TAIL_WIDTH[0] - TAIL_WIDTH[1] * ((i + 1) / angles.length);
+    if (y < floor) y = floor;
     pts.push([x, y]);
-  }
+  });
   return pts;
+}
+
+/** Tail points from its base, local. */
+export function tailPoints(
+  base: Vec,
+  angle: number,
+  curl: number,
+  t: number,
+  state: TailState,
+): Vec[] {
+  return tailFromAngles(base, tailTargets(angle, curl, t, state));
+}
+
+/** A front paw placed by an action (grooming, kneading), local, with weight. */
+export interface PawOverride {
+  at: Vec;
+  weight: number;
 }
 
 export interface BodyState {
@@ -411,6 +548,10 @@ export interface BodyState {
   time: number;
   breath: number;
   tail: TailState;
+  /** Simulated tail, one absolute local angle per segment; wins over `tail`. */
+  tailAngles?: readonly number[];
+  /** Front paws an action has picked up. */
+  paws?: { near?: PawOverride; far?: PawOverride };
   /** World-space override for the near front paw (a swat), with weight. */
   swat?: { at: Vec; weight: number };
 }
@@ -423,6 +564,9 @@ export interface Leg {
   foot: Vec;
   width: [number, number];
   near: boolean;
+  front: boolean;
+  /** Raised in front of the face or chest: drawn over the head. */
+  over: boolean;
 }
 
 export interface Skeleton {
@@ -455,7 +599,7 @@ export function skeleton(s: BodyState): Skeleton {
   const cos = Math.cos(s.tilt);
   const sin = Math.sin(s.tilt);
   const pivot: Vec = [0, 40];
-  const breathe = Math.sin(s.breath) * 0.9;
+  const breathe = Math.sin(s.breath);
 
   const world = ([lx, ly]: Vec): Vec => {
     const rx = lx - pivot[0];
@@ -466,12 +610,17 @@ export function skeleton(s: BodyState): Skeleton {
   };
 
   const gait = gaitAt(s.gait);
-  // Two footfalls a cycle lift the back a little; a trot bounces more.
+  // Two footfalls a cycle lift the back a little; a trot bounces more. The
+  // head rides the bob less than the body: a cat keeps its eyes level.
   const bob =
     -Math.cos(s.phase * Math.PI * 4) * lerp(0.7, 1.5, s.gait) * s.walk;
   const hipL: Vec = [pose.hip[0], pose.hip[1] + bob];
-  const shoulderL: Vec = [pose.shoulder[0], pose.shoulder[1] + bob * 0.7];
-  const headL: Vec = [pose.head[0], pose.head[1] + bob * 0.4 + breathe * 0.4];
+  // Breathing lifts the chest and shoulders, and the head rides on them.
+  const shoulderL: Vec = [
+    pose.shoulder[0],
+    pose.shoulder[1] + bob * 0.7 + breathe * 0.45,
+  ];
+  const headL: Vec = [pose.head[0], pose.head[1] + bob * 0.3 + breathe * 0.35];
 
   const legs: Leg[] = [];
   const legSpecs = [
@@ -497,7 +646,10 @@ export function skeleton(s: BodyState): Skeleton {
     // Folding away: the foot is drawn up under its joint.
     const tuck = front ? pose.tuck : Math.max(pose.tuck, pose.hindTuck);
     foot = lerpVec(foot, [top[0], top[1] - 4], tuck);
-    if (tuck > 0.85) continue;
+    const placed = front ? s.paws?.[near ? 'near' : 'far'] : undefined;
+    const lift = placed ? Math.min(1, Math.max(0, placed.weight)) : 0;
+    if (lift > 0) foot = lerpVec(foot, placed!.at, lift);
+    if (tuck * (1 - lift) > 0.85) continue;
 
     let knee: Vec;
     let hock: Vec | undefined;
@@ -524,19 +676,23 @@ export function skeleton(s: BodyState): Skeleton {
     }
     let worldFoot = world(foot);
     let worldKnee = world(knee);
+    let over = front && near && lift > 0.5 && foot[1] > pose.shoulder[1] - 14;
     if (s.swat && front && near && s.swat.weight > 0) {
       const w = s.swat.weight;
       worldFoot = lerpVec(worldFoot, s.swat.at, w);
       // Keep the knee near the chest so the reach is a forearm, not a second body.
       worldKnee = lerpVec(worldKnee, lerpVec(world(top), s.swat.at, 0.28), w);
+      if (w > 0.2) over = true;
     }
     legs.push({
       top: world(top),
       knee: worldKnee,
       hock: hock && world(hock),
       foot: worldFoot,
-      width: front ? [11 * scale, 8 * scale] : [14.5 * scale, 8 * scale],
+      width: front ? [12.5 * scale, 9.5 * scale] : [16 * scale, 9.5 * scale],
       near,
+      front,
+      over,
     });
   }
   // Draw far legs first so they read as behind.
@@ -550,21 +706,19 @@ export function skeleton(s: BodyState): Skeleton {
   const span = Math.hypot(shoulder[0] - hip[0], shoulder[1] - hip[1]);
   // Rooted inside the rump so the body fill swallows the join.
   const tailBase: Vec = [pose.hip[0] - pose.rHip * 0.2, pose.hip[1] + bob];
-  const tail = tailPoints(
-    tailBase,
-    pose.tailAngle,
-    pose.tailCurl,
-    s.time,
-    s.tail,
+  const tail = (
+    s.tailAngles
+      ? tailFromAngles(tailBase, s.tailAngles)
+      : tailPoints(tailBase, pose.tailAngle, pose.tailCurl, s.time, s.tail)
   ).map(world);
 
-  const headR = 20.5 * scale;
-  const rHip = pose.rHip * scale * (1 + breathe * 0.012);
-  const rShoulder = pose.rShoulder * scale * (1 + breathe * 0.016);
+  const headR = 21 * scale;
+  const rHip = pose.rHip * scale * (1 + breathe * 0.014);
+  const rShoulder = pose.rShoulder * scale * (1 + breathe * 0.022);
   const nx = -Math.sin(bodyAngle);
   const ny = Math.cos(bodyAngle);
   // The head's reach includes whiskers and ears, which leave its circle.
-  const reach = 44 * scale;
+  const reach = 48 * scale;
   const xs = [
     hip[0],
     shoulder[0],

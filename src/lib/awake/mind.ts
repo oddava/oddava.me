@@ -137,6 +137,27 @@ export class CatMind {
     return true;
   }
 
+  /** An extra ordinary blink (after a big glance), unless the eyes are busy. */
+  blink(now: number) {
+    const busy =
+      now < this.born + TIMING.wakeDone ||
+      now < this.offerAt + SLOW_BLINK_MS ||
+      now < this.exchangeAt + TIMING.returnDelay + SLOW_BLINK_MS ||
+      now < this.blinkAt + 700 ||
+      this.phase === 'asleep';
+    if (busy) return;
+    this.blinkAt = now;
+    this.blinkDouble = false;
+    this.nextBlink = Math.max(this.nextBlink, now + 2400 + this.rand() * 2000);
+  }
+
+  /** The pointer stroking its fur: contentment and a purr, never a hunt. */
+  stroke(now: number) {
+    this.stir(now);
+    this.purrUntil = Math.max(this.purrUntil, now + 2200);
+    this.contentUntil = Math.max(this.contentUntil, now + 5000);
+  }
+
   /** A click, tap or key press on the cat. */
   poke(now: number): PokeResult {
     if (this.stir(now)) return 'wake';

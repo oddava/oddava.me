@@ -5,8 +5,22 @@ import {
   type Surface,
   type SurfaceId,
 } from './body';
-import { drawCat, drawPlatform, type Face, type Platform } from './draw';
+import {
+  drawCat,
+  drawPlatform,
+  restingFace,
+  type Face,
+  type Platform,
+} from './draw';
+import {
+  bubbleAlive,
+  drawBubble,
+  makeBubble,
+  type Bubble,
+  type Saying,
+} from './bubble';
 import { dartScore, gazeOffset, nearerEar, type Sample } from './gaze';
+import { CatLife, type Expression } from './life';
 import { CatMind, type MindEvent, type MindOutput } from './mind';
 import { skeleton, type BodyState, type Skeleton, type Vec } from './rig';
 import { createSky } from './sky';
@@ -18,9 +32,10 @@ import { bump, clamp } from './spring';
  * on platforms of light it conjures as it lands. Each frame it picks one
  * goal, in priority order: a page it was asked about (hover, focus), a spot
  * it leapt or was dropped to, or whatever it felt like doing next — wander,
- * sit, stretch, loaf, a visit to the name. Shake the cursor and it leaps at
- * it; grab it and it dangles. The mind (moods, blinks, the slow-blink
- * exchange) and the body (walking, jumping) are pure; this file is the glue.
+ * sit, loaf, a visit to the name. Shake the cursor and it leaps at it; grab
+ * it and it dangles. The mind (moods, blinks, the slow-blink exchange), the
+ * body (walking, jumping) and its life between (habits, ears, tail) are
+ * pure; this file is the glue.
  */
 
 type Interest =
@@ -134,13 +149,26 @@ export function mountAwake(root: HTMLElement) {
     home = restX;
     surfaces = {
       perch: { x0: wordBox.left - 6, x1: wordBox.right + 6, y: inkTop + 1.5 },
+      // Inset so a cat at the end still has room for its whiskers.
       ground: {
-        x0: 4,
-        x1: innerWidth - 4,
+        x0: 4 + 30 * scale,
+        x1: innerWidth - 4 - 30 * scale,
         y: groundEl!.getBoundingClientRect().top + 0.5,
       },
     };
-    for (const [id, p] of platforms) surfaces[id] = p;
+    // A resize must not strand the cat on a platform now off screen.
+    const floor = surfaces.ground.y - 70 * scale;
+    for (const [id, p] of platforms) {
+      const half = (p.x1 - p.x0) / 2;
+      const cx = Math.min(
+        innerWidth - half - 6,
+        Math.max(half + 6, (p.x0 + p.x1) / 2),
+      );
+      p.x0 = cx - half;
+      p.x1 = cx + half;
+      p.y = Math.max(150 * scale, Math.min(floor, p.y));
+      surfaces[id] = p;
+    }
     navAt = new Map(
       navLinks.map((link) => {
         const r = link.getBoundingClientRect();
@@ -152,6 +180,7 @@ export function mountAwake(root: HTMLElement) {
   measure();
   const reduced = () => reducedQuery.matches;
   const mind = new CatMind(now());
+  const life = new CatLife(now());
   const body = new CatBody(
     surfaces,
     {
@@ -189,11 +218,29 @@ export function mountAwake(root: HTMLElement) {
   let petFocus = false;
   let lastSkeleton: Skeleton | null = null;
   let hoverCat = false;
+  /** Set when let go, cleared when it lands. */
+  let droppedAt = 0;
+  /** Raised above the page's text while carried and falling. */
+  let lifted = false;
+  /** Pointer travel over the cat lately — a stroke, not prey. */
+  let strokeTravel = 0;
+  let strokeAt = -Infinity;
+  let strokePurred = false;
 
   function stir() {
-    lastInput = now();
+    const t = now();
+    // Back after a long quiet: a little hello.
+    if (
+      t - lastInput > 20000 &&
+      mind.phase === 'awake' &&
+      Math.random() < 0.6
+    ) {
+      life.trigger('meow', t, 350);
+      greeting = true;
+    }
+    lastInput = t;
     engaged = true;
-    if (mind.stir(now())) run();
+    if (mind.stir(t)) run();
   }
 
   /** Redraw after an input: the loop when moving, one still frame if not. */
@@ -204,13 +251,17 @@ export function mountAwake(root: HTMLElement) {
 
   function track(x: number, y: number) {
     const t = now();
+    if (hoverCat && pointer && !drag)
+      strokeTravel += Math.hypot(x - pointer[0], y - pointer[1]);
     pointer = Object.assign([x, y] as Vec, { t });
     samples.push({ x, y, t });
     while (samples.length && t - samples[0]!.t > 900) samples.shift();
     stir();
-    if (drag && !drag.on && Math.hypot(x - drag.x, y - drag.y) > 6) {
+    // A deliberate drag picks it up; the wobble of a click or a pat doesn't.
+    if (drag && !drag.on && Math.hypot(x - drag.x, y - drag.y) > 14) {
       drag.on = true;
       body.grab(t);
+      speak('grab', t, 60, true);
       sent = null;
       whim = null;
     }
@@ -270,6 +321,7 @@ export function mountAwake(root: HTMLElement) {
 
   /** Send the cat to (x, y): walk if it's on the ground, else leap. */
   function sendTo(x: number, y: number) {
+    life.hear(x < body.x ? -1 : 1, now());
     const surface = landingAt(x, y);
     sent = { surface, x, until: now() + PLATFORM_STAY };
     navTarget = null;
@@ -362,7 +414,9 @@ export function mountAwake(root: HTMLElement) {
   for (const link of contactLinks) {
     const at = () => {
       const r = link.getBoundingClientRect();
-      look('contact', r.left + r.width / 2, r.top + r.height / 2, Infinity);
+      const x = r.left + r.width / 2;
+      life.hear(x < body.x ? -1 : 1, now());
+      look('contact', x, r.top + r.height / 2, Infinity);
     };
     link.addEventListener('pointerenter', at);
     link.addEventListener('focus', at);
@@ -401,6 +455,9 @@ export function mountAwake(root: HTMLElement) {
     // Let go: a platform appears under its paws, or it lands on the ground.
     const surface = landingAt(body.x, body.y + 4, 0);
     body.drop(now(), surface);
+    droppedAt = now();
+    // Set down: it shakes off the indignity once it's on its feet.
+    life.trigger('shake', now(), 450);
     sent = { surface, x: body.x, until: now() + PLATFORM_STAY };
     sky.dust(body.x, body.y, 8, 70);
     run();
@@ -447,6 +504,22 @@ export function mountAwake(root: HTMLElement) {
   let wakeAt = -Infinity;
   let swat: { at: number; x: number; y: number; caught: boolean } | null = null;
 
+  /** What it's saying, if anything, in a manga balloon. */
+  let bubble: Bubble | null = null;
+  let greeting = false;
+
+  /** Speak, unless it spoke a moment ago (`force` interrupts). */
+  function speak(saying: Saying, t: number, delay = 0, force = false) {
+    if (reduced()) return;
+    if (!force && bubble && t < bubble.born + bubble.life + 1800) return;
+    const [hx] = headPoint();
+    // Float out on the side with room, else the side it faces.
+    const side: 1 | -1 =
+      hx > width - 160 * scale ? -1 : hx < 160 * scale ? 1 : body.facing;
+    bubble = makeBubble(saying, t + delay, side);
+    run();
+  }
+
   function say(text: string) {
     if (live) live.textContent = text;
   }
@@ -460,6 +533,7 @@ export function mountAwake(root: HTMLElement) {
     const result = mind.poke(now());
     if (result === 'pet') {
       petAt = now();
+      if (Math.random() < 0.35) speak('pet', petAt, 380);
       const [x, y] = headPoint();
       sky.ring(x, y, 0.35);
     }
@@ -475,6 +549,9 @@ export function mountAwake(root: HTMLElement) {
         break;
       case 'purr':
         purrAt = t;
+        speak('purr', t, 200, true);
+        if (body.rest === 'sit' && Math.random() < 0.6)
+          life.trigger('knead', t, 1400);
         sky.ring(hx, hy, 1);
         sky.ring(hx, hy, 0.6, 520);
         sky.ring(hx, hy, 0.35, 1040);
@@ -485,9 +562,12 @@ export function mountAwake(root: HTMLElement) {
         break;
       case 'wake':
         wakeAt = t;
+        // Surfacing: often a big yawn, sometimes a whole stretch.
+        if (Math.random() < 0.7)
+          life.trigger(Math.random() < 0.3 ? 'stretch' : 'yawn', t, 900);
         break;
       case 'swipe': {
-        if (!pointer || !lastSkeleton) break;
+        if (!pointer || !lastSkeleton || drag || body.mode === 'held') break;
         const [sx, sy] = lastSkeleton.shoulder;
         const reach = 95 * scale;
         if (Math.hypot(pointer[0] - sx, pointer[1] - sy) < reach) {
@@ -500,17 +580,20 @@ export function mountAwake(root: HTMLElement) {
 
   // ---------- the loop ----------
 
-  const face: Face = {
-    yaw: 0,
-    roll: 0,
-    gaze: [0, 0],
-    open: 0,
-    pupil: 0.35,
-    ears: [0, 0],
-    shiver: 0,
-    glow: 0,
-    time: 0,
-  };
+  const face: Face = restingFace({ open: 0, pupil: 0.35 });
+  /** Eased parts of the face; the life layer's quick motions add on top. */
+  let roll = 0;
+  let blush = 0;
+  let happy = 0;
+  let ears: [number, number] = [0, 0];
+  let swivel: [number, number] = [0, 0];
+  let expr: Expression | null = null;
+  let hoverSince = 0;
+  /** Eased 0..1 lean into a hovering hand, and which side the hand is on. */
+  let leaning = 0;
+  let leanSide: 1 | -1 = 1;
+  /** Where the body was last frame: its velocity swings the tail. */
+  let lastBody: Vec | null = null;
   let breath = 0;
   let lastDim = '';
   let lastDust = 0;
@@ -554,10 +637,10 @@ export function mountAwake(root: HTMLElement) {
       };
     if (r < 0.74)
       return {
-        rest: 'stretch',
+        rest: 'stand',
         surface: body.bound,
         x: body.x,
-        until: t + 1500,
+        until: t + 2500 + Math.random() * 2000,
       };
     if (r < 0.86)
       return {
@@ -583,6 +666,11 @@ export function mountAwake(root: HTMLElement) {
           ? 'loaf'
           : undefined;
     const here = { surface: body.bound, x: body.x };
+    // Being petted or stroked, it stays for it rather than wandering off.
+    if ((hoverCat || t - strokeAt < 2500) && body.mode === 'rest') {
+      if (whim) whim.until = Math.max(whim.until, t + 2000);
+      if (sent) sent.until = Math.max(sent.until, t + 2000);
+    }
     // The opening: curled up, then it sits up.
     if (t - born < 1000) return { goal: { ...here, rest: 'loaf' } };
     if (navTarget && t > navUntil) navTarget = null;
@@ -643,6 +731,12 @@ export function mountAwake(root: HTMLElement) {
       if (interest.kind === 'nav') return navAt.get(interest.el) ?? null;
       return [interest.x, interest.y];
     }
+    // A moving pointer wins; a resting one is watched until something
+    // else catches its eye.
+    if (pointer && (t - pointer.t < 1500 || hoverCat))
+      return [pointer[0], pointer[1]];
+    if (sk && expr?.glance)
+      return [sk.head[0] + expr.glance[0], sk.head[1] + expr.glance[1]];
     if (pointer && t - pointer.t < 6000) return [pointer[0], pointer[1]];
     if (sk && body.mode === 'walk')
       return [sk.head[0] + body.facing * 300, sk.head[1] + 40];
@@ -654,7 +748,20 @@ export function mountAwake(root: HTMLElement) {
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
     const quietFor = t - lastInput;
-    const dart = dartScore(samples, t);
+    // Back-and-forth over the cat is stroking it, which is not a hunt.
+    const stroking = hoverCat && Boolean(pointer && t - pointer.t < 300);
+    strokeTravel *= Math.exp(-dt * 1.5);
+    if (stroking && strokeTravel > 140 * scale && t - strokeAt > 650) {
+      strokeAt = t;
+      strokeTravel = 0;
+      mind.stroke(t);
+      if (!strokePurred) {
+        strokePurred = true;
+        speak('purr', t, 250, true);
+      }
+    }
+    if (t - strokeAt > 6000) strokePurred = false;
+    const dart = hoverCat || drag ? 0 : dartScore(samples, t);
     const out = mind.tick({
       now: t,
       quietFor,
@@ -668,6 +775,7 @@ export function mountAwake(root: HTMLElement) {
     if (
       pointer &&
       !drag?.on &&
+      !hoverCat &&
       out.phase === 'awake' &&
       out.hunting > 0.7 &&
       t - lastLeap > LEAP_COOLDOWN &&
@@ -681,7 +789,9 @@ export function mountAwake(root: HTMLElement) {
     }
 
     if (drag?.on && pointer) body.holdAt(pointer[0], pointer[1], dt);
-    const { goal, rest } = chooseGoal(t, out);
+    const chosen = chooseGoal(t, out);
+    const { goal } = chosen;
+    const rest = chosen.rest ?? expr?.rest;
     const resting = body.mode === 'rest' || body.mode === 'walk';
     const wasFloat = body.leap?.float;
     for (const event of body.step(
@@ -692,9 +802,13 @@ export function mountAwake(root: HTMLElement) {
       resting ? rest : undefined,
     )) {
       if (event === 'landed') {
+        const dropped = droppedAt > 0;
+        droppedAt = 0;
         sky.dust(body.x, body.y, wasFloat ? 8 : 4, wasFloat ? 70 : 40);
-        // Landed by the cursor it was after: a swat, and maybe a catch.
+        // Landed by the cursor it was after: a swat, and maybe a catch —
+        // never at the hand that just set it down.
         if (
+          !dropped &&
           pointer &&
           Math.hypot(pointer[0] - body.x, pointer[1] - body.y) < 140 * scale
         )
@@ -739,6 +853,70 @@ export function mountAwake(root: HTMLElement) {
       );
     }
 
+    // ---- life: habits, ears, tail ----
+    if (hoverCat) hoverSince ||= t;
+    else hoverSince = 0;
+    const attentive =
+      Boolean(interest) ||
+      Boolean(navTarget) ||
+      Boolean(drag) ||
+      hoverCat ||
+      out.offering ||
+      Boolean(
+        pointer &&
+        t - pointer.t < 1500 &&
+        lastSkeleton &&
+        Math.hypot(
+          pointer[0] - lastSkeleton.head[0],
+          pointer[1] - lastSkeleton.head[1],
+        ) <
+          260 * scale,
+      );
+    const pose = body.pose;
+    // Leaps, landings and a swinging carry all reach the tail; a jump in
+    // position (a relayout) does not.
+    let vx = 0;
+    let vy = 0;
+    if (lastBody && dt > 0) {
+      vx = (body.x - lastBody[0]) / dt;
+      vy = (body.y - lastBody[1]) / dt;
+      if (Math.hypot(vx, vy) > 3000 * scale) vx = vy = 0;
+    }
+    lastBody = [body.x, body.y];
+    expr = life.tick({
+      now: t,
+      dt,
+      mode: body.mode,
+      rest: body.rest,
+      phase: out.phase,
+      hunting: out.hunting,
+      purring: out.purring,
+      attentive,
+      head: pose.head,
+      front: pose.front,
+      tailAngle: pose.tailAngle,
+      tailCurl: pose.tailCurl,
+      vx,
+      vy,
+      scale,
+      facing: body.facing,
+    });
+    if (expr.blink) mind.blink(t);
+    // A sound the face makes gets its balloon.
+    switch (expr.started) {
+      case 'meow':
+        speak(greeting ? 'hello' : 'meow', t, 120, true);
+        greeting = false;
+        break;
+      case 'sneeze':
+        speak('sneeze', t, 690, true);
+        break;
+      case 'yawn':
+        if (Math.random() < 0.55) speak('yawn', t, 520);
+        break;
+    }
+    if (bubble && !bubbleAlive(bubble, t)) bubble = null;
+
     // ---- face ----
     const target = lookTarget(t, lastSkeleton);
     const [hx, hy] = headPoint();
@@ -781,28 +959,82 @@ export function mountAwake(root: HTMLElement) {
     const flick = bump(t - wakeAt, 240);
     earsTo[0] -= flick * 0.9;
     if (out.phase === 'asleep') earsTo = [-0.2, -0.2];
+    let swivelTo: [number, number] = [0, 0];
+    let rollTo = t < tiltUntil ? 0.22 : out.phase === 'asleep' ? 0.1 : 0;
+    let leanTo = 0;
+    // Hovered over: it leans into the hand it expects, eyes going soft. The
+    // lean eases in and out — a press, or the pointer slipping off the
+    // edge, must not snap the head — and the side is read from where the
+    // head rests, not where it leans, with a dead zone so it can't flip-flop.
+    const wantLean =
+      hoverSince && !drag && out.phase === 'awake' && body.mode === 'rest'
+        ? clamp((t - hoverSince - 250) / 600)
+        : 0;
+    leaning += (wantLean - leaning) * ease(wantLean > leaning ? 5 : 7);
+    const lean = leaning < 0.002 ? 0 : leaning;
+    if (pointer) {
+      const rest = body.x + body.facing * body.pose.head[0] * scale;
+      if (pointer[0] > rest + 10 * scale) leanSide = 1;
+      else if (pointer[0] < rest - 10 * scale) leanSide = -1;
+    }
+    if (lean > 0) {
+      rollTo += leanSide * 0.12 * lean;
+      leanTo = leanSide * body.facing * 2.2 * lean;
+      earsTo = [earsTo[0] - 0.2 * lean, earsTo[1] - 0.2 * lean];
+      swivelTo = [0.25 * lean, 0.25 * lean];
+    }
+    const purring = t - purrAt < 3600 || out.purring;
+    yawTo = clamp(yawTo + expr.yaw, -1, 1);
+    gazeTo = [gazeTo[0] + expr.saccade[0], gazeTo[1] + expr.saccade[1]];
+    pupilTo = clamp(pupilTo + expr.pupil);
 
     face.yaw += (yawTo - face.yaw) * ease(7);
     face.gaze = [
-      face.gaze[0] + (gazeTo[0] - face.gaze[0]) * ease(14),
-      face.gaze[1] + (gazeTo[1] - face.gaze[1]) * ease(14),
+      face.gaze[0] + (gazeTo[0] - face.gaze[0]) * ease(16),
+      face.gaze[1] + (gazeTo[1] - face.gaze[1]) * ease(16),
     ];
     face.pupil += (pupilTo - face.pupil) * ease(6);
-    face.ears = [
-      face.ears[0] + (earsTo[0] - face.ears[0]) * ease(16),
-      face.ears[1] + (earsTo[1] - face.ears[1]) * ease(16),
+    ears = [
+      ears[0] + (earsTo[0] - ears[0]) * ease(16),
+      ears[1] + (earsTo[1] - ears[1]) * ease(16),
     ];
-    const rollTo = t < tiltUntil ? 0.22 : out.phase === 'asleep' ? 0.1 : 0;
-    face.roll += (rollTo - face.roll) * ease(6);
-    face.open = clamp(out.lid * (1 - out.closure));
-    const purring = t - purrAt < 3600 || out.purring;
+    swivel = [
+      swivel[0] + (swivelTo[0] - swivel[0]) * ease(9),
+      swivel[1] + (swivelTo[1] - swivel[1]) * ease(9),
+    ];
+    roll += (rollTo - roll) * ease(6);
+    const stroked = t - strokeAt < 1100;
+    const glad = pet > 0.05 || stroked;
+    happy += ((glad ? 1 : 0) - happy) * ease(glad ? 14 : 6);
+    blush += ((pet > 0 || purring ? 1 : lean * 0.5) - blush) * ease(3);
     face.shiver += ((purring ? 1 : 0) - face.shiver) * ease(5);
+
+    // The life layer's quick motions ride on top, unsmoothed.
+    face.roll = roll + expr.roll;
+    face.pitch = expr.pitch + (out.phase === 'asleep' ? 0.15 : 0);
+    face.ears = [ears[0] + expr.ears[0], ears[1] + expr.ears[1]];
+    face.swivel = [swivel[0] + expr.swivel[0], swivel[1] + expr.swivel[1]];
+    face.open = clamp(
+      out.lid * (1 - out.closure) * expr.open * (1 - 0.35 * lean),
+    );
+    face.happy = clamp(Math.max(happy, expr.happy));
+    face.smile = clamp(out.smile + expr.smile + lean * 0.4);
+    face.squint = clamp(expr.squint + out.hunting * 0.3);
+    face.wide = clamp(expr.wide + (body.mode === 'held' ? 0.5 : 0));
+    face.mouth = clamp(expr.mouth);
+    face.tongue = clamp(expr.tongue);
+    face.blush = clamp(blush * 0.85 + expr.blush);
+    face.shiver = Math.max(face.shiver, clamp(expr.shiver));
     face.glow = out.offering
       ? 0.5 + 0.5 * Math.sin((t - mind.offerAt) / 520)
       : 0;
     face.time = t / 1000;
 
-    breath += dt * (out.phase === 'asleep' ? 1.5 : 2.4);
+    // Breathing drifts in tempo; asleep it slows and deepens.
+    breath +=
+      dt *
+      (out.phase === 'asleep' ? 1.5 : 2.4) *
+      (1 + 0.15 * Math.sin(t / 4100) * Math.sin(t / 2300));
     let swatWeight = 0;
     if (swat) {
       const age = t - swat.at;
@@ -819,13 +1051,18 @@ export function mountAwake(root: HTMLElement) {
       if (age > 420) swat = null;
     }
 
+    const drawn = body.drawPose();
+    drawn.head = [
+      drawn.head[0] + expr.head[0] + leanTo,
+      drawn.head[1] + expr.head[1],
+    ];
     const state: BodyState = {
       x: body.x,
       y: body.y,
       scale,
       face: body.face,
       tilt: body.tilt,
-      pose: body.drawPose(),
+      pose: drawn,
       walk: body.walk,
       gait: body.gait,
       phase: body.phase,
@@ -842,10 +1079,29 @@ export function mountAwake(root: HTMLElement) {
                 : 0.09,
         lash: out.hunting * 0.35 + (body.wiggle > 0 ? 0.25 : 0),
       },
+      tailAngles: life.tail.angles,
+      paws: expr.paws,
       swat: swat ? { at: [swat.x, swat.y], weight: swatWeight } : undefined,
     };
     const sk = skeleton(state);
     lastSkeleton = sk;
+    // The cat moves under a still pointer too: keep the hover (and the hand
+    // cursor) true to where it is now.
+    if (pointer && !coarse) {
+      const over = inside(sk, pointer[0], pointer[1], 6);
+      if (over !== hoverCat) {
+        hoverCat = over;
+        root.style.cursor = over ? 'pointer' : '';
+      }
+    }
+    // Carried, it comes in front of the words; back behind once it's down.
+    const raise =
+      body.mode === 'held' ||
+      (lifted && body.mode !== 'rest' && body.mode !== 'walk');
+    if (raise !== lifted) {
+      lifted = raise;
+      catCanvas!.classList.toggle('is-lifted', raise);
+    }
 
     // Idle frames can run at half rate; motion runs every frame.
     // Platforms only need full rate while growing in or dissolving.
@@ -858,7 +1114,9 @@ export function mountAwake(root: HTMLElement) {
       t - lastInput < 1500 ||
       swat ||
       purring ||
-      out.offering;
+      out.offering ||
+      life.lively ||
+      bubble;
     if (moving || t - lastDraw > 48) {
       paint(sk);
       lastDraw = t;
@@ -898,6 +1156,16 @@ export function mountAwake(root: HTMLElement) {
       });
     }
     drawCat(ctx, sk, face, { focus: petFocus });
+    if (bubble) {
+      // The balloon's tail finds the mouth, wherever the head has turned.
+      const k = sk.scale;
+      const mouth: Vec = [
+        sk.head[0] + (face.yaw * 10.5 + Math.sin(face.roll) * -12) * k,
+        sk.head[1] + 12 * k,
+      ];
+      const area = drawBubble(ctx, bubble, t, mouth, scale, { width, height });
+      if (area) dirty.push(area);
+    }
   }
 
   // ---------- reduced motion: a still portrait ----------
@@ -926,12 +1194,17 @@ export function mountAwake(root: HTMLElement) {
     face.gaze = target
       ? gazeOffset(target[0] - hx, target[1] - hy, 2.3, 1.5, 180)
       : [0, 0.6];
-    face.open = petted ? 0.12 : 0.74;
-    face.pupil = 0.4;
-    face.ears = [0, 0];
-    face.shiver = 0;
-    face.glow = 0;
-    face.roll = 0;
+    Object.assign(
+      face,
+      restingFace({
+        yaw: face.yaw,
+        gaze: face.gaze,
+        open: petted ? 0 : 0.74,
+        happy: petted ? 1 : 0,
+        blush: petted ? 0.8 : 0,
+        smile: 0.3,
+      }),
+    );
     lastSkeleton = sk0;
     ctx.clearRect(0, 0, width, height);
     drawCat(ctx, sk0, face, { focus: petFocus });
