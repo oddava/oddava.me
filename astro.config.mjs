@@ -56,6 +56,14 @@ export default defineConfig({
     },
   },
   trailingSlash: 'never',
+  // Emit prerendered pages as `about.html`, not `about/index.html`. Workers
+  // static assets serve a directory index only at its slash form, so the
+  // default format answered every `/about` link with a 307 to `/about/` —
+  // a full extra round trip per click, against `trailingSlash: 'never'`.
+  build: { format: 'file' },
+  // Fetch a page when the pointer settles on its link, so the click usually
+  // lands on a response that is already in the browser.
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   output: 'server',
   adapter: cloudflare({
     // Not dead config, despite nothing importing `astro:assets` today: this
