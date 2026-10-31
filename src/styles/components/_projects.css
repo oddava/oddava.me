@@ -3,12 +3,7 @@
    =================================================== */
 
 .projects-page h1 {
-  margin-bottom: var(--space-xs);
-}
-
-.projects-page__lead {
-  margin: 0 0 var(--space-2-5);
-  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
 }
 
 .projects {
@@ -124,10 +119,15 @@
 .project__links a {
   position: relative;
   z-index: 1;
+  /* Flex trims the formatter's whitespace around the text, so the arrow
+     sits flush against it. */
+  display: inline-flex;
+  align-items: baseline;
   color: var(--color-text-muted);
 }
 
-.project__links a span {
+.project__links a::after {
+  content: '↗' / '';
   display: inline-block;
   margin-left: 0.15em;
   transition: transform 0.2s ease;
@@ -150,8 +150,8 @@
   color: var(--color-text-interactive-hover);
 }
 
-.project__links a:hover span,
-.project__links a:focus-visible span {
+.project__links a:hover::after,
+.project__links a:focus-visible::after {
   transform: translate(1px, -1px);
 }
 

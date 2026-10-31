@@ -48,12 +48,13 @@ Dependency direction is strict:
 Astro routes / API endpoints
   → server domain barrels (src/lib/server/*.ts)
     → domain services and repositories
-        admin · content · guestbook · integrations · now-playing
+        admin · content · guestbook · integrations · now-playing · projects
       → core: env, HTTP, request, signing, rate-limit, Redis primitives
 ```
 
 Route files import the barrel (`admin.ts`, `content.ts`, `core.ts`,
-`guestbook.ts`, `integrations.ts`, `now-playing.ts`), never a domain's internals.
+`guestbook.ts`, `integrations.ts`, `now-playing.ts`, `projects.ts`), never a
+domain's internals.
 Tests may import internals when exercising a module in isolation.
 
 `core` is the bottom layer rather than a peer domain — every domain imports it,
@@ -148,6 +149,15 @@ failure counts in a module-level `Map` and claim the admin panel and the widget
 shared one view of health — **per-colo ephemeral isolates make that false**, so
 any "shared health" mechanism must live in storage or not exist. It does not
 exist.
+
+### Projects are one Redis value, edited from the dashboard
+
+`/projects` renders per request from the `projects:list` hash (`revision` plus
+the whole ordered list as JSON), managed by the Projects panel on `/admin`.
+Every edit — add, edit, hide, reorder, delete — rewrites the list through a Lua
+compare-and-set on `revision`, so a stale admin tab gets a 409 instead of
+overwriting. Until the first save the hash is absent and the page serves
+`DEFAULT_PROJECTS` at revision 0.
 
 ### Redis transports differ per environment
 

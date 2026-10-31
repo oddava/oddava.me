@@ -6,6 +6,8 @@ export {
   fetchIntegrations,
   toggleIntegration,
   testIntegration,
+  fetchProjects,
+  saveProjects,
 } from './api/management';
 export {
   fetchContentCollections,

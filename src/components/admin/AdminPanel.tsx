@@ -8,6 +8,7 @@ import {
 import { GuestbookModeration } from './GuestbookModeration';
 import { IntegrationsPanel } from './IntegrationsPanel';
 import { MetricGrid } from './MetricGrid';
+import { ProjectsPanel } from './ProjectsPanel';
 import type {
   GuestbookEntry,
   GuestbookStatus,
@@ -167,6 +168,8 @@ export default function AdminPanel() {
             not be able to slow down or fail the rest of the dashboard. */}
         <IntegrationsPanel />
       </section>
+
+      <ProjectsPanel />
     </div>
   );
 }

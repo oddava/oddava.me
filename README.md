@@ -96,7 +96,7 @@ live in Cloudflare (`wrangler secret put`). There's no form in the admin panel f
 
 ```
 src/pages          routes and API endpoints
-src/lib/server     admin, content, guestbook, integrations, now-playing
+src/lib/server     admin, content, guestbook, integrations, now-playing, projects
 src/lib/garden     hierarchy, backlinks, tags, search, graph layout
 src/components     Astro components and Preact islands
 scripts            notes export/migrate, Spotify token helper, build checks

@@ -132,6 +132,37 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       });
     });
 
+    it('saves projects with a compare-and-set revision', async () => {
+      const { DEFAULT_PROJECTS, readProjects, writeProjects } =
+        await import('../src/lib/server/projects');
+
+      expect(await readProjects()).toEqual({
+        projects: DEFAULT_PROJECTS,
+        revision: 0,
+      });
+
+      const [first, ...rest] = DEFAULT_PROJECTS;
+      const reordered = [...rest, { ...first, hidden: true }];
+      expect(await writeProjects(reordered, 0)).toEqual({
+        ok: true,
+        revision: 1,
+      });
+
+      // Two editors loaded revision 1; only the first save lands.
+      const [left, right] = await Promise.all([
+        writeProjects(reordered.slice(1), 1),
+        writeProjects(reordered.slice(2), 1),
+      ]);
+      expect([left.ok, right.ok].toSorted()).toEqual([false, true]);
+      expect(await writeProjects([], 1)).toEqual({ ok: false, revision: 2 });
+
+      const stored = await readProjects();
+      expect(stored.revision).toBe(2);
+      expect(stored.projects).toEqual(
+        left.ok ? reordered.slice(1) : reordered.slice(2),
+      );
+    });
+
     it('enforces rate limits atomically', async () => {
       const { enforceRedisRateLimit } = await import('../src/lib/server/core');
       const request = new Request('https://oddava.me/api/test', {

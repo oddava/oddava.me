@@ -5,12 +5,15 @@ import type {
   IntegrationResponse,
   IntegrationsResponse,
   OverviewResponse,
+  Project,
+  ProjectsResponse,
 } from '../../../lib/contracts';
 import { readJson, jsonBody } from './transport';
 
 const ADMIN_OVERVIEW_TIMEOUT_MS = 12_000;
 const INTEGRATION_TEST_TIMEOUT_MS = 20_000;
 const INTEGRATIONS_PATH = '/api/admin/integrations';
+const PROJECTS_PATH = '/api/admin/projects';
 
 export function fetchAdminOverview(): Promise<OverviewResponse> {
   return readJson<OverviewResponse>('/api/admin/overview', {
@@ -71,4 +74,18 @@ export function testIntegration(id: string): Promise<IntegrationResponse> {
     method: 'POST',
     signal: AbortSignal.timeout(INTEGRATION_TEST_TIMEOUT_MS),
   });
+}
+
+export function fetchProjects(): Promise<ProjectsResponse> {
+  return readJson<ProjectsResponse>(PROJECTS_PATH, { cache: 'no-store' });
+}
+
+export function saveProjects(
+  projects: Project[],
+  revision: number,
+): Promise<ProjectsResponse> {
+  return readJson<ProjectsResponse>(
+    PROJECTS_PATH,
+    jsonBody('PUT', { projects, revision }),
+  );
 }

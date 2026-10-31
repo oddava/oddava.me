@@ -1,21 +1,29 @@
 ---
-export const prerender = true;
 import Base from '@layouts/Base.astro';
-import { projects } from '../../data/projects';
+import { isStorageUnavailableError } from '../../lib/server/core';
+import { readPublicProjects } from '../../lib/server/projects';
+import type { Project } from '../../lib/contracts';
 import '../../styles/components/_projects.css';
+
+// Rendered per request: the list is edited from the admin dashboard and lives
+// in Redis, so a save shows here without a deploy.
+let projects: Project[];
+try {
+  projects = await readPublicProjects();
+} catch (error) {
+  if (isStorageUnavailableError(error)) return Astro.rewrite('/503');
+  throw error;
+}
 
 const hostOf = (url: string) => new URL(url).host;
 ---
 
 <Base
   title="Projects"
-  description="Software oddava has built: Ishbay, this site, its Obsidian plugin, and AniShows."
+  description="Software oddava has built, from day-job work to side projects."
 >
   <article class="projects-page">
     <h1>projects</h1>
-    <p class="projects-page__lead">
-      things i've built, mostly for small annoyances.
-    </p>
 
     <ol class="projects">
       {
@@ -25,9 +33,13 @@ const hostOf = (url: string) => new URL(url).host;
             <li class="project">
               <div class="project__head">
                 <h2 class="project__name">
-                  <a href={href} target="_blank" rel="noopener noreferrer">
-                    {project.name}
-                  </a>
+                  {href ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      {project.name}
+                    </a>
+                  ) : (
+                    project.name
+                  )}
                 </h2>
                 <span class="project__rule" aria-hidden="true" />
                 <span
@@ -41,39 +53,40 @@ const hostOf = (url: string) => new URL(url).host;
               </div>
               <p class="project__description">{project.description}</p>
               <div class="project__meta">
-                {project.stack && (
+                {project.stack.length > 0 && (
                   <ul class="project__stack" aria-label="built with">
                     {project.stack.map((tool) => (
                       <li>{tool}</li>
                     ))}
                   </ul>
                 )}
-                <ul class="project__links">
-                  {project.site && (
-                    <li>
-                      <a
-                        href={project.site}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {hostOf(project.site)}
-                        <span aria-hidden="true">↗</span>
-                      </a>
-                    </li>
-                  )}
-                  {project.source && (
-                    <li>
-                      <a
-                        href={project.source}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`${project.name} source on GitHub`}
-                      >
-                        source<span aria-hidden="true">↗</span>
-                      </a>
-                    </li>
-                  )}
-                </ul>
+                {href && (
+                  <ul class="project__links">
+                    {project.site && (
+                      <li>
+                        <a
+                          href={project.site}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {hostOf(project.site)}
+                        </a>
+                      </li>
+                    )}
+                    {project.source && (
+                      <li>
+                        <a
+                          href={project.source}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${project.name} source code`}
+                        >
+                          source
+                        </a>
+                      </li>
+                    )}
+                  </ul>
+                )}
               </div>
             </li>
           );

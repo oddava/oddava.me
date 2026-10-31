@@ -203,3 +203,24 @@ export interface SocialCardStatus {
 export interface SocialCardsResponse {
   cards: SocialCardStatus[];
 }
+
+/** Year a project started, or `now` for ongoing work. */
+export type ProjectYear = number | 'now';
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  year: ProjectYear;
+  stack: string[];
+  site?: string;
+  source?: string;
+  /** Kept in the admin list but left off the public page. */
+  hidden: boolean;
+}
+
+export interface ProjectsResponse {
+  projects: Project[];
+  /** Compare-and-set token: a save must name the revision it was based on. */
+  revision: number;
+}
