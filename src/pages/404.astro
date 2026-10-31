@@ -3,6 +3,8 @@
 // and for the notes routes that rewrite here on unknown paths. A prerendered
 // 404 would be served 200 by those rewrites (a soft 404).
 import Base from '../layouts/Base.astro';
+import AwakeSky from '../components/awake/AwakeSky.astro';
+import '../styles/components/_awake.css';
 import '../styles/components/_status-page.css';
 
 Astro.response.status = 404;
@@ -11,21 +13,29 @@ Astro.response.status = 404;
 <Base
   title="Page not found"
   description="This page doesn't exist on oddava.me."
+  hideFooter
 >
   <meta slot="head" name="robots" content="noindex" />
-  <section class="status-page">
-    <h1>404</h1>
-    <p class="status-page__copy">
+  <AwakeSky slot="background" />
+  <section class="awake status-page" data-awake>
+    <canvas class="awake-cat" data-awake-cat aria-hidden="true"></canvas>
+    <h1 class="status-page__code awake-in awake-in--name" data-awake-perch>
+      404
+    </h1>
+    <p class="status-page__copy awake-in awake-in--tagline">
       this page wandered off. maybe it's in the notes, or maybe it never existed
       at all.
     </p>
-    <ul class="status-page__links">
-      <li><a href="/">home</a></li>
-      <li><a href="/notes">notes</a></li>
-      <li><a href="/about">about</a></li>
-    </ul>
-    <p class="status-page__hint">
-      or check the url — typos happen to the best of us.
-    </p>
+    <div class="awake-ground" data-awake-ground aria-hidden="true"></div>
+    <button class="awake-pet" type="button" data-awake-pet>pet the cat</button>
+    <canvas class="awake-fx" data-awake-fx aria-hidden="true"></canvas>
+    <div class="awake-dim" data-awake-dim aria-hidden="true"></div>
+    <p class="sr-only" aria-live="polite" data-awake-live></p>
   </section>
 </Base>
+
+<script>
+  import { mountAwake } from '../lib/awake/mount';
+  const root = document.querySelector<HTMLElement>('[data-awake]');
+  if (root) mountAwake(root);
+</script>

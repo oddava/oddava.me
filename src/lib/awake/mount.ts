@@ -352,6 +352,8 @@ export function mountAwake(root: HTMLElement) {
       e.preventDefault();
       pounceNav = link;
       setNav(link);
+      // Lit for the beat before the page goes, so a tap visibly lands.
+      link.classList.add('is-chosen');
       run();
       const href = link.href;
       setTimeout(() => location.assign(href), NAV_DELAY);
@@ -427,6 +429,7 @@ export function mountAwake(root: HTMLElement) {
 
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted) return;
+    for (const link of navLinks) link.classList.remove('is-chosen');
     pounceNav = null;
     navTarget = null;
     sent = null;

@@ -1,5 +1,17 @@
 ---
 /**
- * Site footer: simple colophon only.
+ * Site footer: the floor the page ends on. Under the quiet sky the cat is
+ * asleep on it; elsewhere (notes) it is the line alone.
  */
+interface Props {
+  nap?: boolean;
+}
+
+const { nap = false } = Astro.props;
 ---
+
+<footer class="site-footer" aria-hidden="true">
+  <div class="site-footer__floor">
+    {nap && <canvas class="site-footer__nap" data-quiet-nap />}
+  </div>
+</footer>

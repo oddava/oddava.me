@@ -6,6 +6,8 @@ import { SkeletonRow } from './ui/Skeleton';
 
 const MAX_MESSAGE_LENGTH = 280;
 const INITIAL_VISIBLE_ENTRIES = 12;
+/** The count stays out of the way until it is worth knowing. */
+const COUNT_SHOWN_AT = 40;
 
 export function Guestbook() {
   const { entries, error, loading, refreshEntries, setError, writable } =
@@ -45,7 +47,7 @@ export function Guestbook() {
   return (
     <section className="guestbook">
       <header className="guestbook__header">
-        <h2>Guestbook</h2>
+        <h2>guestbook</h2>
         <p>
           i want to make this a better place. any feedback or ideas would be
           greatly appreciated!
@@ -59,7 +61,7 @@ export function Guestbook() {
             type="text"
             value={name}
             onChange={(event) => setName(event.currentTarget.value)}
-            placeholder="anon or preferebly twt username"
+            placeholder="anon or preferably twt username"
             maxLength={32}
             autoComplete="nickname"
           />
@@ -76,21 +78,27 @@ export function Guestbook() {
             aria-required="true"
             aria-describedby="guestbook-message-count"
           />
-          <span className="guestbook__count" id="guestbook-message-count">
+        </label>
+        <div className="guestbook__actions">
+          <span
+            className="guestbook__count"
+            id="guestbook-message-count"
+            data-shown={remaining <= COUNT_SHOWN_AT || undefined}
+          >
             {remaining}
             <span className="sr-only"> characters remaining</span>
           </span>
-        </label>
-        <button
-          className="guestbook__submit"
-          type="submit"
-          disabled={submitting || !message.trim() || !writable}
-        >
-          {submitting ? 'posting...' : 'submit'}
-        </button>
+          <button
+            className="guestbook__submit hair-control hair-control--railed"
+            type="submit"
+            disabled={submitting || !message.trim() || !writable}
+          >
+            {submitting ? 'posting…' : 'post'}
+          </button>
+        </div>
         {!writable && (
           <p className="guestbook__error" role="alert">
-            Guestbook posting is temporarily unavailable.
+            posting is paused for now.
           </p>
         )}
       </form>
@@ -108,19 +116,19 @@ export function Guestbook() {
           </div>
         )}
         {!loading && entries.length === 0 && (
-          <p className="guestbook__empty">No notes yet.</p>
+          <p className="guestbook__empty">no notes yet.</p>
         )}
         {visibleEntries.map((entry) => (
           <article key={entry.id} className="guestbook__entry">
             <div className="guestbook__meta">
-              <span>{entry.name}</span>
-              <span>
+              <span className="guestbook__name">{entry.name}</span>
+              <time dateTime={entry.createdAt}>
                 {new Date(entry.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',
                 })}
-              </span>
+              </time>
             </div>
             <p>{entry.message}</p>
           </article>
@@ -131,7 +139,7 @@ export function Guestbook() {
             className="guestbook__more"
             onClick={() => setShowAllEntries(true)}
           >
-            show more ({hiddenEntryCount})
+            show older
           </button>
         )}
         {notice && (

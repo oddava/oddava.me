@@ -1,43 +1,15 @@
 /* ===================================================
-   LINKS PAGE — Minimal link hub
+   LINKS — the page a social bio points at: who, then
+   where, as one hairline list under the quiet sky.
    =================================================== */
 
-/* Full-page reset — overrides .page wrapper and body defaults */
-html,
-body {
-  min-height: 100dvh !important;
-  background: var(--color-surface) !important;
-}
-
-.page {
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  min-height: 100dvh !important;
-}
-
-.page > main {
-  padding: 0 !important;
-}
-
-.page > main .links-page {
-  min-height: 100dvh;
-}
-
-h1 {
-  margin-bottom: 0 !important;
-}
-
 .links-page {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  height: 100dvh;
-  padding: var(--page-padding);
-  font-family: var(--links-font, var(--font-body));
-  background: var(--color-surface);
-  color: var(--color-text-primary);
+  width: min(100%, 22rem);
+  margin: 0 auto;
 }
 
 /* --- Profile --- */
@@ -47,100 +19,146 @@ h1 {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.5rem;
-  margin-bottom: 1.75rem;
+  margin-bottom: 2.25rem;
 }
 
 .links-profile__avatar {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--color-rule-strong);
   background: var(--color-surface-raised);
+  box-shadow: 0 0 0 1px var(--color-rule-strong);
 }
 
 .links-profile__name {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--color-text-primary);
   margin: 0;
-  line-height: var(--leading-tight);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.links-profile__name a {
+  color: var(--color-text-primary);
+}
+
+.links-profile__name a:hover,
+.links-profile__name a:focus-visible {
+  color: var(--color-brand-strong);
 }
 
 .links-profile__bio {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  margin: 0;
-  line-height: var(--leading-body);
+  margin: 0.25rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
-/* --- Links list --- */
+/* --- List --- */
 
 .links-list {
-  list-style: none;
+  position: relative;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  max-width: 22rem;
+  list-style: none;
 }
 
-/* --- Individual link --- */
+.links-list::before,
+.links-item::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--color-rule);
+}
+
+.links-list::before {
+  inset: 0 0 auto;
+}
 
 .links-item {
-  display: block;
-}
-
-.links-item__link {
   position: relative;
-  display: block;
-  width: 100%;
-  padding: 0.6rem 1rem;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-lg);
-  text-decoration: none;
-  color: var(--color-text-primary);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-align: center;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+  display: grid;
+  grid-template-columns: 1.25rem 1fr auto;
+  align-items: center;
+  gap: 0.875rem;
+  height: 3.25rem;
+  padding: 0 0.25rem;
+  color: var(--color-text-secondary);
 }
 
-.links-item__link:hover,
-.links-item__link:focus-visible {
-  background: var(--color-surface-elevated);
-  border-color: var(--color-accent);
-  color: var(--color-text-primary);
+/* The row's own hairline draws in brand over the grey one. */
+.links-item::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  height: 1px;
+  background: var(--color-brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 320ms var(--ease-draw);
 }
-
-/* Icon inside link */
 
 .links-item__icon {
-  position: absolute;
-  left: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  color: var(--color-text-interactive);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  transition: color 150ms ease;
 }
 
-/* --- Responsive --- */
+.links-item__icon svg {
+  width: 18px;
+  height: 18px;
+}
 
-@media (max-width: 480px) {
-  .links-profile__avatar {
-    width: 60px;
-    height: 60px;
-  }
+.links-item__label {
+  font-size: 1rem;
+  font-weight: 500;
+  text-transform: lowercase;
+  transition: color 150ms ease;
+}
 
-  .links-list {
-    max-width: 100%;
+.links-item__out {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-text-disabled);
+  transition:
+    color 150ms ease,
+    transform 200ms var(--ease-draw);
+}
+
+.links-item:hover,
+.links-item:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.links-item:hover .links-item__icon,
+.links-item:focus-visible .links-item__icon {
+  color: var(--color-brand-strong);
+}
+
+.links-item:hover .links-item__out,
+.links-item:focus-visible .links-item__out {
+  color: var(--color-text-muted);
+  transform: translate(2px, -2px);
+}
+
+.links-item:hover::before,
+.links-item:focus-visible::before {
+  transform: none;
+}
+
+.links-item:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+  .links-list::before,
+  .links-item::after,
+  .links-item::before {
+    background: CanvasText;
   }
 }

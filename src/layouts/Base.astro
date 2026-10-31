@@ -3,6 +3,7 @@ import '../styles/global.css';
 import LoadingIndicator from '../components/LoadingIndicator.astro';
 import Footer from '../components/Footer.astro';
 import PagePreview from '../components/PagePreview.astro';
+import QuietSky from '../components/QuietSky.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
@@ -13,6 +14,8 @@ export interface Props extends SiteHeadProps {
   hideFooter?: boolean;
   /** The homepage hero is its own navigation; every other page shows the nav. */
   hideNav?: boolean;
+  /** Home's stars, dimmed, behind the page, and the cat asleep on the footer. */
+  sky?: boolean;
   wide?: boolean;
 }
 
@@ -25,6 +28,7 @@ const {
   modifiedTime,
   hideFooter = false,
   hideNav = false,
+  sky = false,
   wide = false,
 } = Astro.props;
 
@@ -41,7 +45,8 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
   <body>
     {hideNav && <LoadingIndicator />}
     <slot name="background" />
-    <div class:list={['page', wide && 'page--wide']}>
+    {sky && <QuietSky />}
+    <div class:list={['page', wide && 'page--wide', sky && 'page--sky']}>
       <a href="#main" class="skip-link">Skip to content</a>
 
       {!hideNav && <SiteNav />}
@@ -50,7 +55,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
         <slot />
       </main>
 
-      {!hideFooter && <Footer />}
+      {!hideFooter && <Footer nap={sky} />}
     </div>
     {Astro.url.pathname !== '/' && <PagePreview />}
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}

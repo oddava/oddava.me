@@ -16,7 +16,7 @@ const pages = [
 ] as const;
 ---
 
-<Base hideNav>
+<Base hideNav hideFooter>
   <AwakeSky slot="background" />
   <section class="awake" data-awake>
     <canvas class="awake-cat" data-awake-cat aria-hidden="true"></canvas>
@@ -64,6 +64,7 @@ const pages = [
               href={page.href}
               class:list={[
                 'awake-nav__link',
+                'hair-control',
                 'awake-in',
                 `awake-in--nav${i + 1}`,
               ]}

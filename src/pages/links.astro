@@ -13,31 +13,33 @@ const { profile, links, theme } = linksData;
   title="Links"
   description={`Where to find ${profile.name} online: GitHub, X, email, and notes.`}
   hideNav
-  hideFooter
+  sky
 >
   <div class="links-page">
-    <section class="links-profile">
+    <section class="links-profile rise">
       <img
         src={profile.avatar}
-        alt={`${profile.name} avatar`}
+        alt=""
         class="links-profile__avatar"
-        width="96"
-        height="96"
+        width="64"
+        height="64"
         loading="eager"
       />
-      <h1 class="links-profile__name">{profile.name}</h1>
+      <h1 class="links-profile__name">
+        <a href="/" data-page-preview-ignore>{profile.name}</a>
+      </h1>
       <p class="links-profile__bio">{profile.bio}</p>
     </section>
 
-    <ul class="links-list">
+    <ul class="links-list rise rise--1">
       {
         links.map((link) => {
           const isExternal = link.url.startsWith('http');
           return (
-            <li class="links-item">
+            <li>
               <a
                 href={link.url}
-                class="links-item__link"
+                class="links-item"
                 data-page-preview-ignore={
                   link.url === '/notes' ? '' : undefined
                 }
@@ -47,12 +49,17 @@ const { profile, links, theme } = linksData;
                   isExternal ? `${link.title} (opens in new tab)` : undefined
                 }
               >
-                {theme.showIcons !== false && link.icon && (
-                  <span class="links-item__icon">
+                <span class="links-item__icon">
+                  {theme.showIcons !== false && link.icon && (
                     <LinkIcon name={link.icon} />
+                  )}
+                </span>
+                <span class="links-item__label">{link.title}</span>
+                {isExternal && (
+                  <span class="links-item__out" aria-hidden="true">
+                    ↗
                   </span>
                 )}
-                <span>{link.title}</span>
               </a>
             </li>
           );

@@ -21,16 +21,17 @@ const hostOf = (url: string) => new URL(url).host;
 <Base
   title="Projects"
   description="Software oddava has built, from day-job work to side projects."
+  sky
 >
   <article class="projects-page">
-    <h1>projects</h1>
+    <h1 class="page-title rise">projects</h1>
 
     <ol class="projects">
       {
         projects.map((project) => {
           const href = project.site ?? project.source;
           return (
-            <li class="project">
+            <li class="project rise">
               <div class="project__head">
                 <h2 class="project__name">
                   {href ? (

@@ -110,5 +110,25 @@
   --color-focus-ring: var(--color-brand-strong);
   --color-selection: color-mix(in srgb, var(--color-brand) 24%, transparent);
 
+  /* The one divider on the personal pages: a hairline whose ends fade out,
+     like the horizon the cat walks on at home. The floor is the same line in
+     starlight. */
+  --hairline: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-text-primary) 14%, transparent) 8%,
+    color-mix(in srgb, var(--color-text-primary) 14%, transparent) 92%,
+    transparent
+  );
+  --hairline-floor: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 22%, transparent) 8%,
+    color-mix(in srgb, var(--color-accent) 22%, transparent) 92%,
+    transparent
+  );
+  /* A line drawing itself in: the site's one hover gesture. */
+  --ease-draw: cubic-bezier(0.2, 0.8, 0.2, 1);
+
   color-scheme: dark;
 }

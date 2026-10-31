@@ -100,6 +100,55 @@ function sparkleAt(
   ctx.fill();
 }
 
+/** The type column: sparkles stay out of it, the quiet sky dims inside it. */
+const textColumn = (w: number) => Math.min(340, w * 0.46);
+
+/**
+ * The constellation for a viewport. Seeded, so home and the quiet sky behind
+ * every other page put the same stars in the same places.
+ */
+function makeStars(w: number, h: number): Star[] {
+  const rand = mulberry32(7);
+  const count = Math.round(Math.min(260, (w * h) / 6800));
+  // The type column stays clear of bright sparkles: next to a line of
+  // text one reads as a stray bullet, not a star.
+  const column = textColumn(w);
+  return Array.from({ length: count }, () => {
+    const x = rand() * w;
+    const y = rand() * h;
+    const big = rand() < 0.07 && Math.abs(x - w / 2) > column;
+    return {
+      x,
+      y,
+      r: big ? 1.1 + rand() * 0.8 : 0.35 + rand() ** 2 * 0.9,
+      a: big ? 0.75 : 0.18 + rand() * 0.5,
+      phase: rand() * Math.PI * 2,
+      speed: 0.6 + rand() * 1.6,
+      twinkles: rand() < 0.45,
+      sparkle: big,
+    };
+  });
+}
+
+/**
+ * Home's sky with the lights down, for every other page: the same stars,
+ * still, dimmer, plain dots, and dimmer again behind the reading column.
+ */
+export function paintQuietSky(canvas: HTMLCanvasElement) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const ctx = fit(canvas, w, h);
+  const column = textColumn(w);
+  ctx.clearRect(0, 0, w, h);
+  for (const s of makeStars(w, h)) {
+    const a = s.a * 0.4 * (Math.abs(s.x - w / 2) < column ? 0.35 : 1);
+    ctx.fillStyle = `rgba(${STAR}, ${a.toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, Math.min(1.1, s.r), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 export function createSky(
   skyCanvas: HTMLCanvasElement,
   fxCanvas: HTMLCanvasElement,
@@ -128,26 +177,7 @@ export function createSky(
     h = window.innerHeight;
     sky = fit(skyCanvas, w, h);
     fx = fit(fxCanvas, w, h);
-    const rand = mulberry32(7);
-    const count = Math.round(Math.min(260, (w * h) / 6800));
-    // The type column stays clear of bright sparkles: next to a line of
-    // text one reads as a stray bullet, not a star.
-    const column = Math.min(340, w * 0.46);
-    stars = Array.from({ length: count }, () => {
-      const x = rand() * w;
-      const y = rand() * h;
-      const big = rand() < 0.07 && Math.abs(x - w / 2) > column;
-      return {
-        x,
-        y,
-        r: big ? 1.1 + rand() * 0.8 : 0.35 + rand() ** 2 * 0.9,
-        a: big ? 0.75 : 0.18 + rand() * 0.5,
-        phase: rand() * Math.PI * 2,
-        speed: 0.6 + rand() * 1.6,
-        twinkles: rand() < 0.45,
-        sparkle: big,
-      };
-    });
+    stars = makeStars(w, h);
     lastStars = -Infinity;
     paintStill();
   }

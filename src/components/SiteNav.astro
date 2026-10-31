@@ -1,19 +1,52 @@
 ---
 /**
- * Header: single wordmark home link, with the global note-search trigger
- * mounted on /notes/* pages (the graph keeps its own in-canvas search).
+ * Header: the wordmark home and the three pages, on one hairline. The page
+ * you are on lights its own segment of that hairline. The global note-search
+ * trigger mounts on /notes/* pages (the graph keeps its own in-canvas search).
  */
 import '../styles/components/_site-nav.css';
 import '../styles/components/_note-search.css';
 import LoadingIndicator from './LoadingIndicator.astro';
 import NoteSearch from './garden/NoteSearch.tsx';
 
-const pathname = Astro.url.pathname;
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
 const onNotes = pathname === '/notes' || pathname.startsWith('/notes/');
+
+const pages = [
+  { href: '/about', name: 'about' },
+  { href: '/projects', name: 'projects' },
+  { href: '/notes', name: 'notes' },
+] as const;
+
+const isCurrent = (href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
 ---
 
 <header class="site-nav">
   <a href="/" class="site-nav__wordmark" data-page-preview-ignore>oddava</a>
+  <nav class="site-nav__pages" aria-label="primary">
+    <ul>
+      {
+        pages.map((page) => (
+          <li>
+            <a
+              href={page.href}
+              aria-current={
+                pathname === page.href
+                  ? 'page'
+                  : isCurrent(page.href)
+                    ? 'true'
+                    : undefined
+              }
+              data-page-preview-ignore
+            >
+              {page.name}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
   {onNotes && <NoteSearch client:load />}
   <LoadingIndicator />
 </header>

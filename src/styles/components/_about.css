@@ -1,23 +1,48 @@
 /* ===================================================
-   ABOUT — A short story and one rule
+   ABOUT — a short story, one hairline, the guestbook
    =================================================== */
 
 .about {
   overflow-wrap: break-word;
 }
 
-.about h1 {
-  margin-bottom: var(--space-md);
-}
-
-.about p {
-  margin: 0 0 1.5em;
+.about__body p {
+  margin: 0 0 1.25em;
+  font-size: 1.0625rem;
+  line-height: 1.75;
   color: var(--color-text-secondary);
+  text-wrap: pretty;
 }
 
-.about .about__lead {
-  font-size: var(--text-xl);
-  line-height: var(--leading-tight);
+.about__body p:last-child {
+  margin-bottom: 0;
+}
+
+.about__body a {
   color: var(--color-text-primary);
-  margin-bottom: var(--space-md);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-brand) 50%,
+    transparent
+  );
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+  transition:
+    color 150ms ease,
+    text-decoration-color 150ms ease;
+}
+
+.about__body a:hover,
+.about__body a:focus-visible {
+  color: var(--color-text-interactive-hover);
+  text-decoration-color: var(--color-brand);
+}
+
+/* Shown only when the guestbook island cannot run (JS disabled). */
+.guestbook-noscript {
+  margin-top: 4rem;
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
 }

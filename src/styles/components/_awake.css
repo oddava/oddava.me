@@ -23,10 +23,14 @@
 }
 
 html:has(.awake) {
-  scrollbar-gutter: auto;
   /* Taps land on the page under the cat's canvas; Android would flash its
      blue tap highlight over whatever that is. */
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Home has no scroll and no header to keep in step with other pages. */
+html:has(.awake:not(.status-page)) {
+  scrollbar-gutter: auto;
 }
 
 body:has(.awake) {
@@ -130,15 +134,12 @@ body:has(.awake) {
   height: 44px;
   border-radius: 50%;
   color: var(--color-text-muted);
-  transition:
-    color 0.2s ease,
-    transform 0.35s var(--awake-spring);
+  transition: color 150ms ease;
 }
 
 .awake-contact a:hover,
 .awake-contact a:focus-visible {
   color: var(--color-text-interactive-hover);
-  transform: translateY(-2px);
 }
 
 .awake-contact a:focus-visible {
@@ -167,44 +168,58 @@ body:has(.awake) {
   animation: awake-floor 900ms 700ms var(--awake-ease) backwards;
 }
 
+/* The pages, as a rail: three equal cells standing on a short piece of the
+   floor. Equal cells keep the link centres mount.ts measures evenly spaced. */
 .awake-nav {
-  display: flex;
-  justify-content: center;
-  gap: 1.25rem;
-  margin-top: 1.4rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 7rem);
+  margin-top: 1.5rem;
+}
+
+.awake-nav::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--hairline-floor);
+  pointer-events: none;
+  animation: awake-floor 700ms 780ms var(--awake-ease) backwards;
 }
 
 .awake-nav__link {
-  display: grid;
-  place-items: center;
-  min-width: 5.5rem;
-  min-height: 2.9rem;
-  padding: 0 0.75rem;
-  border-radius: var(--radius-lg);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  line-height: 1;
-  color: var(--color-text-accent);
-  text-decoration: none;
-  transition:
-    color 0.2s ease,
-    transform 0.4s var(--awake-spring);
+  height: 2.75rem;
+  padding-bottom: 0.6875rem;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
 }
 
-.awake-nav__link:hover,
-.awake-nav__link:focus-visible,
+.awake-nav__link::after {
+  inset: auto 0.5rem 0;
+}
+
+/* The cat on the floor below has glanced at this one: a tick, never the
+   full segment, so it never looks like the cat chose it. */
 .awake-nav__link.is-near {
+  color: var(--color-text-primary);
+}
+
+.awake-nav__link.is-near::after {
+  transform: scaleX(0.18);
+}
+
+/* Hand and press outrank the glance. */
+.awake-nav__link.is-near:is(:hover, :focus-visible, :active, .is-chosen) {
   color: var(--color-text-interactive-hover);
 }
 
-.awake-nav__link:hover,
-.awake-nav__link:focus-visible {
-  transform: translateY(2px);
-}
-
-.awake-nav__link:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 0;
+.awake-nav__link.is-near:is(
+    :hover,
+    :focus-visible,
+    :active,
+    .is-chosen
+  )::after {
+  transform: none;
 }
 
 /* The cat is reachable by keyboard; the canvas draws the focus ring. */
@@ -231,6 +246,15 @@ body:has(.awake) {
   .awake {
     --awake-cat-scale: 0.8;
     padding: 4rem 0 5.5rem;
+  }
+
+  .awake-nav {
+    grid-template-columns: repeat(3, 6.25rem);
+    margin-top: 1.75rem;
+  }
+
+  .awake-nav__link {
+    height: 3rem;
   }
 }
 
@@ -309,6 +333,10 @@ body:has(.awake) {
 
   .awake-ground {
     display: none;
+  }
+
+  .awake-nav::before {
+    background: CanvasText;
   }
 
   .awake-nav__link,

@@ -1,0 +1,92 @@
+/* ===================================================
+   Hairline controls — the site's one button language.
+
+   A control is its label standing on a line. At rest the label is grey; in
+   hand, a brand segment draws in along the line from the centre; pressed, it
+   snaps on. Nothing boxes, lifts or scales. `.hair-control` is the label and
+   its segment; `--railed` brings its own line for a control that stands
+   alone (a container can supply a shared line instead, as the home rail does).
+   =================================================== */
+
+.hair-control {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-family: var(--font-mono);
+  line-height: 1;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.hair-control::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  height: 1px;
+  background: var(--color-brand);
+  transform: scaleX(0);
+  transition: transform 320ms var(--ease-draw);
+}
+
+.hair-control--railed::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--color-rule-strong);
+  transition: background-color 150ms ease;
+}
+
+@media (hover: hover) {
+  .hair-control:hover:not(:disabled) {
+    color: var(--color-text-interactive-hover);
+  }
+
+  .hair-control:hover:not(:disabled)::after {
+    transform: none;
+  }
+}
+
+.hair-control:focus-visible {
+  color: var(--color-text-interactive-hover);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.hair-control:focus-visible::after {
+  transform: none;
+}
+
+.hair-control:active:not(:disabled),
+.hair-control.is-chosen {
+  color: var(--color-text-primary);
+}
+
+.hair-control:active:not(:disabled)::after,
+.hair-control.is-chosen::after {
+  transform: none;
+  transition-duration: 90ms;
+}
+
+.hair-control:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.hair-control--railed:disabled::before {
+  background: var(--color-rule);
+}
+
+@media (forced-colors: active) {
+  .hair-control::after {
+    background: Highlight;
+  }
+
+  .hair-control--railed::before {
+    background: CanvasText;
+  }
+}

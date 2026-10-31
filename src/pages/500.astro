@@ -6,16 +6,17 @@ import '../styles/components/_status-page.css';
 <Base
   title="Something went wrong"
   description="Something broke on oddava.me. Try again in a moment."
+  sky
 >
   <meta slot="head" name="robots" content="noindex" />
   <section class="status-page">
-    <h1>500</h1>
-    <p class="status-page__copy">
-      something broke on our end. not you — us. try heading back home and giving
-      it another go.
+    <h1 class="status-page__code rise">500</h1>
+    <p class="status-page__copy rise rise--1">
+      something broke on our end. not you — us. give it another go.
     </p>
-    <p class="status-page__links">
-      <a href="/">← back to home</a>
-    </p>
+    <a
+      class="status-page__action hair-control hair-control--railed rise rise--2"
+      href="">try again</a
+    >
   </section>
 </Base>

@@ -2,37 +2,41 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import { Guestbook } from '../components/Guestbook';
-import '../styles/components/_prose.css';
 import '../styles/components/_about.css';
 ---
 
 <Base
   title="About"
   description="Oddava is a software engineer based in Uzbekistan, building web applications and working on Ishbay."
+  sky
 >
   <article class="about">
-    <h1>about</h1>
+    <h1 class="page-title rise">about</h1>
 
-    <p>
-      I'm a software engineer based in Uzbekistan. I build web applications,
-      currently working on <a href="https://ishbay.com"
-        ><strong>Ishbay</strong></a
-      >, a payroll management platform for businesses.
-    </p>
+    <div class="about__body rise rise--1">
+      <p>
+        i'm a software engineer based in uzbekistan. i build web applications,
+        currently working on <a href="https://ishbay.com">Ishbay</a>, a payroll
+        management platform for businesses.
+      </p>
 
-    <p>
-      I'm interested in backend engineering, system design, self-hosting, and
-      developer tools.
-    </p>
+      <p>
+        i'm interested in backend engineering, system design, self-hosting, and
+        developer tools.
+      </p>
 
-    <p>Outside of coding, I enjoy games, anime and going on long walks.</p>
+      <p>outside of coding, i enjoy games, anime, and going on long walks.</p>
+    </div>
   </article>
 
-  <Guestbook client:idle />
-  <noscript>
-    <p class="guestbook-noscript">
-      the guestbook needs javascript to load and post notes. with it off, you
-      can still say hi at <a href="mailto:hello@oddava.me">hello@oddava.me</a>.
-    </p>
-  </noscript>
+  <div class="about__guestbook rise rise--2">
+    <Guestbook client:idle />
+    <noscript>
+      <p class="guestbook-noscript">
+        the guestbook needs javascript to load and post notes. with it off, you
+        can still say hi at <a href="mailto:hello@oddava.me">hello@oddava.me</a
+        >.
+      </p>
+    </noscript>
+  </div>
 </Base>
