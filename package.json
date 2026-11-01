@@ -29,6 +29,7 @@
     "redis:copy": "node scripts/copy-redis.mjs",
     "spotify:token": "node scripts/get-spotify-token.mjs",
     "icons": "node scripts/render-icons.mjs",
+    "og:render": "node scripts/render-og-default.mjs",
     "verify": "pnpm run format:check && pnpm run check && pnpm run test && pnpm run build",
     "astro": "astro",
     "test:browser": "playwright test"

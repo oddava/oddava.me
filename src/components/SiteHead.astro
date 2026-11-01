@@ -22,8 +22,8 @@ export interface Props {
 const {
   title = SITE_NAME,
   description = SITE_DESCRIPTION,
-  // Default OG/social image. PNG rendered from public/og-default.svg (the
-  // diffable source) — SVG itself is not parsed by every consumer.
+  // Default OG/social image, rendered from scripts/og-default-card.ts by
+  // `pnpm run og:render`.
   image = '/og-default.png',
   imageAlt = SITE_TITLE,
   type = 'website',

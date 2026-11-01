@@ -4,8 +4,8 @@ import {
 } from '../../lib/garden/og-card';
 import type { SocialCardStatus } from '../../lib/contracts';
 
-// The palette public/og-default.svg already uses, so a generated card and the
-// default one read as the same artwork with different words in it.
+// The palette scripts/og-default-card.ts also uses, so a generated card and
+// the default one read as the same artwork with different words in it.
 const BACKGROUND = '#0c0e11';
 const ACCENT = '#5f92bd';
 const ACCENT_SOFT = '#7aa6cb';
