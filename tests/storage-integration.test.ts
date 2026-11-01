@@ -41,11 +41,11 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
     it('never evicts an approved guestbook entry to make room for a new one', async () => {
       const {
         appendGuestbookEntry,
-        clearGuestbookEntries,
+        clearUnapprovedGuestbookEntries,
         readGuestbookEntries,
         updateGuestbookEntryStatus,
       } = await import('../src/lib/server/guestbook');
-      await clearGuestbookEntries();
+      await cleanupClient.flushDb();
 
       const entry = (id: string, day: number) => ({
         id,
@@ -78,8 +78,46 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       expect(unapproved[0]?.id).toBe('flood-119');
       expect(unapproved.at(-1)?.id).toBe('flood-20');
 
-      await clearGuestbookEntries();
-      expect(await readGuestbookEntries()).toEqual([]);
+      // Clearing the moderation queue never touches published entries.
+      expect(await clearUnapprovedGuestbookEntries()).toBe(100);
+      expect(
+        (await readGuestbookEntries()).map((item) => item.id).toSorted(),
+      ).toEqual(['kept-1', 'kept-2', 'kept-3']);
+    });
+
+    it('clears pending, rejected, and undecodable entries but keeps approved ones', async () => {
+      const {
+        appendGuestbookEntry,
+        clearUnapprovedGuestbookEntries,
+        readGuestbookEntries,
+        updateGuestbookEntryStatus,
+      } = await import('../src/lib/server/guestbook');
+      await cleanupClient.flushDb();
+
+      for (const [id, status] of [
+        ['old-approved', 'approved'],
+        ['rejected', 'rejected'],
+        ['pending', null],
+        ['new-approved', 'approved'],
+      ] as const) {
+        await appendGuestbookEntry({
+          id,
+          name: 'tester',
+          message: `message ${id}`,
+          createdAt: new Date(2026, 0, 1).toISOString(),
+          status: 'pending',
+        });
+        if (status) await updateGuestbookEntryStatus(id, status);
+      }
+      await cleanupClient.lPush('dev:community:guestbook:entries', 'not json');
+
+      expect(await clearUnapprovedGuestbookEntries()).toBe(3);
+      expect((await readGuestbookEntries()).map((item) => item.id)).toEqual([
+        'new-approved',
+        'old-approved',
+      ]);
+      // Nothing left to clear is not an error.
+      expect(await clearUnapprovedGuestbookEntries()).toBe(0);
     });
 
     it('preserves concurrent guestbook appends and updates status atomically', async () => {
@@ -88,6 +126,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         readGuestbookEntries,
         updateGuestbookEntryStatus,
       } = await import('../src/lib/server/guestbook');
+      await cleanupClient.flushDb();
 
       await Promise.all(
         Array.from({ length: 20 }, (_, index) =>

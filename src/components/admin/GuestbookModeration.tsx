@@ -30,9 +30,10 @@ export function GuestbookModeration({
   const { confirm, dialog } = useDialogConfirm();
   const handleClear = useCallback(async () => {
     const ok = await confirm({
-      title: 'Clear guestbook entries',
-      message: 'Clear all pending guestbook entries? This cannot be undone.',
-      confirmLabel: 'Clear all',
+      title: 'Clear unapproved entries',
+      message:
+        'Delete every pending and rejected entry? Approved entries stay published. This cannot be undone.',
+      confirmLabel: 'Clear unapproved',
       danger: true,
     });
     if (ok) onClearAll();
@@ -57,14 +58,14 @@ export function GuestbookModeration({
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          {status === 'pending' && entries.length > 0 && (
+          {status !== 'approved' && entries.length > 0 && (
             <button
               className="admin-button danger"
               type="button"
               disabled={busyKey === 'guestbook-clear'}
               onClick={handleClear}
             >
-              Clear all
+              Clear unapproved
             </button>
           )}
         </div>

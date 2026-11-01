@@ -42,7 +42,7 @@ export function updateGuestbookEntryStatus(
   );
 }
 
-export function clearGuestbookEntries(): Promise<GuestbookResponse> {
+export function clearUnapprovedGuestbookEntries(): Promise<GuestbookResponse> {
   return readJson<GuestbookResponse>(
     '/api/guestbook/admin',
     jsonBody('POST', { action: 'clear', all: true }),

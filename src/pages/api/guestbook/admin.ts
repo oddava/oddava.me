@@ -13,7 +13,7 @@ import {
   withAdminSecurityHeaders,
 } from '../../../lib/server/admin';
 import {
-  clearGuestbookEntries,
+  clearUnapprovedGuestbookEntries,
   parseGuestbookStatus,
   readGuestbookEntries,
   updateGuestbookEntryStatus,
@@ -114,8 +114,11 @@ async function handleClearAllRequest(clearAll: boolean): Promise<Response> {
   }
 
   try {
-    await clearGuestbookEntries();
-    return adminJson({ entries: [] }, { status: 200 });
+    await clearUnapprovedGuestbookEntries();
+    return adminJson(
+      { entries: await readGuestbookEntries() },
+      { status: 200 },
+    );
   } catch (error) {
     console.error('[guestbook-admin] clear-all failed', error);
     return adminJson(

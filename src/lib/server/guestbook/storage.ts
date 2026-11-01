@@ -38,11 +38,39 @@ export async function readGuestbookEntries(): Promise<GuestbookEntry[]> {
     .filter((entry): entry is GuestbookEntry => Boolean(entry));
 }
 
-export async function clearGuestbookEntries(): Promise<void> {
+// Removes every unapproved (pending or rejected) entry and keeps the approved
+// ones in place. A value that does not decode counts as unapproved, as in the
+// append script. Returns how many entries were removed.
+const CLEAR_UNAPPROVED_SCRIPT = `
+  local values = redis.call('LRANGE', KEYS[1], 0, -1)
+  local removed = 0
+  for index, raw in ipairs(values) do
+    local ok, entry = pcall(cjson.decode, raw)
+    if not (ok and type(entry) == 'table' and entry.status == 'approved') then
+      redis.call('LSET', KEYS[1], index - 1, '__cleared__')
+      removed = removed + 1
+    end
+  end
+  if removed > 0 then redis.call('LREM', KEYS[1], 0, '__cleared__') end
+  return removed
+`;
+
+/**
+ * Clears the moderation queue. Approved entries are published, so they are
+ * never removed in bulk: a "clear" that also dropped them once wiped every
+ * published message from production.
+ */
+export async function clearUnapprovedGuestbookEntries(): Promise<number> {
   if (!hasRedisConfig()) {
     throw new Error('Persistent storage is not configured.');
   }
-  await redisCommand(['DEL', ENTRIES_KEY]);
+  const removed = await redisCommand<number | string>([
+    'EVAL',
+    CLEAR_UNAPPROVED_SCRIPT,
+    1,
+    ENTRIES_KEY,
+  ]);
+  return Number(removed);
 }
 
 // Newest first. When the unapproved entries exceed the limit, the oldest of

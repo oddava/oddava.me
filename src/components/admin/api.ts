@@ -2,7 +2,7 @@ export {
   fetchAdminOverview,
   fetchGuestbookEntries,
   updateGuestbookEntryStatus,
-  clearGuestbookEntries,
+  clearUnapprovedGuestbookEntries,
   fetchIntegrations,
   toggleIntegration,
   testIntegration,

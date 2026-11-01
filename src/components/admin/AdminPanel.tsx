@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
-  clearGuestbookEntries,
+  clearUnapprovedGuestbookEntries,
   fetchAdminOverview,
   fetchGuestbookEntries,
   updateGuestbookEntryStatus,
@@ -117,10 +117,10 @@ export default function AdminPanel() {
     runAction(
       'guestbook-clear',
       async () => {
-        await clearGuestbookEntries();
+        await clearUnapprovedGuestbookEntries();
         await loadGuestbook(guestbookStatus);
       },
-      'Guestbook cleared.',
+      'Pending and rejected entries cleared.',
     );
 
   const handleModerateGuestbookEntry = (
