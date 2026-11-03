@@ -341,6 +341,41 @@ describe('notes API writes', () => {
     expect(fieldsOf(note.content)).not.toHaveProperty('tags');
   });
 
+  it('keeps image and image_alt through create and update, dropping invalid ones', async () => {
+    const provider = new MemoryContentProvider();
+    const created = await handleCreateNote(
+      provider.asProvider(),
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'diary/cover.md',
+        content:
+          '---\ncover: https://cdn.example/c.jpg\nimage_alt: A cover\n---\n\n# cover\n',
+      }),
+    );
+    expect(created.status).toBe(201);
+    const note = (await bodyOf(created)).note as {
+      content: string;
+      revision: string;
+    };
+    expect(fieldsOf(note.content)).toMatchObject({
+      image: 'https://cdn.example/c.jpg',
+      image_alt: 'A cover',
+    });
+    expect(fieldsOf(note.content)).not.toHaveProperty('cover');
+
+    const saved = await handleUpdateNote(
+      provider.asProvider(),
+      'diary/cover.md',
+      request('PUT', `${ORIGIN}/api/notes/diary/cover.md`, {
+        content: `---\nimage: //evil.example/x.png\nimage_alt: ${'x'.repeat(201)}\n---\n\n# cover\n`,
+        revision: note.revision,
+      }),
+    );
+    expect(saved.status).toBe(200);
+    const next = (await bodyOf(saved)).note as { content: string };
+    expect(fieldsOf(next.content)).not.toHaveProperty('image');
+    expect(fieldsOf(next.content)).not.toHaveProperty('image_alt');
+  });
+
   it('rejects a second file name that already exists in another folder', async () => {
     const provider = new MemoryContentProvider();
     await handleCreateNote(
