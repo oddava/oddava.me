@@ -32,6 +32,14 @@ jobs:
         with:
           fetch-depth: 1
 
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -48,4 +56,4 @@ jobs:
           # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
+          claude_args: '--allowedTools "Bash(pnpm install --frozen-lockfile),Bash(pnpm test),Bash(pnpm run build),Bash(pnpm run format:check),Bash(pnpm exec prettier --write:*),Bash(gh pr create:*),Bash(gh pr view:*)"'
