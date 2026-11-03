@@ -237,6 +237,22 @@ function isSocialImageUrl(value: string): boolean {
 }
 
 /**
+ * The social image for a note: frontmatter `image`/`cover` first, then the
+ * first image in the body. Callers fall back to the generated card.
+ */
+export function resolveNoteSocialImage(note: {
+  body: string;
+  data?: { image?: string; image_alt?: string };
+}): NoteSocialImage | undefined {
+  const image = note.data?.image;
+  if (image) {
+    const alt = note.data?.image_alt;
+    return { src: image, ...(alt ? { alt } : {}) };
+  }
+  return deriveNoteSocialImage(note.body);
+}
+
+/**
  * Reuse the first image the author put in a note for its social card. Both
  * ordinary Markdown images and Studio's styled HTML figures are supported.
  * Other URL schemes are deliberately ignored because crawlers need a public
