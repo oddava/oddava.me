@@ -1,3 +1,5 @@
 ---
-return Astro.redirect('/notes', 301);
+import { notesIndexUrl } from '@lib/notes-url';
+
+return Astro.redirect(notesIndexUrl(), 301);
 ---

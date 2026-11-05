@@ -1,3 +1,5 @@
 ---
-return Astro.redirect('/notes/graph', 301);
+import { notesGraphUrl } from '@lib/notes-url';
+
+return Astro.redirect(notesGraphUrl(), 301);
 ---

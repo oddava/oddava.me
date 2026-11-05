@@ -1,4 +1,5 @@
 import { noteDataSchema } from '../../content/schemas';
+import { NOTES_ROUTE_PREFIX } from '../../notes-url';
 import type { ContentCollectionDefinition } from './types';
 
 export const NOTES_COLLECTION = {
@@ -10,7 +11,7 @@ export const NOTES_COLLECTION = {
   readExtensions: ['md'],
   mediaDir: 'public/images/notes',
   mediaPublicPath: '/images/notes',
-  routePrefix: '/notes',
+  routePrefix: NOTES_ROUTE_PREFIX,
   orderField: 'order',
   schema: noteDataSchema,
 } satisfies ContentCollectionDefinition;

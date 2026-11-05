@@ -1,7 +1,7 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { deriveLocalMap } from '@lib/garden/local-map';
-import { NOTES_GRAPH_PATH } from '@lib/site-routes';
+import { notesGraphUrl } from '@lib/notes-url';
 import { compactTrail, folderTrail } from '@lib/garden/wayfinder';
 import NoteExplorerNode from './NoteExplorerNode.astro';
 import '../../styles/components/_local-map.css';
@@ -22,7 +22,7 @@ while (ancestor && !expanded.has(ancestor.id)) {
 const hiddenReferences = map
   ? map.totals.outbound + map.totals.backlinks - map.references.length
   : 0;
-const landscapeHref = `${NOTES_GRAPH_PATH}#place=${encodeURIComponent(document.id)}`;
+const landscapeHref = notesGraphUrl(document.id);
 const trail = folderTrail(document, index);
 const isRoot = trail.length === 0;
 const crumbs = compactTrail(trail);

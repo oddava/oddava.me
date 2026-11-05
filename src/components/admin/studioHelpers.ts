@@ -1,6 +1,7 @@
 // Pure helpers shared by the Studio workspace, its hooks and its panes.
 
 import type { ContentEntryListItem } from '../../lib/contracts';
+import { noteUrl } from '../../lib/notes-url';
 
 /** A note's display name is its first heading, falling back to its slug. */
 export function titleFromBody(body: string, fallback: string): string {
@@ -27,7 +28,7 @@ export function altShortcut(key: string): string {
 }
 
 export function noteHref(entries: ContentEntryListItem[], id: string): string {
-  return entries.find((entry) => entry.id === id)?.href ?? `/notes/${id}`;
+  return entries.find((entry) => entry.id === id)?.href ?? noteUrl(id);
 }
 
 /** Rewrite a folder path (or a path inside it) after its folder moved. */

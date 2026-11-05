@@ -7,7 +7,7 @@ import {
   slugify,
 } from './paths';
 import type { ContentCollectionMeta } from '../../contracts';
-import { NOTES_COLLECTION } from './registry';
+import { noteUrl, notesIndexUrl } from '../../notes-url';
 import { parseContentDocument, serializeContentDocument } from './serializers';
 import type {
   ContentCollectionDefinition,
@@ -50,10 +50,8 @@ function titleFromDocument(
 }
 
 function noteHref(folder: string, id: string): string {
-  if (!folder && id === 'index') return NOTES_COLLECTION.routePrefix;
-  return `${NOTES_COLLECTION.routePrefix}/${[folder, id]
-    .filter(Boolean)
-    .join('/')}`;
+  if (!folder && id === 'index') return notesIndexUrl();
+  return noteUrl([folder, id].filter(Boolean).join('/'));
 }
 
 /** The parts of a stored file an entry is derived from. */

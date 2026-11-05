@@ -5,6 +5,7 @@ import Base from '../layouts/Base.astro';
 import LinkIcon from '../components/LinkIcon.astro';
 import '../styles/components/_links.css';
 import linksData from '../data/links.json';
+import { notesIndexUrl } from '../lib/notes-url';
 
 const { profile, links, theme } = linksData;
 ---
@@ -35,15 +36,17 @@ const { profile, links, theme } = linksData;
     <ul class="links-list rise rise--1">
       {
         links.map((link) => {
-          const isExternal = link.url.startsWith('http');
+          // The notes entry names a route rather than a URL, so it follows
+          // the garden wherever `notes-url` points it.
+          const isNotes = link.route === 'notes';
+          const href = isNotes ? notesIndexUrl() : link.url;
+          const isExternal = !isNotes && Boolean(link.url?.startsWith('http'));
           return (
             <li>
               <a
-                href={link.url}
+                href={href}
                 class="links-item"
-                data-page-preview-ignore={
-                  link.url === '/notes' ? '' : undefined
-                }
+                data-page-preview-ignore={isNotes ? '' : undefined}
                 target={isExternal ? '_blank' : undefined}
                 rel={isExternal ? 'noopener noreferrer' : undefined}
                 aria-label={

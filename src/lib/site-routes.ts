@@ -4,12 +4,14 @@ export type PublicNavigationRoute = {
   label: string;
 };
 
-export const NOTES_GRAPH_PATH = '/notes/graph';
+import { notesGraphUrl, notesIndexUrl } from './notes-url';
+
+export const NOTES_GRAPH_PATH = notesGraphUrl();
 
 const PUBLIC_NAVIGATION_ROUTES = [
   { href: '/', label: 'oddava', isHome: true },
   { href: '/projects', label: 'projects', isHome: false },
-  { href: '/notes', label: 'notes', isHome: false },
+  { href: notesIndexUrl(), label: 'notes', isHome: false },
   { href: '/about', label: 'about', isHome: false },
 ] as const satisfies readonly PublicNavigationRoute[];
 

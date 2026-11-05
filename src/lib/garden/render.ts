@@ -2,6 +2,7 @@ import { readColumns } from './columns';
 import { marked, Renderer, type Token, type Tokens } from 'marked';
 import { slugifyHeading } from './headings';
 import { normalizeWikiLinkTarget } from './utils';
+import { notesTagUrl } from '../notes-url';
 
 // Runtime Markdown -> HTML for garden notes. The ONLY note renderer.
 //
@@ -144,7 +145,7 @@ const noteTagExtension = {
   renderer(token: Tokens.Generic) {
     if (!isNoteTagToken(token)) return false;
     const tag = token.tag.toLowerCase();
-    return `<a class="note-tag" href="/notes/tag/${escapeAttr(tag)}">#${escapeHtml(tag)}</a>`;
+    return `<a class="note-tag" href="${escapeAttr(notesTagUrl(tag))}">#${escapeHtml(tag)}</a>`;
   },
 };
 

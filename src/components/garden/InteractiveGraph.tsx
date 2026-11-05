@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type { NoteGraphData } from '../../lib/garden/graph';
 import { mountGraph } from '../../lib/garden/graph-canvas';
 import { animatePresence } from '../../lib/garden/graph-presence';
+import { notesIndexUrl } from '../../lib/notes-url';
 import '../../styles/components/_interactive-graph.css';
 
 type Props = {
@@ -30,7 +31,7 @@ export default function InteractiveGraph({
   const globalEngine = useRef<ReturnType<typeof mountGraph>>();
   const [expanded, setExpanded] = useState(false);
   const [ready, setReady] = useState(false);
-  const [returnHref, setReturnHref] = useState('/notes');
+  const [returnHref, setReturnHref] = useState(notesIndexUrl());
   const [focused, setFocused] = useState<string | null>(null);
 
   /** Where the surface grows from and sinks back to: the sidebar graph. */
@@ -133,7 +134,7 @@ export default function InteractiveGraph({
           undefined)
         : undefined);
     setReturnHref(
-      data.nodes.find((node) => node.id === originId)?.href ?? '/notes',
+      data.nodes.find((node) => node.id === originId)?.href ?? notesIndexUrl(),
     );
     engine.current = mountGraph(canvas.current!, data, originId, setFocused);
     setReady(true);

@@ -15,6 +15,7 @@ import { deriveNoteGraph } from '@lib/garden/graph';
 import { describeConnections, noteNeighbourIds } from '@lib/garden/wayfinder';
 import '../../styles/components/_note-prose.css';
 import NotePageIcon from '../NotePageIcon';
+import { notesGraphUrl } from '@lib/notes-url';
 
 interface Props {
   document: GardenDocument;
@@ -76,7 +77,7 @@ const neighbourCount = noteNeighbourIds(document, index).length;
         <a
           class="note-wayfinder__row note-context__graph-link"
           data-page-preview-ignore
-          href={`/notes/graph#place=${encodeURIComponent(document.id)}`}
+          href={notesGraphUrl(document.id)}
         >
           <svg
             class="note-wayfinder__icon"

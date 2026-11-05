@@ -1,3 +1,5 @@
+import { noteUrl } from '../notes-url';
+
 export type NoteTagSource = {
   body: string;
 };
@@ -79,7 +81,7 @@ export function notePathFromSourceId(value: string): string {
 
 export function noteHrefFromSourceId(value: string): string {
   const path = notePathFromSourceId(value);
-  return path ? `/notes/${path}` : '/notes';
+  return noteUrl(path);
 }
 
 export function noteParentIdFromSourceId(value: string): string | null {
