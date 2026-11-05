@@ -17,6 +17,11 @@ export interface Props {
   imageAlt?: string;
   type?: 'website' | 'article';
   modifiedTime?: string;
+  /**
+   * `body` preloads only the regular body face; the bold and mono faces still
+   * load from CSS when a page uses them. The notes host uses it.
+   */
+  fontPreloads?: 'all' | 'body';
 }
 
 const {
@@ -28,6 +33,7 @@ const {
   imageAlt = SITE_TITLE,
   type = 'website',
   modifiedTime,
+  fontPreloads = 'all',
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? SITE_TITLE : `${title} | ${SITE_NAME}`;
@@ -110,21 +116,27 @@ const structuredData =
   crossorigin
   fetchpriority="high"
 />
-<link
-  rel="preload"
-  as="font"
-  type="font/woff2"
-  href="/fonts/m-plus-rounded-1c-latin-700-normal.woff2"
-  crossorigin
-  fetchpriority="high"
-/>
-<link
-  rel="preload"
-  as="font"
-  type="font/woff2"
-  href="/fonts/jetbrains-mono-latin-400-normal.woff2"
-  crossorigin
-  fetchpriority="high"
-/>
+{
+  fontPreloads === 'all' && (
+    <>
+      <link
+        rel="preload"
+        as="font"
+        type="font/woff2"
+        href="/fonts/m-plus-rounded-1c-latin-700-normal.woff2"
+        crossorigin
+        fetchpriority="high"
+      />
+      <link
+        rel="preload"
+        as="font"
+        type="font/woff2"
+        href="/fonts/jetbrains-mono-latin-400-normal.woff2"
+        crossorigin
+        fetchpriority="high"
+      />
+    </>
+  )
+}
 
 <slot />

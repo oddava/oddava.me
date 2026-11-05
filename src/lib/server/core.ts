@@ -30,3 +30,4 @@ export {
 } from './core/signing';
 export { sanitizePlainText } from './core/sanitize';
 export { applySecurityHeaders } from './core/security-headers';
+export { isNotesHostRequest } from './core/notes-host';

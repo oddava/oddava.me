@@ -4,9 +4,26 @@
   "compatibility_date": "2026-07-02",
   "compatibility_flags": ["nodejs_compat"],
   "keep_vars": true,
+  // Astro's handler wrapped with the notes-hostname mapping; see src/worker.ts.
+  "main": "./src/worker.ts",
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",
+    // Prerendered routes are otherwise served from the asset store before the
+    // Worker runs, on every hostname: notes.<host>/ would be the apex home.
+    // Every prerendered route must be listed here;
+    // tests/notes-host-assets.test.ts fails on one that is missing. `.html`
+    // forms need no entry: the asset layer 307s them to the clean path first.
+    // Public files stay asset-first, so both hosts share them.
+    "run_worker_first": [
+      "/",
+      "/about",
+      "/links",
+      "/blog",
+      "/garden",
+      "/garden/graph",
+      "/sitemap-index.xml",
+    ],
   },
   "observability": {
     "enabled": true,

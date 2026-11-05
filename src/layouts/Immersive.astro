@@ -7,13 +7,13 @@ import SiteHead, {
 
 export interface Props extends SiteHeadProps {}
 
-const { title, description, image, type } = Astro.props;
+const { title, description, image, type, fontPreloads } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en" data-theme="dark">
   <head>
-    <SiteHead {title} {description} {image} {type}>
+    <SiteHead {title} {description} {image} {type} {fontPreloads}>
       <slot name="head" />
     </SiteHead>
   </head>

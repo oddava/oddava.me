@@ -1,0 +1,88 @@
+---
+/**
+ * The notes garden's own shell, used when a page is served on the notes
+ * hostname. Compared with Base: its own header (`oddava / notes`, a link back
+ * to the personal site, the graph and search), no music widget, no sky, and
+ * one font preload. See docs/notes-host.md.
+ */
+import '../styles/global.css';
+import '../styles/components/_site-nav.css';
+import '../styles/components/_note-search.css';
+import '../styles/components/_notes-shell.css';
+import LoadingIndicator from '../components/LoadingIndicator.astro';
+import PagePreview from '../components/PagePreview.astro';
+import SiteHead, {
+  type Props as SiteHeadProps,
+} from '../components/SiteHead.astro';
+import NoteSearch from '../components/garden/NoteSearch.tsx';
+import { apexOriginFor } from '../lib/notes-host';
+import { NOTES_ROUTE_PREFIX } from '../lib/notes-url';
+
+export interface Props extends SiteHeadProps {
+  wide?: boolean;
+}
+
+const {
+  title,
+  description,
+  image,
+  imageAlt,
+  type,
+  modifiedTime,
+  wide = false,
+} = Astro.props;
+
+// Note pages render at their in-app `/notes/…` path; on this host the graph
+// lives at `/graph`.
+const onGraph = Astro.url.pathname === `${NOTES_ROUTE_PREFIX}/graph`;
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <SiteHead
+      {title}
+      {description}
+      {image}
+      {imageAlt}
+      {type}
+      {modifiedTime}
+      fontPreloads="body"
+    >
+      <slot name="head" />
+    </SiteHead>
+  </head>
+  <body>
+    <div class:list={['page', wide && 'page--wide']}>
+      <a href="#main" class="skip-link">Skip to content</a>
+
+      <header class="site-nav notes-shell__nav">
+        <p class="site-nav__wordmark notes-shell__mark">
+          <a href={apexOriginFor(Astro.url)} data-page-preview-ignore>oddava</a>
+          <span class="notes-shell__slash" aria-hidden="true">/</span>
+          <a href="/" data-page-preview-ignore>notes</a>
+        </p>
+        <nav class="site-nav__pages" aria-label="notes">
+          <ul>
+            <li>
+              <a
+                href="/graph"
+                aria-current={onGraph ? 'page' : undefined}
+                data-page-preview-ignore
+              >
+                graph
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <NoteSearch client:load />
+        <LoadingIndicator />
+      </header>
+
+      <main id="main">
+        <slot />
+      </main>
+    </div>
+    <PagePreview />
+  </body>
+</html>

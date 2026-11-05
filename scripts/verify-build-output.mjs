@@ -68,6 +68,40 @@ if (
   failures.push('dist/server/entry.mjs: missing the /notes/graph SSR route');
 }
 
+// The deployed config is the one the adapter generates, not wrangler.jsonc.
+// Without these, the notes host would get apex pages from the asset store
+// (see src/worker.ts and tests/notes-host-assets.test.ts).
+const deployedConfig = JSON.parse(
+  await readFile(
+    path.join(projectRoot, 'dist', 'server', 'wrangler.json'),
+    'utf8',
+  ),
+);
+const workerFirst = deployedConfig.assets?.run_worker_first;
+if (!Array.isArray(workerFirst) || !workerFirst.includes('/')) {
+  failures.push(
+    'dist/server/wrangler.json: assets.run_worker_first does not cover /',
+  );
+}
+const serverChunks = await readdir(path.join(projectRoot, 'dist', 'server'), {
+  recursive: true,
+});
+let hasNotesHostEntry = false;
+for (const chunk of serverChunks) {
+  if (!chunk.endsWith('.mjs')) continue;
+  const code = await readFile(
+    path.join(projectRoot, 'dist', 'server', chunk),
+    'utf8',
+  );
+  if (code.includes('notes.localhost')) {
+    hasNotesHostEntry = true;
+    break;
+  }
+}
+if (!hasNotesHostEntry) {
+  failures.push('dist/server: the notes-host Worker entry is not bundled');
+}
+
 if (failures.length > 0) {
   throw new Error(
     `Build security verification failed:\n${failures.join('\n')}`,
@@ -75,5 +109,5 @@ if (failures.length > 0) {
 }
 
 console.info(
-  `[build] Verified strict CSP output for ${htmlFiles.length} prerendered pages and the /notes/graph SSR route.`,
+  `[build] Verified strict CSP output for ${htmlFiles.length} prerendered pages, the /notes/graph SSR route, and the notes-host Worker entry.`,
 );

@@ -3,6 +3,7 @@ import Immersive from '../../layouts/Immersive.astro';
 import InteractiveGraph from '../../components/garden/InteractiveGraph';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { deriveNoteGraph } from '@lib/garden/graph';
+import { isNotesHostRequest } from '@lib/server/core';
 
 export const prerender = false;
 const garden = await getGardenIndexOrUnavailable();
@@ -13,6 +14,7 @@ const data = deriveNoteGraph(garden.index);
 <Immersive
   title="Notes graph"
   description="An interactive map of how oddava's notes link to each other."
+  fontPreloads={isNotesHostRequest(Astro.url) ? 'body' : 'all'}
 >
   <h1 class="sr-only">Graph of notes</h1>
   <InteractiveGraph client:load data={data} fullPage />

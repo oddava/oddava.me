@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import NotesShell from '../../components/garden/NotesShell.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import {
   decidePublicNote,
@@ -10,6 +10,7 @@ import { noteSocialCardImage } from '@lib/garden/og-card';
 import { resolveNoteSocialImage } from '@lib/garden/utils';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
 import { notesIndexUrl } from '@lib/notes-url';
+import { isNotesHostRequest } from '@lib/server/core';
 import '../../styles/components/_garden.css';
 import '../../styles/components/_status-page.css';
 
@@ -60,7 +61,7 @@ const description = document
 
 {
   removed || !document ? (
-    <Base title="Note removed" {description}>
+    <NotesShell title="Note removed" {description}>
       <meta slot="head" name="robots" content="noindex" />
       <section class="status-page">
         <h1>410</h1>
@@ -77,9 +78,9 @@ const description = document
           </li>
         </ul>
       </section>
-    </Base>
+    </NotesShell>
   ) : (
-    <Base
+    <NotesShell
       title={document.title}
       {description}
       image={socialImage?.src}
@@ -89,8 +90,12 @@ const description = document
       wide
     >
       <div class="garden-page">
-        <GardenDocumentPage document={document} index={index} />
+        <GardenDocumentPage
+          document={document}
+          index={index}
+          railGraph={!isNotesHostRequest(Astro.url)}
+        />
       </div>
-    </Base>
+    </NotesShell>
   )
 }

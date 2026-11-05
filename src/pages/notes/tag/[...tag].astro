@@ -1,5 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
+import NotesShell from '../../../components/garden/NotesShell.astro';
 import NoteCard from '../../../components/garden/NoteCard.astro';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { notesIndexUrl } from '@lib/notes-url';
@@ -16,7 +16,7 @@ const notes = index.documents.filter((note) => note.tags.includes(tag));
 if (notes.length === 0) return Astro.rewrite('/404');
 ---
 
-<Base
+<NotesShell
   title={`Notes tagged #${tag}`}
   description={`Every note by oddava tagged #${tag}.`}
   wide
@@ -36,4 +36,4 @@ if (notes.length === 0) return Astro.rewrite('/404');
       </section>
     </div>
   </div>
-</Base>
+</NotesShell>
