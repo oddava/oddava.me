@@ -1,0 +1,121 @@
+---
+/**
+ * One gallery card: the image (or a night-sky blank with the project's
+ * initial) fills it, and the caption sits on a scrim. The whole card links to
+ * the project; site and source stay their own links. Shared by /projects and
+ * home's strip so both speak the same card.
+ */
+import type { Project } from '../../lib/contracts';
+
+interface Props {
+  project: Project;
+  /** The one image that can be on screen at load. */
+  eager?: boolean;
+  /** The name's heading level under the page's own headings. */
+  heading?: 'h2' | 'h3';
+  class?: string;
+}
+
+const {
+  project,
+  eager = false,
+  heading: Heading = 'h2',
+  class: className,
+} = Astro.props;
+const href = project.site ?? project.source;
+const hostOf = (url: string) => new URL(url).host;
+---
+
+<li class:list={['pcard', !project.image && 'pcard--blank', className]}>
+  <div class="pcard__media">
+    {
+      project.image ? (
+        <img
+          src={project.image.src}
+          alt={project.image.alt}
+          width="1600"
+          height="1200"
+          loading={eager ? 'eager' : 'lazy'}
+          fetchpriority={eager ? 'high' : 'auto'}
+          decoding="async"
+          draggable="false"
+        />
+      ) : (
+        <span class="pcard__glyph" aria-hidden="true">
+          {project.name.charAt(0).toLowerCase()}
+        </span>
+      )
+    }
+  </div>
+  <div class="pcard__body">
+    <div class="pcard__head">
+      <Heading class="pcard__name">
+        {
+          href ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              draggable="false"
+            >
+              {project.name}
+            </a>
+          ) : (
+            project.name
+          )
+        }
+      </Heading>
+      <span
+        class:list={[
+          'pcard__year',
+          project.year === 'now' && 'pcard__year--now',
+        ]}
+      >
+        {project.year}
+      </span>
+    </div>
+    <p class="pcard__description">{project.description}</p>
+    {
+      (project.stack.length > 0 || href) && (
+        <div class="pcard__foot">
+          {project.stack.length > 0 && (
+            <ul class="pcard__stack" aria-label="built with">
+              {project.stack.map((tool) => (
+                <li>{tool}</li>
+              ))}
+            </ul>
+          )}
+          {href && (
+            <ul class="pcard__links">
+              {project.site && (
+                <li>
+                  <a
+                    href={project.site}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    draggable="false"
+                  >
+                    {hostOf(project.site)}
+                  </a>
+                </li>
+              )}
+              {project.source && (
+                <li>
+                  <a
+                    href={project.source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${project.name} source code`}
+                    draggable="false"
+                  >
+                    source
+                  </a>
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )
+    }
+  </div>
+</li>

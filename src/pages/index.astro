@@ -1,15 +1,17 @@
 ---
-// Prerendered: the hero and the static sections are the same for everyone.
-// The two Redis-backed lists are server islands, fetched after first paint.
+// Prerendered: the hero and the static lines are the same for everyone. The
+// two Redis-backed parts — the project strip and the note shelves — are
+// server islands, fetched after first paint.
 export const prerender = true;
 import Base from '@layouts/Base.astro';
-import LinkIcon from '../components/LinkIcon.astro';
+import Footer from '../components/Footer.astro';
 import AwakeSky from '../components/awake/AwakeSky.astro';
-import FeaturedProjects from '../components/home/FeaturedProjects.astro';
-import LatestNotes from '../components/home/LatestNotes.astro';
+import NoteShelves from '../components/home/NoteShelves.astro';
+import ProjectStrip from '../components/home/ProjectStrip.astro';
 import linksData from '../data/links.json';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
 import '../styles/components/_awake.css';
+import '../styles/components/_projects.css';
 import '../styles/components/_home.css';
 
 // Off-site contacts only; the header already covers on-site pages.
@@ -44,60 +46,82 @@ const pageHref = (label: string) =>
     <p class="sr-only" aria-live="polite" data-awake-live></p>
   </section>
 
-  <div class="home">
-    <section class="home-section" aria-labelledby="home-projects">
-      <h2 class="home-section__title" id="home-projects">
+  <section class="home-strip" aria-labelledby="home-projects">
+    <div class="home-head">
+      <h2 class="home-head__label" id="home-projects">
         <a href={pageHref('projects')}>projects</a>
       </h2>
-      <FeaturedProjects server:defer>
-        <div class="home-pending" slot="fallback"></div>
-      </FeaturedProjects>
-    </section>
+      <div class="gallery-nav" data-gallery-nav hidden>
+        <button type="button" data-step="-1" aria-label="previous project">
+          <span aria-hidden="true">←</span>
+        </button>
+        <button type="button" data-step="1" aria-label="next project">
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+    </div>
+    <ProjectStrip server:defer galleryHref={pageHref('projects')}>
+      <div class="home-strip__pending" slot="fallback"></div>
+    </ProjectStrip>
+  </section>
 
-    <section class="home-section" aria-labelledby="home-notes">
-      <h2 class="home-section__title" id="home-notes">
+  <section class="home-garden" aria-labelledby="home-notes">
+    <div class="home-head">
+      <h2 class="home-head__label" id="home-notes">
         <a href={pageHref('notes')}>notes</a>
       </h2>
-      <LatestNotes server:defer>
-        <div class="home-pending" slot="fallback"></div>
-      </LatestNotes>
-    </section>
+    </div>
+    <NoteShelves server:defer>
+      <div class="shelves shelves--pending" slot="fallback"></div>
+    </NoteShelves>
+  </section>
 
-    <section class="home-section" aria-labelledby="home-elsewhere">
-      <h2 class="home-section__title" id="home-elsewhere">elsewhere</h2>
-      <ul class="home-contact">
-        {
-          contacts.map((link) => {
-            const isExternal = link.url.startsWith('http');
-            return (
-              <li>
-                <a
-                  href={link.url}
-                  target={isExternal ? '_blank' : undefined}
-                  rel={isExternal ? 'noopener noreferrer' : undefined}
-                  aria-label={
-                    isExternal ? `${link.title} (opens in new tab)` : undefined
-                  }
-                >
-                  <LinkIcon name={link.icon} />
-                  <span>{link.title.toLowerCase()}</span>
-                </a>
-              </li>
-            );
-          })
-        }
-      </ul>
-    </section>
-  </div>
-
-  <footer class="home-footer" slot="footer">
-    <span>oddava</span>
+  <p class="home-elsewhere">
+    <span class="home-elsewhere__label">elsewhere</span>
+    {
+      contacts.map((link) => {
+        const isExternal = link.url.startsWith('http');
+        return (
+          <a
+            href={link.url}
+            target={isExternal ? '_blank' : undefined}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+          >
+            {link.title.toLowerCase()}
+            {isExternal && <span class="sr-only"> (opens in new tab)</span>}
+          </a>
+        );
+      })
+    }
     <a href="/rss.xml">rss</a>
-  </footer>
+  </p>
+
+  <Footer slot="footer" />
 </Base>
 
 <script>
   import { mountAwake } from '../lib/awake/mount';
+  import { mountQuiet } from '../lib/awake/quiet';
+  import { mountGallery } from '../lib/project-gallery';
+
   const root = document.querySelector<HTMLElement>('[data-awake]');
   if (root) mountAwake(root);
+  // The cat asleep on the footer; home has no quiet sky to paint.
+  mountQuiet();
+
+  // The strip is a server island: it arrives after this runs, so wait for it.
+  const nav = document.querySelector<HTMLElement>('[data-gallery-nav]');
+  const strip = document.querySelector<HTMLElement>('.home-strip');
+  const mountStrip = () => {
+    const gallery = strip?.querySelector<HTMLElement>('[data-gallery]');
+    if (!gallery || !nav) return false;
+    mountGallery(gallery, nav);
+    return true;
+  };
+  if (strip && !mountStrip()) {
+    const watch = new MutationObserver(() => {
+      if (mountStrip()) watch.disconnect();
+    });
+    watch.observe(strip, { childList: true, subtree: true });
+  }
 </script>

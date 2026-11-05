@@ -1,0 +1,68 @@
+---
+/**
+ * Home's projects: the start of the /projects gallery, standing on the hero's
+ * horizon. A server island, so home stays prerendered while this reads the
+ * live list per request. The featured cards lead; when more exist, a last
+ * tile says how many and opens the full gallery.
+ */
+import ProjectCard from '../projects/ProjectCard.astro';
+import type { Project } from '../../lib/contracts';
+import { pickHomeProjects } from '../../lib/home';
+import { isStorageUnavailableError } from '../../lib/server/core';
+import { readPublicProjects } from '../../lib/server/projects';
+
+interface Props {
+  /** The full gallery, where the "more" tile leads. */
+  galleryHref: string;
+}
+
+const { galleryHref } = Astro.props;
+
+let all: Project[] | null;
+try {
+  all = await readPublicProjects();
+} catch (error) {
+  if (!isStorageUnavailableError(error)) throw error;
+  all = null;
+}
+const shown = all ? pickHomeProjects(all) : [];
+const more = all ? all.length - shown.length : 0;
+const firstImageId = shown.find((project) => project.image)?.id;
+---
+
+{
+  all === null ? (
+    <p class="home-empty">the shelf is out of reach just now.</p>
+  ) : shown.length === 0 ? (
+    <p class="home-empty">nothing here yet.</p>
+  ) : (
+    <div
+      class="gallery home-strip__gallery"
+      data-gallery
+      tabindex="0"
+      role="region"
+      aria-label="projects, scroll sideways"
+    >
+      <ol class="gallery__track">
+        {shown.map((project) => (
+          <ProjectCard
+            project={project}
+            eager={project.id === firstImageId}
+            heading="h3"
+          />
+        ))}
+        {more > 0 && (
+          <li class="pcard pcard--blank pcard--more">
+            <div class="pcard__media" />
+            <a class="pcard__more" href={galleryHref} draggable="false">
+              <span class="pcard__more-count">{more} more</span>
+              <span class="pcard__more-arrow" aria-hidden="true">
+                →
+              </span>
+            </a>
+          </li>
+        )}
+      </ol>
+    </div>
+  )
+}

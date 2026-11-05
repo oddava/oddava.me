@@ -60,12 +60,12 @@ body:has(.awake) {
   bottom: 0;
 }
 
-/* The hero: most of a first screen under the header, never all of it, so
-   the sections below show there is more. The bottom padding is the cat's
-   room on the floor. */
+/* The hero: most of a first screen under the header, never all of it — the
+   project strip below already stands in view on the horizon. The bottom
+   padding is the cat's room on the floor. */
 .awake--band {
   flex: none;
-  min-height: max(20rem, calc(78svh - 4rem));
+  min-height: max(20rem, calc(64svh - 4rem));
   padding: 1.5rem 0 7rem;
 }
 
@@ -203,7 +203,7 @@ body:has(.awake) {
   }
 
   .awake--band {
-    min-height: max(20rem, calc(68svh - 3.375rem));
+    min-height: max(19rem, calc(58svh - 3.375rem));
     padding: 1rem 0 6rem;
   }
 }
