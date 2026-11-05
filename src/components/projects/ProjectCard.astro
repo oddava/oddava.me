@@ -6,6 +6,7 @@
  * home's strip so both speak the same card.
  */
 import type { Project } from '../../lib/contracts';
+import { displayAttributes } from '../../lib/project-image';
 
 interface Props {
   project: Project;
@@ -23,14 +24,40 @@ const {
   class: className,
 } = Astro.props;
 const href = project.site ?? project.source;
+const contain = project.image?.fit === 'contain';
+const display = project.image ? displayAttributes(project.image) : {};
 const hostOf = (url: string) => new URL(url).host;
 ---
 
-<li class:list={['pcard', !project.image && 'pcard--blank', className]}>
+<li
+  class:list={[
+    'pcard',
+    !project.image && 'pcard--blank',
+    contain && 'pcard--contain',
+    className,
+  ]}
+>
   <div class="pcard__media">
+    {
+      project.image && contain && (
+        <img
+          class="pcard__backdrop"
+          src={project.image.src}
+          alt=""
+          aria-hidden="true"
+          width="1600"
+          height="1200"
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          draggable="false"
+        />
+      )
+    }
     {
       project.image ? (
         <img
+          class="pcard__img"
+          {...display}
           src={project.image.src}
           alt={project.image.alt}
           width="1600"

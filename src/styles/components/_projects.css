@@ -188,7 +188,33 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 900ms var(--ease-draw);
+  transition: scale 900ms var(--ease-draw);
+}
+
+/* Focus and zoom, set per image from the admin. The focus point is both
+   where the crop centres and what a zoom grows from, so zooming in keeps it
+   in place. Hover uses `scale`, a separate property, so the two compose. */
+.pcard__img {
+  --focus-x: 50%;
+  --focus-y: 50%;
+  --zoom: 1;
+  object-position: var(--focus-x) var(--focus-y);
+  transform: scale(var(--zoom));
+  transform-origin: var(--focus-x) var(--focus-y);
+}
+
+/* The whole image, letterboxed over a dimmed, blurred copy of itself so the
+   bands carry its colour rather than sitting empty. */
+.pcard--contain .pcard__img {
+  position: relative;
+  object-fit: contain;
+}
+
+.pcard__backdrop {
+  position: absolute;
+  inset: 0;
+  filter: blur(28px) brightness(0.45) saturate(1.2);
+  transform: scale(1.15);
 }
 
 /* No image: the night sky the page already sits on, lit from one corner in
@@ -419,7 +445,7 @@
 
 @media (hover: hover) {
   .pcard:hover .pcard__media img {
-    transform: scale(1.03);
+    scale: 1.03;
   }
 
   .gallery:not(.gallery--dragging) {
@@ -487,7 +513,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pcard__media img,
   .pcard:hover .pcard__media img {
-    transform: none;
+    scale: none;
     transition: none;
   }
 }
@@ -502,4 +528,211 @@
   .pcard__body {
     background: Canvas;
   }
+}
+
+/* --- Image focus and zoom steps ---
+
+   One rule per step, picked by the card image's data attributes: the CSP
+   allows no inline styles, so this is how a per-image value reaches CSS.
+   The steps match lib/project-image.ts (focus 0–100 by 5, zoom 1–2 by 0.1);
+   50% and 1 are the defaults and need no rule. */
+
+.pcard__img[data-x='0'] {
+  --focus-x: 0%;
+}
+
+.pcard__img[data-x='5'] {
+  --focus-x: 5%;
+}
+
+.pcard__img[data-x='10'] {
+  --focus-x: 10%;
+}
+
+.pcard__img[data-x='15'] {
+  --focus-x: 15%;
+}
+
+.pcard__img[data-x='20'] {
+  --focus-x: 20%;
+}
+
+.pcard__img[data-x='25'] {
+  --focus-x: 25%;
+}
+
+.pcard__img[data-x='30'] {
+  --focus-x: 30%;
+}
+
+.pcard__img[data-x='35'] {
+  --focus-x: 35%;
+}
+
+.pcard__img[data-x='40'] {
+  --focus-x: 40%;
+}
+
+.pcard__img[data-x='45'] {
+  --focus-x: 45%;
+}
+
+.pcard__img[data-x='55'] {
+  --focus-x: 55%;
+}
+
+.pcard__img[data-x='60'] {
+  --focus-x: 60%;
+}
+
+.pcard__img[data-x='65'] {
+  --focus-x: 65%;
+}
+
+.pcard__img[data-x='70'] {
+  --focus-x: 70%;
+}
+
+.pcard__img[data-x='75'] {
+  --focus-x: 75%;
+}
+
+.pcard__img[data-x='80'] {
+  --focus-x: 80%;
+}
+
+.pcard__img[data-x='85'] {
+  --focus-x: 85%;
+}
+
+.pcard__img[data-x='90'] {
+  --focus-x: 90%;
+}
+
+.pcard__img[data-x='95'] {
+  --focus-x: 95%;
+}
+
+.pcard__img[data-x='100'] {
+  --focus-x: 100%;
+}
+
+.pcard__img[data-y='0'] {
+  --focus-y: 0%;
+}
+
+.pcard__img[data-y='5'] {
+  --focus-y: 5%;
+}
+
+.pcard__img[data-y='10'] {
+  --focus-y: 10%;
+}
+
+.pcard__img[data-y='15'] {
+  --focus-y: 15%;
+}
+
+.pcard__img[data-y='20'] {
+  --focus-y: 20%;
+}
+
+.pcard__img[data-y='25'] {
+  --focus-y: 25%;
+}
+
+.pcard__img[data-y='30'] {
+  --focus-y: 30%;
+}
+
+.pcard__img[data-y='35'] {
+  --focus-y: 35%;
+}
+
+.pcard__img[data-y='40'] {
+  --focus-y: 40%;
+}
+
+.pcard__img[data-y='45'] {
+  --focus-y: 45%;
+}
+
+.pcard__img[data-y='55'] {
+  --focus-y: 55%;
+}
+
+.pcard__img[data-y='60'] {
+  --focus-y: 60%;
+}
+
+.pcard__img[data-y='65'] {
+  --focus-y: 65%;
+}
+
+.pcard__img[data-y='70'] {
+  --focus-y: 70%;
+}
+
+.pcard__img[data-y='75'] {
+  --focus-y: 75%;
+}
+
+.pcard__img[data-y='80'] {
+  --focus-y: 80%;
+}
+
+.pcard__img[data-y='85'] {
+  --focus-y: 85%;
+}
+
+.pcard__img[data-y='90'] {
+  --focus-y: 90%;
+}
+
+.pcard__img[data-y='95'] {
+  --focus-y: 95%;
+}
+
+.pcard__img[data-y='100'] {
+  --focus-y: 100%;
+}
+
+.pcard__img[data-zoom='1.1'] {
+  --zoom: 1.1;
+}
+
+.pcard__img[data-zoom='1.2'] {
+  --zoom: 1.2;
+}
+
+.pcard__img[data-zoom='1.3'] {
+  --zoom: 1.3;
+}
+
+.pcard__img[data-zoom='1.4'] {
+  --zoom: 1.4;
+}
+
+.pcard__img[data-zoom='1.5'] {
+  --zoom: 1.5;
+}
+
+.pcard__img[data-zoom='1.6'] {
+  --zoom: 1.6;
+}
+
+.pcard__img[data-zoom='1.7'] {
+  --zoom: 1.7;
+}
+
+.pcard__img[data-zoom='1.8'] {
+  --zoom: 1.8;
+}
+
+.pcard__img[data-zoom='1.9'] {
+  --zoom: 1.9;
+}
+
+.pcard__img[data-zoom='2.0'] {
+  --zoom: 2;
 }

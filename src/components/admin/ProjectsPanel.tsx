@@ -3,6 +3,17 @@ import { fetchProjects, saveProjects, uploadContentMedia } from './api';
 import { SkeletonRow } from '../ui/Skeleton';
 import type { Project } from '../../lib/contracts';
 import { useDialogConfirm } from './useDialogConfirm';
+import {
+  ProjectImageDialog,
+  type ProjectImageResult,
+  type ProjectImageSource,
+} from './ProjectImageDialog';
+import {
+  DEFAULT_DISPLAY,
+  displayOf,
+  storedDisplay,
+  type ProjectImageDisplay,
+} from '../../lib/project-image';
 import './ProjectsPanel.css';
 
 /** The form edits strings; `toProject` turns them back into a project. */
@@ -16,6 +27,7 @@ interface Draft {
   source: string;
   imageSrc: string;
   imageAlt: string;
+  imageDisplay: ProjectImageDisplay;
   featured: boolean;
   hidden: boolean;
 }
@@ -44,6 +56,7 @@ function toDraft(project: Project): Draft {
     source: project.source ?? '',
     imageSrc: project.image?.src ?? '',
     imageAlt: project.image?.alt ?? '',
+    imageDisplay: displayOf(project.image),
     featured: project.featured === true,
     hidden: project.hidden,
   };
@@ -60,6 +73,7 @@ function emptyDraft(): Draft {
     source: '',
     imageSrc: '',
     imageAlt: '',
+    imageDisplay: { ...DEFAULT_DISPLAY },
     featured: false,
     hidden: false,
   };
@@ -80,7 +94,13 @@ function toProject(draft: Draft): Project {
     site: draft.site,
     source: draft.source,
     ...(draft.imageSrc.trim()
-      ? { image: { src: draft.imageSrc, alt: draft.imageAlt } }
+      ? {
+          image: {
+            src: draft.imageSrc,
+            alt: draft.imageAlt,
+            ...storedDisplay(draft.imageDisplay),
+          },
+        }
       : {}),
     ...(draft.featured ? { featured: true } : {}),
     hidden: draft.hidden,
@@ -102,6 +122,7 @@ export function ProjectsPanel() {
   const [notice, setNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [adjusting, setAdjusting] = useState<ProjectImageSource | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const { confirm, dialog } = useDialogConfirm();
   const mounted = useRef(true);
@@ -214,12 +235,24 @@ export function ProjectsPanel() {
   const update = (field: keyof Draft) => (event: Event) =>
     patchDraft({ [field]: (event.currentTarget as HTMLInputElement).value });
 
-  /** Uploads to the media store and fills `src`; the save still decides. */
-  const uploadImage = async (event: Event) => {
+  /** A chosen file opens the image dialog first; nothing uploads until it says. */
+  const chooseImage = (event: Event) => {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file) return;
+    if (file) setAdjusting({ kind: 'file', file });
+  };
+
+  /**
+   * Uploads a new file (already sized by the dialog) to the media store and
+   * fills `src`, or only takes the display settings. The save still decides.
+   */
+  const applyImage = async ({ file, display }: ProjectImageResult) => {
+    if (!file) {
+      patchDraft({ imageDisplay: display });
+      setAdjusting(null);
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
@@ -228,10 +261,13 @@ export function ProjectsPanel() {
         MEDIA_FOLDER,
         file,
       );
-      if (mounted.current) patchDraft({ imageSrc: media.url });
+      if (!mounted.current) return;
+      patchDraft({ imageSrc: media.url, imageDisplay: display });
+      setAdjusting(null);
     } catch (err) {
       if (!mounted.current) return;
       setError(err instanceof Error ? err.message : 'Could not upload image.');
+      setAdjusting(null);
     } finally {
       if (mounted.current) setUploading(false);
     }
@@ -306,11 +342,21 @@ export function ProjectsPanel() {
           <label for="admin-project-image-src">Image</label>
           <div className="admin-project-form__image">
             {draft.imageSrc.trim() && (
-              <img
-                className="admin-project-form__preview"
-                src={draft.imageSrc}
-                alt=""
-              />
+              <span className="admin-project-form__preview">
+                <img
+                  src={draft.imageSrc}
+                  alt=""
+                  style={
+                    draft.imageDisplay.fit === 'contain'
+                      ? { objectFit: 'contain' }
+                      : {
+                          objectPosition: `${draft.imageDisplay.x}% ${draft.imageDisplay.y}%`,
+                          transform: `scale(${draft.imageDisplay.zoom})`,
+                          transformOrigin: `${draft.imageDisplay.x}% ${draft.imageDisplay.y}%`,
+                        }
+                  }
+                />
+              </span>
             )}
             <input
               id="admin-project-image-src"
@@ -323,7 +369,7 @@ export function ProjectsPanel() {
               ref={fileInput}
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
-              onChange={uploadImage}
+              onChange={chooseImage}
               hidden
             />
             <button
@@ -334,11 +380,29 @@ export function ProjectsPanel() {
             >
               {uploading ? 'Uploading…' : 'Upload'}
             </button>
+            {draft.imageSrc.trim() && (
+              <button
+                type="button"
+                className="admin-button admin-button--ghost"
+                onClick={() =>
+                  setAdjusting({ kind: 'src', src: draft.imageSrc.trim() })
+                }
+                disabled={busy || uploading}
+              >
+                Adjust
+              </button>
+            )}
             {draft.imageSrc && (
               <button
                 type="button"
                 className="admin-button admin-button--ghost"
-                onClick={() => patchDraft({ imageSrc: '', imageAlt: '' })}
+                onClick={() =>
+                  patchDraft({
+                    imageSrc: '',
+                    imageAlt: '',
+                    imageDisplay: { ...DEFAULT_DISPLAY },
+                  })
+                }
                 disabled={busy || uploading}
               >
                 Remove
@@ -522,6 +586,16 @@ export function ProjectsPanel() {
       </ol>
 
       {dialog}
+      {adjusting && editing && (
+        <ProjectImageDialog
+          source={adjusting}
+          initial={editing.draft.imageDisplay}
+          name={editing.draft.name}
+          busy={uploading}
+          onApply={(result) => void applyImage(result)}
+          onCancel={() => setAdjusting(null)}
+        />
+      )}
     </article>
   );
 }

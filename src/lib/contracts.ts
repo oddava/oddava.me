@@ -229,6 +229,19 @@ export interface Project {
 export interface ProjectImage {
   src: string;
   alt: string;
+  /**
+   * How the image sits in its card (see `lib/project-image.ts`). Absent means
+   * the default — fill the card, centred, unzoomed — so stored images from
+   * before these fields read back unchanged. `contain` shows the whole image
+   * and carries no focus or zoom.
+   */
+  fit?: 'contain';
+  /** Focus point, percent from the left, in steps of 5. */
+  x?: number;
+  /** Focus point, percent from the top, in steps of 5. */
+  y?: number;
+  /** Fill zoom, 1–2 in steps of 0.1. */
+  zoom?: number;
 }
 
 export interface ProjectsResponse {

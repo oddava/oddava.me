@@ -1,5 +1,6 @@
 import type { Project, ProjectImage, ProjectYear } from '../../contracts';
 import { isRecord } from '../../records';
+import { FOCUS_DEFAULT, ZOOM_MIN, storedDisplay } from '../../project-image';
 
 export const MAX_PROJECTS = 50;
 const MAX_NAME = 60;
@@ -103,7 +104,35 @@ function parseImage(
   else if (alt.length > MAX_ALT)
     at('image', `Image alt text must be ${MAX_ALT} characters or fewer.`);
 
-  return { src, alt };
+  return { src, alt, ...parseDisplay(value, at) };
+}
+
+/**
+ * Fit, focus, and zoom. Numbers are snapped to their steps rather than
+ * refused — a focus of 37 is a reasonable thing to send — but a value of the
+ * wrong kind is an error, not silently the default.
+ */
+function parseDisplay(
+  value: Record<string, unknown>,
+  at: (field: string, message: string) => void,
+): Pick<ProjectImage, 'fit' | 'x' | 'y' | 'zoom'> {
+  const fit = value.fit ?? 'cover';
+  if (fit !== 'cover' && fit !== 'contain') {
+    at('image', 'Image fit must be cover or contain.');
+    return {};
+  }
+  const numberOr = (raw: unknown, fallback: number, label: string) => {
+    if (raw == null) return fallback;
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    at('image', `Image ${label} must be a number.`);
+    return fallback;
+  };
+  return storedDisplay({
+    fit,
+    x: numberOr(value.x, FOCUS_DEFAULT, 'focus'),
+    y: numberOr(value.y, FOCUS_DEFAULT, 'focus'),
+    zoom: numberOr(value.zoom, ZOOM_MIN, 'zoom'),
+  });
 }
 
 /** Validates one project; `issues` collects every problem, not just the first. */
