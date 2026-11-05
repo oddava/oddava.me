@@ -11,7 +11,7 @@ import SiteNav from '../components/SiteNav.astro';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
 export interface Props extends SiteHeadProps {
-  /** The homepage hero is its own navigation; every other page shows the nav. */
+  /** A page that is its own navigation (the links page); others show the nav. */
   hideNav?: boolean;
   /** Home's stars, dimmed, behind the page, and the cat asleep on the footer. */
   sky?: boolean;
@@ -54,6 +54,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
       </main>
 
       {sky && <Footer />}
+      <slot name="footer" />
     </div>
     {Astro.url.pathname !== '/' && <PagePreview />}
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}

@@ -1,0 +1,59 @@
+---
+/**
+ * Home's projects: a server island, so home itself stays prerendered while
+ * this reads the live `projects:list` value per request — an admin save shows
+ * here as it does on /projects, with no deploy.
+ */
+import type { Project } from '../../lib/contracts';
+import { pickHomeProjects } from '../../lib/home';
+import { isStorageUnavailableError } from '../../lib/server/core';
+import { readPublicProjects } from '../../lib/server/projects';
+
+let projects: Project[] | null;
+try {
+  projects = pickHomeProjects(await readPublicProjects());
+} catch (error) {
+  if (!isStorageUnavailableError(error)) throw error;
+  projects = null;
+}
+---
+
+{
+  projects === null ? (
+    <p class="home-empty">the shelf is out of reach just now.</p>
+  ) : projects.length === 0 ? (
+    <p class="home-empty">nothing here yet.</p>
+  ) : (
+    <ul class="home-projects">
+      {projects.map((project) => {
+        const href = project.site ?? project.source;
+        return (
+          <li class="home-project">
+            {project.image && (
+              <img
+                class="home-project__image"
+                src={project.image.src}
+                alt={project.image.alt}
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+            <div class="home-project__head">
+              <h3 class="home-project__name">
+                {href ? (
+                  <a href={href} target="_blank" rel="noopener noreferrer">
+                    {project.name}
+                  </a>
+                ) : (
+                  project.name
+                )}
+              </h3>
+              <span class="home-project__year">{project.year}</span>
+            </div>
+            <p class="home-project__description">{project.description}</p>
+          </li>
+        );
+      })}
+    </ul>
+  )
+}
