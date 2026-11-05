@@ -31,6 +31,13 @@
   -webkit-user-select: none;
 }
 
+/* Docked on phones (useWidgetPosition): fixed in its corner, so the page
+   keeps its own touch gestures and nothing suggests the strip can move. */
+.spotify-widget-positioner.is-docked {
+  touch-action: auto;
+  cursor: auto;
+}
+
 .spotify-widget-positioner.is-dragging {
   cursor: grabbing;
 }

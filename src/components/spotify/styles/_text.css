@@ -42,7 +42,6 @@
 
 .listening__time-rule {
   margin: 0 0.45em;
-  opacity: 0.45;
 }
 
 .listening:is(:hover, :focus-within)

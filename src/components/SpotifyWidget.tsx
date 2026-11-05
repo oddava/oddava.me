@@ -29,6 +29,7 @@ export default function SpotifyWidget() {
   );
   const {
     handlePointerDown,
+    isDocked,
     isDragging,
     nudgeBy,
     preventClickRef,
@@ -115,14 +116,16 @@ export default function SpotifyWidget() {
   return (
     <div
       ref={widgetRef}
-      className={`spotify-widget-positioner${isDragging ? ' is-dragging' : ''}`}
+      className={`spotify-widget-positioner${isDragging ? ' is-dragging' : ''}${isDocked ? ' is-docked' : ''}`}
       style={style}
-      tabIndex={0}
-      aria-label="Now playing — use arrow keys to reposition"
-      aria-roledescription="movable widget"
+      tabIndex={isDocked ? undefined : 0}
+      aria-label={
+        isDocked ? 'Now playing' : 'Now playing — use arrow keys to reposition'
+      }
+      aria-roledescription={isDocked ? undefined : 'movable widget'}
       role="group"
       onPointerDown={handlePointerDown}
-      onKeyDown={handleDragKeyDown}
+      onKeyDown={isDocked ? undefined : handleDragKeyDown}
     >
       <span className="sr-only" aria-live="polite">
         {announcement}
@@ -246,6 +249,7 @@ function Moon({ cover, onCoverError, ratio }: MoonProps) {
           className="listening__cover"
           src={cover}
           alt=""
+          aria-hidden="true"
           draggable={false}
           onLoad={(event) => event.currentTarget.classList.add('is-loaded')}
           onError={onCoverError}
