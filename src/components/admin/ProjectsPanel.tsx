@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { fetchProjects, saveProjects } from './api';
+import { fetchProjects, saveProjects, uploadContentMedia } from './api';
 import { SkeletonRow } from '../ui/Skeleton';
 import type { Project } from '../../lib/contracts';
 import { useDialogConfirm } from './useDialogConfirm';
@@ -14,8 +14,19 @@ interface Draft {
   stack: string;
   site: string;
   source: string;
+  imageSrc: string;
+  imageAlt: string;
+  featured: boolean;
   hidden: boolean;
 }
+
+/**
+ * Project images go into the content media store, grouped under this folder:
+ * served from `/images/notes/projects/…` and included in `notes:export`, so a
+ * prune run from a fresh export keeps them.
+ */
+const MEDIA_COLLECTION = 'notes';
+const MEDIA_FOLDER = 'projects';
 
 interface Editing {
   draft: Draft;
@@ -31,6 +42,9 @@ function toDraft(project: Project): Draft {
     stack: project.stack.join(', '),
     site: project.site ?? '',
     source: project.source ?? '',
+    imageSrc: project.image?.src ?? '',
+    imageAlt: project.image?.alt ?? '',
+    featured: project.featured === true,
     hidden: project.hidden,
   };
 }
@@ -44,6 +58,9 @@ function emptyDraft(): Draft {
     stack: '',
     site: '',
     source: '',
+    imageSrc: '',
+    imageAlt: '',
+    featured: false,
     hidden: false,
   };
 }
@@ -62,6 +79,10 @@ function toProject(draft: Draft): Project {
       .filter(Boolean),
     site: draft.site,
     source: draft.source,
+    ...(draft.imageSrc.trim()
+      ? { image: { src: draft.imageSrc, alt: draft.imageAlt } }
+      : {}),
+    ...(draft.featured ? { featured: true } : {}),
     hidden: draft.hidden,
   };
 }
@@ -80,6 +101,8 @@ export function ProjectsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const { confirm, dialog } = useDialogConfirm();
   const mounted = useRef(true);
 
@@ -183,13 +206,35 @@ export function ProjectsPanel() {
     setNotice(null);
   };
 
-  const update = (field: keyof Draft) => (event: Event) => {
-    const value = (event.currentTarget as HTMLInputElement).value;
+  const patchDraft = (patch: Partial<Draft>) =>
     setEditing((current) =>
-      current
-        ? { ...current, draft: { ...current.draft, [field]: value } }
-        : current,
+      current ? { ...current, draft: { ...current.draft, ...patch } } : current,
     );
+
+  const update = (field: keyof Draft) => (event: Event) =>
+    patchDraft({ [field]: (event.currentTarget as HTMLInputElement).value });
+
+  /** Uploads to the media store and fills `src`; the save still decides. */
+  const uploadImage = async (event: Event) => {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const { media } = await uploadContentMedia(
+        MEDIA_COLLECTION,
+        MEDIA_FOLDER,
+        file,
+      );
+      if (mounted.current) patchDraft({ imageSrc: media.url });
+    } catch (err) {
+      if (!mounted.current) return;
+      setError(err instanceof Error ? err.message : 'Could not upload image.');
+    } finally {
+      if (mounted.current) setUploading(false);
+    }
   };
 
   const editor = (draft: Draft, isNew: boolean) => (
@@ -257,6 +302,71 @@ export function ProjectsPanel() {
             placeholder="https://github.com/…"
           />
         </label>
+        <div className="admin-project-form__field admin-project-form__field--wide">
+          <label for="admin-project-image-src">Image</label>
+          <div className="admin-project-form__image">
+            {draft.imageSrc.trim() && (
+              <img
+                className="admin-project-form__preview"
+                src={draft.imageSrc}
+                alt=""
+              />
+            )}
+            <input
+              id="admin-project-image-src"
+              className="admin-input"
+              value={draft.imageSrc}
+              onInput={update('imageSrc')}
+              placeholder="upload, or https://"
+            />
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={uploadImage}
+              hidden
+            />
+            <button
+              type="button"
+              className="admin-button admin-button--ghost"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy || uploading}
+            >
+              {uploading ? 'Uploading…' : 'Upload'}
+            </button>
+            {draft.imageSrc && (
+              <button
+                type="button"
+                className="admin-button admin-button--ghost"
+                onClick={() => patchDraft({ imageSrc: '', imageAlt: '' })}
+                disabled={busy || uploading}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+        <label className="admin-project-form__field admin-project-form__field--wide">
+          <span>Image alt text</span>
+          <input
+            className="admin-input"
+            value={draft.imageAlt}
+            onInput={update('imageAlt')}
+            maxLength={160}
+            placeholder="what the image shows"
+            required={Boolean(draft.imageSrc.trim())}
+          />
+        </label>
+        <label className="admin-project-form__check">
+          <input
+            type="checkbox"
+            checked={draft.featured}
+            onChange={(event) =>
+              patchDraft({ featured: event.currentTarget.checked })
+            }
+          />
+          <span>Featured</span>
+        </label>
       </div>
       <div className="admin-project-form__actions">
         <button
@@ -270,7 +380,11 @@ export function ProjectsPanel() {
         >
           Cancel
         </button>
-        <button type="submit" className="admin-button primary" disabled={busy}>
+        <button
+          type="submit"
+          className="admin-button primary"
+          disabled={busy || uploading}
+        >
           {busy ? 'Saving…' : isNew ? 'Add project' : 'Save'}
         </button>
       </div>
@@ -349,6 +463,7 @@ export function ProjectsPanel() {
                   <span className="admin-project-row__year">
                     {project.year}
                   </span>
+                  {project.featured && <span className="pill">featured</span>}
                   {project.hidden && <span className="pill">hidden</span>}
                 </div>
                 <p className="admin-project-row__description">

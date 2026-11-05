@@ -1,4 +1,4 @@
-import type { Project, ProjectYear } from '../../contracts';
+import type { Project, ProjectImage, ProjectYear } from '../../contracts';
 import { isRecord } from '../../records';
 
 export const MAX_PROJECTS = 50;
@@ -7,9 +7,18 @@ const MAX_DESCRIPTION = 240;
 const MAX_STACK_ITEMS = 8;
 const MAX_STACK_ITEM = 24;
 const MAX_URL = 300;
+const MAX_ALT = 160;
 const MIN_YEAR = 1990;
 const MAX_YEAR = 2100;
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+/**
+ * The public prefix of the content media store, which the admin upload writes
+ * under (`/api/admin/content/media`, served by `/images/notes/[...path]`).
+ * Spelled out rather than imported: projects does not depend on content.
+ */
+const MEDIA_PREFIX = '/images/notes/';
+const MEDIA_SEGMENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+const IMAGE_EXTENSION = /\.(gif|jpe?g|png|webp)$/i;
 
 export interface ProjectIssue {
   path: (string | number)[];
@@ -45,6 +54,56 @@ function parseUrl(value: unknown): string | undefined | null {
   } catch {
     return null;
   }
+}
+
+/** A media-store path the image route would serve, with no way out of it. */
+function isMediaPath(src: string): boolean {
+  if (!src.startsWith(MEDIA_PREFIX) || !IMAGE_EXTENSION.test(src)) return false;
+  return src
+    .slice(MEDIA_PREFIX.length)
+    .split('/')
+    .every((segment) => MEDIA_SEGMENT.test(segment));
+}
+
+/**
+ * Empty `src` means "no image", like an empty link, so the form can always
+ * send the fields. Otherwise `src` is a media-store path or an https URL, and
+ * `alt` is required: the image stands for the project, it is not decoration.
+ */
+function parseImage(
+  value: unknown,
+  at: (field: string, message: string) => void,
+): ProjectImage | undefined {
+  if (value == null) return undefined;
+  if (!isRecord(value)) {
+    at('image', 'Image must be an object with src and alt.');
+    return undefined;
+  }
+  const src = text(value.src);
+  if (!src) return undefined;
+  const alt = text(value.alt);
+
+  let srcOk = false;
+  if (src.length <= MAX_URL) {
+    if (src.startsWith('/')) srcOk = isMediaPath(src);
+    else {
+      try {
+        srcOk = new URL(src).protocol === 'https:';
+      } catch {
+        srcOk = false;
+      }
+    }
+  }
+  if (!srcOk)
+    at(
+      'image',
+      `Image must be an uploaded image (${MEDIA_PREFIX}…) or an https URL.`,
+    );
+  if (!alt) at('image', 'Image alt text is required.');
+  else if (alt.length > MAX_ALT)
+    at('image', `Image alt text must be ${MAX_ALT} characters or fewer.`);
+
+  return { src, alt };
 }
 
 /** Validates one project; `issues` collects every problem, not just the first. */
@@ -97,6 +156,8 @@ export function parseProject(
   const source = parseUrl(value.source);
   if (source === null) at('source', 'Source must be an http(s) URL.');
 
+  const image = parseImage(value.image, at);
+
   if (issues.length > before) return null;
 
   return {
@@ -107,6 +168,9 @@ export function parseProject(
     stack,
     ...(site ? { site } : {}),
     ...(source ? { source } : {}),
+    ...(image ? { image } : {}),
+    // Written only when set, so an unfeatured project stores what it always did.
+    ...(value.featured === true ? { featured: true } : {}),
     hidden: value.hidden === true,
   };
 }

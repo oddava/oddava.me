@@ -120,6 +120,34 @@
   line-height: 1.5;
 }
 
+.admin-project-form__image {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-project-form__image .admin-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-project-form__preview {
+  width: 56px;
+  height: 36px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--radius-sm);
+}
+
+.admin-project-form__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--admin-text-secondary);
+}
+
 .admin-project-form__actions {
   display: flex;
   justify-content: flex-end;
