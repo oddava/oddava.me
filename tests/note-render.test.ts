@@ -182,6 +182,30 @@ describe('renderNoteHtml', () => {
     expect(html).not.toContain('note-tag');
   });
 
+  it('falls back to the title for an image with no alt text', () => {
+    expect(renderNoteHtml('![](/img.png "The harbour at dusk")')).toContain(
+      '<img src="/img.png" alt="The harbour at dusk" title="The harbour at dusk">',
+    );
+  });
+
+  it('marks an image with no description at all as decorative', () => {
+    expect(renderNoteHtml('![](/img.png)')).toContain(
+      '<img src="/img.png" alt="" aria-hidden="true">',
+    );
+    expect(
+      renderNoteHtml(
+        buildImageMarkup({
+          src: '/img.png',
+          alt: '',
+          widthPercent: 50,
+          align: 'center',
+        }),
+      ),
+    ).toContain(
+      'alt="" class="note-image note-image--width-50 note-image--align-center" aria-hidden="true">',
+    );
+  });
+
   it('uses CSP-compatible classes for sized external images and captions', () => {
     const markup = buildImageMarkup({
       src: 'https://images.example/photo.jpg',
