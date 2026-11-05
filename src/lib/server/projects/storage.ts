@@ -58,9 +58,18 @@ export async function readProjects(): Promise<ProjectsResponse> {
   return { projects: decodeProjects(projects), revision: Number(revision) };
 }
 
+/**
+ * The public page's order: featured projects first, then the rest, each group
+ * keeping the order the admin list gives it. The stored list stays in admin
+ * order; only what the page shows is regrouped.
+ */
 export async function readPublicProjects(): Promise<Project[]> {
   const { projects } = await readProjects();
-  return projects.filter((project) => !project.hidden);
+  const shown = projects.filter((project) => !project.hidden);
+  return [
+    ...shown.filter((project) => project.featured),
+    ...shown.filter((project) => !project.featured),
+  ];
 }
 
 // Writes only when the stored revision still matches the one the editor loaded,

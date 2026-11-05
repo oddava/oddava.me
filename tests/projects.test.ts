@@ -242,6 +242,29 @@ describe('projects storage', () => {
     ]);
   });
 
+  it('puts featured projects first, keeping admin order within each group', async () => {
+    const stored = [
+      { ...valid, id: 'a' },
+      { ...valid, id: 'b', featured: true },
+      { ...valid, id: 'c' },
+      { ...valid, id: 'd', featured: true, hidden: true },
+      { ...valid, id: 'e', featured: true },
+    ];
+    redisCommand.mockResolvedValue(['4', JSON.stringify(stored)]);
+    const { readProjects, readPublicProjects } =
+      await import('../src/lib/server/projects');
+    expect((await readPublicProjects()).map((project) => project.id)).toEqual([
+      'b',
+      'e',
+      'a',
+      'c',
+    ]);
+    // The stored list, which the admin edits, keeps its own order.
+    expect(
+      (await readProjects()).projects.map((project) => project.id),
+    ).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
   it('writes through the compare-and-set script and reports conflicts', async () => {
     const { writeProjects } = await import('../src/lib/server/projects');
 
