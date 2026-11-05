@@ -33,7 +33,12 @@ const current = node.id === currentId;
             <path d="m6 4 4 4-4 4" />
           </svg>
           {isImageIcon(node.data.icon ?? '') ? (
-            <img class="note-explorer__icon" src={node.data.icon} alt="" />
+            <img
+              class="note-explorer__icon"
+              src={node.data.icon}
+              alt=""
+              aria-hidden="true"
+            />
           ) : isEmojiIcon(node.data.icon ?? '') ? (
             <SamsungEmoji
               className="note-explorer__icon"
@@ -84,7 +89,12 @@ const current = node.id === currentId;
         data-page-preview-ignore
       >
         {isImageIcon(node.data.icon ?? '') ? (
-          <img class="note-explorer__icon" src={node.data.icon} alt="" />
+          <img
+            class="note-explorer__icon"
+            src={node.data.icon}
+            alt=""
+            aria-hidden="true"
+          />
         ) : isEmojiIcon(node.data.icon ?? '') ? (
           <SamsungEmoji
             className="note-explorer__icon"

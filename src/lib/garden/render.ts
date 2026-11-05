@@ -229,6 +229,16 @@ function renderCaptionWikiLinks(
   );
 }
 
+// An image with no description is decoration as far as a screen reader goes:
+// say so outright rather than leave an empty alt to be guessed at.
+function hideUndescribedImages(html: string): string {
+  return html.replace(/<img\b[^>]*>/gi, (tag) =>
+    /\balt=(["'])\s*\1/i.test(tag) && !/\baria-hidden=/i.test(tag)
+      ? tag.replace(/\s*(\/?>)$/, ' aria-hidden="true"$1')
+      : tag,
+  );
+}
+
 function createRenderer(
   headings: NoteHeading[],
   wikiLinkHrefs?: ReadonlyMap<string, string>,
@@ -270,11 +280,17 @@ function createRenderer(
   // still parse inside the description, but the resulting HTML is stripped
   // back to text before it reaches the alt attribute.
   renderer.image = function image(token: Tokens.Image): string {
-    const alt = this.parser.parseInline(token.tokens).replace(/<[^>]+>/g, '');
+    const description = this.parser
+      .parseInline(token.tokens)
+      .replace(/<[^>]+>/g, '')
+      .trim();
+    // `![](src "title")`: the title is the only description there is.
+    const alt = description || token.title?.trim() || '';
     let html = `<img src="${escapeAttr(token.href)}" alt="${escapeAttr(alt)}"`;
     if (token.title) {
       html += ` title="${escapeAttr(token.title)}"`;
     }
+    if (!alt) html += ' aria-hidden="true"';
     return `${html}>`;
   };
 
@@ -284,7 +300,9 @@ function createRenderer(
   // escaped by the image builder; decoding just each link's target and label
   // before rendering avoids double escaping without reopening arbitrary HTML.
   renderer.html = function html(token: Tokens.HTML): string {
-    return renderCaptionWikiLinks(token.text, wikiLinkHrefs);
+    return hideUndescribedImages(
+      renderCaptionWikiLinks(token.text, wikiLinkHrefs),
+    );
   };
 
   return renderer;

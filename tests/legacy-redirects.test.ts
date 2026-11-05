@@ -99,3 +99,21 @@ describe('legacy slug routes', () => {
     },
   );
 });
+
+describe('static legacy redirects', () => {
+  it.each([
+    ['src/pages/blog/index.astro', "'/notes'"],
+    ['src/pages/garden/index.astro', "'/notes'"],
+    ['src/pages/garden/graph.astro', "'/notes/graph'"],
+  ])('%s answers with a real 301 to %s', async (route, target) => {
+    const source = await readFile(
+      fileURLToPath(new URL(`../${route}`, import.meta.url)),
+      'utf8',
+    );
+
+    // A prerendered Astro.redirect builds to a meta-refresh page served 200,
+    // so these stay on the Worker, where the redirect is a real status.
+    expect(source).not.toContain('prerender = true');
+    expect(source).toContain(`Astro.redirect(${target}, 301)`);
+  });
+});

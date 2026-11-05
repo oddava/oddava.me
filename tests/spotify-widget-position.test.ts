@@ -175,6 +175,11 @@ describe('Spotify widget initial minimized state', () => {
     expect(resolveInitialMinimized(null, false)).toBe(false);
   });
 
+  it('starts minimized on a short docked viewport whatever was stored', () => {
+    expect(resolveInitialMinimized('false', true, true)).toBe(true);
+    expect(resolveInitialMinimized(null, true, true)).toBe(true);
+  });
+
   it('treats corrupted stored values as no preference', () => {
     expect(resolveInitialMinimized('garbage', true)).toBe(true);
     expect(resolveInitialMinimized('garbage', false)).toBe(false);

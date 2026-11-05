@@ -3,6 +3,7 @@ import {
   MINIMIZED_STORAGE_KEY,
   MOBILE_MINIMIZE_QUERY,
   resolveInitialMinimized,
+  SHORT_DOCK_QUERY,
 } from './minimizedState';
 
 function readInitialMinimized(): boolean {
@@ -12,6 +13,7 @@ function readInitialMinimized(): boolean {
     return resolveInitialMinimized(
       localStorage.getItem(MINIMIZED_STORAGE_KEY),
       window.matchMedia(MOBILE_MINIMIZE_QUERY).matches,
+      window.matchMedia(SHORT_DOCK_QUERY).matches,
     );
   } catch {
     return false;

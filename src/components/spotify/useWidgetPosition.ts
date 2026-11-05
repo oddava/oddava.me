@@ -23,15 +23,17 @@ interface UseWidgetPositionOptions {
 const CLICK_MOVEMENT_THRESHOLD = 10;
 const CLICK_SUPPRESSION_MS = 300;
 
-function currentDefaultPosition() {
+function isSmallViewport(): boolean {
   // client:only, so window exists; matchMedia can still throw in odd embeds.
   try {
-    return defaultWidgetPosition(
-      window.matchMedia(MOBILE_MINIMIZE_QUERY).matches,
-    );
+    return window.matchMedia(MOBILE_MINIMIZE_QUERY).matches;
   } catch {
-    return defaultWidgetPosition(false);
+    return false;
   }
+}
+
+function currentDefaultPosition() {
+  return defaultWidgetPosition(isSmallViewport());
 }
 
 function suppressClicks(preventClickRef: { current: boolean }) {
@@ -46,6 +48,10 @@ export function useWidgetPosition({
   onExpandFromDrag,
 }: UseWidgetPositionOptions) {
   const widgetRef = useRef<HTMLDivElement>(null);
+  // On a phone the widget is docked: pinned to its corner, not draggable, and
+  // deaf to a position saved on a wider screen. A free strip could otherwise be
+  // left on top of the homepage nav, which is the one thing it must not cover.
+  const [isDocked, setIsDocked] = useState(isSmallViewport);
   const [position, setPosition] = useState(currentDefaultPosition);
   const [isDragging, setIsDragging] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -60,6 +66,26 @@ export function useWidgetPosition({
   }, [position]);
 
   useEffect(() => {
+    let query: MediaQueryList;
+    try {
+      query = window.matchMedia(MOBILE_MINIMIZE_QUERY);
+    } catch {
+      return;
+    }
+    const handleChange = () => setIsDocked(query.matches);
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (isDocked) {
+      setIsDragging(false);
+      const next = defaultWidgetPosition(true);
+      positionRef.current = next;
+      setPosition(next);
+      return;
+    }
+
     // Reading localStorage can throw when storage is blocked (private mode,
     // hardened settings). Never let that crash the whole widget island.
     let savedPosition: string | null = null;
@@ -104,10 +130,11 @@ export function useWidgetPosition({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [isDocked]);
 
   const handlePointerDown = useCallback(
     (event: TargetedPointerEvent<HTMLElement>) => {
+      if (isDocked) return;
       if ((event.target as HTMLElement).closest('[data-no-drag]')) return;
 
       const currentTarget = event.currentTarget as HTMLElement;
@@ -124,7 +151,7 @@ export function useWidgetPosition({
       };
       initialPointerRef.current = { x: event.clientX, y: event.clientY };
     },
-    [],
+    [isDocked],
   );
 
   // A layout effect runs in the same microtask as the pointerdown re-render,
@@ -204,35 +231,40 @@ export function useWidgetPosition({
     };
   }, [isDragging, isMinimized, onExpandFromDrag]);
 
-  const nudgeBy = useCallback((deltaX: number, deltaY: number) => {
-    setPosition((current) => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      // `offset*` is measured from the anchored edge, so a right/bottom anchor
-      // grows the offset in the opposite direction to the visual nudge. Flip the
-      // delta for those edges so arrow keys always move the widget the way they
-      // point — otherwise ArrowDown moves the default (bottom-anchored) widget up.
-      const directionX = current.edgeX === 'right' ? -1 : 1;
-      const directionY = current.edgeY === 'bottom' ? -1 : 1;
-      const next = clampWidgetPosition(
-        {
-          ...current,
-          offsetX: current.offsetX + deltaX * directionX,
-          offsetY: current.offsetY + deltaY * directionY,
-        },
-        { width, height },
-      );
-      positionRef.current = next;
-      try {
-        localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* Ignore storage failures. */
-      }
-      return next;
-    });
-  }, []);
+  const nudgeBy = useCallback(
+    (deltaX: number, deltaY: number) => {
+      if (isDocked) return;
+      setPosition((current) => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        // `offset*` is measured from the anchored edge, so a right/bottom anchor
+        // grows the offset in the opposite direction to the visual nudge. Flip the
+        // delta for those edges so arrow keys always move the widget the way they
+        // point — otherwise ArrowDown moves the default (bottom-anchored) widget up.
+        const directionX = current.edgeX === 'right' ? -1 : 1;
+        const directionY = current.edgeY === 'bottom' ? -1 : 1;
+        const next = clampWidgetPosition(
+          {
+            ...current,
+            offsetX: current.offsetX + deltaX * directionX,
+            offsetY: current.offsetY + deltaY * directionY,
+          },
+          { width, height },
+        );
+        positionRef.current = next;
+        try {
+          localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          /* Ignore storage failures. */
+        }
+        return next;
+      });
+    },
+    [isDocked],
+  );
 
   const resetPosition = useCallback(() => {
+    if (isDocked) return;
     const next = clampWidgetPosition(currentDefaultPosition(), {
       width: window.innerWidth,
       height: window.innerHeight,
@@ -244,10 +276,11 @@ export function useWidgetPosition({
     } catch {
       /* Ignore storage failures. */
     }
-  }, []);
+  }, [isDocked]);
 
   return {
     handlePointerDown,
+    isDocked,
     isDragging,
     nudgeBy,
     preventClickRef,
