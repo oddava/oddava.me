@@ -28,22 +28,20 @@ import { bump, clamp } from './spring';
 
 /**
  * Wires the cat to the page. The cat lives on a canvas behind the type, at
- * home on a hairline along the bottom of the screen, and goes anywhere else
- * on platforms of light it conjures as it lands. Each frame it picks one
- * goal, in priority order: a page it was asked about (hover, focus), a spot
- * it leapt or was dropped to, or whatever it felt like doing next — wander,
- * sit, loaf, a visit to the name. Shake the cursor and it leaps at it; grab
- * it and it dangles. The mind (moods, blinks, the slow-blink exchange), the
- * body (walking, jumping) and its life between (habits, ears, tail) are
+ * home on a hairline along the bottom of its world (the hero band on home,
+ * the screen on the status pages), and goes anywhere else on platforms of
+ * light it conjures as it lands. Each frame it picks one goal, in priority
+ * order: a header page it was asked about (hover, focus), a spot it leapt or
+ * was dropped to, or whatever it felt like doing next — wander, sit, loaf, a
+ * visit to the name. Shake the cursor and it leaps at it; grab it and it
+ * dangles. The mind (moods, blinks, the slow-blink exchange), the body
+ * (walking, jumping) and its life between (habits, ears, tail) are
  * pure; this file is the glue.
  */
 
-type Interest =
-  | { kind: 'nav'; el: HTMLAnchorElement }
-  | { kind: 'contact' | 'point'; x: number; y: number };
+type Interest = { kind: 'nav'; el: HTMLAnchorElement };
 
 const NAV_LINGER = 2600;
-const NAV_DELAY = 320;
 /** How long it stays up on a platform with nothing going on. */
 const PLATFORM_STAY = 6500;
 const LEAP_COOLDOWN = 1100;
@@ -81,19 +79,36 @@ export function mountAwake(root: HTMLElement) {
   const navLinks = [
     ...document.querySelectorAll<HTMLAnchorElement>('[data-home-nav]'),
   ];
-  const contactLinks = [
-    ...document.querySelectorAll<HTMLAnchorElement>('.awake-contact a'),
-  ];
   const dimEl = $<HTMLElement>('[data-awake-dim]');
   const live = $<HTMLElement>('[data-awake-live]');
   const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
   const coarse = matchMedia('(pointer: coarse)').matches;
   const now = () => performance.now();
 
+  // The cat's world. On home it is a band at the top of the page — the header
+  // and the hero, ending on the floor — that scrolls away with them; on the
+  // status pages it is the whole screen. Every coordinate below is local to
+  // it, so scrolling the page never moves a surface.
+  const band = $<HTMLElement>('[data-awake-band]');
+  let onScreen = true;
+  function fitBand() {
+    if (!band) return;
+    const bottom =
+      root.getBoundingClientRect().bottom - band.getBoundingClientRect().top;
+    band.style.height = `${Math.round(bottom)}px`;
+  }
+  const frameBox = () =>
+    band?.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+  fitBand();
+  let { width, height } = frameBox();
+  /** A client point in the band's coordinates. */
+  const local = (x: number, y: number): Vec => {
+    const b = frameBox();
+    return [x - b.left, y - b.top];
+  };
+
   const sky = createSky(skyCanvas, fxCanvas);
-  let ctx = fit(catCanvas, innerWidth, innerHeight);
-  let width = innerWidth;
-  let height = innerHeight;
+  let ctx = fit(catCanvas, width, height);
 
   // ---------- measuring the page ----------
 
@@ -120,7 +135,11 @@ export function mountAwake(root: HTMLElement) {
     );
     const style = getComputedStyle(perchEl!);
     const range = document.createRange();
-    let wordBox = perchEl!.getBoundingClientRect();
+    // Client boxes, moved into the band's coordinates.
+    const frame = frameBox();
+    const at = (r: DOMRect) =>
+      new DOMRect(r.left - frame.left, r.top - frame.top, r.width, r.height);
+    let wordBox = at(perchEl!.getBoundingClientRect());
     let restX = wordBox.left + wordBox.width / 2;
     let inkTop = wordBox.top + wordBox.height * 0.2;
     if (text) {
@@ -128,13 +147,13 @@ export function mountAwake(root: HTMLElement) {
       const word = text.data.trim();
       range.setStart(text, start);
       range.setEnd(text, start + word.length);
-      wordBox = range.getBoundingClientRect();
+      wordBox = at(range.getBoundingClientRect());
       // Sit on the tall letters ("dd"), where the ascenders give a ledge.
       const tall = word.indexOf('dd');
       if (tall >= 0) {
         range.setStart(text, start + tall);
         range.setEnd(text, start + tall + 2);
-        const box = range.getBoundingClientRect();
+        const box = at(range.getBoundingClientRect());
         restX = box.left + box.width / 2;
         measureCanvas.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
         const m = measureCanvas.measureText('dd');
@@ -152,8 +171,8 @@ export function mountAwake(root: HTMLElement) {
       // Inset so a cat at the end still has room for its whiskers.
       ground: {
         x0: 4 + 30 * scale,
-        x1: innerWidth - 4 - 30 * scale,
-        y: groundEl!.getBoundingClientRect().top + 0.5,
+        x1: width - 4 - 30 * scale,
+        y: at(groundEl!.getBoundingClientRect()).top + 0.5,
       },
     };
     // A resize must not strand the cat on a platform now off screen.
@@ -161,7 +180,7 @@ export function mountAwake(root: HTMLElement) {
     for (const [id, p] of platforms) {
       const half = (p.x1 - p.x0) / 2;
       const cx = Math.min(
-        innerWidth - half - 6,
+        width - half - 6,
         Math.max(half + 6, (p.x0 + p.x1) / 2),
       );
       p.x0 = cx - half;
@@ -171,7 +190,7 @@ export function mountAwake(root: HTMLElement) {
     }
     navAt = new Map(
       navLinks.map((link) => {
-        const r = link.getBoundingClientRect();
+        const r = at(link.getBoundingClientRect());
         return [link, [r.left + r.width / 2, r.top + r.height / 2]];
       }),
     );
@@ -185,7 +204,7 @@ export function mountAwake(root: HTMLElement) {
     surfaces,
     {
       surface: 'ground',
-      x: innerWidth * 0.3,
+      x: width * 0.3,
       pose: reduced() ? 'sit' : 'loaf',
     },
     scale,
@@ -212,7 +231,6 @@ export function mountAwake(root: HTMLElement) {
     x: number;
     until: number;
   } | null = null;
-  let pounceNav: HTMLAnchorElement | null = null;
   let tiltUntil = 0;
   let typed = '';
   let petFocus = false;
@@ -268,9 +286,24 @@ export function mountAwake(root: HTMLElement) {
     const over = Boolean(lastSkeleton && inside(lastSkeleton, x, y, 6));
     if (over !== hoverCat) {
       hoverCat = over;
-      root.style.cursor = over ? 'pointer' : '';
+      document.body.style.cursor = over ? 'pointer' : '';
     }
     run();
+  }
+
+  function leave() {
+    pointer = null;
+    if (hoverCat) {
+      hoverCat = false;
+      document.body.style.cursor = '';
+    }
+  }
+
+  /** Follow a client point, or let it go once it leaves the band. */
+  function follow(clientX: number, clientY: number) {
+    const [x, y] = local(clientX, clientY);
+    if (drag?.on || (y >= 0 && y <= height)) track(x, y);
+    else leave();
   }
 
   function setNav(link: HTMLAnchorElement | null, linger = NAV_LINGER) {
@@ -283,13 +316,6 @@ export function mountAwake(root: HTMLElement) {
       navUntil = now() + linger;
       interestUntil = now() + 900;
     }
-    stir();
-    refresh();
-  }
-
-  function look(kind: 'contact' | 'point', x: number, y: number, ms: number) {
-    interest = { kind, x, y };
-    interestUntil = ms === Infinity ? Infinity : now() + ms;
     stir();
     refresh();
   }
@@ -335,22 +361,16 @@ export function mountAwake(root: HTMLElement) {
     'pointermove',
     (e) => {
       if (e.pointerType === 'touch') return;
-      track(e.clientX, e.clientY);
+      follow(e.clientX, e.clientY);
     },
     { passive: true },
   );
   document.addEventListener('pointerout', (e) => {
-    if (!e.relatedTarget) {
-      pointer = null;
-      if (hoverCat) {
-        hoverCat = false;
-        root.style.cursor = '';
-      }
-    }
+    if (!e.relatedTarget) leave();
   });
   const onTouch = (e: TouchEvent) => {
     const touch = e.touches[0];
-    if (touch) track(touch.clientX, touch.clientY);
+    if (touch) follow(touch.clientX, touch.clientY);
   };
   addEventListener('touchstart', onTouch, { passive: true });
   addEventListener('touchmove', onTouch, { passive: true });
@@ -371,8 +391,11 @@ export function mountAwake(root: HTMLElement) {
   addEventListener(
     'scroll',
     () => {
-      measure();
-      body.setSurfaces(surfaces, scale);
+      // The band scrolls with the page, so its surfaces stay put in it.
+      if (!band) {
+        measure();
+        body.setSurfaces(surfaces, scale);
+      }
       stir();
     },
     { passive: true },
@@ -390,49 +413,14 @@ export function mountAwake(root: HTMLElement) {
     link.addEventListener('blur', () => {
       if (navTarget === link) setNav(null);
     });
-    link.addEventListener('click', (e) => {
-      if (
-        reduced() ||
-        e.defaultPrevented ||
-        e.button !== 0 ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey
-      )
-        return;
-      e.preventDefault();
-      pounceNav = link;
-      setNav(link);
-      // Lit for the beat before the page goes, so a tap visibly lands.
-      link.classList.add('is-chosen');
-      run();
-      const href = link.href;
-      setTimeout(() => location.assign(href), NAV_DELAY);
-    });
-  }
-  for (const link of contactLinks) {
-    const at = () => {
-      const r = link.getBoundingClientRect();
-      const x = r.left + r.width / 2;
-      life.hear(x < body.x ? -1 : 1, now());
-      look('contact', x, r.top + r.height / 2, Infinity);
-    };
-    link.addEventListener('pointerenter', at);
-    link.addEventListener('focus', at);
-    const off = () => {
-      if (interest?.kind === 'contact') interestUntil = now() + 500;
-    };
-    link.addEventListener('pointerleave', off);
-    link.addEventListener('blur', off);
   }
   // Clicks and taps: grab or pet the cat, or send it to the spot.
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     const target = e.target as Element | null;
     if (target?.closest('a, button')) return;
-    const x = e.clientX;
-    const y = e.clientY;
+    const [x, y] = local(e.clientX, e.clientY);
+    if (y < 0 || y > height) return;
     if (lastSkeleton && inside(lastSkeleton, x, y, coarse ? 14 : 4)) {
       // Pressed on the cat: a drag picks it up, a click pets it. No text
       // selection while carrying it across the page.
@@ -486,8 +474,6 @@ export function mountAwake(root: HTMLElement) {
 
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted) return;
-    for (const link of navLinks) link.classList.remove('is-chosen');
-    pounceNav = null;
     navTarget = null;
     sent = null;
     drag = null;
@@ -608,7 +594,7 @@ export function mountAwake(root: HTMLElement) {
   catCanvas.style.opacity = '1';
 
   function run() {
-    if (!frame && !document.hidden && !reduced()) {
+    if (!frame && !document.hidden && onScreen && !reduced()) {
       last = now();
       frame = requestAnimationFrame(tick);
     }
@@ -676,18 +662,17 @@ export function mountAwake(root: HTMLElement) {
     if (navTarget && t > navUntil) navTarget = null;
     const centre = width / 2;
 
-    if (pounceNav || navTarget) {
-      const link = (pounceNav ?? navTarget)!;
-      const x = navAt.get(link)?.[0] ?? centre;
+    // Under the page you are pointing at, looking up at it.
+    if (navTarget) {
+      const x = navAt.get(navTarget)?.[0] ?? centre;
       whim = null;
       return {
         goal: {
           surface: 'ground',
           x,
-          rest: pounceNav ? 'crouch' : 'sit',
+          rest: 'sit',
           hurry: true,
           float: true,
-          pounce: Boolean(pounceNav) && body.surface === 'ground',
           face: x < centre - 4 ? 1 : x > centre + 4 ? -1 : undefined,
         },
       };
@@ -727,10 +712,7 @@ export function mountAwake(root: HTMLElement) {
 
   function lookTarget(t: number, sk: Skeleton | null): Vec | null {
     if (interest && t > interestUntil) interest = null;
-    if (interest) {
-      if (interest.kind === 'nav') return navAt.get(interest.el) ?? null;
-      return [interest.x, interest.y];
-    }
+    if (interest) return navAt.get(interest.el) ?? null;
     // A moving pointer wins; a resting one is watched until something
     // else catches its eye.
     if (pointer && (t - pointer.t < 1500 || hoverCat))
@@ -825,7 +807,6 @@ export function mountAwake(root: HTMLElement) {
       lastDust = t;
       sky.dust(body.x, body.y - 30 * scale, 1, 18);
     }
-    if (pounceNav && body.mode === 'rest') pounceNav = null;
     // Platforms it has left dissolve into dust.
     for (const [id, p] of platforms) {
       const used =
@@ -1122,20 +1103,12 @@ export function mountAwake(root: HTMLElement) {
       lastDraw = t;
     }
 
-    for (const link of navLinks)
-      link.classList.toggle(
-        'is-near',
-        body.surface === 'ground' &&
-          body.mode === 'rest' &&
-          Math.abs((navAt.get(link)?.[0] ?? -1e4) - body.x) < 30 * scale,
-      );
-
     // DOM writes only when the value changes: each one costs a style pass.
     dim += ((out.dim ? 0.1 : 0) - dim) * ease(out.dim ? 0.6 : 5);
     const dimText = dim < 0.002 ? '0' : dim.toFixed(2);
     if (dimEl && dimText !== lastDim) dimEl.style.opacity = lastDim = dimText;
     sky.frame(t, dt, false);
-    if (!document.hidden) frame = requestAnimationFrame(tick);
+    if (!document.hidden && onScreen) frame = requestAnimationFrame(tick);
   }
 
   let dirty: Skeleton['box'][] = [];
@@ -1216,11 +1189,11 @@ export function mountAwake(root: HTMLElement) {
   // ---------- lifecycle ----------
 
   function relayout() {
-    width = innerWidth;
-    height = innerHeight;
+    fitBand();
+    ({ width, height } = frameBox());
     ctx = fit(catCanvas!, width, height);
     dirty = [];
-    sky.resize();
+    sky.resize(width, height);
     measure();
     body.setSurfaces(surfaces, scale);
     if (reduced()) staticFrame();
@@ -1258,7 +1231,18 @@ export function mountAwake(root: HTMLElement) {
     else run();
   });
 
-  sky.resize();
+  // Scrolled past, the band rests like a hidden tab: no frames drawn.
+  if (band)
+    new IntersectionObserver(([entry]) => {
+      onScreen = Boolean(entry?.isIntersecting);
+      if (onScreen) refresh();
+      else {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    }).observe(band);
+
+  sky.resize(width, height);
   if (reduced()) staticFrame();
   else run();
 }

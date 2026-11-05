@@ -172,9 +172,10 @@ export function createSky(
     box[3] = Math.max(box[3], y + pad);
   };
 
-  function resize() {
-    w = window.innerWidth;
-    h = window.innerHeight;
+  /** Fit both canvases to the cat's world, `width` by `height` CSS px. */
+  function resize(width: number, height: number) {
+    w = width;
+    h = height;
     sky = fit(skyCanvas, w, h);
     fx = fit(fxCanvas, w, h);
     stars = makeStars(w, h);

@@ -1,11 +1,13 @@
 /* ===================================================
    Awake — the home page cat.
 
-   The page is plain type: the name, the tagline, the contacts, and the two
-   pages under a hairline floor. The cat lives on a canvas behind the type and
-   moves between two surfaces the mount script measures: the top of the name
-   (its perch) and the floor. Without script the page is simply the type.
-   Site palette only: black, the brand blues, the text greys, hairlines.
+   The hero is plain type: the name and the tagline over a hairline floor.
+   The cat lives on a canvas behind the type and moves between two surfaces
+   the mount script measures: the top of the name (its perch) and the floor.
+   On home its world is a band — header and hero — that scrolls away with
+   them; on the status pages it is the whole screen. Without script the page
+   is simply the type. Site palette only: black, the brand blues, the text
+   greys, hairlines.
    =================================================== */
 
 .awake {
@@ -28,13 +30,43 @@ html:has(.awake) {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Home has no scroll and no header to keep in step with other pages. */
-html:has(.awake:not(.status-page)) {
-  scrollbar-gutter: auto;
-}
-
 body:has(.awake) {
   overflow-x: clip;
+}
+
+/* ---------- the band (home) ---------- */
+
+/* From the top of the page to the hero's floor. mount.ts fits its height to
+   the hero once it can measure; until then it is roughly that tall, and its
+   black is the page's own, so the fit never shows. */
+.awake-band {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 78svh;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.awake-band .awake-sky,
+.awake-band .awake-cat,
+.awake-band .awake-fx,
+.awake-band .awake-dim {
+  position: absolute;
+}
+
+/* The horizon the hero ends on; the page below it is ground. */
+.awake-band .awake-ground {
+  position: absolute;
+  bottom: 0;
+}
+
+/* The hero: most of a first screen under the header, never all of it, so
+   the sections below show there is more. The bottom padding is the cat's
+   room on the floor. */
+.awake--band {
+  flex: none;
+  min-height: max(20rem, calc(78svh - 4rem));
+  padding: 1.5rem 0 7rem;
 }
 
 /* ---------- sky ---------- */
@@ -123,36 +155,7 @@ body:has(.awake) {
   overflow-wrap: break-word;
 }
 
-.awake-contact {
-  display: flex;
-  justify-content: center;
-  gap: 0.15rem;
-  margin: 0.6rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.awake-contact a {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  color: var(--color-text-muted);
-  transition: color 150ms ease;
-}
-
-.awake-contact a:hover,
-.awake-contact a:focus-visible {
-  color: var(--color-text-interactive-hover);
-}
-
-.awake-contact a:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
-}
-
-/* ---------- the floor and the pages ---------- */
+/* ---------- the floor ---------- */
 
 /* The cat's home: a hairline of horizon along the bottom of the screen. */
 .awake-ground {
@@ -171,60 +174,6 @@ body:has(.awake) {
     transparent
   );
   animation: awake-floor 900ms 700ms var(--awake-ease) backwards;
-}
-
-/* The pages, as a rail: three equal cells standing on a short piece of the
-   floor. Equal cells keep the link centres mount.ts measures evenly spaced. */
-.awake-nav {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(3, 7rem);
-  margin-top: 1.5rem;
-}
-
-.awake-nav::before {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  background: var(--hairline-floor);
-  pointer-events: none;
-  animation: awake-floor 700ms 780ms var(--awake-ease) backwards;
-}
-
-.awake-nav__link {
-  height: 2.75rem;
-  padding-bottom: 0.6875rem;
-  font-size: 0.875rem;
-  letter-spacing: 0.01em;
-}
-
-.awake-nav__link::after {
-  inset: auto 0.5rem 0;
-}
-
-/* The cat on the floor below has glanced at this one: a tick, never the
-   full segment, so it never looks like the cat chose it. */
-.awake-nav__link.is-near {
-  color: var(--color-text-primary);
-}
-
-.awake-nav__link.is-near::after {
-  transform: scaleX(0.18);
-}
-
-/* Hand and press outrank the glance. */
-.awake-nav__link.is-near:is(:hover, :focus-visible, :active, .is-chosen) {
-  color: var(--color-text-interactive-hover);
-}
-
-.awake-nav__link.is-near:is(
-    :hover,
-    :focus-visible,
-    :active,
-    .is-chosen
-  )::after {
-  transform: none;
 }
 
 /* The cat is reachable by keyboard; the canvas draws the focus ring. */
@@ -253,13 +202,9 @@ body:has(.awake) {
     padding: 4rem 0 5.5rem;
   }
 
-  .awake-nav {
-    grid-template-columns: repeat(3, 6.25rem);
-    margin-top: 1.75rem;
-  }
-
-  .awake-nav__link {
-    height: 3rem;
+  .awake--band {
+    min-height: max(20rem, calc(68svh - 3.375rem));
+    padding: 1rem 0 6rem;
   }
 }
 
@@ -277,22 +222,6 @@ body:has(.awake) {
 
 .awake-in--tagline {
   animation-delay: 520ms;
-}
-
-.awake-in--contact {
-  animation-delay: 620ms;
-}
-
-.awake-in--nav1 {
-  animation-delay: 860ms;
-}
-
-.awake-in--nav2 {
-  animation-delay: 940ms;
-}
-
-.awake-in--nav3 {
-  animation-delay: 1020ms;
 }
 
 @keyframes awake-rise {
@@ -321,6 +250,7 @@ body:has(.awake) {
 
 @media (prefers-reduced-motion: reduce) {
   .awake *,
+  .awake-band *,
   .awake-sky,
   .awake-sky * {
     animation: none !important;
@@ -338,14 +268,5 @@ body:has(.awake) {
 
   .awake-ground {
     display: none;
-  }
-
-  .awake-nav::before {
-    background: CanvasText;
-  }
-
-  .awake-nav__link,
-  .awake-contact a {
-    color: LinkText;
   }
 }
