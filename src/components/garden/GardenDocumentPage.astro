@@ -15,7 +15,7 @@ import { deriveNoteGraph } from '@lib/garden/graph';
 import { describeConnections, noteNeighbourIds } from '@lib/garden/wayfinder';
 import '../../styles/components/_note-prose.css';
 import NotePageIcon from '../NotePageIcon';
-import { notesGraphUrl } from '@lib/notes-url';
+import { notesGraphUrl, notesIndexUrl } from '@lib/notes-url';
 
 interface Props {
   document: GardenDocument;
@@ -72,6 +72,7 @@ const neighbourCount = noteNeighbourIds(document, index).length;
               data={deriveNoteGraph(index, document.id)}
               globalData={deriveNoteGraph(index)}
               currentId={document.id}
+              rootHref={notesIndexUrl()}
             />
           </div>
         )

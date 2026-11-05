@@ -4,6 +4,7 @@ import InteractiveGraph from '../../components/garden/InteractiveGraph';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { deriveNoteGraph } from '@lib/garden/graph';
 import { isNotesHostRequest } from '@lib/server/core';
+import { notesIndexUrl } from '@lib/notes-url';
 
 export const prerender = false;
 const garden = await getGardenIndexOrUnavailable();
@@ -17,7 +18,12 @@ const data = deriveNoteGraph(garden.index);
   fontPreloads={isNotesHostRequest(Astro.url) ? 'body' : 'all'}
 >
   <h1 class="sr-only">Graph of notes</h1>
-  <InteractiveGraph client:load data={data} fullPage />
+  <InteractiveGraph
+    client:load
+    data={data}
+    fullPage
+    rootHref={notesIndexUrl()}
+  />
   <noscript>
     <p>The interactive graph needs JavaScript. Browse the notes:</p>
     <ul>

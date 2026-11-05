@@ -6,24 +6,24 @@ export type PublicNavigationRoute = {
 
 import { notesGraphUrl, notesIndexUrl } from './notes-url';
 
-export const NOTES_GRAPH_PATH = notesGraphUrl();
-
-const PUBLIC_NAVIGATION_ROUTES = [
-  { href: '/', label: 'oddava', isHome: true },
-  { href: '/projects', label: 'projects', isHome: false },
-  { href: notesIndexUrl(), label: 'notes', isHome: false },
-  { href: '/about', label: 'about', isHome: false },
-] as const satisfies readonly PublicNavigationRoute[];
-
-const EXTRA_STATIC_SITEMAP_PATHS = ['/links', NOTES_GRAPH_PATH] as const;
+// Built on each call: notes links depend on the request's notes base.
+function publicNavigationRoutes(): PublicNavigationRoute[] {
+  return [
+    { href: '/', label: 'oddava', isHome: true },
+    { href: '/projects', label: 'projects', isHome: false },
+    { href: notesIndexUrl(), label: 'notes', isHome: false },
+    { href: '/about', label: 'about', isHome: false },
+  ];
+}
 
 export function getPublicNavigationRoutes(): PublicNavigationRoute[] {
-  return PUBLIC_NAVIGATION_ROUTES.map((route) => ({ ...route }));
+  return publicNavigationRoutes();
 }
 
 export function getStaticSitemapPaths(): string[] {
   return [
-    ...PUBLIC_NAVIGATION_ROUTES.map((route) => route.href),
-    ...EXTRA_STATIC_SITEMAP_PATHS,
+    ...publicNavigationRoutes().map((route) => route.href),
+    '/links',
+    notesGraphUrl(),
   ];
 }

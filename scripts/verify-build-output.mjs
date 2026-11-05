@@ -48,6 +48,10 @@ for (const filePath of htmlFiles) {
   if (/\sstyle\s*=/i.test(html)) {
     failures.push(`${relativePath}: contains a blocked inline style attribute`);
   }
+  const canonical = /<link rel="canonical" href="([^"]+)"/i.exec(html)?.[1];
+  if (canonical && /\.html$/i.test(canonical)) {
+    failures.push(`${relativePath}: canonical names the .html file`);
+  }
   if (isRedirect && /<(?:script|style)\b/i.test(html)) {
     failures.push(`${relativePath}: redirect contains executable content`);
   }

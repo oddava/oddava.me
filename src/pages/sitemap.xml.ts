@@ -4,32 +4,45 @@
 // shared edge cache unless the code explicitly uses the Cache API).
 import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '../lib/garden';
-import { siteUrl } from '../lib/site';
+import { notesGraphUrl, notesIndexUrl } from '../lib/notes-url';
+import { isNotesHostRequest } from '../lib/server/core';
+import { SITE_URL } from '../lib/site';
 import { getStaticSitemapPaths } from '../lib/site-routes';
 
-function makeEntry(path: string, lastModified?: string): string {
+function makeEntry(
+  origin: string,
+  path: string,
+  lastModified?: string,
+): string {
   return `
   <url>
-    <loc>${siteUrl(path)}</loc>
+    <loc>${new URL(path, origin).toString()}</loc>
     ${lastModified ? `<lastmod>${new Date(lastModified).toISOString()}</lastmod>` : ''}
   </url>`;
 }
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ url }) => {
   // Through the same guard every /notes page uses. Publishing a sitemap of
   // static paths only, while the note routes themselves answer 503, would
   // advertise a garden that is not there.
   const garden = await getGardenIndexOrUnavailable();
   if (!garden.ok) return garden.response;
 
+  // The notes host lists the garden only, on its own origin; the apex lists
+  // its pages and the notes as before.
+  const onNotesHost = isNotesHostRequest(url);
+  const origin = onNotesHost ? url.origin : SITE_URL;
+  const staticPaths = onNotesHost
+    ? [notesIndexUrl(), notesGraphUrl()]
+    : getStaticSitemapPaths();
   const entriesByPath = new Map(
-    getStaticSitemapPaths().map((path) => [path, makeEntry(path)]),
+    staticPaths.map((path) => [path, makeEntry(origin, path)]),
   );
 
   for (const document of garden.index.documents) {
     entriesByPath.set(
       document.href,
-      makeEntry(document.href, document.updated || undefined),
+      makeEntry(origin, document.href, document.updated || undefined),
     );
   }
 

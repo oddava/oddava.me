@@ -28,11 +28,67 @@ On the notes host:
 | `/<path>`, `/tag/<tag>`, `/folder/<path>`, `/graph`                       | the matching `/notes/…` route                                |
 | `/notes`, `/notes/<path>`                                                 | 301 to the same path without `/notes`                        |
 | `/_astro/*`, `/fonts/*`, `/images/*`, `/og/*`, `/api/notes/search`, icons | shared with the apex, unchanged                              |
+| `/rss.xml`, `/sitemap.xml`, `/robots.txt`                                 | the notes host's own versions (below)                        |
 | anything else (`/about`, `/admin`, `/api/admin/…`)                        | treated as a note path, so a 404 unless a note has that name |
 
-Links rendered in notes still say `/notes/…`, because `NOTES_BASE` in
-`src/lib/notes-url.ts` is unchanged. On the notes host each one costs a 301
-hop until the base points at the notes host (step 1.3).
+## Links, feeds and canonicals
+
+Every notes link comes from `src/lib/notes-url.ts`, and its base depends on
+the request:
+
+- **On the notes host**, links are root-relative (`/reading`, `/tag/books`,
+  `/graph`), so no click goes through the `/notes` redirect. That covers
+  rendered pages, wikilinks, tags, redirect `Location`s, the search API's
+  results and the graph island.
+- **Everywhere else** they use `NOTES_DEFAULT_BASE`: `PUBLIC_NOTES_BASE` at
+  build time, or `/notes` when it is unset (today, and in production).
+
+| Variable            | Read                  | Unset                              | Set                                                        |
+| ------------------- | --------------------- | ---------------------------------- | ---------------------------------------------------------- |
+| `NOTES_HOST`        | at runtime (`env.ts`) | dev: `notes.localhost`; prod: none | the hostname that serves the garden at its root            |
+| `PUBLIC_NOTES_BASE` | at build / dev start  | `/notes`                           | where the apex links notes, e.g. `https://notes.oddava.me` |
+
+`PUBLIC_NOTES_BASE` is a build-time variable on purpose: prerendered pages
+(the home page's nav, `/links`) and client islands bake it in, so it has to be
+the same value the server uses. To try the cut-over locally, start dev with
+`PUBLIC_NOTES_BASE=http://notes.localhost:4321` and the apex's notes links
+point at the notes host. Do not set it in production before step 1.5.
+
+The per-request base is an `AsyncLocalStorage` context
+(`src/lib/server/core/notes-host.ts`) that the Worker entry opens for every
+notes-host request. A module global would leak between concurrent requests in
+one isolate. The garden index cache keeps one index per base, because every
+href in it is built with the base of the request that built it.
+
+On the notes host:
+
+- **`/rss.xml`** is the same feed with every link on the notes origin.
+- **`/sitemap.xml`** lists the garden only (the root, `/graph`, every note),
+  on the notes origin. `/sitemap-index.xml` is apex-only; there it is a 404.
+- **`/robots.txt`** allows everything but `/api/` and names that sitemap.
+  `public/robots.txt` became `src/pages/robots.txt.ts`; the apex text is
+  unchanged.
+- **The canonical, `og:url` and `og:image`** use the notes origin and the path
+  visitors see (`/reading`, not `/notes/reading`).
+
+The apex feeds, sitemap and robots are unchanged. One fix fell out of the
+canonical work: prerendered apex pages used to name `/about.html` (and
+`/index.html`) as their canonical; they now name `/about` and `/`.
+`scripts/verify-build-output.mjs` fails on a `.html` canonical.
+
+## Reserved note names
+
+On the notes host a note lives at the root, so some top-level names can't be
+notes: the paths shared with the apex (`api`, `fonts`, `images`, `og`), the
+notes host's own routes (`folder`, `graph`, `notes`, `tag`) and the prerendered
+apex routes (`about`, `blog`, `garden`, `links`). `RESERVED_NOTE_ROOT_NAMES`
+in `src/lib/server/content/registry.ts` lists them. Studio and the notes API
+refuse to create, rename or move a top-level note or folder onto one, with
+`reserved_name` / `reserved_path`. Names with a dot or underscore are never
+valid slugs, so they need no entry. A note that already has a reserved name
+stays readable and editable where it is. `tests/reserved-note-names.test.ts`
+derives the set from `public/`, the prerendered routes and the notes host's
+mapping, and fails when a name is missing.
 
 The notes shell (`src/layouts/NotesLayout.astro`):
 
@@ -88,15 +144,22 @@ they are the notes routes, not apex pages.
   custom domain on the `oddava-me` Worker and set the `NOTES_HOST` variable.
   The apex domain is configured in the dashboard, not in `wrangler.jsonc`, so
   check there before adding routes to the file.
-- **Canonical and `og:url`** on the notes host still name `oddava.me/notes/…`
-  (the rewritten path). That is intended while it soaks; step 1.5 switches it.
-- **Search engines**: with the canonical on the apex, the notes host is a
-  duplicate. Keep it unlinked until 1.5, or send `noindex`.
-- **Reserved note names**: on the notes host, a top-level note named `_astro`,
-  `fonts`, `images`, `og` or `api`, or named like a file in `public/`, is
-  hidden by that path. The content registry should reject those names (1.3).
-- **`robots.txt`, `sitemap-index.xml`, `rss.xml`** are the apex files on the
-  notes host for now; per-host versions are 1.3.
+- **Duplicate content while it soaks.** Each host names itself as the
+  canonical, so from the moment the domain is attached, every note exists at
+  two canonical URLs (`oddava.me/notes/x` and `notes.oddava.me/x`) until 1.5
+  301s the apex. Either keep the soak short, or have the apex's notes pages
+  name the notes host as their canonical during it.
+- **Check production for existing reserved names** before attaching. Run
+  `pnpm run notes:export -- --target=prod` (read-only, into the export
+  tree; review it, don't migrate from it) and look for top-level notes or
+  folders named like the list above. They stay readable on the apex, but on the
+  notes host `fonts`, `images`, `og` and `api` would be hidden by shared paths.
+- **Authored `/notes/…` links** inside note bodies are not rewritten. On the
+  notes host they still work through the 301.
+- **`PUBLIC_NOTES_BASE` must stay unset** in the production build until 1.5;
+  setting it moves every apex notes link at once.
+- **`robots.txt` is now rendered by the Worker** on the apex as well, with
+  `Cache-Control: public, max-age=3600` instead of the asset default.
 - **Studio, `/admin` and the notes API** stay on the apex. Their session
   cookie is host-only, so they would not work on the notes host anyway.
 - **Each new prerendered page** must be added to `run_worker_first`; the test

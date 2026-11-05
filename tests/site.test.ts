@@ -3,7 +3,6 @@ import { SITE_URL, siteUrl } from '../src/lib/site';
 import {
   getPublicNavigationRoutes,
   getStaticSitemapPaths,
-  NOTES_GRAPH_PATH,
 } from '../src/lib/site-routes';
 
 describe('site metadata helpers', () => {
@@ -20,9 +19,8 @@ describe('site metadata helpers', () => {
     );
 
     expect(sitemapPaths).toEqual(
-      expect.arrayContaining([...navigationPaths, '/links', NOTES_GRAPH_PATH]),
+      expect.arrayContaining([...navigationPaths, '/links', '/notes/graph']),
     );
-    expect(NOTES_GRAPH_PATH).toBe('/notes/graph');
     expect(sitemapPaths).not.toContain('/likes');
   });
 });

@@ -990,3 +990,134 @@ describe('folder summaries', () => {
     ]);
   });
 });
+
+describe('reserved top-level note names', () => {
+  async function seeded() {
+    const provider = new MemoryContentProvider();
+    await provider.writeTextFile(
+      'src/content/notes/index.md',
+      '# notes',
+      'seed',
+    );
+    return provider;
+  }
+
+  it('refuses a new top-level note or folder with a reserved name', async () => {
+    const provider = await seeded();
+    const note = await handleContentCollection(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes', {
+        slug: 'about',
+        fields: {},
+        body: '# about',
+      }),
+    );
+    expect(note.status).toBe(400);
+    await expect(note.json()).resolves.toMatchObject({
+      code: 'reserved_name',
+    });
+
+    const folder = await handleContentFolders(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/folders', {
+        path: 'images',
+      }),
+    );
+    expect(folder.status).toBe(400);
+    await expect(folder.json()).resolves.toMatchObject({
+      code: 'reserved_name',
+    });
+    expect(provider.files.has('src/content/notes/about.md')).toBe(false);
+  });
+
+  it('allows the same name inside a folder', async () => {
+    const provider = await seeded();
+    await provider.createDirectory('src/content/notes/reading', 'mkdir');
+    const created = await handleContentCollection(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes', {
+        slug: 'about',
+        folder: 'reading',
+        fields: {},
+        body: '# about',
+      }),
+    );
+    expect(created.status).toBe(201);
+  });
+
+  it('refuses moving or renaming a note onto a reserved name', async () => {
+    const provider = await seeded();
+    await provider.writeTextFile(
+      'src/content/notes/hello.md',
+      '# hello',
+      'seed',
+    );
+    const page = provider.files.get('src/content/notes/hello.md')!;
+    const renamed = await handleContentMove(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/move', {
+        id: 'hello',
+        nextId: 'graph',
+        folder: '',
+        revision: page.revision,
+      }),
+    );
+    expect(renamed.status).toBe(400);
+    await expect(renamed.json()).resolves.toMatchObject({
+      code: 'reserved_name',
+    });
+  });
+
+  it('refuses renaming a folder onto a reserved name', async () => {
+    const provider = await seeded();
+    await handleContentFolders(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/folders', {
+        path: 'reading',
+      }),
+    );
+    const moved = await handleContentFolders(
+      provider,
+      'notes',
+      jsonRequest(
+        'PATCH',
+        'https://oddava.me/api/admin/content/notes/folders',
+        {
+          path: 'reading',
+          nextPath: 'fonts',
+        },
+      ),
+    );
+    expect(moved.status).toBe(400);
+    await expect(moved.json()).resolves.toMatchObject({
+      code: 'reserved_name',
+    });
+  });
+
+  it('keeps an existing reserved-name note editable where it is', async () => {
+    const provider = await seeded();
+    await provider.writeTextFile(
+      'src/content/notes/links.md',
+      '# links',
+      'seed',
+    );
+    const page = provider.files.get('src/content/notes/links.md')!;
+    // Same place, same name: not a new claim on the name.
+    const kept = await handleContentMove(
+      provider,
+      'notes',
+      jsonRequest('POST', 'https://oddava.me/api/admin/content/notes/move', {
+        id: 'links',
+        nextId: 'links',
+        folder: '',
+        revision: page.revision,
+      }),
+    );
+    expect(kept.status).not.toBe(400);
+  });
+});

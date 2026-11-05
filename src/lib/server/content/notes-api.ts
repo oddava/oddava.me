@@ -19,7 +19,7 @@ import {
   isValidSlug,
   sourcePath,
 } from './paths';
-import { NOTES_COLLECTION } from './registry';
+import { claimsReservedNoteRoot, NOTES_COLLECTION } from './registry';
 import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError, ContentNotFoundError } from './types';
 import type { ContentSourceFile } from './types';
@@ -97,6 +97,17 @@ function invalidPath(): Response {
       error:
         'Path must be a lowercase kebab-case note, like diary/hello.md. Folders and the file name use letters, numbers, and hyphens.',
       code: 'invalid_path',
+    },
+    { status: 400 },
+  );
+}
+
+function reservedPath(): Response {
+  return json(
+    {
+      error:
+        'That name is reserved at the top of the notes. Choose another, or put the note inside a folder.',
+      code: 'reserved_path',
     },
     { status: 400 },
   );
@@ -311,6 +322,7 @@ export async function handleCreateNote(
 
   const resolved = resolveNotePath(body.path);
   if (!resolved) return invalidPath();
+  if (claimsReservedNoteRoot(resolved)) return reservedPath();
   const retired = await retiredResponse(provider, resolved.publicPath, {
     write: true,
   });
@@ -601,6 +613,7 @@ export async function handleMoveNote(
   if (!source || !target) return invalidPath();
   if (isGardenRoot(source) || isGardenRoot(target)) return rootNoteResponse();
   if (source.storePath === target.storePath) return samePathResponse();
+  if (claimsReservedNoteRoot(target, source)) return reservedPath();
 
   const existing = await provider.readFile(source.storePath);
   if (!existing || existing.encoding !== 'utf8') {

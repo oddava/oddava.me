@@ -1,5 +1,7 @@
 ---
 import DocumentTheme from './DocumentTheme.astro';
+import { notesHostPathFor } from '../lib/notes-host';
+import { isNotesHostRequest } from '../lib/server/core';
 import {
   SITE_AUTHOR_NAME,
   SITE_DESCRIPTION,
@@ -39,8 +41,19 @@ const {
 const pageTitle = title === SITE_NAME ? SITE_TITLE : `${title} | ${SITE_NAME}`;
 // Pin canonical to the site origin + pathname so trailing-slash drift
 // (and dev/preview host drift) cannot split the canonical from production.
-const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
-const socialImage = new URL(image, Astro.site ?? Astro.url).href;
+// On the notes host the page renders at its in-app `/notes/…` path; the
+// canonical is the path visitors see there, on that origin. Prerendered pages
+// render as `about.html` / `index.html`, which is not the URL they are served
+// at, so the file suffix is dropped.
+const onNotesHost = isNotesHostRequest(Astro.url);
+const canonicalOrigin = onNotesHost
+  ? Astro.url.origin
+  : (Astro.site ?? Astro.url);
+const canonicalPath = onNotesHost
+  ? notesHostPathFor(Astro.url.pathname)
+  : Astro.url.pathname.replace(/(?:^|\/)index\.html$|\.html$/, '') || '/';
+const canonicalUrl = new URL(canonicalPath, canonicalOrigin).href;
+const socialImage = new URL(image, canonicalOrigin).href;
 // Lets search engines show the site name and tie the profiles to one person.
 const structuredData =
   Astro.url.pathname === '/'

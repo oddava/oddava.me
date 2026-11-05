@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createNotesUrls,
   isNotesRoute,
-  NOTES_BASE,
+  NOTES_DEFAULT_BASE,
   NOTES_ROUTE_PREFIX,
   notesFolderUrl,
   notesGraphUrl,
@@ -18,7 +18,7 @@ import { noteHrefFromSourceId } from '../src/lib/garden/utils';
 describe('notes URL helper (default base)', () => {
   it('points at the in-app note routes', () => {
     expect(NOTES_ROUTE_PREFIX).toBe('/notes');
-    expect(NOTES_BASE).toBe('/notes');
+    expect(NOTES_DEFAULT_BASE).toBe('/notes');
   });
 
   it('builds the root without a trailing slash', () => {

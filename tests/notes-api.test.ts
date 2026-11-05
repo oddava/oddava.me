@@ -1445,3 +1445,37 @@ describe('notes API route', () => {
     expect(lock).not.toHaveBeenCalled();
   });
 });
+
+describe('notes API reserved names', () => {
+  it('refuses to create or move a note onto a reserved top-level name', async () => {
+    const provider = new MemoryContentProvider();
+    const created = await handleCreateNote(
+      provider.asProvider(),
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'og.md',
+        content: '# og',
+      }),
+    );
+    expect(created.status).toBe(400);
+    expect(await bodyOf(created)).toMatchObject({ code: 'reserved_path' });
+
+    const nested = await handleCreateNote(
+      provider.asProvider(),
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'diary/og.md',
+        content: '# og',
+      }),
+    );
+    expect(nested.status).toBe(201);
+
+    const moved = await handleMoveNote(
+      provider.asProvider(),
+      request('POST', `${ORIGIN}/api/notes/move`, {
+        from: 'diary/og.md',
+        to: 'api/og.md',
+      }),
+    );
+    expect(moved.status).toBe(400);
+    expect(await bodyOf(moved)).toMatchObject({ code: 'reserved_path' });
+  });
+});

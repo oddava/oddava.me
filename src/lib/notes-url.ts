@@ -7,8 +7,11 @@
  * Two different things are named here:
  * - `NOTES_ROUTE_PREFIX` is where the note pages live in this app's router.
  *   Checks on an incoming request's pathname use it.
- * - `NOTES_BASE` is where links point. Today it is the same path; later it
- *   can be an absolute origin, while the routes themselves stay put.
+ * - The base is where links point. `NOTES_DEFAULT_BASE` comes from
+ *   `PUBLIC_NOTES_BASE` at build time (default `/notes`), so prerendered
+ *   pages, client islands and server renders agree. A request served on the
+ *   notes host overrides it with `''` (root-relative links), through the hook
+ *   in `setNotesBaseOverride`; see src/lib/server/core/notes-host.ts.
  *
  * Paths are not percent-encoded: note paths are slugs, and changing them here
  * would change every published URL. Tags allow only `[a-zA-Z0-9_/-]`, so
@@ -17,8 +20,27 @@
 
 export const NOTES_ROUTE_PREFIX = '/notes';
 
-/** Where note links point: a root-relative path or an absolute origin. */
-export const NOTES_BASE: string = NOTES_ROUTE_PREFIX;
+/**
+ * Where note links point unless a request overrides it: a root-relative path
+ * (`/notes`) or an absolute origin (`https://notes.oddava.me`).
+ */
+export const NOTES_DEFAULT_BASE: string =
+  import.meta.env.PUBLIC_NOTES_BASE?.trim() || NOTES_ROUTE_PREFIX;
+
+let readBaseOverride: () => string | undefined = () => undefined;
+
+/**
+ * Lets server code supply a per-request base. This module is also bundled
+ * into client islands, so it cannot read request state itself.
+ */
+export function setNotesBaseOverride(read: () => string | undefined): void {
+  readBaseOverride = read;
+}
+
+/** The base links use right now: the request's override, else the default. */
+export function currentNotesBase(): string {
+  return readBaseOverride() ?? NOTES_DEFAULT_BASE;
+}
 
 export interface NotesUrls {
   /** The garden's root note. */
@@ -64,13 +86,14 @@ export function createNotesUrls(base: string): NotesUrls {
   };
 }
 
-const notesUrls = createNotesUrls(NOTES_BASE);
+// Resolved per call, not once: the base can differ between requests.
+const urls = () => createNotesUrls(currentNotesBase());
 
-export const notesIndexUrl = notesUrls.index;
-export const noteUrl = notesUrls.note;
-export const notesTagUrl = notesUrls.tag;
-export const notesFolderUrl = notesUrls.folder;
-export const notesGraphUrl = notesUrls.graph;
+export const notesIndexUrl = (): string => urls().index();
+export const noteUrl = (path: string): string => urls().note(path);
+export const notesTagUrl = (tag: string): string => urls().tag(tag);
+export const notesFolderUrl = (path: string): string => urls().folder(path);
+export const notesGraphUrl = (place?: string): string => urls().graph(place);
 
 /** Whether a request pathname is one of this app's note routes. */
 export function isNotesRoute(pathname: string): boolean {

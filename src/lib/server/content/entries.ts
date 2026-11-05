@@ -29,6 +29,7 @@ import {
   revisionRequired,
   slugExists,
   validationError,
+  reservedName,
 } from './http';
 import {
   entryFolderFromPath,
@@ -38,7 +39,11 @@ import {
   slugify,
   sourcePath,
 } from './paths';
-import { getContentCollection, NOTES_COLLECTION } from './registry';
+import {
+  claimsReservedNoteRoot,
+  getContentCollection,
+  NOTES_COLLECTION,
+} from './registry';
 import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError } from './types';
 import type {
@@ -139,6 +144,7 @@ export async function handleContentCollection(
 
   const folder = normalizeFolderPath(body.folder ?? '');
   if (!isValidFolderPath(folder)) return invalidFolder();
+  if (claimsReservedNoteRoot({ folder, slug })) return reservedName();
   if (!(await folderExists(store, collection, folder))) {
     return folderNotFound('Choose a folder that still exists.');
   }
@@ -341,6 +347,14 @@ export async function handleContentMove(
     existing.path,
     collection.sourceDir,
   );
+  if (
+    claimsReservedNoteRoot(
+      { folder, slug: nextId },
+      operation === 'move' ? { folder: currentFolder, slug: id } : undefined,
+    )
+  ) {
+    return reservedName();
+  }
   if (operation === 'duplicate' && nextId === id) {
     return slugExists('Choose a new file name for the copy.');
   }

@@ -25,9 +25,10 @@ import {
   methodNotAllowed,
   missingCollection,
   slugExists,
+  reservedName,
 } from './http';
 import { isValidFolderPath, normalizeFolderPath, sourcePath } from './paths';
-import { getContentCollection } from './registry';
+import { claimsReservedNoteRoot, getContentCollection } from './registry';
 import { ContentConflictError } from './types';
 import type { ContentCollectionDefinition, ContentProvider } from './types';
 
@@ -249,6 +250,7 @@ export async function handleContentFolders(
   if (!folder || !isValidFolderPath(folder, false)) return invalidFolder();
 
   if (request.method === 'POST') {
+    if (claimsReservedNoteRoot({ folder })) return reservedName();
     if (await folderExists(store, collection, folder)) {
       if (body.ensure === true)
         return adminJson({ folders: await readFolders(store, collection) });
@@ -320,6 +322,9 @@ export async function handleContentFolders(
     }
     if (nextFolder === folder) {
       return adminJson({ folders: await readFolders(store, collection) });
+    }
+    if (claimsReservedNoteRoot({ folder: nextFolder }, { folder })) {
+      return reservedName();
     }
     if (nextFolder.startsWith(`${folder}/`)) {
       return invalidFolderMove('A folder cannot be moved inside itself.');

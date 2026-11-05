@@ -35,6 +35,17 @@ export function invalidSlug(): Response {
   );
 }
 
+export function reservedName(): Response {
+  return adminJson(
+    {
+      error:
+        'That name is reserved at the top of the notes. Choose another, or put it inside a folder.',
+      code: 'reserved_name',
+    },
+    { status: 400 },
+  );
+}
+
 export function invalidFolder(): Response {
   return adminJson(
     {

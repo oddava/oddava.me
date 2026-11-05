@@ -10,6 +10,11 @@ type Props = {
   globalData?: NoteGraphData;
   currentId?: string;
   fullPage?: boolean;
+  /**
+   * The garden root, from the server: islands cannot see the request, so on
+   * the notes host only the server knows links there are root-relative.
+   */
+  rootHref?: string;
 };
 
 export default function InteractiveGraph({
@@ -17,6 +22,7 @@ export default function InteractiveGraph({
   globalData,
   currentId,
   fullPage = false,
+  rootHref = notesIndexUrl(),
 }: Props) {
   const helpId = useId();
   const slot = useRef<HTMLDivElement>(null);
@@ -31,7 +37,7 @@ export default function InteractiveGraph({
   const globalEngine = useRef<ReturnType<typeof mountGraph>>();
   const [expanded, setExpanded] = useState(false);
   const [ready, setReady] = useState(false);
-  const [returnHref, setReturnHref] = useState(notesIndexUrl());
+  const [returnHref, setReturnHref] = useState(rootHref);
   const [focused, setFocused] = useState<string | null>(null);
 
   /** Where the surface grows from and sinks back to: the sidebar graph. */
@@ -134,7 +140,7 @@ export default function InteractiveGraph({
           undefined)
         : undefined);
     setReturnHref(
-      data.nodes.find((node) => node.id === originId)?.href ?? notesIndexUrl(),
+      data.nodes.find((node) => node.id === originId)?.href ?? rootHref,
     );
     engine.current = mountGraph(canvas.current!, data, originId, setFocused);
     setReady(true);

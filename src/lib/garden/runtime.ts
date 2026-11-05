@@ -1,3 +1,4 @@
+import { currentNotesBase } from '../notes-url';
 import { noteDataSchema } from '../content/schemas';
 import {
   parseContentDocument,
@@ -33,7 +34,13 @@ async function loadNoteSources(): Promise<NoteSource[]> {
   });
 }
 
-let cachedGardenIndex: { version: string; index: GardenIndex } | null = null;
+// One index per notes base: every href in it is built with the base of the
+// request that built it, and the notes host links root-relative while the
+// apex links under `/notes`.
+const cachedGardenIndexes = new Map<
+  string,
+  { version: string; index: GardenIndex }
+>();
 
 const STABLE_READ_ATTEMPTS = 20;
 const STABLE_READ_RETRY_MS = 100;
@@ -52,6 +59,8 @@ export async function readPublicNoteRetirement(): Promise<
 }
 
 export async function getGardenIndex(): Promise<GardenIndex> {
+  const base = currentNotesBase();
+  const cachedGardenIndex = cachedGardenIndexes.get(base);
   // The index must be built from one stable snapshot. The mutation
   // lock covers compound Studio operations; checking the version again after
   // the build also catches a write that began between the first check and the
@@ -88,7 +97,7 @@ export async function getGardenIndex(): Promise<GardenIndex> {
       throw error;
     }
     if (confirmedVersion === version) {
-      cachedGardenIndex = { version, index };
+      cachedGardenIndexes.set(base, { version, index });
       return index;
     }
     await delay(STABLE_READ_RETRY_MS);

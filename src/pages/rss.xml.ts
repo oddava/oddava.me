@@ -4,8 +4,8 @@
 // shared edge cache unless the code explicitly uses the Cache API).
 import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '../lib/garden';
-import { isStorageUnavailableError } from '../lib/server/core';
-import { NOTES_DESCRIPTION, SITE_NAME, SITE_URL, siteUrl } from '../lib/site';
+import { isStorageUnavailableError, publicOriginFor } from '../lib/server/core';
+import { NOTES_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
 
 function escapeXml(value: string): string {
   return value
@@ -16,7 +16,10 @@ function escapeXml(value: string): string {
     .replaceAll("'", '&apos;');
 }
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ url: requestUrl }) => {
+  // The apex feed names oddava.me; the notes host's feed names itself.
+  const origin = publicOriginFor(requestUrl, SITE_URL);
+  const absolute = (path: string) => new URL(path, origin).toString();
   // The garden index is already sorted most-recent first and carries a derived
   // title / summary and a git-based updated date, so the feed reads straight
   // from it — no separate post metadata to keep in sync.
@@ -42,7 +45,7 @@ export const GET: APIRoute = async () => {
   const items = documents
     .filter((document) => document.id !== 'index')
     .map((document) => {
-      const url = siteUrl(document.href);
+      const url = absolute(document.href);
       const published = document.updated || '1970-01-01';
       return `
         <item>
@@ -59,9 +62,9 @@ export const GET: APIRoute = async () => {
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${SITE_NAME} | notes</title>
-    <link>${SITE_URL}</link>
+    <link>${origin}</link>
     <description>${escapeXml(NOTES_DESCRIPTION)}</description>
-    <atom:link href="${siteUrl('/rss.xml')}" rel="self" type="application/rss+xml" />
+    <atom:link href="${absolute('/rss.xml')}" rel="self" type="application/rss+xml" />
     ${items}
   </channel>
 </rss>`;

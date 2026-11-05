@@ -19,6 +19,10 @@ export const DEV_NOTES_HOST = 'notes.localhost';
 const SHARED_PREFIXES = ['/_astro/', '/fonts/', '/images/', '/og/'] as const;
 const SHARED_PATHS = new Set([
   '/api/notes/search',
+  // Host-aware endpoints: each answers for the host it is asked on.
+  '/robots.txt',
+  '/rss.xml',
+  '/sitemap.xml',
   '/apple-touch-icon.png',
   '/favicon.ico',
   '/favicon.svg',
@@ -67,8 +71,8 @@ export function mapNotesHostPath(pathname: string): NotesHostDecision {
     return { kind: 'pass' };
   }
 
-  // Links still point at `/notes/…` (NOTES_BASE is unchanged), so on this
-  // host they redirect to the same note without the prefix.
+  // Links rendered on this host are root-relative already; old and authored
+  // `/notes/…` links redirect to the same note without the prefix.
   if (pathname === NOTES_ROUTE_PREFIX)
     return { kind: 'redirect', location: '/' };
   if (pathname.startsWith(`${NOTES_ROUTE_PREFIX}/`)) {
@@ -90,4 +94,27 @@ export function mapNotesHostPath(pathname: string): NotesHostDecision {
 export function apexOriginFor(url: URL): string {
   const host = url.host.replace(/^notes\./i, '');
   return `${url.protocol}//${host}`;
+}
+
+/**
+ * The inverse of `mapNotesHostPath` for a served note route: the path a
+ * visitor sees on the notes host (`/notes/x` → `/x`, `/notes` → `/`).
+ */
+export function notesHostPathFor(routePath: string): string {
+  if (routePath === NOTES_ROUTE_PREFIX) return '/';
+  if (routePath.startsWith(`${NOTES_ROUTE_PREFIX}/`)) {
+    return routePath.slice(NOTES_ROUTE_PREFIX.length);
+  }
+  return routePath;
+}
+
+/** The top-level path segments the notes host does not treat as notes. */
+export function notesHostSharedRoots(): string[] {
+  return [
+    ...new Set(
+      [...SHARED_PREFIXES, ...SHARED_PATHS].map(
+        (path) => path.split('/')[1] ?? '',
+      ),
+    ),
+  ];
 }

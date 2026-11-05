@@ -12,6 +12,7 @@ const handle = vi.hoisted(() =>
 vi.mock('@astrojs/cloudflare/handler', () => ({ handle }));
 
 const { default: worker } = await import('../src/worker');
+const { noteUrl } = await import('../src/lib/notes-url');
 
 function fetchVia(url: string): Promise<Response> {
   return worker.fetch(
@@ -146,6 +147,22 @@ describe('worker entry', () => {
     expect(await note.text()).toBe(
       'http://notes.localhost:4321/notes/reading/books',
     );
+  });
+
+  it('renders notes-host requests with root-relative note links', async () => {
+    handle.mockImplementation(async () => new Response(noteUrl('reading')));
+    try {
+      expect(
+        await (await fetchVia('http://notes.localhost:4321/x')).text(),
+      ).toBe('/reading');
+      expect(await (await fetchVia('http://localhost:4321/x')).text()).toBe(
+        '/notes/reading',
+      );
+    } finally {
+      handle.mockImplementation(
+        async (request: Request) => new Response(new URL(request.url).href),
+      );
+    }
   });
 
   it('redirects /notes paths on the notes host without calling Astro', async () => {
