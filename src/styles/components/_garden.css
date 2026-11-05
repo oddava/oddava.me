@@ -739,11 +739,6 @@ details[open] > summary > .note-wayfinder__chevron {
 .note-wayfinder__crumb + .note-wayfinder__crumb::before {
   content: '/';
   margin-inline: 0.45em;
-  opacity: 0.45;
-}
-
-.note-wayfinder__crumb--gap {
-  opacity: 0.7;
 }
 
 .note-wayfinder__here {

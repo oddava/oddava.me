@@ -12,7 +12,6 @@
    (plus a little bleed), and the secondary links sit above it. */
 .project {
   position: relative;
-  transition: opacity 240ms ease;
 }
 
 .project + .project {
@@ -63,6 +62,7 @@
 
 .project__name a {
   color: var(--color-text-primary);
+  transition: color 240ms ease;
 }
 
 .project__name a::after {
@@ -120,6 +120,7 @@
   line-height: 1.6;
   color: var(--color-text-secondary);
   text-wrap: pretty;
+  transition: color 240ms ease;
 }
 
 .project__meta {
@@ -145,7 +146,7 @@
 
 .project__stack {
   gap: 0 0.75rem;
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
 }
 
 .project__links {
@@ -192,9 +193,14 @@
   transform: translate(1px, -1px);
 }
 
+/* The rows not in hand step back to the muted ink, never below it: an
+   opacity fade took their text under the contrast floor. Meta, year, and
+   links are muted already, so only the name and description move. */
 @media (hover: hover) {
-  .projects:has(.project:hover) .project:not(:hover) {
-    opacity: 0.5;
+  .projects:has(.project:hover)
+    .project:not(:hover)
+    :is(.project__name a, .project__description) {
+    color: var(--color-text-muted);
   }
 }
 

@@ -69,7 +69,7 @@
 
 .guestbook__field input::placeholder,
 .guestbook__field textarea::placeholder {
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   opacity: 1;
 }
 
