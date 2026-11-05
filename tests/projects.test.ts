@@ -84,6 +84,61 @@ describe('parseProjects', () => {
     expect(parseProjects(many).ok).toBe(false);
   });
 
+  it('keeps an image and featured, writing featured only when true', () => {
+    const result = parseProjects([
+      {
+        ...valid,
+        id: 'a',
+        image: {
+          src: '/images/notes/projects/shot-1a2b.png',
+          alt: ' the studio editor ',
+        },
+        featured: true,
+      },
+      {
+        ...valid,
+        id: 'b',
+        image: { src: 'https://cdn.example.com/cover.webp', alt: 'cover' },
+        featured: false,
+      },
+      { ...valid, id: 'c', image: { src: ' ', alt: 'ignored' } },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const [a, b, c] = result.projects;
+    expect(a.image).toEqual({
+      src: '/images/notes/projects/shot-1a2b.png',
+      alt: 'the studio editor',
+    });
+    expect(a.featured).toBe(true);
+    expect(b.image?.src).toBe('https://cdn.example.com/cover.webp');
+    expect('featured' in b).toBe(false);
+    expect('image' in c).toBe(false);
+  });
+
+  it.each([
+    ['http://example.com/a.png', 'a'],
+    ['javascript:alert(1)', 'a'],
+    ['/images/notes/../secret.png', 'a'],
+    ['/images/notes//a.png', 'a'],
+    ['/images/notes/projects/a.svg', 'a'],
+    ['/elsewhere/a.png', 'a'],
+    ['/images/notes/projects/a.png', ''],
+    ['/images/notes/projects/a.png', 'x'.repeat(161)],
+  ])('rejects image src %j with alt %j', (src, alt) => {
+    const result = parseProjects([{ ...valid, image: { src, alt } }]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues.every((issue) => issue.path[1] === 'image')).toBe(
+      true,
+    );
+  });
+
+  it('rejects an image that is not an object', () => {
+    const result = parseProjects([{ ...valid, image: 'a.png' }]);
+    expect(!result.ok && result.issues[0].path).toEqual([0, 'image']);
+  });
+
   it('accepts its own defaults', () => {
     expect(parseProjects(structuredClone([...DEFAULT_PROJECTS]))).toEqual({
       ok: true,
@@ -127,6 +182,53 @@ describe('projects storage', () => {
     const { projects, revision } = await readProjects();
     expect(revision).toBe(4);
     expect(projects.map((project) => project.id)).toEqual(['oddava-me']);
+  });
+
+  it('loads a list stored before images and featured existed, unchanged', async () => {
+    // Exactly what a pre-image save wrote: every field, `hidden` always set.
+    const stored = [
+      {
+        id: 'oddava-me',
+        name: 'oddava.me',
+        description: 'this site.',
+        year: 2026,
+        stack: ['astro'],
+        source: 'https://github.com/oddava/oddava.me',
+        hidden: false,
+      },
+      {
+        id: 'ishbay',
+        name: 'Ishbay',
+        description: 'payroll.',
+        year: 'now',
+        stack: [],
+        site: 'https://ishbay.com',
+        hidden: true,
+      },
+    ];
+    redisCommand.mockResolvedValue(['7', JSON.stringify(stored)]);
+    const { readProjects, readPublicProjects } =
+      await import('../src/lib/server/projects');
+    expect(await readProjects()).toEqual({ projects: stored, revision: 7 });
+    expect((await readPublicProjects()).map((project) => project.id)).toEqual([
+      'oddava-me',
+    ]);
+  });
+
+  it('round-trips a stored image and featured flag', async () => {
+    const project = {
+      ...valid,
+      name: 'oddava.me',
+      stack: ['astro'],
+      image: { src: '/images/notes/projects/shot.png', alt: 'the site' },
+      featured: true,
+      hidden: false,
+    };
+    redisCommand.mockResolvedValue(['2', JSON.stringify([project])]);
+    const { readProjects } = await import('../src/lib/server/projects');
+    const [read] = (await readProjects()).projects;
+    expect(read.image).toEqual(project.image);
+    expect(read.featured).toBe(true);
   });
 
   it('leaves hidden projects off the public list', async () => {
@@ -231,6 +333,18 @@ describe('PUT /api/admin/projects', () => {
     expect(result.body.error).toBe('Name is required.');
     expect(result.body.issues[0].path).toEqual([0, 'name']);
     expect(writeProjects).not.toHaveBeenCalled();
+  });
+
+  it('saves an image and featured flag through the same compare-and-set', async () => {
+    writeProjects.mockResolvedValue({ ok: true, revision: 2 });
+    const image = { src: '/images/notes/projects/shot.png', alt: 'the site' };
+    const result = await put({
+      revision: 1,
+      projects: [{ ...valid, image, featured: true }],
+    });
+    expect(result.status).toBe(200);
+    expect(result.body.projects[0]).toMatchObject({ image, featured: true });
+    expect(writeProjects).toHaveBeenCalledWith(result.body.projects, 1);
   });
 
   it('requires a numeric revision', async () => {

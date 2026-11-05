@@ -215,8 +215,20 @@ export interface Project {
   stack: string[];
   site?: string;
   source?: string;
+  /**
+   * A screenshot or cover. `src` is a site-relative media-store path
+   * (`/images/notes/…`, uploaded from the admin) or an absolute https URL.
+   */
+  image?: ProjectImage;
+  /** Marked for prominence. Absent means not featured; lists stored before this field load unchanged. */
+  featured?: boolean;
   /** Kept in the admin list but left off the public page. */
   hidden: boolean;
+}
+
+export interface ProjectImage {
+  src: string;
+  alt: string;
 }
 
 export interface ProjectsResponse {
