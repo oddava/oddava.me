@@ -76,8 +76,7 @@ const pageHref = (label: string) =>
     </NoteShelves>
   </section>
 
-  <p class="home-elsewhere">
-    <span class="home-elsewhere__label">elsewhere</span>
+  <p class="home-links" aria-label="contact and feeds">
     {
       contacts.map((link) => {
         const isExternal = link.url.startsWith('http');

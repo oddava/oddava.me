@@ -61,11 +61,11 @@ body:has(.awake) {
 }
 
 /* The hero: most of a first screen under the header, never all of it — the
-   project strip below already stands in view on the horizon. The bottom
+   top of the project strip still stands in view on the horizon. The bottom
    padding is the cat's room on the floor. */
 .awake--band {
   flex: none;
-  min-height: max(20rem, calc(64svh - 4rem));
+  min-height: max(22rem, calc(76svh - 4rem));
   padding: 1.5rem 0 7rem;
 }
 
@@ -203,7 +203,7 @@ body:has(.awake) {
   }
 
   .awake--band {
-    min-height: max(19rem, calc(58svh - 3.375rem));
+    min-height: max(20rem, calc(68svh - 3.375rem));
     padding: 1rem 0 6rem;
   }
 }

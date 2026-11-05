@@ -2,7 +2,7 @@
    HOME — the horizon and what stands on it.
 
    Under the hero's floor the work starts at once: the start of the /projects
-   gallery, then the garden by topic, then one line of elsewhere and the cat
+   gallery, then the garden by topic, then one row of links and the cat
    asleep at the end of the page. Everything anchors on the reading column's
    left edge and runs out to the right, the way the strip does.
    =================================================== */
@@ -297,9 +297,9 @@
   }
 }
 
-/* --- Elsewhere: one line, then the floor --- */
+/* --- Links: one quiet row, then the floor --- */
 
-.home-elsewhere {
+.home-links {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -310,16 +310,12 @@
   line-height: 2;
 }
 
-.home-elsewhere__label {
-  color: var(--color-text-muted);
-}
-
-.home-elsewhere a {
+.home-links a {
   color: var(--color-text-secondary);
 }
 
-.home-elsewhere a:hover,
-.home-elsewhere a:focus-visible {
+.home-links a:hover,
+.home-links a:focus-visible {
   color: var(--color-text-interactive-hover);
 }
 
@@ -332,7 +328,7 @@
     margin-top: 3.25rem;
   }
 
-  .home-elsewhere {
+  .home-links {
     margin-top: 3.5rem;
   }
 }
