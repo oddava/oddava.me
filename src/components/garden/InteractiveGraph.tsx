@@ -106,11 +106,6 @@ export default function InteractiveGraph({
       const button = global ? globalButton.current : expandButton.current;
       if (button?.getClientRects().length)
         button.focus({ preventScroll: true });
-      else
-        slot.current
-          ?.closest('.note-context')
-          ?.querySelector<HTMLAnchorElement>('.note-context__graph-link')
-          ?.focus({ preventScroll: true });
     });
   }
 

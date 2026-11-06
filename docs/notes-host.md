@@ -26,7 +26,7 @@ On the notes host:
 | Path                                                                      | Answer                                                       |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `/`                                                                       | the garden root (`/notes` inside the app)                    |
-| `/<path>`, `/tag/<tag>`, `/folder/<path>`, `/graph`                       | the matching `/notes/…` route                                |
+| `/<path>`, `/tag/<tag>`, `/folder/<path>`                                 | the matching `/notes/…` route                                |
 | `/notes`, `/notes/<path>`                                                 | 301 to the same path without `/notes`                        |
 | `/_astro/*`, `/fonts/*`, `/images/*`, `/og/*`, `/api/notes/search`, icons | shared with the apex, unchanged                              |
 | `/rss.xml`, `/sitemap.xml`, `/robots.txt`                                 | the notes host's own versions (below)                        |
@@ -37,8 +37,8 @@ On the notes host:
 Every notes link comes from `src/lib/notes-url.ts`, and its base depends on
 the request:
 
-- **On the notes host**, links are root-relative (`/reading`, `/tag/books`,
-  `/graph`), so no click goes through the `/notes` redirect. That covers
+- **On the notes host**, links are root-relative (`/reading`, `/tag/books`),
+  so no click goes through the `/notes` redirect. That covers
   rendered pages, wikilinks, tags, redirect `Location`s, the search API's
   results and the graph island.
 - **Everywhere else** they use `NOTES_DEFAULT_BASE`: `PUBLIC_NOTES_BASE` at
@@ -64,7 +64,7 @@ href in it is built with the base of the request that built it.
 On the notes host:
 
 - **`/rss.xml`** is the same feed with every link on the notes origin.
-- **`/sitemap.xml`** lists the garden only (the root, `/graph`, every note),
+- **`/sitemap.xml`** lists the garden only (the root and every note),
   on the notes origin. `/sitemap-index.xml` is apex-only; there it is a 404.
 - **`/robots.txt`** allows everything but `/api/` and names that sitemap.
   `public/robots.txt` became `src/pages/robots.txt.ts`; the apex text is
@@ -93,12 +93,11 @@ mapping, and fails when a name is missing.
 
 The notes shell (`src/layouts/NotesLayout.astro`):
 
-- has its own header: `oddava` (back to the apex) `/ notes`, a graph link and
-  search;
+- has its own header: a blue `oddava` wordmark (back to the apex) and search;
 - has no music widget and no sky;
 - preloads one font face (regular body) instead of three;
-- leaves the live graph off note pages (the rail island embeds the whole
-  garden's graph in every note); the graph is its own page at `/graph`.
+- keeps the live graph in each note's rail, as the apex does. There is no
+  graph page: `/graph` answers with a 301 to the root.
 
 The apex keeps the old layout for `/notes/*`.
 

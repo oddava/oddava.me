@@ -19,7 +19,7 @@ describe('site metadata helpers', () => {
     );
 
     expect(sitemapPaths).toEqual(
-      expect.arrayContaining([...navigationPaths, '/links', '/notes/graph']),
+      expect.arrayContaining([...navigationPaths, '/links']),
     );
     expect(sitemapPaths).not.toContain('/likes');
   });

@@ -135,13 +135,6 @@ summary.note-explorer__row::-webkit-details-marker {
   flex: none;
 }
 
-.note-explorer__more {
-  display: block;
-  padding: 0.4rem;
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-}
-
 .note-explorer__icon {
   display: inline-grid;
   place-items: center;

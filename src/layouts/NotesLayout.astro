@@ -1,9 +1,9 @@
 ---
 /**
  * The notes garden's own shell, used when a page is served on the notes
- * hostname. Compared with Base: its own header (`oddava / notes`, a link back
- * to the personal site, the graph and search), no music widget, no sky, and
- * one font preload. See docs/notes-host.md.
+ * hostname. Compared with Base: its own header (the `oddava` wordmark, a link
+ * back to the personal site, and search), no music widget, no sky, and one
+ * font preload. See docs/notes-host.md.
  */
 import '../styles/global.css';
 import '../styles/components/_site-nav.css';
@@ -16,11 +16,6 @@ import SiteHead, {
 } from '../components/SiteHead.astro';
 import NoteSearch from '../components/garden/NoteSearch.tsx';
 import { apexOriginFor } from '../lib/notes-host';
-import {
-  NOTES_ROUTE_PREFIX,
-  notesGraphUrl,
-  notesIndexUrl,
-} from '../lib/notes-url';
 
 export interface Props extends SiteHeadProps {
   wide?: boolean;
@@ -35,10 +30,6 @@ const {
   modifiedTime,
   wide = false,
 } = Astro.props;
-
-// Note pages render at their in-app `/notes/…` path; links on this host are
-// root-relative, so the graph link reads `/graph`.
-const onGraph = Astro.url.pathname === `${NOTES_ROUTE_PREFIX}/graph`;
 ---
 
 <!doctype html>
@@ -61,24 +52,11 @@ const onGraph = Astro.url.pathname === `${NOTES_ROUTE_PREFIX}/graph`;
       <a href="#main" class="skip-link">Skip to content</a>
 
       <header class="site-nav notes-shell__nav">
-        <p class="site-nav__wordmark notes-shell__mark">
-          <a href={apexOriginFor(Astro.url)} data-page-preview-ignore>oddava</a>
-          <span class="notes-shell__slash" aria-hidden="true">/</span>
-          <a href={notesIndexUrl()} data-page-preview-ignore>notes</a>
-        </p>
-        <nav class="site-nav__pages" aria-label="notes">
-          <ul>
-            <li>
-              <a
-                href={notesGraphUrl()}
-                aria-current={onGraph ? 'page' : undefined}
-                data-page-preview-ignore
-              >
-                graph
-              </a>
-            </li>
-          </ul>
-        </nav>
+        <a
+          class="site-nav__wordmark notes-shell__mark"
+          href={apexOriginFor(Astro.url)}
+          data-page-preview-ignore>oddava</a
+        >
         <NoteSearch client:load />
         <LoadingIndicator />
       </header>

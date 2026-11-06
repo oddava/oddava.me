@@ -1,39 +1,10 @@
 ---
-import Immersive from '../../layouts/Immersive.astro';
-import InteractiveGraph from '../../components/garden/InteractiveGraph';
-import { getGardenIndexOrUnavailable } from '@lib/garden';
-import { deriveNoteGraph } from '@lib/garden/graph';
-import { isNotesHostRequest } from '@lib/server/core';
 import { notesIndexUrl } from '@lib/notes-url';
 
+// The graph page is gone; the live graph sits in every note's rail, and its
+// expand button opens the whole garden. Old links land on the garden's root.
+// The route stays so `graph` remains a reserved note name and old links
+// answer with a real 301 rather than a 404.
 export const prerender = false;
-const garden = await getGardenIndexOrUnavailable();
-if (!garden.ok) return Astro.rewrite('/503');
-const data = deriveNoteGraph(garden.index);
+return Astro.redirect(notesIndexUrl(), 301);
 ---
-
-<Immersive
-  title="Notes graph"
-  description="An interactive map of how oddava's notes link to each other."
-  fontPreloads={isNotesHostRequest(Astro.url) ? 'body' : 'all'}
->
-  <h1 class="sr-only">Graph of notes</h1>
-  <InteractiveGraph
-    client:load
-    data={data}
-    fullPage
-    rootHref={notesIndexUrl()}
-  />
-  <noscript>
-    <p>The interactive graph needs JavaScript. Browse the notes:</p>
-    <ul>
-      {
-        data.nodes.map((note) => (
-          <li>
-            <a href={note.href}>{note.title}</a>
-          </li>
-        ))
-      }
-    </ul>
-  </noscript>
-</Immersive>

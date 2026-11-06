@@ -1,9 +1,11 @@
 # Interactive note graph
 
-The same Preact island renders a one-hop neighborhood above the sidebar outline
-and the full graph at `/notes/graph`. Expanding the sidebar uses a native modal
-without remounting the canvas or losing its camera. The old landscape renderer
-has been replaced.
+The Preact island renders a one-hop neighborhood above the sidebar outline, on
+the apex and the notes host alike. Expanding the sidebar uses a native modal
+without remounting the canvas or losing its camera; a second modal opens the
+whole garden. There is no graph page any more: `/notes/graph` (and `/graph` on
+the notes host) answers with a 301 to the garden root. The island's `fullPage`
+mode survives only for the browser harness (`tests/browser/graph.html?full`).
 
 ## Reference and decisions
 
@@ -94,9 +96,8 @@ The native visual treatment uses an open black canvas with a fine bottom rule,
 borderless controls, and a blue open-center current-note marker. Labels retain
 the site's rounded face. Physics, camera response, and return motion are unchanged.
 
-Below the 78rem sidebar breakpoint, note pages replace the inline graph with an
-“Explore connections” link to the full graph, which returns to the source note.
-The notes browser starts collapsed and remembers a separate narrow-screen choice.
+Below the 78rem sidebar breakpoint, note pages hide the inline graph; the
+footer keeps the note's contents and the folder browser. The notes browser starts collapsed and remembers a separate narrow-screen choice.
 Its expanded tree scrolls with the page instead of trapping touch gestures in a
 height-capped inner scroller. Wide screens retain the graph and bounded explorer.
 

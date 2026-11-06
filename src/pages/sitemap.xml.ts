@@ -4,7 +4,7 @@
 // shared edge cache unless the code explicitly uses the Cache API).
 import type { APIRoute } from 'astro';
 import { getGardenIndexOrUnavailable } from '../lib/garden';
-import { notesGraphUrl, notesIndexUrl } from '../lib/notes-url';
+import { notesIndexUrl } from '../lib/notes-url';
 import { isNotesHostRequest } from '../lib/server/core';
 import { SITE_URL } from '../lib/site';
 import { getStaticSitemapPaths } from '../lib/site-routes';
@@ -32,9 +32,7 @@ export const GET: APIRoute = async ({ url }) => {
   // its pages and the notes as before.
   const onNotesHost = isNotesHostRequest(url);
   const origin = onNotesHost ? url.origin : SITE_URL;
-  const staticPaths = onNotesHost
-    ? [notesIndexUrl(), notesGraphUrl()]
-    : getStaticSitemapPaths();
+  const staticPaths = onNotesHost ? [notesIndexUrl()] : getStaticSitemapPaths();
   const entriesByPath = new Map(
     staticPaths.map((path) => [path, makeEntry(origin, path)]),
   );

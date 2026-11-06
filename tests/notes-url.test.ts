@@ -8,7 +8,6 @@ import {
   NOTES_DEFAULT_BASE,
   NOTES_ROUTE_PREFIX,
   notesFolderUrl,
-  notesGraphUrl,
   notesIndexUrl,
   notesTagUrl,
   noteUrl,
@@ -53,21 +52,8 @@ describe('notes URL helper (default base)', () => {
     );
   });
 
-  it('builds the graph URL, optionally placed on one note', () => {
-    expect(notesGraphUrl()).toBe('/notes/graph');
-    expect(notesGraphUrl('reading/books/atomic-habits')).toBe(
-      '/notes/graph#place=reading%2Fbooks%2Fatomic-habits',
-    );
-    expect(notesGraphUrl('a b')).toBe('/notes/graph#place=a%20b');
-  });
-
   it('never ends a path-base URL with a slash', () => {
-    for (const url of [
-      notesIndexUrl(),
-      noteUrl('a/b/'),
-      notesFolderUrl('a'),
-      notesGraphUrl(),
-    ]) {
+    for (const url of [notesIndexUrl(), noteUrl('a/b/'), notesFolderUrl('a')]) {
       expect(url.endsWith('/')).toBe(false);
     }
   });
@@ -98,7 +84,6 @@ describe('notes URL helper (other bases)', () => {
     expect(urls.folder('reading')).toBe(
       'https://notes.oddava.me/folder/reading',
     );
-    expect(urls.graph('x')).toBe('https://notes.oddava.me/graph#place=x');
     expect(createNotesUrls('https://notes.oddava.me/').index()).toBe(
       'https://notes.oddava.me/',
     );

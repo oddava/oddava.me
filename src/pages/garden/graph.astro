@@ -1,5 +1,6 @@
 ---
-import { notesGraphUrl } from '@lib/notes-url';
+import { notesIndexUrl } from '@lib/notes-url';
 
-return Astro.redirect(notesGraphUrl(), 301);
+// The graph page is gone; the live graph sits in every note's rail.
+return Astro.redirect(notesIndexUrl(), 301);
 ---

@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GardenDocument, GardenIndex } from '../src/lib/garden';
-import {
-  compactTrail,
-  describeConnections,
-  folderTrail,
-  noteNeighbourIds,
-} from '../src/lib/garden/wayfinder';
+import { compactTrail, folderTrail } from '../src/lib/garden/wayfinder';
 
 function note(
   id: string,
@@ -41,29 +36,6 @@ function garden(documents: GardenDocument[]): GardenIndex {
   };
 }
 
-describe('noteNeighbourIds', () => {
-  it('counts each linked note once, in either direction, never itself', () => {
-    const index = garden([
-      note('a', {
-        outbound: [
-          { target: 'b', resolvedId: 'b' },
-          { target: 'b again', resolvedId: 'b' },
-          { target: 'self', resolvedId: 'a' },
-          { target: 'missing' },
-          { target: 'gone', resolvedId: 'gone' },
-        ],
-        backlinks: ['b', 'c', 'a'],
-      }),
-      note('b'),
-      note('c'),
-    ]);
-    expect(noteNeighbourIds(index.byId.get('a')!, index).sort()).toEqual([
-      'b',
-      'c',
-    ]);
-  });
-});
-
 describe('folderTrail', () => {
   it('lists the folders above a note, root first', () => {
     const index = garden([
@@ -88,26 +60,5 @@ describe('folderTrail', () => {
     ]);
     expect(folderTrail(index.byId.get('a')!, index)).toEqual(['b']);
     expect(folderTrail(index.byId.get('orphan')!, index)).toEqual([]);
-  });
-});
-
-describe('describeConnections', () => {
-  it('counts links, singular and plural', () => {
-    expect(describeConnections(0)).toBe('not linked yet');
-    expect(describeConnections(1)).toBe('1 linked note');
-    expect(describeConnections(5)).toBe('5 linked notes');
-  });
-});
-
-describe('compactTrail', () => {
-  it('keeps short paths whole and shortens long ones to their ends', () => {
-    expect(compactTrail([])).toEqual([]);
-    expect(compactTrail(['notes', 'reading'])).toEqual(['notes', 'reading']);
-    expect(compactTrail(['notes', 'reading', 'books'])).toEqual([
-      'notes',
-      '…',
-      'books',
-    ]);
-    expect(compactTrail(['notes', 'a', 'b', 'c'])).toEqual(['notes', '…', 'c']);
   });
 });

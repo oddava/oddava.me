@@ -1,7 +1,6 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { deriveLocalMap } from '@lib/garden/local-map';
-import { notesGraphUrl } from '@lib/notes-url';
 import { compactTrail, folderTrail } from '@lib/garden/wayfinder';
 import NoteExplorerNode from './NoteExplorerNode.astro';
 import '../../styles/components/_local-map.css';
@@ -19,10 +18,6 @@ while (ancestor && !expanded.has(ancestor.id)) {
   expanded.add(ancestor.id);
   ancestor = ancestor.parentId ? index.byId.get(ancestor.parentId) : undefined;
 }
-const hiddenReferences = map
-  ? map.totals.outbound + map.totals.backlinks - map.references.length
-  : 0;
-const landscapeHref = notesGraphUrl(document.id);
 const trail = folderTrail(document, index);
 const isRoot = trail.length === 0;
 const crumbs = compactTrail(trail);
@@ -87,7 +82,7 @@ const crumbs = compactTrail(trail);
         />
       </ul>
       {
-        map && (map.references.length > 0 || hiddenReferences > 0) && (
+        map && map.references.length > 0 && (
           <div class="note-explorer__references">
             <h2 class="note-context__label">Linked notes</h2>
             <ul role="list">
@@ -110,13 +105,6 @@ const crumbs = compactTrail(trail);
                   </a>
                 </li>
               ))}
-              {hiddenReferences > 0 && (
-                <li>
-                  <a class="note-explorer__more" href={landscapeHref}>
-                    View {hiddenReferences} more linked notes
-                  </a>
-                </li>
-              )}
             </ul>
           </div>
         )

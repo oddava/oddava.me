@@ -4,7 +4,7 @@ export type PublicNavigationRoute = {
   label: string;
 };
 
-import { notesGraphUrl, notesIndexUrl } from './notes-url';
+import { notesIndexUrl } from './notes-url';
 
 // Built on each call: notes links depend on the request's notes base.
 function publicNavigationRoutes(): PublicNavigationRoute[] {
@@ -21,9 +21,5 @@ export function getPublicNavigationRoutes(): PublicNavigationRoute[] {
 }
 
 export function getStaticSitemapPaths(): string[] {
-  return [
-    ...publicNavigationRoutes().map((route) => route.href),
-    '/links',
-    notesGraphUrl(),
-  ];
+  return [...publicNavigationRoutes().map((route) => route.href), '/links'];
 }

@@ -577,9 +577,6 @@
   .note-context__graph {
     flex: 0 0 auto;
   }
-  .note-context__graph-link {
-    display: none;
-  }
 }
 
 /* The optional folder browser is a quiet rail footer, not another section. */
@@ -878,10 +875,6 @@ details[open] > summary > .note-wayfinder__chevron {
 @media (width >= 78rem) {
   .note-context .note-wayfinder {
     flex-shrink: 0;
-  }
-
-  .note-wayfinder .note-context__graph-link {
-    display: none;
   }
 
   /* Ruled off like any rail section; the graph and the contents already

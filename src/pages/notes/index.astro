@@ -5,7 +5,6 @@ import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { noteSocialCardImage } from '@lib/garden/og-card';
 import { deriveNoteSocialImage } from '@lib/garden/utils';
 import { NOTES_DESCRIPTION } from '@lib/site';
-import { isNotesHostRequest } from '@lib/server/core';
 import '../../styles/components/_garden.css';
 
 const garden = await getGardenIndexOrUnavailable();
@@ -25,10 +24,6 @@ const socialImage =
   wide
 >
   <div class="garden-page">
-    <GardenDocumentPage
-      document={index.root}
-      index={index}
-      railGraph={!isNotesHostRequest(Astro.url)}
-    />
+    <GardenDocumentPage document={index.root} index={index} />
   </div>
 </NotesShell>

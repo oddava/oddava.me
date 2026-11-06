@@ -10,7 +10,6 @@ import { noteSocialCardImage } from '@lib/garden/og-card';
 import { resolveNoteSocialImage } from '@lib/garden/utils';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
 import { notesIndexUrl } from '@lib/notes-url';
-import { isNotesHostRequest } from '@lib/server/core';
 import '../../styles/components/_garden.css';
 import '../../styles/components/_status-page.css';
 
@@ -90,11 +89,7 @@ const description = document
       wide
     >
       <div class="garden-page">
-        <GardenDocumentPage
-          document={document}
-          index={index}
-          railGraph={!isNotesHostRequest(Astro.url)}
-        />
+        <GardenDocumentPage document={document} index={index} />
       </div>
     </NotesShell>
   )

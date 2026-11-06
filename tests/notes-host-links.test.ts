@@ -43,8 +43,7 @@ beforeEach(() => {
 
 describe('notes base per host', () => {
   it('links under /notes on the apex and at the root on the notes host', async () => {
-    const { noteUrl, notesIndexUrl, notesGraphUrl, runAsNotesHostRequest } =
-      await load();
+    const { noteUrl, notesIndexUrl, runAsNotesHostRequest } = await load();
 
     expect(noteUrl('reading')).toBe('/notes/reading');
     expect(notesIndexUrl()).toBe('/notes');
@@ -52,7 +51,6 @@ describe('notes base per host', () => {
     runAsNotesHostRequest(() => {
       expect(noteUrl('reading')).toBe('/reading');
       expect(notesIndexUrl()).toBe('/');
-      expect(notesGraphUrl('reading')).toBe('/graph#place=reading');
     });
 
     expect(noteUrl('reading')).toBe('/notes/reading');
@@ -144,13 +142,12 @@ describe('per-host feeds', () => {
     const apex = await call('sitemap.xml', apexUrl('/sitemap.xml'), false);
     expect(apex).toContain('<loc>https://oddava.me/about</loc>');
     expect(apex).toContain('<loc>https://oddava.me/notes/reading</loc>');
-    expect(apex).toContain('<loc>https://oddava.me/notes/graph</loc>');
+    expect(apex).not.toContain('/notes/graph');
 
     const notes = await call('sitemap.xml', notesUrl('/sitemap.xml'), true);
     const locs = [...notes.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs.sort()).toEqual([
       'http://notes.localhost:4321/',
-      'http://notes.localhost:4321/graph',
       'http://notes.localhost:4321/reading',
     ]);
   });
