@@ -2,8 +2,9 @@
 
 The notes garden can answer on its own hostname, with its own shell, from the
 same Worker and the same Redis store as the personal site. Locally that is
-`notes.localhost`; in production it will be `notes.oddava.me`, which is **not
-attached yet**. Until `NOTES_HOST` is set in production, nothing there changes.
+`notes.localhost`; in production it is `https://notes.oddava.me`, live since
+2026-11-06 and soaking behind `noindex` (see [In production](#in-production)).
+The apex still owns the canonical notes links until step 1.5.
 
 ## Try it locally
 
@@ -158,7 +159,67 @@ both sides.
 - **Step 1.5 removes it**, in the same change that 301s the apex `/notes`
   pages. Do not remove it earlier.
 
-## Before production (step 1.4)
+## In production
+
+**Live since 2026-11-06** (step 1.4). Soak until at least 2026-11-07 before
+starting 1.5.
+
+| Piece                                     | State                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| Worker `oddava-me` version                | `2d372926-550f-4708-93e0-a0f04f8c58ac` (commit `86c314e`, deployed by CI) |
+| `NOTES_HOST` (dashboard, Text variable)   | `notes.oddava.me`                                                         |
+| Custom domain on `oddava-me`              | `notes.oddava.me`, zone `oddava.me`, beside `oddava.me` and `www`         |
+| `PUBLIC_NOTES_BASE`                       | unset: the apex still links `/notes/…`                                    |
+| Apex `/notes` → notes host 301s           | not enabled (step 1.5)                                                    |
+| `X-Robots-Tag: noindex` on the notes host | on (removed in 1.5)                                                       |
+
+Checked live on 2026-11-06:
+
+- `https://notes.oddava.me/` serves a valid certificate (Google Trust
+  Services). `/`, `/reading`, `/reading/books`, `/diary` and `/graph` return 200 in the
+  notes shell. Canonical, `og:url` and `og:image` are on the notes origin, and
+  no rendered link goes through `/notes/`.
+- `/notes` → 301 `/` and `/notes/reading?ref=x` → 301 `/reading?ref=x`.
+  `/about`, `/admin`, `/sitemap-index.xml` and unknown paths are 404s.
+- `/_astro/*`, fonts, note images under `/images/notes/…`, `/og/…` share
+  cards and `/api/notes/search` (root-relative `href`s) all answer.
+- `/robots.txt` allows everything but `/api/` and names
+  `https://notes.oddava.me/sitemap.xml`. That sitemap and `/rss.xml` link only
+  the notes origin.
+- Every Worker response on the notes host, including 301s and 404s, carries
+  `X-Robots-Tag: noindex`. Asset-first files (`/favicon.svg`,
+  `/site.webmanifest`) do not, as expected.
+- The apex is unchanged: same statuses and security headers as the
+  pre-deploy baseline, no `X-Robots-Tag`, `/notes/x` canonical still on
+  `oddava.me`, `/blog` and `/garden` still 301 to `/notes`, `/admin` still
+  302s to login. Prerendered pages now run the Worker, and `robots.txt` is
+  `max-age=3600`.
+- Tags: production notes have none yet, so `/tag/…` is a 404 on both hosts.
+
+A resolver that looked up `notes.oddava.me` before the domain was attached
+may cache that negative answer for up to the zone's negative TTL. To test
+past it, pin the name to the apex's edge IP:
+`curl --resolve notes.oddava.me:443:<apex IPv4> https://notes.oddava.me/`.
+
+### Rollback
+
+In order, from the least to the most drastic:
+
+1. **Take the notes host offline.** In the dashboard, open Workers & Pages →
+   `oddava-me` → Domains, then remove `notes.oddava.me` with **⋯ → Remove**.
+   Then, under Settings → Variables and Secrets, delete `NOTES_HOST`.
+   **Detach the domain first.** With the domain attached and the variable
+   gone, the subdomain serves the whole apex site.
+2. **Roll back the code**, only if the apex itself misbehaves:
+   `pnpm exec wrangler rollback` to the version before `2d372926`, or revert
+   `86c314e`…`9b2ed3a` on `main` and push (CI redeploys). Do step 1 first: the
+   older code has no notes-host mapping, so an attached domain would serve
+   the apex.
+
+Neither touches Redis: both hosts read the same store, so no note changes
+in either direction.
+
+## Before production (step 1.4, done)
 
 - **Merging deploys the entry and `run_worker_first`.** Apex prerendered pages
   then go through the Worker (one invocation each). Headers matched in preview;
