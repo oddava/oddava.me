@@ -33,11 +33,19 @@ export const GET: APIRoute = async ({ url }) => {
   const onNotesHost = isNotesHostRequest(url);
   const origin = onNotesHost ? url.origin : SITE_URL;
   const staticPaths = onNotesHost ? [notesIndexUrl()] : getStaticSitemapPaths();
+  // A sitemap may only list its own origin. Once the garden has moved to the
+  // notes host (PUBLIC_NOTES_BASE is absolute), the apex's note links point
+  // there, so the apex lists its own pages only.
+  const onThisOrigin = (path: string) =>
+    new URL(path, origin).origin === new URL(origin).origin;
   const entriesByPath = new Map(
-    staticPaths.map((path) => [path, makeEntry(origin, path)]),
+    staticPaths
+      .filter(onThisOrigin)
+      .map((path) => [path, makeEntry(origin, path)]),
   );
 
   for (const document of garden.index.documents) {
+    if (!onThisOrigin(document.href)) continue;
     entriesByPath.set(
       document.href,
       makeEntry(origin, document.href, document.updated || undefined),

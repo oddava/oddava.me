@@ -2,9 +2,9 @@
 
 The notes garden can answer on its own hostname, with its own shell, from the
 same Worker and the same Redis store as the personal site. Locally that is
-`notes.localhost`; in production it is `https://notes.oddava.me`, live since
-2026-11-06 and soaking behind `noindex` (see [In production](#in-production)).
-The apex still owns the canonical notes links until step 1.5.
+`notes.localhost`; in production it is `https://notes.oddava.me`, the notes'
+only canonical home since the step 1.5 cut-over on 2026-11-06: the apex links
+there and sends its `/notes…` routes there (see [Cut-over](#cut-over-step-15)).
 
 ## Try it locally
 
@@ -53,7 +53,9 @@ the request:
 (the home page's nav, `/links`) and client islands bake it in, so it has to be
 the same value the server uses. To try the cut-over locally, start dev with
 `PUBLIC_NOTES_BASE=http://notes.localhost:4321` and the apex's notes links
-point at the notes host. Do not set it in production before step 1.5.
+point at the notes host. Production sets it on the CI build step
+(`.github/workflows/ci.yml`); a Worker dashboard variable of that name has no
+effect, because nothing reads it at runtime.
 
 The per-request base is an `AsyncLocalStorage` context
 (`src/lib/server/core/notes-host.ts`) that the Worker entry opens for every
@@ -135,49 +137,56 @@ To check it against workerd yourself: `pnpm run build`, put
 has no local Redis bridge, so note pages answer 503 there; the point is that
 they are the notes routes, not apex pages.
 
-## Soak noindex (step 1.4, temporary)
+## Cut-over (step 1.5)
 
-While both hosts serve the notes, every note has two canonical URLs
-(`oddava.me/notes/x` and `notes.oddava.me/x`). Until step 1.5 301s the apex,
-the Worker entry (`withSoakNoindex` in `src/worker.ts`) adds
-`X-Robots-Tag: noindex` to every response it produces for the notes host:
-pages, its `/notes/…` 301s, Astro's 404 and 500 pages, the feed, sitemap and
-`robots.txt`. Apex responses never get it. `tests/notes-host.test.ts` pins
-both sides.
+With `PUBLIC_NOTES_BASE=https://notes.oddava.me` in the build:
 
-- **`robots.txt` stays crawlable** on the notes host (it disallows only
-  `/api/`). A crawler has to fetch a page to see the header; blocking it in
-  robots.txt would hide the `noindex`.
-- **Not every asset carries it.** Built assets and public files (`/_astro/*`,
-  `/fonts/*`, `/images/*`, icons) are asset-first: Cloudflare serves them
-  without running the Worker, so they come back without the header on either
-  host. That is fine: the duplicate-content risk is the notes HTML, and every
-  notes page is Worker-rendered.
-- **Check it:** `curl -sI https://notes.oddava.me/ | grep -i x-robots-tag`
-  prints `noindex`; the same on `https://oddava.me/notes` prints nothing.
-- **Step 1.5 removes it**, in the same change that 301s the apex `/notes`
-  pages. Do not remove it earlier.
+- **Every apex notes link** (nav, home shelves, `/links`, Studio's note links,
+  `/blog` and `/garden`, legacy slug redirects) points at the notes host.
+- **Apex note routes redirect.** The Worker entry answers `/notes` and
+  `/notes/…` on the apex with `APEX_NOTES_REDIRECT_STATUS` to the same path on
+  the notes host, prefix dropped and query kept
+  (`apexNotesRedirectLocation` in `src/lib/notes-host.ts`). Only those paths
+  move: `/api/notes/…`, `/images/notes/…`, `/admin` and Studio stay on the
+  apex. The redirect follows the build variable alone, so a build without it
+  (dev, a rollback) serves notes on the apex again.
+- **The status is 302 for now.** Browsers cache a 301 indefinitely, so a 301
+  would pin a rollback in every visitor's cache. Once the cut-over has held
+  for a day or so, set `APEX_NOTES_REDIRECT_STATUS` to 301 and push;
+  `tests/notes-cutover.test.ts` accepts either. `/blog` and `/garden` were
+  already 301s and stay that way, now straight to the notes host.
+- **The soak `noindex` is gone.** Each note has one canonical URL, on the
+  notes host.
+- **The apex sitemap lists only the apex** (a sitemap may only name its own
+  origin); the notes host's `/sitemap.xml` lists the garden.
+- **The apex `/rss.xml` keeps answering**, so existing subscribers keep their
+  feed; its items now link the notes host. Item GUIDs are those links, so a
+  reader may show the existing items once more as new.
+- **Hover previews** only fetch same-origin pages, so apex links to the notes
+  host are not previewed (no cross-origin fetch, no CSP change).
+
+To do by hand, once: add `https://notes.oddava.me` as a Search Console
+property and submit `https://notes.oddava.me/sitemap.xml`.
 
 ## In production
 
-**Live since 2026-11-06** (step 1.4). Soak until at least 2026-11-07 before
-starting 1.5.
+**Notes host live since 2026-11-06** (step 1.4); **cut over the same day**
+(step 1.5, after a shortened soak).
 
-| Piece                                     | State                                                                     |
-| ----------------------------------------- | ------------------------------------------------------------------------- |
-| Worker `oddava-me` version                | `2d372926-550f-4708-93e0-a0f04f8c58ac` (commit `86c314e`, deployed by CI) |
-| `NOTES_HOST` (dashboard, Text variable)   | `notes.oddava.me`                                                         |
-| Custom domain on `oddava-me`              | `notes.oddava.me`, zone `oddava.me`, beside `oddava.me` and `www`         |
-| `PUBLIC_NOTES_BASE`                       | unset: the apex still links `/notes/…`                                    |
-| Apex `/notes` → notes host 301s           | not enabled (step 1.5)                                                    |
-| `X-Robots-Tag: noindex` on the notes host | on (removed in 1.5)                                                       |
+| Piece                                   | State                                                             |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| `NOTES_HOST` (dashboard, Text variable) | `notes.oddava.me`                                                 |
+| Custom domain on `oddava-me`            | `notes.oddava.me`, zone `oddava.me`, beside `oddava.me` and `www` |
+| `PUBLIC_NOTES_BASE`                     | `https://notes.oddava.me`, on the CI build step                   |
+| Apex `/notes…` → notes host             | `302` (switch to `301` once it has held)                          |
+| `X-Robots-Tag: noindex` on notes host   | removed                                                           |
 
-Checked live on 2026-11-06:
+Checked live on 2026-11-06, before the cut-over (step 1.4):
 
 - `https://notes.oddava.me/` serves a valid certificate (Google Trust
-  Services). `/`, `/reading`, `/reading/books`, `/diary` and `/graph` return 200 in the
-  notes shell. Canonical, `og:url` and `og:image` are on the notes origin, and
-  no rendered link goes through `/notes/`.
+  Services). Note pages return 200 in the notes shell. Canonical, `og:url`
+  and `og:image` are on the notes origin, and no rendered link goes through
+  `/notes/`.
 - `/notes` → 301 `/` and `/notes/reading?ref=x` → 301 `/reading?ref=x`.
   `/about`, `/admin`, `/sitemap-index.xml` and unknown paths are 404s.
 - `/_astro/*`, fonts, note images under `/images/notes/…`, `/og/…` share
@@ -185,14 +194,8 @@ Checked live on 2026-11-06:
 - `/robots.txt` allows everything but `/api/` and names
   `https://notes.oddava.me/sitemap.xml`. That sitemap and `/rss.xml` link only
   the notes origin.
-- Every Worker response on the notes host, including 301s and 404s, carries
-  `X-Robots-Tag: noindex`. Asset-first files (`/favicon.svg`,
-  `/site.webmanifest`) do not, as expected.
-- The apex is unchanged: same statuses and security headers as the
-  pre-deploy baseline, no `X-Robots-Tag`, `/notes/x` canonical still on
-  `oddava.me`, `/blog` and `/garden` still 301 to `/notes`, `/admin` still
-  302s to login. Prerendered pages now run the Worker, and `robots.txt` is
-  `max-age=3600`.
+- The apex kept its statuses and security headers. Prerendered pages run the
+  Worker, and `robots.txt` is `max-age=3600`.
 - Tags: production notes have none yet, so `/tag/…` is a 404 on both hosts.
 
 A resolver that looked up `notes.oddava.me` before the domain was attached
@@ -202,21 +205,26 @@ past it, pin the name to the apex's edge IP:
 
 ### Rollback
 
-In order, from the least to the most drastic:
+From the least to the most drastic:
 
-1. **Take the notes host offline.** In the dashboard, open Workers & Pages →
+1. **Undo the cut-over (1.5), keep the notes host.** Revert the cut-over
+   commit on `main` and push; CI rebuilds without `PUBLIC_NOTES_BASE`. The
+   apex links and serves `/notes…` again, and the revert brings the soak
+   `noindex` back with it, so the two hosts do not compete. While the redirect
+   is still a 302, nothing is stuck in browsers. After switching to 301,
+   visitors who cached it keep landing on the notes host, which still works.
+2. **Take the notes host offline.** Only after step 1, or the apex links
+   would point at a dead host. In the dashboard, open Workers & Pages →
    `oddava-me` → Domains, then remove `notes.oddava.me` with **⋯ → Remove**.
    Then, under Settings → Variables and Secrets, delete `NOTES_HOST`.
    **Detach the domain first.** With the domain attached and the variable
    gone, the subdomain serves the whole apex site.
-2. **Roll back the code**, only if the apex itself misbehaves:
-   `pnpm exec wrangler rollback` to the version before `2d372926`, or revert
-   `86c314e`…`9b2ed3a` on `main` and push (CI redeploys). Do step 1 first: the
-   older code has no notes-host mapping, so an attached domain would serve
-   the apex.
+3. **Roll back the 1.4 code**, only if the apex itself misbehaves:
+   `pnpm exec wrangler rollback`, or revert the notes-host commits
+   (`9b2ed3a`…`86c314e`) and push. Do steps 1 and 2 first.
 
-Neither touches Redis: both hosts read the same store, so no note changes
-in either direction.
+None of this touches Redis: both hosts read the same store, so no note
+changes in either direction.
 
 ## Before production (step 1.4, done)
 

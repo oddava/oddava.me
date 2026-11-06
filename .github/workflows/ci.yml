@@ -45,6 +45,11 @@ jobs:
         env:
           RUN_REDIS_INTEGRATION: '1'
       - run: pnpm run build
+        env:
+          # Step 1.5: the garden lives on its own origin. Read at build time
+          # (prerendered pages and islands bake it in), so it belongs here, not
+          # in the Worker's dashboard variables. Unset, notes stay on the apex.
+          PUBLIC_NOTES_BASE: https://notes.oddava.me
       # Not `pnpm audit`: it calls npm's quick-audit endpoint, which npm retired
       # and now answers 410 on every request. Every pnpm version does this, so
       # there is no release to upgrade to. `--ignore-registry-errors` would turn

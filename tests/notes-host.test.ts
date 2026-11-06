@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   apexOriginFor,
   DEV_NOTES_HOST,
@@ -174,78 +174,22 @@ describe('worker entry', () => {
     expect(handle).not.toHaveBeenCalled();
   });
 
-  describe('soak noindex (temporary, removed in step 1.5)', () => {
-    const astroAnswers = (status: number, headers?: HeadersInit) =>
-      handle.mockImplementation(
-        async () =>
-          new Response(status === 301 ? null : 'x', { status, headers }),
-      );
-
-    afterEach(() => {
-      handle.mockImplementation(
-        async (request: Request) => new Response(new URL(request.url).href),
-      );
-    });
-
-    it.each([
+  it('no longer marks the notes host noindex (the 1.4 soak is over)', async () => {
+    for (const path of [
       '/',
       '/reading/books',
+      '/notes/reading',
       '/robots.txt',
-      '/rss.xml',
-      '/sitemap.xml',
-      '/api/notes/search?q=x',
-      '/_astro/index.abc123.js',
-      '/about',
-    ])('marks notes-host %s noindex', async (path) => {
+    ]) {
       const response = await fetchVia(`https://notes.localhost${path}`);
-      expect(response.headers.get('X-Robots-Tag')).toBe('noindex');
-    });
+      expect(response.headers.has('X-Robots-Tag'), path).toBe(false);
+    }
+  });
 
-    it('marks the notes host /notes redirect noindex', async () => {
-      const response = await fetchVia('https://notes.localhost/notes/reading');
-      expect(response.status).toBe(301);
-      expect(response.headers.get('X-Robots-Tag')).toBe('noindex');
-    });
-
-    it.each([301, 404, 500])(
-      'marks a notes-host %i from Astro noindex',
-      async (status) => {
-        astroAnswers(
-          status,
-          status === 301 ? { Location: '/elsewhere' } : undefined,
-        );
-        const response = await fetchVia('https://notes.localhost/missing');
-        expect(response.status).toBe(status);
-        expect(response.headers.get('X-Robots-Tag')).toBe('noindex');
-      },
-    );
-
-    it('overrides whatever robots header Astro set on the notes host', async () => {
-      astroAnswers(200, { 'X-Robots-Tag': 'all' });
-      const response = await fetchVia('https://notes.localhost/reading');
-      expect(response.headers.get('X-Robots-Tag')).toBe('noindex');
-    });
-
-    it.each(['/', '/about', '/notes', '/notes/reading', '/robots.txt'])(
-      'leaves apex %s indexable',
-      async (path) => {
-        const response = await fetchVia(`https://oddava.me${path}`);
-        expect(response.headers.has('X-Robots-Tag')).toBe(false);
-      },
-    );
-
-    it.each([301, 404, 500])(
-      'leaves an apex %i from Astro indexable',
-      async (status) => {
-        astroAnswers(
-          status,
-          status === 301 ? { Location: '/notes' } : undefined,
-        );
-        const response = await fetchVia('https://oddava.me/blog');
-        expect(response.status).toBe(status);
-        expect(response.headers.has('X-Robots-Tag')).toBe(false);
-      },
-    );
+  it('serves apex note routes in place while PUBLIC_NOTES_BASE is unset', async () => {
+    const response = await fetchVia('https://oddava.me/notes/reading');
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('https://oddava.me/notes/reading');
   });
 
   it('adds the baseline security headers to whatever Astro returns', async () => {

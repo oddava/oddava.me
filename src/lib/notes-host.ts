@@ -6,7 +6,7 @@
  *
  * Pure functions only, so the Worker entry and the tests share one table.
  */
-import { NOTES_ROUTE_PREFIX } from './notes-url';
+import { isNotesRoute, NOTES_ROUTE_PREFIX } from './notes-url';
 
 /** The hostname dev uses when `NOTES_HOST` is unset. */
 export const DEV_NOTES_HOST = 'notes.localhost';
@@ -117,4 +117,42 @@ export function notesHostSharedRoots(): string[] {
       ),
     ),
   ];
+}
+
+/**
+ * The status apex note routes answer with once the garden has moved to the
+ * notes host. 302 while the cut-over settles, so a rollback is not pinned in
+ * browsers' caches; switch to 301 once it has held (docs/notes-host.md).
+ */
+export const APEX_NOTES_REDIRECT_STATUS = 302;
+
+/**
+ * Where an apex request for a note route goes once the garden has moved to
+ * its own origin (step 1.5), or `null` to serve it here.
+ *
+ * The garden has moved when the notes base (`PUBLIC_NOTES_BASE`, baked in at
+ * build time) is an absolute URL on another host. Unset, it is `/notes` and
+ * nothing redirects, so dev and a build without the variable keep serving
+ * notes on the apex. The `/notes` prefix is dropped (`/notes/x` → `/x`) and the
+ * query string kept. Only `/notes` and `/notes/…` move: `/api/notes/…`,
+ * `/images/notes/…` and Studio stay on the apex.
+ */
+export function apexNotesRedirectLocation(
+  url: URL,
+  notesBase: string,
+): string | null {
+  if (!isNotesRoute(url.pathname)) return null;
+
+  let base: URL;
+  try {
+    base = new URL(notesBase);
+  } catch {
+    return null; // a path base: notes still live on this host
+  }
+  if (!['http:', 'https:'].includes(base.protocol)) return null;
+  // Never redirect a host to itself.
+  if (base.host.toLowerCase() === url.host.toLowerCase()) return null;
+
+  const root = notesBase.trim().replace(/\/+$/, '');
+  return `${root}${notesHostPathFor(url.pathname)}${url.search}`;
 }

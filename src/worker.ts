@@ -16,26 +16,14 @@ import {
   isNotesHostRequest,
   runAsNotesHostRequest,
 } from './lib/server/core';
-import { mapNotesHostPath } from './lib/notes-host';
+import {
+  APEX_NOTES_REDIRECT_STATUS,
+  apexNotesRedirectLocation,
+  mapNotesHostPath,
+} from './lib/notes-host';
+import { NOTES_DEFAULT_BASE } from './lib/notes-url';
 
 type HandleArgs = Parameters<typeof handle>;
-
-/**
- * TEMPORARY, for the step 1.4 soak; step 1.5 removes it. Until the apex's
- * `/notes` pages 301 here, every note has two canonical URLs, so the notes
- * host asks not to be indexed. robots.txt stays crawlable: a crawler has to
- * fetch a page to see this header. Only responses this Worker produces get it;
- * assets Cloudflare serves without running the Worker do not (docs/notes-host.md).
- */
-function withSoakNoindex(response: Response): Response {
-  const headers = new Headers(response.headers);
-  headers.set('X-Robots-Tag', 'noindex');
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 async function fetch(
   request: Request,
@@ -52,18 +40,28 @@ async function fetch(
       url,
     );
 
-  if (!isNotesHostRequest(url)) return respond(request);
+  if (!isNotesHostRequest(url)) {
+    const moved = apexNotesRedirectLocation(url, NOTES_DEFAULT_BASE);
+    if (moved) {
+      return applySecurityHeaders(
+        new Response(null, {
+          status: APEX_NOTES_REDIRECT_STATUS,
+          headers: { Location: moved },
+        }),
+        url,
+      );
+    }
+    return respond(request);
+  }
 
   const decision = mapNotesHostPath(url.pathname);
   if (decision.kind === 'redirect') {
-    return withSoakNoindex(
-      applySecurityHeaders(
-        new Response(null, {
-          status: 301,
-          headers: { Location: `${decision.location}${url.search}` },
-        }),
-        url,
-      ),
+    return applySecurityHeaders(
+      new Response(null, {
+        status: 301,
+        headers: { Location: `${decision.location}${url.search}` },
+      }),
+      url,
     );
   }
 
@@ -75,7 +73,7 @@ async function fetch(
   }
   // Everything rendered for this request links root-relative (`/x`), so no
   // link on the notes host needs the `/notes` redirect.
-  return withSoakNoindex(await runAsNotesHostRequest(() => respond(forwarded)));
+  return runAsNotesHostRequest(() => respond(forwarded));
 }
 
 export default { fetch };
