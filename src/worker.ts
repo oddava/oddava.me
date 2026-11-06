@@ -20,6 +20,23 @@ import { mapNotesHostPath } from './lib/notes-host';
 
 type HandleArgs = Parameters<typeof handle>;
 
+/**
+ * TEMPORARY, for the step 1.4 soak; step 1.5 removes it. Until the apex's
+ * `/notes` pages 301 here, every note has two canonical URLs, so the notes
+ * host asks not to be indexed. robots.txt stays crawlable: a crawler has to
+ * fetch a page to see this header. Only responses this Worker produces get it;
+ * assets Cloudflare serves without running the Worker do not (docs/notes-host.md).
+ */
+function withSoakNoindex(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('X-Robots-Tag', 'noindex');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function fetch(
   request: Request,
   env: HandleArgs[1],
@@ -39,12 +56,14 @@ async function fetch(
 
   const decision = mapNotesHostPath(url.pathname);
   if (decision.kind === 'redirect') {
-    return applySecurityHeaders(
-      new Response(null, {
-        status: 301,
-        headers: { Location: `${decision.location}${url.search}` },
-      }),
-      url,
+    return withSoakNoindex(
+      applySecurityHeaders(
+        new Response(null, {
+          status: 301,
+          headers: { Location: `${decision.location}${url.search}` },
+        }),
+        url,
+      ),
     );
   }
 
@@ -56,7 +75,7 @@ async function fetch(
   }
   // Everything rendered for this request links root-relative (`/x`), so no
   // link on the notes host needs the `/notes` redirect.
-  return runAsNotesHostRequest(() => respond(forwarded));
+  return withSoakNoindex(await runAsNotesHostRequest(() => respond(forwarded)));
 }
 
 export default { fetch };

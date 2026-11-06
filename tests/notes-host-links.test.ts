@@ -162,5 +162,10 @@ describe('per-host feeds', () => {
     expect(await call('robots.txt', notesUrl('/robots.txt'), true)).toBe(
       'User-agent: *\nDisallow: /api/\n\nSitemap: http://notes.localhost:4321/sitemap.xml\n',
     );
+    // The soak's noindex is a response header, so robots.txt must not block
+    // the pages that carry it.
+    expect(await call('robots.txt', notesUrl('/robots.txt'), true)).not.toMatch(
+      /^Disallow: \/$/m,
+    );
   });
 });

@@ -135,6 +135,29 @@ To check it against workerd yourself: `pnpm run build`, put
 has no local Redis bridge, so note pages answer 503 there; the point is that
 they are the notes routes, not apex pages.
 
+## Soak noindex (step 1.4, temporary)
+
+While both hosts serve the notes, every note has two canonical URLs
+(`oddava.me/notes/x` and `notes.oddava.me/x`). Until step 1.5 301s the apex,
+the Worker entry (`withSoakNoindex` in `src/worker.ts`) adds
+`X-Robots-Tag: noindex` to every response it produces for the notes host:
+pages, its `/notes/…` 301s, Astro's 404 and 500 pages, the feed, sitemap and
+`robots.txt`. Apex responses never get it. `tests/notes-host.test.ts` pins
+both sides.
+
+- **`robots.txt` stays crawlable** on the notes host (it disallows only
+  `/api/`). A crawler has to fetch a page to see the header; blocking it in
+  robots.txt would hide the `noindex`.
+- **Not every asset carries it.** Built assets and public files (`/_astro/*`,
+  `/fonts/*`, `/images/*`, icons) are asset-first: Cloudflare serves them
+  without running the Worker, so they come back without the header on either
+  host. That is fine: the duplicate-content risk is the notes HTML, and every
+  notes page is Worker-rendered.
+- **Check it:** `curl -sI https://notes.oddava.me/ | grep -i x-robots-tag`
+  prints `noindex`; the same on `https://oddava.me/notes` prints nothing.
+- **Step 1.5 removes it**, in the same change that 301s the apex `/notes`
+  pages. Do not remove it earlier.
+
 ## Before production (step 1.4)
 
 - **Merging deploys the entry and `run_worker_first`.** Apex prerendered pages
