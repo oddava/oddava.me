@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildGardenIndex } from '../src/lib/garden/build';
 import { deriveNoteGraph } from '../src/lib/garden/graph';
 import { createGraphSimulation } from '../src/lib/garden/graph-simulation';
@@ -55,7 +55,10 @@ describe('note graph', () => {
         target: `${i + 1}`,
       })),
     };
-    const graph = createGraphSimulation(data, '0');
+    // No warm-up: a time-budgeted one would run a load-dependent number of
+    // ticks first, so this pins the tick count — and is the least settled
+    // starting point.
+    const graph = createGraphSimulation(data, '0', 0);
     graph.simulation.tick(200);
     const before = graph.nodes.map((node) => ({ x: node.x, y: node.y }));
     graph.simulation.tick(30);
@@ -104,8 +107,29 @@ describe('note graph', () => {
         undefined,
         budget,
       ).simulation;
-    const small = graph(12);
-    expect(small.alpha()).toBeLessThan(small.alphaMin());
+    // The budget is wall-clock time, so a busy machine (or a cold JIT) can
+    // spend it before a small graph settles. Charge every clock read a fixed
+    // cost instead — warm-up reads it once per tick — so what's checked is
+    // that the tick count to rest fits the budget, not how loaded the runner is.
+    // ~2× a warm 12-node tick in Node; rest takes ~175 ticks, so the default
+    // budget allows over twice that.
+    const TICK_MS = 0.1;
+    let clock = 0;
+    const now = vi
+      .spyOn(performance, 'now')
+      .mockImplementation(() => (clock += TICK_MS));
+    try {
+      const small = graph(12);
+      expect(small.alpha()).toBeLessThan(small.alphaMin());
+      // The same graph on a budget too short to reach rest stops at the
+      // deadline instead.
+      const rushed = graph(12, 20 * TICK_MS);
+      expect(rushed.alpha()).toBeGreaterThanOrEqual(rushed.alphaMin());
+    } finally {
+      now.mockRestore();
+    }
+    // A large graph runs against the real clock: the warm-up must stop near
+    // its budget rather than freeze the page.
     const started = performance.now();
     const large = graph(1500, 5);
     // One tick may overrun the budget; the warm-up never runs on past it.
