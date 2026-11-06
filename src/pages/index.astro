@@ -15,7 +15,9 @@ import '../styles/components/_projects.css';
 import '../styles/components/_home.css';
 
 // Off-site contacts only; the header already covers on-site pages.
-const contacts = linksData.links.filter((link) => !link.url.startsWith('/'));
+const contacts = linksData.links.flatMap(({ url, ...link }) =>
+  url && !url.startsWith('/') ? [{ ...link, url }] : [],
+);
 const routes = getPublicNavigationRoutes();
 const pageHref = (label: string) =>
   routes.find((route) => route.label === label)?.href ?? '/';

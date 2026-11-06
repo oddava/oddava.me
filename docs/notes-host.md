@@ -80,8 +80,8 @@ canonical work: prerendered apex pages used to name `/about.html` (and
 
 On the notes host a note lives at the root, so some top-level names can't be
 notes: the paths shared with the apex (`api`, `fonts`, `images`, `og`), the
-notes host's own routes (`folder`, `graph`, `notes`, `tag`) and the prerendered
-apex routes (`about`, `blog`, `garden`, `links`). `RESERVED_NOTE_ROOT_NAMES`
+notes host's own routes (`folder`, `graph`, `notes`, `tag`) and the apex pages,
+prerendered (`about`, `links`) or legacy 301s (`blog`, `garden`). `RESERVED_NOTE_ROOT_NAMES`
 in `src/lib/server/content/registry.ts` lists them. Studio and the notes API
 refuse to create, rename or move a top-level note or folder onto one, with
 `reserved_name` / `reserved_path`. Names with a dot or underscore are never

@@ -102,9 +102,9 @@ describe('legacy slug routes', () => {
 
 describe('static legacy redirects', () => {
   it.each([
-    ['src/pages/blog/index.astro', "'/notes'"],
-    ['src/pages/garden/index.astro', "'/notes'"],
-    ['src/pages/garden/graph.astro', "'/notes/graph'"],
+    ['src/pages/blog/index.astro', 'notesIndexUrl()'],
+    ['src/pages/garden/index.astro', 'notesIndexUrl()'],
+    ['src/pages/garden/graph.astro', 'notesGraphUrl()'],
   ])('%s answers with a real 301 to %s', async (route, target) => {
     const source = await readFile(
       fileURLToPath(new URL(`../${route}`, import.meta.url)),

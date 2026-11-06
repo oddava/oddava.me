@@ -91,7 +91,7 @@ describe('notes host: prerendered-asset shadowing', () => {
 
   it('finds the prerendered routes it is guarding', () => {
     expect(routes).toEqual(
-      expect.arrayContaining(['/', '/about', '/links', '/garden/graph']),
+      expect.arrayContaining(['/', '/about', '/links', '/sitemap-index.xml']),
     );
   });
 
