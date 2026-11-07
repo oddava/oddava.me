@@ -84,3 +84,70 @@ test('a quick click expands the circle without leaving it in drag mode', async (
     .boundingBox())!;
   expect(after.x).toBe(before.x);
 });
+
+// The star's longest-running animation, measured from the element itself.
+const starPulse = (page: Page) =>
+  page.locator('.listening__star').evaluate((star) =>
+    star.getAnimations().map((animation) => {
+      const timing = animation.effect!.getComputedTiming();
+      return {
+        end: Number(timing.endTime),
+        current: Number(animation.currentTime),
+      };
+    }),
+  );
+
+test('the star pulses for five seconds at most, then rests', async ({
+  page,
+}) => {
+  await open(page, false);
+  const pulses = await starPulse(page);
+  expect(pulses.length).toBeGreaterThan(0);
+  for (const pulse of pulses) expect(pulse.end).toBeLessThanOrEqual(5000);
+});
+
+test('a new track pulses the star again within the same five seconds', async ({
+  page,
+}) => {
+  let polls = 0;
+  await page.route('**/api/spotify', (route) => {
+    polls += 1;
+    const next =
+      polls > 1
+        ? { title: 'Next', songUrl: 'https://open.spotify.com/track/next' }
+        : {};
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ ...track, ...next }),
+    });
+  });
+  await page.goto('/tests/browser/spotify.html');
+  await expect(page.locator('.listening')).toHaveClass(/is-active/);
+  await expect(page.locator('.listening__card')).toContainText('Next', {
+    timeout: 12_000,
+  });
+  const pulses = await starPulse(page);
+  expect(pulses.length).toBeGreaterThan(0);
+  for (const pulse of pulses) {
+    expect(pulse.end).toBeLessThanOrEqual(5000);
+    // A fresh activation, not the first track's pulse carried over.
+    expect(pulse.current).toBeLessThan(5000);
+  }
+});
+
+test('a pause saved on any other page holds the star still', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('oddava:motion', 'paused'),
+  );
+  await open(page, false);
+  await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
+  expect(await starPulse(page)).toEqual([]);
+});
+
+test('reduced motion keeps the star still', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, false);
+  expect(await starPulse(page)).toEqual([]);
+});

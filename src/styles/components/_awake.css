@@ -62,11 +62,42 @@ body:has(.awake) {
 
 /* The hero: most of a first screen under the header, never all of it — the
    top of the project strip still stands in view on the horizon. The bottom
-   padding is the cat's room on the floor. */
+   padding is the cat's room on the floor.
+
+   Home reads down one left edge — wordmark, name, the sections below — so the
+   type stands on that edge, low in the sky, above the floor the cat walks. */
 .awake--band {
+  position: relative;
   flex: none;
+  align-items: stretch;
+  justify-content: flex-end;
   min-height: max(22rem, calc(76svh - 4rem));
   padding: 1.5rem 0 7rem;
+}
+
+.awake--band .awake-stage {
+  width: 100%;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.awake--band .awake-intro {
+  align-items: flex-start;
+}
+
+.awake--band .awake-name {
+  margin: 0 0 0.75rem;
+  margin-left: -0.04em;
+  font-size: clamp(3rem, 2rem + 4.5vw, 4.75rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.awake--band .awake-tagline {
+  max-width: 31rem;
+  font-size: clamp(1.125rem, 1rem + 0.5vw, 1.3125rem);
+  line-height: 1.6;
+  text-wrap: pretty;
 }
 
 /* ---------- sky ---------- */
@@ -206,6 +237,28 @@ body:has(.awake) {
     min-height: max(20rem, calc(68svh - 3.375rem));
     padding: 1rem 0 6rem;
   }
+
+  .awake--band .awake-name {
+    margin-bottom: 0.625rem;
+  }
+}
+
+/* ---------- the pause switch ---------- */
+
+/* Home: at the right end of the floor, where the column ends. */
+.awake--band .motion-toggle {
+  position: absolute;
+  right: -0.75rem;
+  bottom: 0.5rem;
+  z-index: 1;
+}
+
+/* The status pages: the bottom right corner, just above the floor. */
+.status-page .motion-toggle {
+  position: fixed;
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 0.5rem);
+  z-index: 61;
 }
 
 /* ---------- load-in (also the no-JS entrance) ---------- */

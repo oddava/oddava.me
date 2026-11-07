@@ -1,0 +1,32 @@
+---
+/**
+ * The pause switch for everything on the page that moves on its own: the
+ * night sky and the cat, awake or asleep. Pressed means paused; the choice is
+ * kept per browser (lib/awake/motion.ts). Hidden until its script mounts it.
+ * Without script there is nothing to pause: the sky and the cats are drawn by
+ * script, so their canvases stay blank — the footer canvas's breathing
+ * transform still runs, but on an empty canvas it shows nothing — and the
+ * page's other endless motion stops on its own (ui/Skeleton.css).
+ */
+import '../styles/components/_motion-toggle.css';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<button
+  class:list={['motion-toggle', className]}
+  type="button"
+  aria-pressed="false"
+  aria-label="pause motion"
+  data-motion-toggle
+  hidden
+>
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+    <path class="motion-toggle__pause" d="M5 3.5v9M11 3.5v9"></path>
+    <path class="motion-toggle__play" d="M5.5 3.5 12 8l-6.5 4.5z"></path>
+  </svg>
+</button>

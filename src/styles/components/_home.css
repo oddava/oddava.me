@@ -4,88 +4,142 @@
    Under the hero's floor the work starts at once: the start of the /projects
    gallery, then the garden by topic, then one row of links and the cat
    asleep at the end of the page. Everything anchors on the reading column's
-   left edge and runs out to the right, the way the strip does.
+   left edge — the wordmark, the name, each section's title — and the strip
+   and the garden run out to the right from it.
+
+   One scale for the page, declared here so nothing outside home reads it:
+   a section title, a lede, an item title, body, and mono meta.
    =================================================== */
+
+.page:has(.awake--band) {
+  --home-title: clamp(1.75rem, 1.35rem + 1.4vw, 2.375rem);
+  --home-lede: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --home-item: clamp(1.1875rem, 1.1rem + 0.3vw, 1.3125rem);
+  --home-body: 1rem;
+  --home-meta: 0.8125rem;
+  --home-topic: 0.875rem;
+  /* Between sections, and from a title to what it heads. */
+  --home-gap: clamp(4rem, 3.25rem + 3vw, 6rem);
+  --home-head-gap: clamp(1.25rem, 1rem + 0.6vw, 1.75rem);
+}
 
 /* The hero sits right under the header; the sections carry their own space. */
 .page:has(.awake--band) > main {
   padding: 0;
 }
 
-/* --- A section's label: mono, lighting its segment like a header page --- */
+/* --- A section's head: its title, and what belongs beside it --- */
 
 .home-head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 2.75rem;
 }
 
-.home-head__label {
+.home-head__title {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  font-weight: 400;
-  line-height: 1.25rem;
-  letter-spacing: 0;
+  font-family: var(--font-body);
+  font-size: var(--home-title);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
 }
 
-.home-head__label a {
+/* The title leads to its page; a brand line draws under it on hover, the
+   site's one hover gesture. */
+.home-head__title a {
   position: relative;
   display: inline-block;
-  padding: 0.5rem 0;
-  color: var(--color-text-muted);
+  padding: 0.25rem 0 0.375rem;
+  color: var(--color-text-primary);
 }
 
-.home-head__label a::after {
+.home-head__title a::after {
   content: '';
   position: absolute;
-  inset: auto 0 0.25rem;
-  height: 1px;
+  inset: auto 0 0;
+  height: 2px;
+  border-radius: 1px;
   background: var(--color-brand);
   transform: scaleX(0);
+  transform-origin: left;
   transition: transform 320ms var(--ease-draw);
 }
 
 @media (hover: hover) {
-  .home-head__label a:hover {
+  .home-head__title a:hover {
     color: var(--color-text-interactive-hover);
   }
 
-  .home-head__label a:hover::after {
+  .home-head__title a:hover::after {
     transform: none;
   }
 }
 
-.home-head__label a:focus-visible {
-  color: var(--color-text-interactive-hover);
-}
-
-.home-head__label a:focus-visible::after {
+.home-head__title a:focus-visible::after {
   transform: none;
 }
 
+/* The garden's head says what the notes are, under the title. */
+.home-head--intro {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.home-head__intro {
+  max-width: 30rem;
+  margin: 0;
+  font-size: var(--home-lede);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
 .home-empty {
-  margin: 0.5rem 0 0;
-  font-size: 0.9375rem;
-  color: var(--color-text-muted);
+  margin: var(--home-head-gap) 0 0;
+  font-size: var(--home-body);
+  color: var(--color-text-secondary);
 }
 
 /* --- The strip: the gallery's first cards, on the horizon --- */
 
 .home-strip {
-  margin-top: 1.5rem;
+  margin-top: clamp(2rem, 1.5rem + 1.5vw, 2.75rem);
+}
+
+.home-strip .gallery-nav {
+  margin-right: -0.75rem;
+}
+
+.home-strip .gallery-nav button {
+  color: var(--color-text-secondary);
+}
+
+.home-strip .gallery-nav button:disabled {
+  color: var(--color-text-disabled);
 }
 
 .home-strip__gallery {
-  margin-top: 0.5rem;
+  margin-top: calc(var(--home-head-gap) - 0.5rem);
 }
 
-/* Until the island arrives it holds a card's height, so nothing jumps. */
+/* Until the island arrives the first card's place is held — its shape,
+   faintly — so nothing jumps and the strip does not read as missing. */
 .home-strip__pending {
+  width: min(40rem, 100%);
   height: min(33rem, 62svh);
-  margin-top: 0.75rem;
+  margin-top: var(--home-head-gap);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(
+      120% 80% at 85% 0%,
+      color-mix(in srgb, var(--color-brand) 12%, transparent),
+      transparent 62%
+    ),
+    var(--color-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--color-rule);
 }
 
 /* The last tile: how many more, and the way to the whole gallery. It stands
@@ -135,22 +189,22 @@
   outline-offset: 3px;
 }
 
-/* --- The garden by topic --- */
+/* --- The garden, by topic --- */
 
 .home-garden {
-  margin-top: 4rem;
+  margin-top: var(--home-gap);
 }
 
 .shelves {
   display: grid;
-  gap: 2.5rem;
-  margin: 0.5rem 0 0;
+  gap: 3rem;
+  margin: var(--home-head-gap) 0 0;
   padding: 0;
   list-style: none;
 }
 
 .shelves--pending {
-  min-height: 12rem;
+  min-height: 14rem;
 }
 
 .shelf {
@@ -159,14 +213,29 @@
   min-width: 0;
 }
 
-/* The topic stands on a hairline that spans its shelf. */
+/* Each topic heads its group: its name and how much more it holds, on a
+   hairline that spans the group. One link, to the topic's page. */
 .shelf__topic {
   position: relative;
-  padding-bottom: 0.625rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0 0.75rem;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: var(--home-topic);
   line-height: 1.25rem;
+  color: var(--color-text-secondary);
+}
+
+.shelf__topic-name {
+  overflow-wrap: anywhere;
+}
+
+.shelf__more {
+  flex: none;
   color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .shelf__topic::before,
@@ -191,7 +260,8 @@
 }
 
 @media (hover: hover) {
-  .shelf__topic:hover {
+  .shelf__topic:hover,
+  .shelf__topic:hover .shelf__more {
     color: var(--color-text-interactive-hover);
   }
 
@@ -200,22 +270,26 @@
   }
 }
 
-.shelf__topic:focus-visible {
+.shelf__topic:focus-visible,
+.shelf__topic:focus-visible .shelf__more {
   color: var(--color-text-interactive-hover);
+}
+
+.shelf__topic:focus-visible {
   outline-offset: 2px;
 }
 
 /* The newest note in the topic; its title's hit area covers it. */
 .shelf__note {
   position: relative;
-  margin-top: 1.125rem;
+  margin-top: 1.25rem;
 }
 
 .shelf__title {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--home-item);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
@@ -245,7 +319,7 @@
 
 .shelf__summary {
   margin: 0.5rem 0 0;
-  font-size: 0.9375rem;
+  font-size: var(--home-body);
   line-height: 1.6;
   color: var(--color-text-secondary);
   text-wrap: pretty;
@@ -256,26 +330,15 @@
 }
 
 .shelf__date {
-  display: block;
-  margin-top: 0.75rem;
+  margin: 0.75rem 0 0;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--home-meta);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.shelf__date time {
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-}
-
-.shelf__more {
-  align-self: flex-start;
-  margin-top: 0.875rem;
-  padding: 0.25rem 0;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.shelf__more:hover,
-.shelf__more:focus-visible {
-  color: var(--color-text-interactive-hover);
 }
 
 /* Wide screens: the topics side by side, starting at the column's left edge
@@ -284,33 +347,28 @@
   .shelves {
     width: min(60rem, 50vw + 16rem);
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2.5rem;
-  }
-
-  .shelf__more {
-    margin-top: auto;
-    padding-top: 1.125rem;
-  }
-
-  .shelf__note {
-    margin-bottom: 0;
+    gap: 2.75rem;
   }
 }
 
-/* --- Links: one quiet row, then the floor --- */
+/* --- Links: one row, then the floor --- */
 
 .home-links {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 1.25rem;
-  margin: 4.5rem 0 0;
+  gap: 0 1.5rem;
+  margin: var(--home-gap) 0 0;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 2;
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
+/* Each link a comfortable target, however short its word: tall here, and
+   the row's gap keeps even "x" clear of its neighbours. */
 .home-links a {
+  display: inline-block;
+  padding: 0.5rem 0;
   color: var(--color-text-secondary);
 }
 
@@ -320,23 +378,29 @@
 }
 
 @media (max-width: 640px) {
+  .page:has(.awake--band) {
+    --home-gap: 4rem;
+  }
+
   .home-strip__pending {
+    width: auto;
     height: calc((100vw - 5.75rem) * 1.5);
   }
 
-  .home-garden {
-    margin-top: 3.25rem;
-  }
-
-  .home-links {
-    margin-top: 3.5rem;
+  .shelves {
+    gap: 2.5rem;
   }
 }
 
 @media (forced-colors: active) {
-  .home-head__label a::after,
+  .home-head__title a::after,
   .shelf__topic::before,
   .shelf__topic::after {
     background: CanvasText;
+  }
+
+  .home-strip__pending {
+    background: none;
+    border: 1px solid CanvasText;
   }
 }

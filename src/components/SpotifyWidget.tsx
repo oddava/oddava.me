@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'preact/hooks';
 import type {
   CSSProperties,
   TargetedKeyboardEvent,
   TargetedMouseEvent,
 } from 'preact';
 import './SpotifyWidget.css';
+import { restoreMotionPreference } from '../lib/awake/motion';
 import { describeTrack, formatDuration, playbackRatio } from './spotify/format';
 import { useNowPlaying } from './spotify/useNowPlaying';
 import { usePersistedMinimized } from './spotify/usePersistedMinimized';
@@ -14,6 +21,9 @@ import { useWidgetPosition } from './spotify/useWidgetPosition';
 const BODY_ID = 'listening-body';
 
 export default function SpotifyWidget() {
+  // The widget renders on pages with no pause switch of their own (the notes
+  // pages): a pause chosen anywhere else still holds its star still here.
+  useLayoutEffect(() => restoreMotionPreference(), []);
   const { data, loading, currentProgress } = useNowPlaying();
   const { displayData, renderState } = useSpotifyRenderState(data, loading);
   const [failedAlbum, setFailedAlbum] = useState<string>();

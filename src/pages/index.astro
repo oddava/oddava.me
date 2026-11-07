@@ -5,11 +5,13 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import Footer from '../components/Footer.astro';
+import MotionToggle from '../components/MotionToggle.astro';
 import AwakeSky from '../components/awake/AwakeSky.astro';
 import NoteShelves from '../components/home/NoteShelves.astro';
 import ProjectStrip from '../components/home/ProjectStrip.astro';
 import linksData from '../data/links.json';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
+import { NOTES_SUMMARY } from '../lib/site';
 import '../styles/components/_awake.css';
 import '../styles/components/_projects.css';
 import '../styles/components/_home.css';
@@ -45,12 +47,13 @@ const pageHref = (label: string) =>
       </div>
     </div>
     <button class="awake-pet" type="button" data-awake-pet>pet the cat</button>
+    <MotionToggle />
     <p class="sr-only" aria-live="polite" data-awake-live></p>
   </section>
 
-  <section class="home-strip" aria-labelledby="home-projects">
+  <section class="home-section home-strip" aria-labelledby="home-projects">
     <div class="home-head">
-      <h2 class="home-head__label" id="home-projects">
+      <h2 class="home-head__title" id="home-projects">
         <a href={pageHref('projects')}>projects</a>
       </h2>
       <div class="gallery-nav" data-gallery-nav hidden>
@@ -67,11 +70,12 @@ const pageHref = (label: string) =>
     </ProjectStrip>
   </section>
 
-  <section class="home-garden" aria-labelledby="home-notes">
-    <div class="home-head">
-      <h2 class="home-head__label" id="home-notes">
+  <section class="home-section home-garden" aria-labelledby="home-notes">
+    <div class="home-head home-head--intro">
+      <h2 class="home-head__title" id="home-notes">
         <a href={pageHref('notes')}>notes</a>
       </h2>
+      <p class="home-head__intro">{NOTES_SUMMARY}</p>
     </div>
     <NoteShelves server:defer>
       <div class="shelves shelves--pending" slot="fallback"></div>
@@ -102,8 +106,12 @@ const pageHref = (label: string) =>
 
 <script>
   import { mountAwake } from '../lib/awake/mount';
+  import { mountMotionToggles } from '../lib/awake/motion';
   import { mountQuiet } from '../lib/awake/quiet';
   import { mountGallery } from '../lib/project-gallery';
+
+  // A stored pause applies before anything starts moving.
+  mountMotionToggles();
 
   const root = document.querySelector<HTMLElement>('[data-awake]');
   if (root) mountAwake(root);

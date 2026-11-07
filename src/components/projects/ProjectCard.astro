@@ -2,7 +2,8 @@
 /**
  * One gallery card: the image (or a night-sky blank with the project's
  * initial) fills it, and the caption sits on a scrim. The whole card links to
- * the project; site and source stay their own links. Shared by /projects and
+ * the project in the same tab — it is the card's one main action; site and
+ * source stay their own links, opening a new tab and saying so. Shared by /projects and
  * home's strip so both speak the same card.
  */
 import type { Project } from '../../lib/contracts';
@@ -79,12 +80,7 @@ const hostOf = (url: string) => new URL(url).host;
       <Heading class="pcard__name">
         {
           href ? (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              draggable="false"
-            >
+            <a href={href} draggable="false">
               {project.name}
             </a>
           ) : (
@@ -123,6 +119,7 @@ const hostOf = (url: string) => new URL(url).host;
                     draggable="false"
                   >
                     {hostOf(project.site)}
+                    <span class="sr-only"> (opens in new tab)</span>
                   </a>
                 </li>
               )}
@@ -132,7 +129,7 @@ const hostOf = (url: string) => new URL(url).host;
                     href={project.source}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`${project.name} source code`}
+                    aria-label={`${project.name} source code (opens in new tab)`}
                     draggable="false"
                   >
                     source

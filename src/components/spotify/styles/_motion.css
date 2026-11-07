@@ -22,8 +22,9 @@
 
 /* The text and the moon are keyed on the track, so these run on arrival and
    again on every track change: new words rise, the orbit redraws, and the
-   star flares once, breathes for half a minute, then rests (an even count
-   ends where it began). */
+   star flares once, breathes twice, then rests (an even count ends where it
+   began). Flare and breaths together stay within five seconds, so nothing
+   here moves on its own for longer than that. */
 .listening__text {
   animation: listening-rise 460ms var(--listening-ease) both;
 }
@@ -35,7 +36,7 @@
 .listening__star {
   animation:
     listening-flare 900ms var(--listening-ease) both,
-    listening-breathe 3.6s ease-in-out 900ms 8 alternate;
+    listening-breathe 1.8s ease-in-out 900ms 2 alternate;
 }
 
 @keyframes listening-rise {
@@ -72,6 +73,11 @@
     opacity: 0.6;
     transform: scale(0.82);
   }
+}
+
+/* The reader paused motion (lib/awake/motion.ts): the star holds still. */
+:root[data-motion='paused'] .listening__star {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

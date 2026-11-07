@@ -60,9 +60,9 @@
   height: 100%;
   padding: 1.75rem 0 1rem;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   line-height: 1.25rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   text-decoration: none;
   transition: color 150ms ease;
 }
@@ -121,8 +121,20 @@
     gap: 1.125rem;
   }
 
+  .site-nav__pages a {
+    font-size: 0.875rem;
+  }
+
   .site-nav .note-search__trigger {
     margin-left: 0.5rem;
+  }
+}
+
+/* The narrowest phones: the three pages and the wordmark still share one
+   line. */
+@media (max-width: 359px) {
+  .site-nav__pages ul {
+    gap: 0.875rem;
   }
 }
 

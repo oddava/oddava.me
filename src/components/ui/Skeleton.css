@@ -56,6 +56,16 @@
   }
 }
 
+/* Without script a skeleton is never replaced by what it stands in for (the
+   guestbook on /about), so it would shimmer for as long as the page is open,
+   with no pause switch to stop it: hold it still. */
+@media (scripting: none) {
+  .skeleton,
+  .skeleton::after {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton,
   .skeleton::after {

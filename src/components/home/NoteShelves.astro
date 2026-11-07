@@ -1,9 +1,10 @@
 ---
 /**
  * Home's notes, by topic: each top-level folder of the garden with its newest
- * note — title, summary, date — and how many more the folder holds. A server
- * island over the same Redis-backed index every /notes page reads. Links are
- * the garden's own hrefs, so they follow wherever notes are served.
+ * note — title, summary, when it was last updated — and how many more the
+ * folder holds. A server island over the same Redis-backed index every /notes
+ * page reads. Links are the garden's own hrefs, so they follow wherever notes
+ * are served.
  */
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { pickNoteShelves, type HomeShelf } from '../../lib/home';
@@ -34,7 +35,10 @@ const formatDate = (date: string) =>
       {shelves.map((shelf) => (
         <li class="shelf">
           <a class="shelf__topic" href={shelf.href}>
-            {shelf.topic}
+            <span class="shelf__topic-name">{shelf.topic}</span>
+            {shelf.more > 0 && (
+              <span class="shelf__more">+{shelf.more} more</span>
+            )}
           </a>
           <article class="shelf__note">
             <h3 class="shelf__title">
@@ -44,17 +48,14 @@ const formatDate = (date: string) =>
               <p class="shelf__summary">{shelf.latest.summary}</p>
             )}
             {shelf.latest.date && (
-              <time class="shelf__date" datetime={shelf.latest.date}>
-                {formatDate(shelf.latest.date)}
-              </time>
+              <p class="shelf__date">
+                Updated{' '}
+                <time datetime={shelf.latest.date}>
+                  {formatDate(shelf.latest.date)}
+                </time>
+              </p>
             )}
           </article>
-          {shelf.more > 0 && (
-            <a class="shelf__more" href={shelf.href}>
-              +{shelf.more} more
-              <span class="sr-only"> in {shelf.topic}</span>
-            </a>
-          )}
         </li>
       ))}
     </ul>

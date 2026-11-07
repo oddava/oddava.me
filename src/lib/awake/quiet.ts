@@ -8,6 +8,7 @@
 import { drawCat, restingFace } from './draw';
 import { POSES, skeleton } from './rig';
 import { paintQuietSky } from './sky';
+import { mountMotionToggles } from './motion';
 
 const NAP_SCALE = 0.62;
 /** Room round the silhouette for the rim stroke and the tail tip. */
@@ -56,6 +57,9 @@ export function paintNap(canvas: HTMLCanvasElement) {
 }
 
 export function mountQuiet() {
+  // The footer floor's pause switch; a pause chosen on any page holds here
+  // too, and the cat stops breathing.
+  mountMotionToggles();
   const sky = document.querySelector<HTMLCanvasElement>('[data-quiet-sky]');
   const nap = document.querySelector<HTMLCanvasElement>('[data-quiet-nap]');
   const paint = () => {
