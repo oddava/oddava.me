@@ -1,181 +1,468 @@
-/* --- Projects list --- */
+/* --- Projects list ----------------------------------------------------- */
 
-.admin-project-list {
+/* The grip hangs in the gutter, so thumbnails share the left edge with the
+   section title and every other row on the page. */
+.adm-project {
+  position: relative;
   display: grid;
-  margin: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  background: var(--color-surface);
+}
+
+.adm-project__grip {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--adm-hang) - 0.875rem);
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 2.75rem;
   padding: 0;
-  list-style: none;
-}
-
-.admin-project-list > li:not(:last-child) {
-  border-bottom: 1px solid var(--admin-line);
-}
-
-.admin-project-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-}
-
-.admin-project-row--hidden .admin-project-row__info {
-  opacity: 0.55;
-}
-
-.admin-project-row__info {
-  min-width: 0;
-  flex: 1;
-}
-
-.admin-project-row__heading {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.admin-project-row__name {
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: var(--admin-text-primary);
-  overflow-wrap: anywhere;
-}
-
-.admin-project-row__year {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--admin-text-muted);
-}
-
-.admin-project-row__description {
-  margin: 4px 0 0;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--admin-text-muted);
-  overflow-wrap: break-word;
-}
-
-.admin-project-row__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* One button size across the header, rows, and editor. */
-.admin-projects .admin-button {
-  min-height: 34px;
-  padding: 0 12px;
-  font-size: 0.75rem;
-  text-decoration: none;
-}
-
-.admin-project-row__actions .admin-project-row__visibility {
-  min-width: 3.5rem;
-}
-
-.admin-project-row__actions .admin-project-row__step {
-  width: 34px;
-  padding: 0;
-  font-family: var(--font-mono);
-}
-
-/* --- Editor --- */
-
-.admin-project-form {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  margin: 10px 0;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: var(--radius-md);
-  background: var(--admin-surface-elevated);
-}
-
-.admin-project-form__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 10px;
-}
-
-.admin-project-form__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--admin-text-secondary);
-}
-
-.admin-project-form__field--wide {
-  grid-column: 1 / -1;
-}
-
-.admin-project-form__field textarea {
-  resize: vertical;
-  font-family: var(--font-body);
-  line-height: 1.5;
-}
-
-.admin-project-form__image {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-project-form__image .admin-input {
-  flex: 1;
-  min-width: 0;
-}
-
-/* A 4:3 thumbnail framed like the desktop card, so the chosen focus and
-   zoom show here too. */
-.admin-project-form__preview {
-  width: 48px;
-  height: 36px;
-  flex-shrink: 0;
-  overflow: hidden;
-  border: 1px solid var(--admin-line);
+  border: 0;
   border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-disabled);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transform: translateY(-50%);
+  transition:
+    opacity 150ms ease,
+    color 150ms ease;
+}
+
+.adm-project:hover .adm-project__grip,
+.adm-project__grip:focus-visible,
+.adm-projects.is-dragging .adm-project__grip {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .adm-project__grip {
+    opacity: 0.6;
+  }
+}
+
+.adm-project__grip:hover {
+  color: var(--color-text-primary);
+}
+
+.adm-project__open {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1.125rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adm-project__thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--radius-sm-2);
+}
+
+/* With no image the frame stays an outline, not a grey tile that reads as
+   a picture that failed to load. */
+.adm-project__thumb:has(img) {
   background: var(--color-surface-raised);
 }
 
-.admin-project-form__preview img {
+.adm-project__thumb img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.admin-project-form__check {
+.adm-project__text {
+  display: grid;
+  gap: 0.3125rem;
+  min-width: 0;
+}
+
+.adm-project__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.adm-project__name {
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: color 150ms ease;
+}
+
+@media (hover: hover) {
+  .adm-project__open:hover .adm-project__name {
+    color: var(--color-text-interactive-hover);
+  }
+}
+
+.adm-project__flag {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-text-disabled);
+}
+
+.adm-project__description {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.adm-project__year {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-disabled);
+}
+
+/* Hidden reads once: the row dims and its eye is crossed out. */
+.adm-project--hidden .adm-project__open {
+  opacity: 0.45;
+}
+
+.admin-page .adm-project__visibility[aria-pressed='true'] {
+  color: var(--color-text-disabled);
+}
+
+.adm-project__open:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+/* While dragging, the other rows slide aside; the held one follows the
+   pointer on the raised surface, its edge lit — no lift, no shadow. */
+.adm-projects.is-dragging .adm-project {
+  transition: transform 200ms var(--ease-draw);
+  user-select: none;
+}
+
+.adm-projects.is-dragging .adm-project.is-held {
+  z-index: 2;
+  transition: none;
+  background: var(--color-surface-raised);
+}
+
+.adm-project.is-held::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -0.75rem;
+  width: 1px;
+  background: var(--color-brand);
+}
+
+.adm-projects.is-dragging,
+.adm-projects.is-dragging * {
+  cursor: grabbing;
+}
+
+/* --- Sheet ------------------------------------------------------------- */
+
+.adm-sheet {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(32rem, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--color-rule);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+}
+
+.adm-sheet[open] {
+  animation: adm-sheet-in 320ms var(--ease-draw);
+}
+
+.adm-sheet::backdrop {
+  background: color-mix(in srgb, #000 70%, transparent);
+  animation: adm-fade-in 200ms ease;
+}
+
+.adm-sheet__form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.adm-sheet__head {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.75rem;
-  color: var(--admin-text-secondary);
+  justify-content: space-between;
+  gap: 1rem;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.25rem 1.125rem 2rem;
 }
 
-.admin-project-form__actions {
+.adm-sheet__head::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+.adm-sheet__head h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.adm-sheet__body {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 1.75rem;
+  overflow-y: auto;
+  padding: 2rem;
+  overscroll-behavior: contain;
+}
+
+.adm-sheet__foot {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.125rem 2rem calc(1.125rem + env(safe-area-inset-bottom));
+}
+
+.adm-sheet__foot::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: var(--hairline);
+}
+
+.adm-sheet__bar {
   display: flex;
+  min-height: 2.375rem;
+  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 1.75rem;
 }
 
-@media (max-width: 680px) {
-  .admin-project-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+.adm-sheet__act {
+  font-size: 0.8125rem;
+}
+
+.adm-sheet__delete,
+.adm-sheet__ask {
+  margin-right: auto;
+}
+
+.adm-sheet__ask {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.adm-sheet__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-error);
+}
+
+@keyframes adm-sheet-in {
+  from {
+    transform: translateX(2.5rem);
+    opacity: 0;
+  }
+}
+
+@keyframes adm-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.adm-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.adm-field-row:has(.adm-field--narrow) {
+  grid-template-columns: minmax(0, 1fr) 7rem;
+}
+
+/* --- Image ------------------------------------------------------------- */
+
+.adm-image {
+  display: grid;
+  justify-items: start;
+  gap: 0.875rem;
+}
+
+/* 4:3, the card's own shape, so the framing chosen is the one shown. */
+.adm-image__frame {
+  display: block;
+  width: 15rem;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.adm-image__frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.adm-image__frame--empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.625rem;
+  padding: 0;
+  border-style: dashed;
+  border-color: var(--color-rule-strong);
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.adm-image__frame--empty .studio-glyph {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.adm-image__frame--empty:hover:not(:disabled) {
+  border-color: var(--color-brand);
+  color: var(--color-text-interactive-hover);
+}
+
+.adm-image__tools {
+  display: flex;
+  gap: 1.5rem;
+}
+
+/* --- Switch rows ------------------------------------------------------- */
+
+.adm-switches {
+  display: grid;
+}
+
+.adm-switch-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--adm-rule);
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.adm-switch-field:first-child {
+  border-top: 1px solid var(--adm-rule);
+}
+
+/* --- Narrow ------------------------------------------------------------ */
+
+@media (max-width: 860px) {
+  /* No gutter to hang in on a phone: the grip moves to the right end, by
+     the eye, so thumbnails keep the page's left edge. */
+  .adm-project {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.25rem;
   }
 
-  .admin-project-row__actions {
-    justify-content: flex-start;
+  .adm-project__grip {
+    position: static;
+    order: 3;
+    width: 2.25rem;
+    height: 2.75rem;
+    margin-right: -0.625rem;
+    opacity: 0.6;
+    transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .adm-project__open {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    gap: 0.875rem;
   }
 
-  .admin-project-form__grid {
-    grid-template-columns: 1fr;
+  .adm-project__flag {
+    display: none;
+  }
+
+  .adm-project__visibility {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .adm-sheet {
+    border-left: 0;
+  }
+
+  .adm-sheet__body {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .adm-sheet__head,
+  .adm-sheet__foot {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .adm-field-row:not(:has(.adm-field--narrow)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-sheet[open],
+  .adm-sheet::backdrop {
+    animation: none;
+  }
+
+  .adm-projects.is-dragging .adm-project {
+    transition: none;
   }
 }

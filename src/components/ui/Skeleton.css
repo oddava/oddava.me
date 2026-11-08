@@ -16,10 +16,6 @@
   border-radius: 10px;
 }
 
-.skeleton-card {
-  height: 70px;
-}
-
 .skeleton::after {
   content: '';
   position: absolute;

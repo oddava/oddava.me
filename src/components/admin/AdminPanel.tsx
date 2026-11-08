@@ -1,175 +1,121 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import {
-  clearUnapprovedGuestbookEntries,
-  fetchAdminOverview,
-  fetchGuestbookEntries,
-  updateGuestbookEntryStatus,
-} from './api';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { fetchAdminOverview } from './api';
+import { AdminNav, type AdminSection } from './AdminNav';
 import { GuestbookModeration } from './GuestbookModeration';
 import { IntegrationsPanel } from './IntegrationsPanel';
-import { MetricGrid } from './MetricGrid';
 import { ProjectsPanel } from './ProjectsPanel';
-import type {
-  GuestbookEntry,
-  GuestbookStatus,
-  OverviewResponse,
-} from '../../lib/contracts';
+import { ToastProvider } from './toast';
+import type { OverviewResponse } from '../../lib/contracts';
+import '../../styles/components/_control.css';
 import './AdminPanel.css';
 
 export default function AdminPanel() {
-  const [overview, setOverview] = useState<OverviewResponse | null>(null);
-  const [guestbookStatus, setGuestbookStatus] =
-    useState<GuestbookStatus>('pending');
-  const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>(
-    [],
+  return (
+    <ToastProvider>
+      <Dashboard />
+    </ToastProvider>
   );
-  const [globalError, setGlobalError] = useState<string | null>(null);
-  const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const overviewRequestRef = useRef(0);
+}
 
-  const loadOverview = async () => {
-    setOverview(await fetchAdminOverview());
-  };
+const SECTION_IDS = ['guestbook', 'projects', 'integrations'] as const;
 
-  const loadGuestbook = async (status: GuestbookStatus) => {
-    setGuestbookEntries(await fetchGuestbookEntries(status));
-  };
+function Dashboard() {
+  const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [attention, setAttention] = useState(false);
+  const overviewRequest = useRef(0);
+  const active = useActiveSection(SECTION_IDS);
 
   /**
-   * Reports into the metric grid rather than the page banner: the counters are
-   * the only thing this failure costs, and the grid is where the retry lives.
+   * The count is garnish on the navigation: a failed load leaves it out
+   * rather than raising an error nobody can act on.
    */
-  const refreshOverview = () => {
-    const requestId = ++overviewRequestRef.current;
-    setOverviewError(null);
-
-    return fetchAdminOverview()
+  const refreshOverview = useCallback(() => {
+    const requestId = ++overviewRequest.current;
+    fetchAdminOverview()
       .then((data) => {
-        if (requestId !== overviewRequestRef.current) return;
-        setOverview(data);
-        setOverviewError(null);
+        if (requestId === overviewRequest.current) setOverview(data);
       })
-      .catch((error) => {
-        if (requestId !== overviewRequestRef.current) return;
-        setOverviewError(
-          error instanceof Error ? error.message : 'Could not load admin data.',
-        );
-      });
-  };
-
-  useEffect(() => {
-    void refreshOverview();
-
-    // Bumping the request id retires any in-flight response, so a late resolve
-    // cannot write to an unmounted panel.
-    return () => {
-      overviewRequestRef.current += 1;
-    };
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    let active = true;
-
-    void fetchGuestbookEntries(guestbookStatus)
-      .then((entries) => {
-        if (!active) return;
-        setGuestbookEntries(entries);
-        setGlobalError(null);
-      })
-      .catch((error) => {
-        if (!active) return;
-        setGlobalError(
-          error instanceof Error
-            ? error.message
-            : 'Could not load guestbook entries.',
-        );
-      });
-
+    refreshOverview();
+    // Bumping the id retires an in-flight response after unmount.
     return () => {
-      active = false;
+      overviewRequest.current += 1;
     };
-  }, [guestbookStatus]);
+  }, [refreshOverview]);
 
-  async function runAction(
-    key: string,
-    action: () => Promise<void>,
-    successMessage: string,
-  ) {
-    setBusyKey(key);
-    setNotice(null);
-    setGlobalError(null);
-    try {
-      await action();
-      setNotice(successMessage);
-      await loadOverview();
-    } catch (error) {
-      setGlobalError(
-        error instanceof Error ? error.message : 'Request failed.',
-      );
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
-  const handleClearGuestbook = () =>
-    runAction(
-      'guestbook-clear',
-      async () => {
-        await clearUnapprovedGuestbookEntries();
-        await loadGuestbook(guestbookStatus);
-      },
-      'Pending and rejected entries cleared.',
-    );
-
-  const handleModerateGuestbookEntry = (
-    entry: GuestbookEntry,
-    status: Exclude<GuestbookStatus, 'pending'>,
-  ) =>
-    runAction(
-      `guestbook-${entry.id}-${status}`,
-      async () => {
-        await updateGuestbookEntryStatus(entry.id, status);
-        await loadGuestbook(guestbookStatus);
-      },
-      `Guestbook entry ${status}.`,
-    );
+  const metrics = overview?.metrics;
+  const sections: AdminSection[] = [
+    {
+      id: 'guestbook',
+      label: 'guestbook',
+      // Only entries waiting on a decision earn a number.
+      count: metrics?.pendingGuestbook || undefined,
+    },
+    { id: 'projects', label: 'projects' },
+    { id: 'integrations', label: 'integrations', attention },
+  ];
 
   return (
-    <div className="admin-dashboard">
-      {globalError && (
-        <p className="admin-error" role="alert">
-          {globalError}
-        </p>
-      )}
-      {notice && (
-        <p className="admin-success" role="status" aria-live="polite">
-          {notice}
-        </p>
-      )}
-
-      <MetricGrid
-        overview={overview}
-        error={overviewError}
-        onRetry={() => void refreshOverview()}
-      />
-
-      <section className="admin-split">
+    <div className="adm">
+      <AdminNav sections={sections} active={active} />
+      <main className="adm-main" id="main">
         <GuestbookModeration
-          busyKey={busyKey}
-          entries={guestbookEntries}
-          status={guestbookStatus}
-          onClearAll={handleClearGuestbook}
-          onModerate={handleModerateGuestbookEntry}
-          onStatusChange={setGuestbookStatus}
+          pending={metrics?.pendingGuestbook}
+          onChanged={refreshOverview}
         />
-        {/* Owns its own data: integration health probes upstream APIs and must
-            not be able to slow down or fail the rest of the dashboard. */}
-        <IntegrationsPanel />
-      </section>
-
-      <ProjectsPanel />
+        <ProjectsPanel />
+        {/* Owns its own data: health checks reach upstream APIs and must not
+            slow down or fail the rest of the dashboard. */}
+        <IntegrationsPanel onAttention={setAttention} />
+      </main>
     </div>
   );
+}
+
+/**
+ * The section whose top has passed the upper third of the viewport. At the
+ * very bottom the last section wins, even when it is too short to reach that
+ * line — otherwise it could never be marked.
+ */
+function useActiveSection(ids: readonly string[]): string {
+  const [active, setActive] = useState(ids[0]);
+
+  useEffect(() => {
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const line = window.innerHeight / 3;
+      const scrolled = window.scrollY > 0;
+      const atBottom =
+        scrolled &&
+        window.innerHeight + window.scrollY >=
+          document.documentElement.scrollHeight - 2;
+      let current = ids[0];
+      for (const id of ids) {
+        const top = document.getElementById(id)?.getBoundingClientRect().top;
+        if (top !== undefined && top <= line) current = id;
+      }
+      setActive(atBottom ? ids[ids.length - 1] : current);
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+    // Sections grow as their data arrives, which moves the others without a
+    // scroll; watching the page's size catches that too.
+    const observer = new ResizeObserver(schedule);
+    observer.observe(document.body);
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [ids]);
+
+  return active;
 }

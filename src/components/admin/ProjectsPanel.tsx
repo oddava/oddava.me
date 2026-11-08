@@ -1,131 +1,79 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { fetchProjects, saveProjects, uploadContentMedia } from './api';
+import type { TargetedKeyboardEvent, TargetedPointerEvent } from 'preact';
+import { fetchProjects, saveProjects } from './api';
 import { SkeletonRow } from '../ui/Skeleton';
+import { VisuallyHidden } from '../ui/VisuallyHidden';
 import type { Project } from '../../lib/contracts';
-import { useDialogConfirm } from './useDialogConfirm';
-import {
-  ProjectImageDialog,
-  type ProjectImageResult,
-  type ProjectImageSource,
-} from './ProjectImageDialog';
-import {
-  DEFAULT_DISPLAY,
-  displayOf,
-  storedDisplay,
-  type ProjectImageDisplay,
-} from '../../lib/project-image';
+import { displayOf } from '../../lib/project-image';
+import { Icon } from './studioIcons';
+import { ProjectSheet } from './ProjectSheet';
+import { errorMessage, useToast } from './toast';
 import './ProjectsPanel.css';
 
-/** The form edits strings; `toProject` turns them back into a project. */
-interface Draft {
-  id: string;
-  name: string;
-  description: string;
-  year: string;
-  stack: string;
-  site: string;
-  source: string;
-  imageSrc: string;
-  imageAlt: string;
-  imageDisplay: ProjectImageDisplay;
-  featured: boolean;
-  hidden: boolean;
-}
-
-/**
- * Project images go into the content media store, grouped under this folder:
- * served from `/images/notes/projects/…` and included in `notes:export`, so a
- * prune run from a fresh export keeps them.
- */
-const MEDIA_COLLECTION = 'notes';
-const MEDIA_FOLDER = 'projects';
-
 interface Editing {
-  draft: Draft;
-  isNew: boolean;
+  project: Project | null;
 }
 
-function toDraft(project: Project): Draft {
-  return {
-    id: project.id,
-    name: project.name,
-    description: project.description,
-    year: String(project.year),
-    stack: project.stack.join(', '),
-    site: project.site ?? '',
-    source: project.source ?? '',
-    imageSrc: project.image?.src ?? '',
-    imageAlt: project.image?.alt ?? '',
-    imageDisplay: displayOf(project.image),
-    featured: project.featured === true,
-    hidden: project.hidden,
-  };
+/** A queued save dropped because one before it failed and the list reloaded. */
+class Superseded extends Error {}
+
+function moved<T>(list: T[], from: number, to: number): T[] {
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
 }
 
-function emptyDraft(): Draft {
-  return {
-    id: crypto.randomUUID(),
-    name: '',
-    description: '',
-    year: String(new Date().getFullYear()),
-    stack: '',
-    site: '',
-    source: '',
-    imageSrc: '',
-    imageAlt: '',
-    imageDisplay: { ...DEFAULT_DISPLAY },
-    featured: false,
-    hidden: false,
-  };
-}
-
-/** The server validates; this only reshapes, so its message is the one shown. */
-function toProject(draft: Draft): Project {
-  const year = draft.year.trim();
-  return {
-    id: draft.id,
-    name: draft.name,
-    description: draft.description,
-    year: year === 'now' ? 'now' : Number(year),
-    stack: draft.stack
-      .split(',')
-      .map((tool) => tool.trim())
-      .filter(Boolean),
-    site: draft.site,
-    source: draft.source,
-    ...(draft.imageSrc.trim()
-      ? {
-          image: {
-            src: draft.imageSrc,
-            alt: draft.imageAlt,
-            ...storedDisplay(draft.imageDisplay),
-          },
+/** The thumbnail frames the image the way the public card does. */
+function Thumb({ project }: { project: Project }) {
+  if (!project.image) {
+    return <span className="adm-project__thumb" aria-hidden="true" />;
+  }
+  const display = displayOf(project.image);
+  return (
+    <span className="adm-project__thumb" aria-hidden="true">
+      <img
+        src={project.image.src}
+        alt=""
+        loading="lazy"
+        style={
+          display.fit === 'contain'
+            ? { objectFit: 'contain' }
+            : {
+                objectPosition: `${display.x}% ${display.y}%`,
+                transform: `scale(${display.zoom})`,
+                transformOrigin: `${display.x}% ${display.y}%`,
+              }
         }
-      : {}),
-    ...(draft.featured ? { featured: true } : {}),
-    hidden: draft.hidden,
-  };
-}
-
-function errorCode(error: unknown): string | undefined {
-  return error instanceof Error && 'code' in error
-    ? String((error as { code?: unknown }).code)
-    : undefined;
+      />
+    </span>
+  );
 }
 
 export function ProjectsPanel() {
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [adjusting, setAdjusting] = useState<ProjectImageSource | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const { confirm, dialog } = useDialogConfirm();
+  const [heldId, setHeldId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const list = useRef<HTMLOListElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(true);
+  /** What the list shows: every change applied, saved or not yet. */
+  const shown = useRef<Project[]>([]);
+  /** What the server last confirmed, and the revision the next save names. */
+  const saved = useRef({ projects: [] as Project[], revision: 0 });
+  /**
+   * Saves run one at a time, each against the revision the one before it
+   * returned — so quick moves never race each other into a conflict.
+   */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  /** Bumped on a failed save; saves queued behind it are dropped. */
+  const generation = useRef(0);
+  /** The grip to refocus once a keyboard move re-renders the list. */
+  const refocus = useRef<string | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -134,17 +82,22 @@ export function ProjectsPanel() {
     };
   }, []);
 
+  const show = (next: Project[]) => {
+    shown.current = next;
+    if (mounted.current) setProjects(next);
+  };
+
   const load = async () => {
     setLoading(true);
     try {
       const data = await fetchProjects();
       if (!mounted.current) return;
-      setProjects(data.projects);
-      setRevision(data.revision);
-      setError(null);
+      saved.current = { projects: data.projects, revision: data.revision };
+      show(data.projects);
+      setLoadError(null);
     } catch (err) {
       if (!mounted.current) return;
-      setError(err instanceof Error ? err.message : 'Could not load projects.');
+      setLoadError(errorMessage(err, 'could not load projects.'));
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -154,448 +107,355 @@ export function ProjectsPanel() {
     void load();
   }, []);
 
-  /** Every change saves the whole list against the revision it was based on. */
-  const commit = async (next: Project[], message: string) => {
-    setBusy(true);
-    setNotice(null);
-    setError(null);
-    try {
-      const data = await saveProjects(next, revision);
-      if (!mounted.current) return false;
-      setProjects(data.projects);
-      setRevision(data.revision);
-      setNotice(message);
-      return true;
-    } catch (err) {
-      if (!mounted.current) return false;
-      setError(err instanceof Error ? err.message : 'Could not save projects.');
-      if (errorCode(err) === 'conflict') await load();
-      return false;
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
-  };
+  useEffect(() => {
+    if (!refocus.current) return;
+    list.current
+      ?.querySelector<HTMLElement>(
+        `[data-grip="${CSS.escape(refocus.current)}"]`,
+      )
+      ?.focus();
+    refocus.current = null;
+  });
 
-  const move = (index: number, delta: -1 | 1) => {
-    const next = [...projects];
-    const [item] = next.splice(index, 1);
-    next.splice(index + delta, 0, item);
-    void commit(next, `${item.name} moved ${delta < 0 ? 'up' : 'down'}.`);
-  };
-
-  const toggleHidden = (project: Project) =>
-    void commit(
-      projects.map((item) =>
-        item.id === project.id ? { ...item, hidden: !item.hidden } : item,
-      ),
-      `${project.name} ${project.hidden ? 'shown' : 'hidden'}.`,
-    );
-
-  const remove = async (project: Project) => {
-    const ok = await confirm({
-      title: 'Delete project',
-      message: `Delete ${project.name}? Hiding it keeps it here instead.`,
-      confirmLabel: 'Delete',
-      danger: true,
+  /**
+   * Shows `next` at once and queues a save of the whole list. A failure —
+   * a stale tab's conflict included — reloads the server's copy instead of
+   * overwriting it. Rejects, so a caller with its own error surface (the
+   * sheet) can show the message.
+   */
+  const save = (next: Project[]) => {
+    show(next);
+    const ticket = generation.current;
+    const run = queue.current.then(async () => {
+      if (ticket !== generation.current) throw new Superseded();
+      const data = await saveProjects(next, saved.current.revision);
+      saved.current = { projects: data.projects, revision: data.revision };
     });
-    if (!ok) return;
-    if (editing?.draft.id === project.id) setEditing(null);
+    queue.current = run.catch(() => {});
+    return run.then(
+      () => {
+        // Adopt the server's copy unless a newer change is already showing.
+        if (shown.current === next) show(saved.current.projects);
+      },
+      async (err) => {
+        if (!(err instanceof Superseded)) {
+          generation.current += 1;
+          await load();
+        }
+        throw err;
+      },
+    );
+  };
+
+  const report = (err: unknown, fallback: string) => {
+    if (err instanceof Superseded) return;
+    toast.show({ message: errorMessage(err, fallback), tone: 'error' });
+  };
+
+  /** For list actions: the result is a message, with undo where it can. */
+  const commit = (next: Project[], message: string, undo: () => Project[]) =>
+    save(next).then(
+      () =>
+        toast.show({
+          message,
+          undo: () =>
+            save(undo()).catch((err) => report(err, 'could not undo.')),
+        }),
+      (err) => report(err, 'could not save projects.'),
+    );
+
+  const move = (from: number, to: number) => {
+    const current = shown.current;
+    if (to < 0 || to >= current.length || to === from) return;
+    const item = current[from];
+    // The row moving is the feedback; a message per arrow press would be
+    // noise. Screen readers hear the new position.
+    setAnnouncement(`${item.name}, position ${to + 1} of ${current.length}.`);
+    save(moved(current, from, to)).catch((err) =>
+      report(err, 'could not reorder projects.'),
+    );
+  };
+
+  const toggleHidden = (project: Project) => {
+    const flip = (hidden: boolean) =>
+      shown.current.map((item) =>
+        item.id === project.id ? { ...item, hidden } : item,
+      );
     void commit(
-      projects.filter((item) => item.id !== project.id),
+      flip(!project.hidden),
+      `${project.name} ${project.hidden ? 'shown on the page' : 'hidden from the page'}.`,
+      () => flip(project.hidden),
+    );
+  };
+
+  const remove = (project: Project) => {
+    const index = shown.current.findIndex((item) => item.id === project.id);
+    setEditing(null);
+    // The row that had focus is gone; the section heading takes it.
+    window.requestAnimationFrame(() => heading.current?.focus());
+    void commit(
+      shown.current.filter((item) => item.id !== project.id),
       `${project.name} deleted.`,
+      () => {
+        const restored = [...shown.current];
+        restored.splice(Math.min(index, restored.length), 0, project);
+        return restored;
+      },
     );
   };
 
-  const submit = async (event: Event) => {
-    event.preventDefault();
-    if (!editing) return;
-    const project = toProject(editing.draft);
+  /** Called by the sheet; a rejection keeps the sheet open with the message. */
+  const submit = async (project: Project, isNew: boolean) => {
+    const current = shown.current;
+    if (!isNew && !current.some((item) => item.id === project.id)) {
+      throw new Error(
+        'this project was deleted elsewhere; close to see the list.',
+      );
+    }
     // New projects go to the top: the page reads newest first.
-    const next = editing.isNew
-      ? [project, ...projects]
-      : projects.map((item) => (item.id === project.id ? project : item));
-    const saved = await commit(
-      next,
-      `${project.name || 'Project'} ${editing.isNew ? 'added' : 'saved'}.`,
+    await save(
+      isNew
+        ? [project, ...current]
+        : current.map((item) => (item.id === project.id ? project : item)),
     );
-    if (saved && mounted.current) setEditing(null);
+    toast.show({ message: `${project.name} ${isNew ? 'added' : 'saved'}.` });
+    setEditing(null);
   };
 
-  const openEditor = (draft: Draft, isNew: boolean) => {
-    setEditing({ draft, isNew });
-    setError(null);
-    setNotice(null);
-  };
+  // --- Reordering -------------------------------------------------------
 
-  const patchDraft = (patch: Partial<Draft>) =>
-    setEditing((current) =>
-      current ? { ...current, draft: { ...current.draft, ...patch } } : current,
-    );
-
-  const update = (field: keyof Draft) => (event: Event) =>
-    patchDraft({ [field]: (event.currentTarget as HTMLInputElement).value });
-
-  /** A chosen file opens the image dialog first; nothing uploads until it says. */
-  const chooseImage = (event: Event) => {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (file) setAdjusting({ kind: 'file', file });
+  const onGripKey = (
+    event: TargetedKeyboardEvent<HTMLButtonElement>,
+    id: string,
+  ) => {
+    // Read the position from the list as it stands, not as this render saw
+    // it: held-down arrows fire faster than the list re-renders.
+    const index = shown.current.findIndex((item) => item.id === id);
+    const last = shown.current.length - 1;
+    const to =
+      event.key === 'ArrowUp'
+        ? index - 1
+        : event.key === 'ArrowDown'
+          ? index + 1
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : null;
+    if (to === null || index < 0) return;
+    event.preventDefault();
+    refocus.current = id;
+    move(index, to);
   };
 
   /**
-   * Uploads a new file (already sized by the dialog) to the media store and
-   * fills `src`, or only takes the display settings. The save still decides.
+   * Pointer drag on the grip: the held row follows the pointer, the rows it
+   * passes slide out of its way, and the list saves once, on release.
    */
-  const applyImage = async ({ file, display }: ProjectImageResult) => {
-    if (!file) {
-      patchDraft({ imageDisplay: display });
-      setAdjusting(null);
-      return;
-    }
-    setUploading(true);
-    setError(null);
-    try {
-      const { media } = await uploadContentMedia(
-        MEDIA_COLLECTION,
-        MEDIA_FOLDER,
-        file,
-      );
-      if (!mounted.current) return;
-      patchDraft({ imageSrc: media.url, imageDisplay: display });
-      setAdjusting(null);
-    } catch (err) {
-      if (!mounted.current) return;
-      setError(err instanceof Error ? err.message : 'Could not upload image.');
-      setAdjusting(null);
-    } finally {
-      if (mounted.current) setUploading(false);
-    }
+  const onGripDown = (
+    event: TargetedPointerEvent<HTMLButtonElement>,
+    id: string,
+  ) => {
+    if (event.button !== 0 || !list.current) return;
+    const from = shown.current.findIndex((item) => item.id === id);
+    if (from < 0) return;
+    event.preventDefault();
+    const rows = Array.from(
+      list.current.querySelectorAll<HTMLElement>('[data-row]'),
+    );
+    const rects = rows.map((row) => row.getBoundingClientRect());
+    const held = rows[from];
+    const step = rects[from].height;
+    const startY = event.clientY;
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    let over = from;
+    setHeldId(id);
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const dy = moveEvent.clientY - startY;
+      const centre = rects[from].top + rects[from].height / 2 + dy;
+      over = from;
+      for (let i = from + 1; i < rects.length; i++) {
+        if (centre > rects[i].top + rects[i].height / 2) over = i;
+      }
+      for (let i = from - 1; i >= 0; i--) {
+        if (centre < rects[i].top + rects[i].height / 2) over = i;
+      }
+      held.style.transform = `translateY(${dy}px)`;
+      rows.forEach((row, i) => {
+        if (i === from) return;
+        const shift =
+          from < over && i > from && i <= over
+            ? -step
+            : from > over && i < from && i >= over
+              ? step
+              : 0;
+        row.style.transform = shift ? `translateY(${shift}px)` : '';
+      });
+    };
+
+    const onEnd = () => {
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onEnd);
+      handle.removeEventListener('pointercancel', onEnd);
+      rows.forEach((row) => {
+        row.style.transform = '';
+      });
+      setHeldId(null);
+      if (over !== from) move(from, over);
+    };
+
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onEnd);
+    handle.addEventListener('pointercancel', onEnd);
   };
 
-  const editor = (draft: Draft, isNew: boolean) => (
-    <form className="admin-project-form" onSubmit={submit}>
-      <div className="admin-project-form__grid">
-        <label className="admin-project-form__field">
-          <span>Name</span>
-          <input
-            className="admin-input"
-            value={draft.name}
-            onInput={update('name')}
-            maxLength={60}
-            required
-            autoFocus
-          />
-        </label>
-        <label className="admin-project-form__field">
-          <span>Year</span>
-          <input
-            className="admin-input"
-            value={draft.year}
-            onInput={update('year')}
-            placeholder="2026 or now"
-            inputMode="numeric"
-            required
-          />
-        </label>
-        <label className="admin-project-form__field admin-project-form__field--wide">
-          <span>Description</span>
-          <textarea
-            className="admin-input"
-            value={draft.description}
-            onInput={update('description')}
-            maxLength={240}
-            rows={2}
-            required
-          />
-        </label>
-        <label className="admin-project-form__field admin-project-form__field--wide">
-          <span>Stack</span>
-          <input
-            className="admin-input"
-            value={draft.stack}
-            onInput={update('stack')}
-            placeholder="astro, redis, workers"
-          />
-        </label>
-        <label className="admin-project-form__field">
-          <span>Site</span>
-          <input
-            className="admin-input"
-            type="url"
-            value={draft.site}
-            onInput={update('site')}
-            placeholder="https://"
-          />
-        </label>
-        <label className="admin-project-form__field">
-          <span>Source</span>
-          <input
-            className="admin-input"
-            type="url"
-            value={draft.source}
-            onInput={update('source')}
-            placeholder="https://github.com/…"
-          />
-        </label>
-        <div className="admin-project-form__field admin-project-form__field--wide">
-          <label for="admin-project-image-src">Image</label>
-          <div className="admin-project-form__image">
-            {draft.imageSrc.trim() && (
-              <span className="admin-project-form__preview">
-                <img
-                  src={draft.imageSrc}
-                  alt=""
-                  style={
-                    draft.imageDisplay.fit === 'contain'
-                      ? { objectFit: 'contain' }
-                      : {
-                          objectPosition: `${draft.imageDisplay.x}% ${draft.imageDisplay.y}%`,
-                          transform: `scale(${draft.imageDisplay.zoom})`,
-                          transformOrigin: `${draft.imageDisplay.x}% ${draft.imageDisplay.y}%`,
-                        }
-                  }
-                />
-              </span>
-            )}
-            <input
-              id="admin-project-image-src"
-              className="admin-input"
-              value={draft.imageSrc}
-              onInput={update('imageSrc')}
-              placeholder="upload, or https://"
-            />
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              onChange={chooseImage}
-              hidden
-            />
-            <button
-              type="button"
-              className="admin-button admin-button--ghost"
-              onClick={() => fileInput.current?.click()}
-              disabled={busy || uploading}
-            >
-              {uploading ? 'Uploading…' : 'Upload'}
-            </button>
-            {draft.imageSrc.trim() && (
-              <button
-                type="button"
-                className="admin-button admin-button--ghost"
-                onClick={() =>
-                  setAdjusting({ kind: 'src', src: draft.imageSrc.trim() })
-                }
-                disabled={busy || uploading}
-              >
-                Adjust
-              </button>
-            )}
-            {draft.imageSrc && (
-              <button
-                type="button"
-                className="admin-button admin-button--ghost"
-                onClick={() =>
-                  patchDraft({
-                    imageSrc: '',
-                    imageAlt: '',
-                    imageDisplay: { ...DEFAULT_DISPLAY },
-                  })
-                }
-                disabled={busy || uploading}
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </div>
-        <label className="admin-project-form__field admin-project-form__field--wide">
-          <span>Image alt text</span>
-          <input
-            className="admin-input"
-            value={draft.imageAlt}
-            onInput={update('imageAlt')}
-            maxLength={160}
-            placeholder="what the image shows"
-            required={Boolean(draft.imageSrc.trim())}
-          />
-        </label>
-        <label className="admin-project-form__check">
-          <input
-            type="checkbox"
-            checked={draft.featured}
-            onChange={(event) =>
-              patchDraft({ featured: event.currentTarget.checked })
-            }
-          />
-          <span>Featured</span>
-        </label>
-      </div>
-      <div className="admin-project-form__actions">
-        <button
-          type="button"
-          className="admin-button admin-button--ghost"
-          onClick={() => {
-            setEditing(null);
-            setError(null);
-          }}
-          disabled={busy}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="admin-button primary"
-          disabled={busy || uploading}
-        >
-          {busy ? 'Saving…' : isNew ? 'Add project' : 'Save'}
-        </button>
-      </div>
-    </form>
-  );
-
   return (
-    <article id="projects" className="admin-card admin-panel admin-projects">
-      <div className="admin-section-head">
-        <div>
-          <p className="admin-kicker">site</p>
-          <h2>Projects</h2>
-        </div>
-        <div className="admin-toolbar">
+    <section
+      id="projects"
+      className="adm-section"
+      aria-labelledby="projects-title"
+    >
+      <header className="adm-head">
+        <h2
+          id="projects-title"
+          ref={heading}
+          className="adm-head__title"
+          tabIndex={-1}
+        >
+          projects
+        </h2>
+        <div className="adm-head__tools">
           <a
-            className="admin-button admin-button--ghost"
+            className="hair-control adm-tab"
             href="/projects"
             target="_blank"
             rel="noopener"
           >
-            View page
+            view page
+            <VisuallyHidden> (opens in a new tab)</VisuallyHidden>
           </a>
           <button
             type="button"
-            className="admin-button primary"
-            disabled={loading || busy || editing?.isNew === true}
-            onClick={() => openEditor(emptyDraft(), true)}
+            className="hair-control adm-tab adm-tab--go"
+            disabled={loading && projects.length === 0}
+            onClick={() => setEditing({ project: null })}
           >
-            Add project
+            <Icon name="plus" />
+            new project
           </button>
         </div>
-      </div>
+      </header>
 
-      {error && (
-        <p className="admin-error" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="admin-success" role="status" aria-live="polite">
-          {notice}
-        </p>
-      )}
+      <p id="projects-reorder-hint" hidden>
+        Drag to reorder, or use the up and down arrow keys.
+      </p>
+      <VisuallyHidden>
+        <span aria-live="polite">{announcement}</span>
+      </VisuallyHidden>
 
-      {editing?.isNew && editor(editing.draft, true)}
-
-      <ol className="admin-project-list">
-        {loading && projects.length === 0 && (
-          <li role="status" aria-live="polite">
-            <SkeletonRow />
-            <SkeletonRow />
-          </li>
-        )}
-
-        {!loading && projects.length === 0 && (
-          <li className="admin-empty-state">
-            <p className="admin-empty">No projects yet.</p>
-          </li>
-        )}
-
-        {projects.map((project, index) =>
-          editing && !editing.isNew && editing.draft.id === project.id ? (
-            <li key={project.id}>{editor(editing.draft, false)}</li>
-          ) : (
+      {loadError && projects.length === 0 ? (
+        <div className="adm-empty">
+          <p className="adm-empty__line adm-empty__line--error" role="alert">
+            {loadError}
+          </p>
+          <button
+            type="button"
+            className="hair-control adm-act"
+            onClick={() => void load()}
+          >
+            retry
+          </button>
+        </div>
+      ) : loading && projects.length === 0 ? (
+        <div className="adm-skeletons" role="status" aria-label="Loading">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="adm-empty">
+          <p className="adm-empty__line">no projects yet.</p>
+        </div>
+      ) : (
+        <ol
+          ref={list}
+          className={`adm-list adm-projects ${heldId ? 'is-dragging' : ''}`}
+        >
+          {projects.map((project, index) => (
             <li
               key={project.id}
-              className={`admin-project-row ${
-                project.hidden ? 'admin-project-row--hidden' : ''
-              }`}
+              data-row
+              className={[
+                'adm-project',
+                project.hidden && 'adm-project--hidden',
+                heldId === project.id && 'is-held',
+              ]
+                .filter(Boolean)
+                .join(' ')}
             >
-              <div className="admin-project-row__info">
-                <div className="admin-project-row__heading">
-                  <span className="admin-project-row__name">
-                    {project.name}
-                  </span>
-                  <span className="admin-project-row__year">
-                    {project.year}
-                  </span>
-                  {project.featured && <span className="pill">featured</span>}
-                  {project.hidden && <span className="pill">hidden</span>}
-                </div>
-                <p className="admin-project-row__description">
-                  {project.description}
-                </p>
-              </div>
-              <div className="admin-project-row__actions">
-                <button
-                  type="button"
-                  className="admin-button admin-button--ghost admin-project-row__step"
-                  aria-label={`Move ${project.name} up`}
-                  title="Move up"
-                  disabled={busy || index === 0}
-                  onClick={() => move(index, -1)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="admin-button admin-button--ghost admin-project-row__step"
-                  aria-label={`Move ${project.name} down`}
-                  title="Move down"
-                  disabled={busy || index === projects.length - 1}
-                  onClick={() => move(index, 1)}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="admin-button admin-button--ghost"
-                  disabled={busy}
-                  onClick={() => openEditor(toDraft(project), false)}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="admin-button admin-button--ghost admin-project-row__visibility"
-                  disabled={busy}
-                  onClick={() => toggleHidden(project)}
-                >
-                  {project.hidden ? 'Show' : 'Hide'}
-                </button>
-                <button
-                  type="button"
-                  className="admin-button admin-button--danger"
-                  disabled={busy}
-                  onClick={() => void remove(project)}
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ),
-        )}
-      </ol>
+              <button
+                type="button"
+                className="adm-project__grip"
+                data-grip={project.id}
+                aria-label={`Reorder ${project.name}, position ${index + 1} of ${projects.length}`}
+                aria-describedby="projects-reorder-hint"
+                title="Drag, or use ↑ ↓"
+                onPointerDown={(event) => onGripDown(event, project.id)}
+                onKeyDown={(event) => onGripKey(event, project.id)}
+              >
+                <Icon name="grip" />
+              </button>
 
-      {dialog}
-      {adjusting && editing && (
-        <ProjectImageDialog
-          source={adjusting}
-          initial={editing.draft.imageDisplay}
-          name={editing.draft.name}
-          busy={uploading}
-          onApply={(result) => void applyImage(result)}
-          onCancel={() => setAdjusting(null)}
+              <button
+                type="button"
+                className="adm-project__open"
+                aria-label={`Edit ${project.name}`}
+                onClick={() => setEditing({ project })}
+              >
+                <Thumb project={project} />
+                <span className="adm-project__text">
+                  <span className="adm-project__title">
+                    <span className="adm-project__name">{project.name}</span>
+                    <span className="adm-project__year">{project.year}</span>
+                    {project.featured && (
+                      <span className="adm-project__flag">featured</span>
+                    )}
+                  </span>
+                  <span className="adm-project__description">
+                    {project.description}
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="adm-icon-button adm-project__visibility"
+                aria-pressed={project.hidden}
+                aria-label={`Hide ${project.name} from the page`}
+                title={
+                  project.hidden
+                    ? 'Hidden — show on the page'
+                    : 'Hide from the page'
+                }
+                onClick={() => toggleHidden(project)}
+              >
+                <Icon name={project.hidden ? 'eye-off' : 'eye'} />
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {editing && (
+        <ProjectSheet
+          project={editing.project}
+          onSubmit={submit}
+          onDelete={remove}
+          onClose={() => setEditing(null)}
         />
       )}
-    </article>
+    </section>
   );
 }

@@ -1,6 +1,6 @@
 /* Admin tokens alias the public design-system tokens from _variables.css
    so there is a single source-of-truth. The --admin-* names are kept because
-   component-loaded CSS (Batch C) references them directly. */
+   component-loaded CSS (Studio, the dialogs) references them directly. */
 .admin-page {
   --admin-bg: var(--color-surface);
   --admin-surface: var(--color-surface-raised);
@@ -64,6 +64,10 @@
   color-scheme: dark;
 }
 
+.admin-page ::selection {
+  background: var(--color-selection);
+}
+
 .admin-page a:where(:not(.prose *)) {
   color: var(--admin-accent);
   text-decoration: none;
@@ -83,11 +87,17 @@
   color: var(--admin-accent);
 }
 
-.admin-page button,
-.admin-page input,
-.admin-page select,
-.admin-page textarea {
+/* Zero specificity, so any control's own class sets its type. */
+:where(.admin-page) :where(button, input, select, textarea) {
   font: inherit;
+}
+
+/* In-page jumps from the dashboard's section rail glide, unless motion is
+   unwelcome. */
+@media (prefers-reduced-motion: no-preference) {
+  .admin-page:has(.admin-shell--bare) {
+    scroll-behavior: smooth;
+  }
 }
 
 .admin-shell {
@@ -96,6 +106,12 @@
   padding: calc(48px + env(safe-area-inset-top))
     max(24px, env(safe-area-inset-right)) 64px
     max(24px, env(safe-area-inset-left));
+}
+
+/* The dashboard draws its own frame: rail and content, full height. */
+.admin-shell--bare {
+  max-width: none;
+  padding: 0;
 }
 
 /* The full-width shell is an app frame, not a document: it is exactly one
@@ -119,232 +135,6 @@
   overscroll-behavior: none;
 }
 
-.admin-shell--full .admin-header {
-  margin-bottom: 0;
-  border-radius: 0;
-  min-height: calc(40px + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
-  padding-right: max(10px, env(safe-area-inset-right));
-  padding-left: max(6px, env(safe-area-inset-left));
-}
-
-.admin-header {
-  position: relative;
-  min-height: 64px;
-  margin-bottom: 24px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-md);
-  background: var(--admin-surface);
-}
-
-.admin-header--with-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 14px;
-}
-
-/* Studio trades header height for editor height: one 40px strip, no card
-   chrome, only a bottom rule separating it from the workspace. */
-.admin-header--compact {
-  min-height: 40px;
-  padding: 0 10px 0 6px;
-  border-width: 0 0 1px;
-}
-
-.admin-header--compact .admin-header__nav {
-  gap: 8px;
-  font-size: 0.78rem;
-}
-
-.admin-header--compact .admin-header__link {
-  padding: 4px 8px;
-  border-radius: var(--radius-sm-2);
-}
-
-.admin-header--compact .admin-header__link:hover {
-  background: var(--admin-surface-elevated);
-}
-
-.admin-header--compact .admin-header__action {
-  width: 28px;
-  height: 28px;
-  border-color: transparent;
-  background: transparent;
-}
-
-.admin-header__nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.875rem;
-  color: var(--admin-text-muted);
-}
-
-.admin-header__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--admin-text-secondary);
-  transition: color 0.15s ease;
-}
-
-.admin-header__link:hover {
-  color: var(--admin-text-primary);
-}
-
-.admin-header__current {
-  color: var(--admin-text-primary);
-  font-weight: 500;
-}
-
-.admin-header__sep {
-  color: var(--admin-line-strong);
-}
-
-.admin-header form {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 1;
-}
-
-.admin-header--with-nav form {
-  position: static;
-}
-
-.admin-header__action {
-  display: inline-grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 1px solid var(--admin-line-strong);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--admin-surface) 78%, transparent);
-  color: var(--admin-text-primary);
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.admin-header__action:hover {
-  border-color: var(--admin-accent);
-  background: var(--admin-surface-elevated);
-  color: var(--admin-accent-hover);
-}
-
-.admin-kicker {
-  margin: 0 0 6px;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--admin-accent);
-}
-
-.admin-card {
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-line);
-  border-radius: var(--admin-radius);
-}
-
-.admin-toolbar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.admin-button,
-.admin-input,
-.admin-select {
-  border-radius: var(--radius-md);
-  border: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-  color: var(--admin-text-primary);
-  min-height: 40px;
-  font-size: 0.875rem;
-}
-
-.admin-input::placeholder,
-.admin-select:invalid {
-  color: var(--admin-text-muted);
-}
-
-.admin-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 0.875rem;
-  color: var(--admin-text-secondary);
-}
-
-.admin-button {
-  padding: 0 16px;
-  cursor: pointer;
-  transition:
-    background 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
-}
-
-.admin-button:disabled {
-  color: var(--admin-text-disabled);
-  cursor: wait;
-}
-
-.admin-button.primary {
-  background: var(--admin-accent);
-  color: var(--color-text-on-accent);
-  border-color: transparent;
-  font-weight: 500;
-}
-
-.admin-button.primary:hover {
-  background: var(--admin-accent-hover);
-}
-
-.admin-button.danger {
-  background: var(--admin-danger);
-  color: var(--color-on-danger);
-  border-color: transparent;
-  font-weight: 500;
-}
-
-.admin-button.ghost {
-  background: transparent;
-  color: var(--admin-text-secondary);
-  border-color: var(--admin-line);
-}
-
-.admin-button.ghost:hover {
-  color: var(--admin-text-primary);
-  border-color: var(--admin-line-strong);
-  background: var(--admin-surface-elevated);
-}
-
-.admin-button.primary:disabled,
-.admin-button.danger:disabled {
-  background: var(--admin-status-neutral-bg);
-  color: var(--admin-text-disabled);
-  border-color: var(--admin-line);
-}
-
-.admin-input,
-.admin-select {
-  width: 100%;
-  padding: 0 14px;
-}
-
-.admin-main {
-  display: grid;
-  gap: 20px;
-}
-
 .admin-main--full {
   display: flex;
   flex-direction: column;
@@ -353,114 +143,316 @@
   gap: 0;
 }
 
-.admin-login {
-  max-width: 420px;
-  margin: 12vh auto 0;
-  padding: 32px;
+/* --- Controls shared by every admin surface ---------------------------- */
+
+/* A quiet outlined button, and one solid button for the step that commits.
+   `.admin-button` is the older name the dialogs and Studio use. */
+.admin-button,
+.adm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.375rem;
+  padding: 0 1rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm-2);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
 }
 
-.admin-login form {
+.admin-button:hover:not(:disabled),
+.adm-button:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.admin-button.primary,
+.adm-button--solid {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
+.admin-button.primary:hover:not(:disabled),
+.adm-button--solid:hover:not(:disabled) {
+  border-color: var(--color-text-interactive-hover);
+  background: var(--color-text-interactive-hover);
+  color: var(--color-text-on-accent);
+}
+
+/* The last word on something that cannot be undone. */
+.admin-button.danger {
+  border-color: var(--color-text-error);
+  background: var(--color-text-error);
+  color: var(--color-on-danger);
+}
+
+.admin-button.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-text-error) 80%, white);
+  background: color-mix(in srgb, var(--color-text-error) 80%, white);
+  color: var(--color-on-danger);
+}
+
+.admin-button--danger,
+.adm-button--danger {
+  border-color: color-mix(in srgb, var(--color-text-error) 45%, transparent);
+  color: var(--color-text-error);
+}
+
+.admin-button--danger:hover:not(:disabled),
+.adm-button--danger:hover:not(:disabled) {
+  border-color: var(--color-text-error);
+  color: var(--color-text-error);
+}
+
+.admin-button:disabled,
+.adm-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* A commit button with nothing to commit yet steps back to an outline
+   rather than a washed-out fill. */
+.adm-button--solid:disabled {
+  border-color: var(--color-rule);
+  background: transparent;
+  color: var(--color-text-disabled);
+  opacity: 1;
+}
+
+.admin-button:focus-visible,
+.adm-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Studio's boxed field. */
+.admin-input {
+  width: 100%;
+  min-height: 2.625rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm-2);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.admin-input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.admin-input:hover:not(:disabled) {
+  border-color: var(--color-rule-strong);
+}
+
+.admin-input:focus {
+  border-color: var(--color-brand);
+}
+
+.admin-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The dashboard's field is the site's control: text standing on a hairline,
+   a brand segment drawing in from the centre while it has focus. */
+.adm-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  background: linear-gradient(var(--color-brand), var(--color-brand)) center
+    bottom / 0 1px no-repeat;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  outline: none;
+  transition:
+    background-size 320ms var(--ease-draw),
+    border-color 150ms ease;
+}
+
+.adm-input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.adm-input:hover:not(:disabled) {
+  border-bottom-color: var(--color-text-disabled);
+}
+
+.adm-input:focus,
+.adm-input:focus-visible {
+  outline: none;
+  background-size: 100% 1px;
+}
+
+.adm-input[aria-invalid='true'] {
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--color-text-error) 60%,
+    transparent
+  );
+  background-image: linear-gradient(
+    var(--color-text-error),
+    var(--color-text-error)
+  );
+}
+
+.adm-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Grows with its text instead of showing a resize grip. */
+textarea.adm-input {
+  min-height: calc(2lh + 1rem);
+  resize: none;
+  field-sizing: content;
+}
+
+.adm-input--small {
+  min-height: 2.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-input {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .adm-input:focus {
+    outline: 2px solid Highlight;
+  }
+}
+
+.adm-field {
   display: grid;
-  gap: 14px;
-  margin-top: 20px;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
-.admin-login__intro {
-  margin: 4px 0 0;
-  color: var(--admin-text-secondary);
-  font-size: 0.875rem;
-}
-
-.admin-login__message {
-  margin-top: 12px;
-}
-
-.admin-note,
-.admin-error,
-.admin-success {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-}
-
-.admin-note {
-  background: var(--admin-status-warning-bg);
-  color: var(--admin-warning);
+.adm-field__label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--color-text-muted);
 }
 
 .admin-error {
-  background: var(--admin-status-error-bg);
-  color: var(--admin-danger);
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-error);
 }
 
-.admin-success {
-  background: var(--admin-status-success-bg);
-  color: var(--admin-success);
+/* --- Gate: sign in, and the page shown when admin is not configured ---- */
+
+.admin-gate {
+  width: min(22rem, 100%);
+  margin: 0 auto;
+  padding: max(18vh, 5rem) 0 4rem;
 }
 
-@media (max-width: 720px) {
-  .admin-shell {
-    padding: calc(24px + env(safe-area-inset-top))
-      max(16px, env(safe-area-inset-right)) 48px
-      max(16px, env(safe-area-inset-left));
-  }
+.admin-gate__brand {
+  position: relative;
+  font-size: 1rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 2rem;
+  padding-bottom: 1.25rem;
+}
 
-  .admin-login {
-    margin-top: 8vh;
-    padding: 24px;
-  }
+.admin-gate__brand::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--hairline);
+}
 
-  .admin-login h1 {
-    font-size: 1.5rem;
-  }
+.admin-gate__wordmark {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: var(--color-text-primary);
+}
+
+.admin-gate__tag {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--color-text-disabled);
+}
+
+.admin-gate form {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-gate .adm-button--solid {
+  width: 100%;
+  min-height: 2.625rem;
+}
+
+.admin-gate__message {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.admin-gate__message--error {
+  color: var(--color-text-error);
+}
+
+.admin-gate__message--done {
+  color: var(--color-text-success);
+}
+
+.admin-gate .admin-error {
+  margin-top: 1rem;
+}
+
+.admin-gate form .admin-error {
+  margin: -0.375rem 0 0;
 }
 
 @media (max-width: 480px) {
-  .admin-shell {
-    padding: calc(16px + env(safe-area-inset-top))
-      max(12px, env(safe-area-inset-right)) 32px
-      max(12px, env(safe-area-inset-left));
+  .admin-shell:not(.admin-shell--bare, .admin-shell--full) {
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
 
-  .admin-login {
-    padding: 20px;
-    margin-top: 6vh;
-  }
-
-  .admin-button,
-  .admin-input,
-  .admin-select {
-    min-height: 44px;
+  .admin-gate {
+    padding-top: 12vh;
   }
 
   .admin-input,
-  .admin-select {
+  .adm-input {
     font-size: 16px;
-  }
-
-  .entry-card header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .admin-entry-actions {
-    margin-top: 12px;
-  }
-
-  .admin-entry-actions .admin-button {
-    flex: 1 1 auto;
-    min-width: 80px;
-  }
-
-  .admin-toolbar {
-    width: 100%;
-  }
-
-  .admin-toolbar .admin-select,
-  .admin-toolbar .admin-button {
-    flex: 1 1 auto;
-    min-width: 120px;
   }
 }

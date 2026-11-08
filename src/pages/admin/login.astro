@@ -14,69 +14,90 @@ const invalid = Astro.url.searchParams.get('error') === 'invalid';
 const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
 ---
 
-<AdminLayout title="Login" description="Authenticate to manage oddava.me.">
-  <section class="admin-card admin-login">
-    <p class="admin-kicker">oddava</p>
-    <h1>Sign in</h1>
-    <p class="admin-login__intro">
-      Use the shared admin token to access the panel.
-    </p>
+<AdminLayout title="Sign in" description="Authenticate to manage oddava.me.">
+  <section class="admin-gate">
+    <h1 class="admin-gate__brand">
+      <span class="admin-gate__wordmark">oddava</span>
+      <span class="admin-gate__tag">admin</span>
+    </h1>
     {
       !configured && (
-        <p class="admin-note admin-login__message">
-          Set <code>ADMIN_PANEL_TOKEN</code> or{' '}
-          <code>GUESTBOOK_ADMIN_TOKEN</code> to enable admin access.
-        </p>
-      )
-    }
-    {
-      invalid && (
-        <p class="admin-error admin-login__message">
-          The admin token was rejected.
+        <p class="admin-gate__message">
+          admin is off. set <code>ADMIN_PANEL_TOKEN</code> or{' '}
+          <code>GUESTBOOK_ADMIN_TOKEN</code> to turn it on.
         </p>
       )
     }
     {
       loggedOut && (
-        <p class="admin-success admin-login__message">Admin session cleared.</p>
+        <p class="admin-gate__message admin-gate__message--done">signed out.</p>
       )
     }
     <form id="admin-login-form" method="post" action="/api/admin/session">
       <input type="hidden" name="next" value={next} />
-      <label>
-        <span class="admin-label">Token</span>
+      <label class="adm-field">
+        <span class="adm-field__label">admin token</span>
         <input
-          class="admin-input"
+          class="adm-input"
           type="password"
           name="token"
           required
           autocomplete="current-password"
           disabled={!configured}
-          placeholder="Enter admin token"
+          autofocus={configured}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby="admin-login-error"
         />
       </label>
-      <button class="admin-button primary" type="submit" disabled={!configured}>
-        Sign in
+      {
+        /* The one place a sign-in error shows, whether the server redirected
+          here with ?error=invalid or the script caught it. */
+      }
+      <p
+        id="admin-login-error"
+        class="admin-error"
+        role="alert"
+        hidden={!invalid}
+      >
+        {invalid ? 'that token was rejected.' : ''}
+      </p>
+      <button
+        class="adm-button adm-button--solid"
+        type="submit"
+        disabled={!configured}
+      >
+        sign in
       </button>
     </form>
-    <p
-      id="admin-login-error"
-      class="admin-error"
-      role="alert"
-      aria-live="assertive"
-      hidden
-    >
-    </p>
   </section>
   <script>
     const form = document.querySelector<HTMLFormElement>('#admin-login-form');
     const errorElement =
       document.querySelector<HTMLElement>('#admin-login-error');
 
+    const submitButton = form?.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
+    const tokenInput = form?.querySelector<HTMLInputElement>(
+      'input[name="token"]',
+    );
+
+    const clearError = () => {
+      if (errorElement) errorElement.hidden = true;
+      tokenInput?.removeAttribute('aria-invalid');
+    };
+
+    // Editing the token answers the error; it stops being red at once.
+    tokenInput?.addEventListener('input', clearError);
+
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (!errorElement) return;
-      errorElement.hidden = true;
+      if (!errorElement || submitButton?.disabled) return;
+      clearError();
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'signing in…';
+      }
 
       try {
         const formData = new FormData(form);
@@ -97,13 +118,23 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
         };
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Could not sign in.');
+          throw new Error(payload.error || 'could not sign in.');
         }
         window.location.assign(payload.next || '/admin');
       } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : 'could not sign in.';
+        // Server messages arrive in sentence case; the page speaks lowercase.
         errorElement.textContent =
-          error instanceof Error ? error.message : 'Could not sign in.';
+          message.charAt(0).toLowerCase() + message.slice(1);
         errorElement.hidden = false;
+        tokenInput?.setAttribute('aria-invalid', 'true');
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = 'sign in';
+        }
       }
     });
   </script>
