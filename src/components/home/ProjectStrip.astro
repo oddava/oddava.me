@@ -52,10 +52,9 @@ const firstImageId = shown.find((project) => project.image)?.id;
           />
         ))}
         {more > 0 && (
-          <li class="pcard pcard--blank pcard--more">
-            <div class="pcard__media" />
+          <li class="pcard pcard--more">
             <a class="pcard__more" href={galleryHref} draggable="false">
-              <span class="pcard__more-count">{more} more</span>
+              <span>{more} more</span>
               <span class="pcard__more-arrow" aria-hidden="true">
                 →
               </span>

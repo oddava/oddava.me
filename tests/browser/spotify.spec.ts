@@ -135,17 +135,6 @@ test('a new track pulses the star again within the same five seconds', async ({
   }
 });
 
-test('a pause saved on any other page holds the star still', async ({
-  page,
-}) => {
-  await page.addInitScript(() =>
-    localStorage.setItem('oddava:motion', 'paused'),
-  );
-  await open(page, false);
-  await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
-  expect(await starPulse(page)).toEqual([]);
-});
-
 test('reduced motion keeps the star still', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, false);

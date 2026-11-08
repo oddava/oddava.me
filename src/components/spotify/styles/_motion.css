@@ -75,11 +75,6 @@
   }
 }
 
-/* The reader paused motion (lib/awake/motion.ts): the star holds still. */
-:root[data-motion='paused'] .listening__star {
-  animation: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .listening__text,
   .listening__track,

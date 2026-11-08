@@ -1,16 +1,15 @@
 ---
 // Prerendered: the hero and the static lines are the same for everyone. The
-// two Redis-backed parts — the project strip and the note shelves — are
+// two Redis-backed parts — the project strip and the latest notes — are
 // server islands, fetched after first paint.
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import Footer from '../components/Footer.astro';
 import AwakeSky from '../components/awake/AwakeSky.astro';
-import NoteShelves from '../components/home/NoteShelves.astro';
+import RecentNotes from '../components/home/RecentNotes.astro';
 import ProjectStrip from '../components/home/ProjectStrip.astro';
 import linksData from '../data/links.json';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
-import { NOTES_SUMMARY } from '../lib/site';
 import '../styles/components/_awake.css';
 import '../styles/components/_projects.css';
 import '../styles/components/_home.css';
@@ -74,10 +73,9 @@ const pageHref = (label: string) =>
         <a href={pageHref('notes')}>notes</a>
       </h2>
     </div>
-    <p class="home-intro">{NOTES_SUMMARY}</p>
-    <NoteShelves server:defer>
-      <div class="shelves shelves--pending" slot="fallback"></div>
-    </NoteShelves>
+    <RecentNotes server:defer>
+      <div class="note-rows--pending" slot="fallback"></div>
+    </RecentNotes>
   </section>
 
   <p class="home-links" aria-label="contact and feeds">
@@ -104,13 +102,8 @@ const pageHref = (label: string) =>
 
 <script>
   import { mountAwake } from '../lib/awake/mount';
-  import { mountMotionToggles } from '../lib/awake/motion';
   import { mountQuiet } from '../lib/awake/quiet';
   import { mountGallery } from '../lib/project-gallery';
-
-  // The pause switch on the footer floor; a stored pause applies before
-  // anything starts moving.
-  mountMotionToggles();
 
   const root = document.querySelector<HTMLElement>('[data-awake]');
   if (root) mountAwake(root);
