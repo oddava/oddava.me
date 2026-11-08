@@ -48,12 +48,7 @@ function Dashboard() {
 
   const metrics = overview?.metrics;
   const sections: AdminSection[] = [
-    {
-      id: 'guestbook',
-      label: 'guestbook',
-      // Only entries waiting on a decision earn a number.
-      count: metrics?.pendingGuestbook || undefined,
-    },
+    { id: 'guestbook', label: 'guestbook' },
     { id: 'projects', label: 'projects' },
     { id: 'integrations', label: 'integrations', attention },
   ];
@@ -61,24 +56,31 @@ function Dashboard() {
   return (
     <div className="adm">
       <AdminNav sections={sections} active={active} />
-      <main className="adm-main" id="main">
-        <GuestbookModeration
-          pending={metrics?.pendingGuestbook}
-          onChanged={refreshOverview}
-        />
-        <ProjectsPanel />
-        {/* Owns its own data: health checks reach upstream APIs and must not
-            slow down or fail the rest of the dashboard. */}
-        <IntegrationsPanel onAttention={setAttention} />
+      {/* The desk: the inbox on the left, where most of the work is; the
+          shelf and the instruments on the right. One column on a phone. */}
+      <main className="adm-desk" id="main">
+        <div className="adm-desk__inbox">
+          <GuestbookModeration
+            pending={metrics?.pendingGuestbook}
+            onChanged={refreshOverview}
+          />
+        </div>
+        <div className="adm-desk__shelf">
+          <ProjectsPanel />
+          {/* Owns its own data: health checks reach upstream APIs and must
+              not slow down or fail the rest of the dashboard. */}
+          <IntegrationsPanel onAttention={setAttention} />
+        </div>
       </main>
     </div>
   );
 }
 
 /**
- * The section whose top has passed the upper third of the viewport. At the
+ * The section whose top has passed the bottom of the header. At the
  * very bottom the last section wins, even when it is too short to reach that
- * line — otherwise it could never be marked.
+ * line — otherwise it could never be marked. Only the one-column strip shows
+ * it; on the desk every section is in view at once.
  */
 function useActiveSection(ids: readonly string[]): string {
   const [active, setActive] = useState(ids[0]);
@@ -87,7 +89,10 @@ function useActiveSection(ids: readonly string[]): string {
     let frame = 0;
     const measure = () => {
       frame = 0;
-      const line = window.innerHeight / 3;
+      // Just under the stuck header: a short section above the fold must
+      // not count as read before anything has scrolled.
+      const header = document.querySelector('.adm-top');
+      const line = (header?.getBoundingClientRect().bottom ?? 0) + 32;
       const scrolled = window.scrollY > 0;
       const atBottom =
         scrolled &&
@@ -98,7 +103,7 @@ function useActiveSection(ids: readonly string[]): string {
         const top = document.getElementById(id)?.getBoundingClientRect().top;
         if (top !== undefined && top <= line) current = id;
       }
-      setActive(atBottom ? ids[ids.length - 1] : current);
+      setActive(!scrolled ? ids[0] : atBottom ? ids[ids.length - 1] : current);
     };
     const schedule = () => {
       if (!frame) frame = window.requestAnimationFrame(measure);

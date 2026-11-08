@@ -10,6 +10,19 @@ import { VisuallyHidden } from '../ui/VisuallyHidden';
 import type { GuestbookEntry, GuestbookStatus } from '../../lib/contracts';
 import { errorMessage, useToast } from './toast';
 import { useDialogConfirm } from './useDialogConfirm';
+import { paintNap } from '../../lib/awake/quiet';
+
+/** How long a decided entry takes to fold shut before it leaves the list. */
+const FOLD_MS = 260;
+
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Waits out the fold, or not at all when motion is reduced. */
+const fold = () =>
+  prefersReducedMotion()
+    ? Promise.resolve()
+    : new Promise<void>((resolve) => window.setTimeout(resolve, FOLD_MS));
 
 interface GuestbookModerationProps {
   /** Entries waiting on a decision; the one count the tabs show. */
@@ -43,6 +56,8 @@ export function GuestbookModeration({
   const [loadError, setLoadError] = useState<string | null>(null);
   /** Entries with a decision in flight; '*' while everything is cleared. */
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  /** Entries decided and folding shut, about to leave the list. */
+  const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
   const request = useRef(0);
   const statusRef = useRef(status);
   statusRef.current = status;
@@ -108,9 +123,15 @@ export function GuestbookModeration({
       await updateGuestbookEntryStatus(entry.id, next);
       // The entry no longer matches this tab, so it leaves the list; if focus
       // was in it, the next entry takes it.
-      const row = listRef.current?.querySelector(
+      // It folds shut along its line first, so the decision is seen to land
+      // before the next entry slides up into its place.
+      const row = listRef.current?.querySelector<HTMLElement>(
         `[data-entry="${CSS.escape(entry.id)}"]`,
       );
+      // The fold runs from the row's real height, not a guessed maximum.
+      row?.style.setProperty('--adm-fold-from', `${row.offsetHeight}px`);
+      setLeaving((current) => new Set(current).add(entry.id));
+      await fold();
       if (row && row.contains(document.activeElement)) {
         // Its place among the rows on screen now, not when the click began:
         // another decision may have landed in the meantime.
@@ -120,6 +141,11 @@ export function GuestbookModeration({
         focusAfter.current = rows.indexOf(row);
       }
       setEntries((current) => current.filter((item) => item.id !== entry.id));
+      setLeaving((current) => {
+        const next = new Set(current);
+        next.delete(entry.id);
+        return next;
+      });
       onChanged();
       toast.show({
         message: `${entry.name} ${VERB[next]}.`,
@@ -225,16 +251,16 @@ export function GuestbookModeration({
           <SkeletonRow />
         </div>
       ) : entries.length === 0 ? (
-        <div className="adm-empty">
-          <p className="adm-empty__line">
-            {status === 'pending'
-              ? 'nothing waiting.'
-              : `no ${status} entries.`}
-          </p>
-        </div>
+        status === 'pending' ? (
+          <QuietInbox />
+        ) : (
+          <div className="adm-empty">
+            <p className="adm-empty__line">no {status} entries.</p>
+          </div>
+        )
       ) : (
         <>
-          <ul ref={listRef} className="adm-list">
+          <ul ref={listRef} className="adm-list adm-log">
             {entries.map((entry) => {
               // aria-disabled, not disabled: a disabled button drops focus to
               // the page while its request is in flight.
@@ -244,16 +270,24 @@ export function GuestbookModeration({
                 entry.userAgent && describeAgent(entry.userAgent),
               ].filter(Boolean);
               return (
-                <li key={entry.id} className="adm-entry" data-entry={entry.id}>
+                <li
+                  key={entry.id}
+                  className={`adm-entry ${
+                    leaving.has(entry.id) ? 'is-leaving' : ''
+                  }`}
+                  data-entry={entry.id}
+                >
+                  {/* The logbook's margin: when, before who. */}
+                  <time
+                    className="adm-entry__when"
+                    dateTime={entry.createdAt}
+                    title={formatDate(entry.createdAt)}
+                  >
+                    {formatRelative(entry.createdAt)}
+                  </time>
                   <div className="adm-entry__body">
                     <p className="adm-entry__by">
                       <strong>{entry.name}</strong>
-                      <time
-                        dateTime={entry.createdAt}
-                        title={formatDate(entry.createdAt)}
-                      >
-                        {formatRelative(entry.createdAt)}
-                      </time>
                     </p>
                     <p className="adm-entry__message">{entry.message}</p>
                     {meta.length > 0 && (
@@ -310,5 +344,26 @@ export function GuestbookModeration({
       )}
       {dialog}
     </section>
+  );
+}
+
+/**
+ * Nothing waiting: the site's cat, asleep on the inbox line. It is painted
+ * once, like the one on the footer floor, and breathes in CSS.
+ */
+function QuietInbox() {
+  const nap = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (nap.current) paintNap(nap.current);
+  }, []);
+
+  return (
+    <div className="adm-empty adm-empty--asleep">
+      <p className="adm-empty__line">nothing waiting.</p>
+      <div className="adm-nap" aria-hidden="true">
+        <canvas ref={nap} className="adm-nap__cat" />
+      </div>
+    </div>
   );
 }

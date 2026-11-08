@@ -9,7 +9,6 @@
   align-items: center;
   gap: 1rem;
   padding: 0.875rem 0;
-  background: var(--color-surface);
 }
 
 .adm-project__grip {
@@ -77,6 +76,20 @@
    a picture that failed to load. */
 .adm-project__thumb:has(img) {
   background: var(--color-surface-raised);
+}
+
+/* No image: the site's horizon, low in the frame — an empty sky, not a
+   picture that failed to load. */
+.adm-project__thumb:not(:has(img)) {
+  position: relative;
+}
+
+.adm-project__thumb:not(:has(img))::after {
+  content: '';
+  position: absolute;
+  inset: 62% 0 auto;
+  height: 1px;
+  background: var(--hairline);
 }
 
 .adm-project__thumb img {
@@ -242,9 +255,11 @@
   text-overflow: ellipsis;
 }
 
+/* The footer follows the fields rather than the bottom of a tall window,
+   so save is near what was edited; it pins only once the body scrolls. */
 .adm-sheet__body {
   display: grid;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   align-content: start;
   gap: 1.75rem;
   overflow-y: auto;
@@ -262,7 +277,7 @@
 .adm-sheet__foot::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto;
+  inset: 0 2rem auto;
   height: 1px;
   background: var(--hairline);
 }
@@ -346,13 +361,16 @@
   object-fit: cover;
 }
 
+/* Nothing chosen yet: a full-width drop target, solid hairline, short — it
+   is a place to put an image, not a picture of one. */
 .adm-image__frame--empty {
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 0.625rem;
+  width: 100%;
+  aspect-ratio: 16 / 6;
   padding: 0;
-  border-style: dashed;
   border-color: var(--color-rule-strong);
   background: none;
   font-family: var(--font-mono);
@@ -437,6 +455,13 @@
     height: 2.75rem;
   }
 
+  /* The grip steps back so the description keeps a few more words. */
+  .adm-project__grip {
+    width: 1.75rem;
+    margin-right: -0.5rem;
+    opacity: 0.4;
+  }
+
   .adm-sheet {
     border-left: 0;
   }
@@ -449,6 +474,10 @@
   .adm-sheet__foot {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
+  }
+
+  .adm-sheet__foot::before {
+    inset-inline: 1.25rem;
   }
 
   .adm-field-row:not(:has(.adm-field--narrow)) {

@@ -495,7 +495,7 @@ export function ProjectSheet({
               {!isNew && project && (
                 <button
                   type="button"
-                  className="hair-control adm-act adm-act--danger adm-sheet__act adm-sheet__delete"
+                  className="hair-control adm-act adm-act--quiet-danger adm-sheet__act adm-sheet__delete"
                   disabled={saving}
                   onClick={() => onDelete(project)}
                 >

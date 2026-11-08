@@ -1,19 +1,27 @@
 /* ===================================================
-   Admin dashboard — the site's personality at work.
+   Admin dashboard — a desk at night.
 
-   Black canvas, blue only where something is chosen or asks for action,
-   hairlines for structure. The navigation is the site header turned on its
-   side; every section head is a horizon its controls stand on; rows are
-   divided by the faintest rule. Controls are the site's hairline controls —
-   a label whose brand segment draws in — except the one commit button in a
-   form, which is solid so the next step is never in doubt.
+   The site's quiet sky behind; the site header across the top, standing on a
+   horizon that draws itself in from the middle; under it a desk of two
+   columns divided by a fading vertical hairline — the guestbook inbox on the
+   left, where most of the work is, the projects shelf and the integration
+   instruments on the right. Words people wrote are set in the rounded face,
+   what machines wrote (times, fingerprints, controls) in mono. Blue only
+   where something is chosen or asks for action.
    =================================================== */
 
 .adm,
 .adm-sheet,
 .adm-toasts {
   --adm-rule: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
-  --adm-gutter: max(1.5rem, env(safe-area-inset-left));
+  --adm-gutter: max(clamp(1.5rem, 4vw, 4rem), env(safe-area-inset-left));
+  --adm-gutter-end: max(clamp(1.5rem, 4vw, 4rem), env(safe-area-inset-right));
+  --adm-frame: 86rem;
+  /* The one-column width, which the header's contents align to as well. */
+  --adm-column: 48rem;
+  --adm-gap: clamp(4rem, 6vw, 7rem);
+  /* The gutter line hung glyphs (grip, status dot) centre on. */
+  --adm-hang: -1.25rem;
   --adm-sticky-offset: 2rem;
 }
 
@@ -40,50 +48,55 @@
 
 /* --- Frame ------------------------------------------------------------ */
 
-.adm,
-.adm-toasts {
-  /* The gutter line hung glyphs (grip, status dot) centre on. */
-  --adm-hang: -1.25rem;
-  --adm-rail-width: 12rem;
-  --adm-main-width: 54rem;
-  --adm-gap: clamp(3rem, 6vw, 6rem);
-}
-
 .adm {
-  display: grid;
-  grid-template-columns: var(--adm-rail-width) minmax(0, var(--adm-main-width));
-  justify-content: center;
-  column-gap: var(--adm-gap);
   min-height: 100dvh;
-  padding: 0 max(1.5rem, env(safe-area-inset-right)) 0 var(--adm-gutter);
+  padding: 0 var(--adm-gutter-end) 0 var(--adm-gutter);
 }
 
-.adm-main {
-  display: grid;
-  align-content: start;
-  gap: 4.5rem;
-  min-width: 0;
-  padding: 2.5rem 0 8rem;
+/* --- Header: the site header, at the desk ------------------------------ */
+
+.adm-top {
+  position: relative;
+  max-width: var(--adm-frame);
+  margin: 0 auto;
 }
 
-/* --- Rail -------------------------------------------------------------- */
-
-.adm-rail {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  padding: 2.5rem 0 2rem;
+.adm-top__row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-top: 2.25rem;
 }
 
-.adm-rail__brand {
+/* The horizon: drawn out from the middle as the page arrives, faded at its
+   ends like every hairline on the site. */
+.adm-top__row::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--hairline);
+  pointer-events: none;
+  animation: adm-horizon 900ms var(--ease-draw) both;
+}
+
+@keyframes adm-horizon {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.adm-top__brand {
   display: inline-flex;
   align-items: baseline;
   gap: 0.5rem;
-  align-self: flex-start;
+  padding-bottom: 1.125rem;
   text-decoration: none;
 }
 
-.adm-rail__wordmark {
+.adm-top__wordmark {
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
@@ -92,131 +105,114 @@
   transition: color 150ms ease;
 }
 
-.adm-rail__brand:hover .adm-rail__wordmark {
-  color: var(--color-brand-strong);
+@media (hover: hover) {
+  .adm-top__brand:hover .adm-top__wordmark {
+    color: var(--color-brand-strong);
+  }
 }
 
-.adm-rail__tag {
+.adm-top__tag {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   line-height: 1;
   color: var(--color-text-disabled);
 }
 
-.adm-nav {
-  position: relative;
-  margin-top: 3rem;
-}
-
-/* The vertical horizon, one line under both groups, faded at its ends like
-   the site's. */
-.adm-nav::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 1px;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    var(--color-rule-strong) 1.5rem,
-    var(--color-rule-strong) calc(100% - 1.5rem),
-    transparent
-  );
-}
-
-.adm-nav__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.adm-nav__list--places {
-  margin-top: 1.75rem;
-}
-
-.adm-nav__signout form {
-  margin: 0;
-}
-
-.adm-rail__signout {
-  display: none;
-}
-
-.adm-nav__item {
-  position: relative;
+/* The other places stand on the horizon: each one's lit segment sits on
+   the line itself. */
+.adm-places {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.5625rem 0 0.5625rem 1rem;
+  align-self: stretch;
+  align-items: stretch;
+  gap: 1.75rem;
+}
+
+.adm-places__form {
+  display: flex;
+  margin: 0;
+}
+
+.adm-place {
+  gap: 0.375rem;
+  padding: 0.5rem 0 1.125rem;
   border: 0;
   background: none;
-  font-family: var(--font-mono);
   font-size: 0.8125rem;
-  line-height: 1.25rem;
-  color: var(--color-text-muted);
-  text-align: left;
-  text-decoration: none;
   cursor: pointer;
-  transition: color 150ms ease;
 }
 
-.admin-page a.adm-nav__item {
+.admin-page a.adm-place {
   color: var(--color-text-muted);
 }
 
-.adm-nav__item::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  z-index: 1;
-  width: 1px;
-  background: var(--color-brand);
-  transform: scaleY(0);
-  transition: transform 320ms var(--ease-draw);
+.admin-page button.adm-place {
+  color: var(--color-text-muted);
 }
 
-@media (hover: hover) {
-  .admin-page .adm-nav__item:hover {
-    color: var(--color-text-interactive-hover);
-  }
-
-  .adm-nav__item:hover::after {
-    transform: none;
-  }
-}
-
-.admin-page .adm-nav__item[aria-current] {
-  color: var(--color-text-primary);
-}
-
-.adm-nav__item[aria-current]::after {
-  transform: none;
-}
-
-.adm-nav__count {
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-brand-strong);
-}
-
-.adm-nav__dot {
-  width: 6px;
-  height: 6px;
-  margin-right: 0.25rem;
-  border-radius: 50%;
-  background: var(--color-text-warning);
-}
-
-.adm-nav__glyph {
-  display: inline-flex;
+.adm-place .studio-glyph {
+  width: 0.8125rem;
+  height: 0.8125rem;
   color: var(--color-text-disabled);
 }
 
-.adm-nav__glyph .studio-glyph {
-  width: 0.875rem;
-  height: 0.875rem;
+/* The section strip belongs to the one-column layout only. */
+.adm-strip {
+  display: none;
+}
+
+/* --- Desk -------------------------------------------------------------- */
+
+.adm-desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--adm-gap);
+  max-width: var(--adm-frame);
+  margin: 0 auto;
+  padding: clamp(3.5rem, 8vh, 6rem) 0 8rem;
+}
+
+.adm-desk__inbox,
+.adm-desk__shelf {
+  min-width: 0;
+  animation: adm-rise 560ms var(--ease-draw) backwards;
+}
+
+.adm-desk__inbox {
+  animation-delay: 160ms;
+}
+
+.adm-desk__shelf {
+  position: relative;
+  display: grid;
+  gap: 4.5rem;
+  align-content: start;
+  animation-delay: 260ms;
+}
+
+/* The desk's seam: a vertical hairline in the middle of the gap, faded at
+   both ends, the horizon's echo. */
+.adm-desk__shelf::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: -3rem;
+  left: calc(var(--adm-gap) / -2);
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-text-primary) 12%, transparent),
+    color-mix(in srgb, var(--color-text-primary) 12%, transparent) 70%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+@keyframes adm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 /* --- Section heads ----------------------------------------------------- */
@@ -240,18 +236,22 @@
   position: absolute;
   inset: auto 0 0;
   height: 1px;
-  background: var(--hairline);
+  background: var(--color-rule-strong);
   pointer-events: none;
 }
 
 .adm-head__title {
   margin: 0;
   padding-bottom: 1rem;
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
   color: var(--color-text-primary);
+}
+
+.adm-head__title:focus {
+  outline: none;
 }
 
 /* Tools run down to the line, so a lit segment sits exactly on it. */
@@ -284,11 +284,7 @@
 .adm-tab__count {
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-disabled);
-}
-
-.hair-control.adm-tab.is-chosen .adm-tab__count {
-  color: var(--color-text-muted);
+  color: var(--color-brand-strong);
 }
 
 .admin-page .hair-control.adm-tab--go {
@@ -353,8 +349,8 @@
 .adm-icon-button {
   display: inline-grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
   border: 0;
   border-radius: var(--radius-sm-2);
@@ -425,48 +421,119 @@
   border-top: 1px solid var(--adm-rule);
 }
 
-/* --- Guestbook --------------------------------------------------------- */
+/* --- Guestbook: a logbook --------------------------------------------- */
 
+/* When sits in the margin, before who: the inbox reads down a column of
+   times like a log kept through the night. */
 .adm-entry {
+  --adm-when: 4rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2rem;
-  padding: 1.375rem 0;
+  grid-template-columns: var(--adm-when) minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 1.25rem;
+  padding: 1.625rem 0;
+}
+
+/* The ledger's margin rule: one faint line between the times and the
+   entries, the length of the log, the desk's seam in miniature. */
+.adm-log {
+  position: relative;
+}
+
+.adm-log::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(4rem + 0.625rem);
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--color-text-primary) 9%, transparent) 2rem,
+    color-mix(in srgb, var(--color-text-primary) 9%, transparent)
+      calc(100% - 2rem),
+    transparent
+  );
+  pointer-events: none;
+  transform-origin: top;
+  animation: adm-ledger 700ms var(--ease-draw) 420ms backwards;
+}
+
+@keyframes adm-ledger {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.adm-entry__when {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-text-disabled);
+  font-variant-numeric: tabular-nums;
+  transition: color 150ms ease;
+}
+
+/* The entry in hand lights its time, so the keyboard's place reads at a
+   glance without a box round the row. */
+.adm-entry:focus-within .adm-entry__when {
+  color: var(--color-brand-strong);
+}
+
+@media (hover: hover) {
+  .adm-entry:hover .adm-entry__when {
+    color: var(--color-text-muted);
+  }
+
+  .adm-entry:focus-within:hover .adm-entry__when {
+    color: var(--color-brand-strong);
+  }
+}
+
+/* Only the name shares its line with the actions; the message and its
+   trace run the full width under both. */
+.adm-entry__body {
+  display: contents;
 }
 
 .adm-entry__by {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  grid-column: 2;
   margin: 0;
   line-height: 1.3;
 }
 
+.adm-entry__message,
+.adm-entry__meta {
+  grid-column: 2 / -1;
+}
+
+.adm-entry__actions {
+  grid-column: 3;
+  grid-row: 1;
+}
+
 .adm-entry__by strong {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
 }
 
-.adm-entry__by time {
-  flex: none;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--color-text-disabled);
-}
-
+/* The visitors' words are the loudest thing on the desk. */
 .adm-entry__message {
+  max-width: 42rem;
   margin: 0.5rem 0 0;
-  font-size: 0.9375rem;
+  font-size: 1.125rem;
   line-height: 1.6;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .adm-entry__meta {
-  margin: 0.625rem 0 0;
+  margin: 0.75rem 0 0;
   overflow: hidden;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
@@ -478,11 +545,72 @@
 
 .adm-entry__actions {
   display: flex;
-  align-items: flex-start;
   gap: 1.5rem;
 }
 
-/* --- Integrations ------------------------------------------------------ */
+/* Decided: the entry folds shut along its line, then leaves. */
+.adm-entry.is-leaving {
+  overflow: hidden;
+  pointer-events: none;
+  animation: adm-fold 260ms var(--ease-draw) forwards;
+}
+
+@keyframes adm-fold {
+  from {
+    height: var(--adm-fold-from, auto);
+  }
+
+  to {
+    height: 0;
+    padding-block: 0;
+    opacity: 0;
+  }
+}
+
+/* Nothing waiting: the cat asleep on a floor of starlight. */
+/* The line and the cat share one floor: the words stand at its left end,
+   the cat sleeps further along it. */
+.adm-empty--asleep {
+  position: relative;
+  display: block;
+  padding: 1.75rem 0 0;
+}
+
+.adm-empty--asleep .adm-empty__line {
+  position: absolute;
+  left: 0;
+  bottom: 0.75rem;
+}
+
+.adm-nap {
+  position: relative;
+  height: 2.75rem;
+}
+
+.adm-nap::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--hairline-floor);
+}
+
+.adm-nap__cat {
+  position: absolute;
+  right: 14%;
+  bottom: 0;
+  display: block;
+  transform-origin: 50% 100%;
+  animation: adm-breathe 4.2s ease-in-out infinite;
+}
+
+@keyframes adm-breathe {
+  50% {
+    transform: scaleY(1.025);
+  }
+}
+
+/* --- Integrations: instruments ---------------------------------------- */
 
 .adm-int {
   position: relative;
@@ -497,9 +625,9 @@
 .adm-int__dot {
   position: absolute;
   top: calc(1.375rem + 0.4375rem);
-  left: calc(var(--adm-hang) - 3.5px);
-  width: 7px;
-  height: 7px;
+  left: calc(var(--adm-hang) - 3px);
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
 }
 
@@ -529,7 +657,7 @@
 }
 
 .adm-int__heading strong {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--color-text-primary);
 }
@@ -622,45 +750,61 @@
 
 /* --- Toasts ------------------------------------------------------------ */
 
+/* Bottom-left of the desk, under the inbox: near what was acted on most,
+   clear of the action column on the right of every row. */
 .adm-toasts {
-  --adm-frame: calc(
-    var(--adm-rail-width) + var(--adm-gap) + var(--adm-main-width)
-  );
   position: fixed;
-  /* Bottom-left of the content column: near what was acted on, but clear of
-     the action column on the right of every row. */
-  left: calc(
-    50% - var(--adm-frame) / 2 + var(--adm-rail-width) + var(--adm-gap)
-  );
+  left: max(var(--adm-gutter), calc(50% - var(--adm-frame) / 2));
   bottom: calc(1.5rem + env(safe-area-inset-bottom));
   z-index: 50;
   display: grid;
-  justify-items: start;
-  gap: 0.5rem;
-  width: min(26rem, calc(100vw - 2rem));
+  justify-items: stretch;
+  gap: 0;
+  width: min(24rem, calc(100vw - 2.5rem));
   pointer-events: none;
 }
 
-/* Wide enough for a margin beside the column: the message sits there, over
-   nothing at all. */
-@media (min-width: 1720px) {
-  .adm-toasts {
-    left: calc(50% + var(--adm-frame) / 2 + 2.5rem);
-    width: min(24rem, calc(50% - var(--adm-frame) / 2 - 4rem));
-  }
+/* The stack is backed in night and hangs from its own horizon, so over the
+   page it never reads as another row of a list. */
+.adm-toasts:not(:empty) {
+  padding-top: 0.25rem;
+  background: var(--color-surface);
+  box-shadow: 0 -1.5rem 1.5rem -0.5rem var(--color-surface);
+}
+
+.adm-toasts:not(:empty)::before {
+  content: '';
+  height: 1px;
+  margin-bottom: 0.25rem;
+  background: var(--hairline);
 }
 
 .adm-toast {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  position: relative;
   min-height: 2.75rem;
-  padding: 0.375rem 0.375rem 0.375rem 0.875rem;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-sm);
+  padding: 0.375rem 0 0.375rem;
   background: var(--color-surface);
   pointer-events: auto;
   animation: adm-toast-in 260ms var(--ease-draw);
+}
+
+/* A message is a line of text standing on a hairline, like everything
+   else here; an error's line is drawn in its colour. */
+.adm-toast + .adm-toast::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: var(--adm-rule);
+}
+
+/* An error marks its own line, the one place red stands in the stack. */
+.adm-toast--error {
+  box-shadow: inset 2px 0 0 var(--color-text-error);
+  padding-left: 0.75rem;
 }
 
 .adm-toast__message {
@@ -673,29 +817,23 @@
   overflow-wrap: anywhere;
 }
 
-.adm-toast--error {
-  border-color: color-mix(in srgb, var(--color-text-error) 45%, transparent);
-}
-
 .adm-toast--error .adm-toast__message {
   color: var(--color-text-error);
 }
 
 .adm-toast__undo {
   flex: none;
-  padding: 0.375rem 0.5rem;
+  align-self: stretch;
+  align-items: center;
+  padding: 0 0.125rem;
   border: 0;
-  border-radius: var(--radius-sm);
   background: none;
-  font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--color-brand-strong);
   cursor: pointer;
 }
 
-.adm-toast__undo:hover {
-  color: var(--color-text-interactive-hover);
-  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+.admin-page .hair-control.adm-toast__undo {
+  color: var(--color-brand-strong);
 }
 
 .adm-toast__close {
@@ -728,108 +866,147 @@
   }
 }
 
-/* --- Narrow ------------------------------------------------------------ */
+/* --- One column -------------------------------------------------------- */
 
-/* Below the two-column width the rail folds back into the site header: the
-   wordmark and sign out on one row, the sections on a hairline under it,
-   sticky so the way around stays in reach. */
-@media (max-width: 860px) {
+/* Below the desk's width the columns stack, inbox first, and the header
+   becomes sticky with the sections joining the horizon as a strip. */
+@media (max-width: 1100px) {
   .adm,
   .adm-sheet,
   .adm-toasts {
-    --adm-sticky-offset: 7.5rem;
+    /* A jump lands a section just under the stuck header — inside the line
+       the strip's scroll-spy reads (header bottom + 32px). */
+    --adm-sticky-offset: 7rem;
   }
 
   .adm {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 0 max(1rem, env(safe-area-inset-right)) 0
-      max(1rem, env(safe-area-inset-left));
+    --adm-gutter: max(1.25rem, env(safe-area-inset-left));
+    --adm-gutter-end: max(1.25rem, env(safe-area-inset-right));
   }
 
-  .adm-rail {
+  .adm-top {
+    position: sticky;
+    top: 0;
     z-index: 20;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: last baseline;
-    padding: calc(1.25rem + env(safe-area-inset-top)) 0 0;
-    background: var(--color-surface);
+    margin: 0 calc(-1 * var(--adm-gutter-end)) 0 calc(-1 * var(--adm-gutter));
+    padding: 0 var(--adm-gutter-end) 0 var(--adm-gutter);
+    background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+    backdrop-filter: blur(12px);
   }
 
-  .adm-nav {
+  .adm-top__row,
+  .adm-strip__list {
+    max-width: var(--adm-column);
+    margin-inline: auto;
+  }
+
+  .adm-top__row {
+    padding-top: calc(1.25rem + env(safe-area-inset-top));
+  }
+
+  /* On the stuck header the horizon moves under the strip. */
+  .adm-top__row::after {
+    display: none;
+  }
+
+  .adm-top__brand,
+  .adm-place {
+    padding-bottom: 0.75rem;
+  }
+
+  .adm-strip {
     position: relative;
-    display: flex;
-    grid-column: 1 / -1;
-    min-width: 0;
-    gap: 1.5rem;
-    margin: 0.5rem calc(-1 * max(1rem, env(safe-area-inset-left))) 0;
-    padding: 0 max(1rem, env(safe-area-inset-left));
+    display: block;
+    margin: 0 calc(-1 * var(--adm-gutter-end)) 0 calc(-1 * var(--adm-gutter));
+    padding: 0 var(--adm-gutter-end) 0 var(--adm-gutter);
     overflow-x: auto;
     scrollbar-width: none;
-    /* A row that runs past the edge fades there, so it reads as more. */
-    mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
   }
 
-  .adm-nav::before {
+  .adm-strip::-webkit-scrollbar {
     display: none;
   }
 
-  .adm-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .adm-nav::after {
+  .adm-strip::after {
     content: '';
     position: absolute;
     inset: auto 0 0;
     height: 1px;
     background: var(--hairline);
     pointer-events: none;
+    animation: adm-horizon 900ms var(--ease-draw) both;
   }
 
-  .adm-nav__list {
+  .adm-strip__list {
     display: flex;
-    flex: none;
-    gap: 1.5rem;
+    gap: 1.75rem;
+    margin-block: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .adm-nav__list--places {
-    margin: 0;
-    padding-right: 2.5rem;
-  }
-
-  .adm-nav__signout {
-    display: none;
-  }
-
-  .adm-rail__signout {
-    display: block;
-    margin: 0;
-  }
-
-  .adm-nav__item {
+  .adm-strip__item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
     gap: 0.4375rem;
-    width: auto;
-    padding: 0.875rem 0;
+    padding: 0.75rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
     white-space: nowrap;
+    text-decoration: none;
+    transition: color 150ms ease;
   }
 
-  .adm-nav__item::after {
+  .admin-page a.adm-strip__item {
+    color: var(--color-text-muted);
+  }
+
+  .admin-page a.adm-strip__item[aria-current] {
+    color: var(--color-text-primary);
+  }
+
+  .adm-strip__item::after {
+    content: '';
+    position: absolute;
     inset: auto 0 0;
-    width: auto;
+    z-index: 1;
     height: 1px;
+    background: var(--color-brand);
     transform: scaleX(0);
+    transition: transform 320ms var(--ease-draw);
   }
 
-  .adm-nav__item[aria-current]::after {
+  .adm-strip__item[aria-current]::after {
     transform: none;
   }
 
-  .adm-main {
-    gap: 3.5rem;
-    padding-top: 2rem;
+  .adm-strip__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-warning);
   }
 
-  /* No gutter to hang in on a phone: the dot steps inside the row. */
+  .adm-desk {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4rem;
+    max-width: var(--adm-column);
+    padding-top: 2.5rem;
+    /* Room to scroll the last row clear of a full toast stack. */
+    padding-bottom: 12rem;
+  }
+
+  .adm-desk__shelf {
+    gap: 4rem;
+  }
+
+  .adm-desk__shelf::before {
+    display: none;
+  }
+
+  /* No gutter to hang in: the dot steps inside the row. */
   .adm-int {
     padding-left: 1.125rem;
   }
@@ -839,15 +1016,34 @@
   }
 
   .adm-toasts {
-    left: 50%;
-    transform: translateX(-50%);
-    justify-items: stretch;
+    left: max(var(--adm-gutter), calc(50% - var(--adm-column) / 2));
+    width: min(var(--adm-column), calc(100vw - 2.5rem));
   }
 }
 
 @media (max-width: 560px) {
-  .adm-head__title {
-    width: 100%;
+  .adm,
+  .adm-sheet,
+  .adm-toasts {
+    --adm-sticky-offset: 4rem;
+  }
+
+  /* Only the strip stays: the brand row scrolls away under the top edge,
+     so the sticky header costs one row of the screen, not two. */
+  .adm-top {
+    top: calc(-3.25rem - env(safe-area-inset-top));
+  }
+
+  .adm-top__row {
+    height: calc(3.25rem + env(safe-area-inset-top));
+  }
+
+  .adm-places {
+    gap: 1.25rem;
+  }
+
+  .adm-toasts {
+    left: var(--adm-gutter);
   }
 
   .adm-head__tools {
@@ -855,12 +1051,35 @@
   }
 
   .adm-tab {
-    padding-top: 0;
+    padding-top: 0.75rem;
   }
 
+  /* The margin folds in: the time stands over the name, the actions under
+     the message. */
   .adm-entry {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
+    row-gap: 0.25rem;
+    padding: 1.375rem 0;
+  }
+
+  .adm-entry__by,
+  .adm-entry__message,
+  .adm-entry__meta,
+  .adm-entry__actions {
+    grid-column: 1;
+  }
+
+  .adm-entry__actions {
+    grid-row: auto;
+    margin-top: 0.75rem;
+  }
+
+  .adm-log::before {
+    display: none;
+  }
+
+  .adm-entry__message {
+    font-size: 1.0625rem;
   }
 
   .adm-int {
@@ -870,11 +1089,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .adm-toast {
+  .adm-top__row::after,
+  .adm-strip::after,
+  .adm-desk__inbox,
+  .adm-desk__shelf,
+  .adm-toast,
+  .adm-nap__cat,
+  .adm-log::before,
+  .adm-entry.is-leaving {
     animation: none;
   }
 
-  .adm-nav__item::after,
+  .adm-strip__item::after,
   .adm-switch,
   .adm-switch::before {
     transition: none;
@@ -882,8 +1108,12 @@
 }
 
 @media (forced-colors: active) {
-  .adm-nav__item::after {
+  .adm-strip__item::after {
     background: Highlight;
+  }
+
+  .adm-nap {
+    display: none;
   }
 
   .adm-switch:is([aria-checked='true'], :checked)::before {
