@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ContentWorkspace } from '../../components/admin/ContentWorkspace';
+import AdminUnavailable from '../../components/admin/AdminUnavailable.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
 
 const configured = isAdminConfigured();
@@ -25,15 +26,7 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
         </main>
       </>
     ) : (
-      <section class="admin-card admin-login">
-        <p class="admin-kicker">oddava</p>
-        <h1>Admin unavailable</h1>
-        <p class="admin-note">
-          Set <code>ADMIN_PANEL_TOKEN</code> or{' '}
-          <code>GUESTBOOK_ADMIN_TOKEN</code> in the environment, then reload
-          this page.
-        </p>
-      </section>
+      <AdminUnavailable />
     )
   }
 </AdminLayout>

@@ -172,8 +172,8 @@ export const lanyardIntegration: IntegrationDefinition = {
     return {
       state: 'ok',
       detail: state.isPlaying
-        ? `Connected. Discord presence reports “${state.title}”.`
-        : 'Connected. Discord presence reports no Spotify activity.',
+        ? `connected. discord presence reports “${state.title}”.`
+        : 'connected. discord presence reports no spotify activity.',
     };
   },
 };

@@ -1,627 +1,892 @@
-.admin-dashboard {
-  display: grid;
-  gap: 20px;
-  scroll-behavior: smooth;
+/* ===================================================
+   Admin dashboard — the site's personality at work.
+
+   Black canvas, blue only where something is chosen or asks for action,
+   hairlines for structure. The navigation is the site header turned on its
+   side; every section head is a horizon its controls stand on; rows are
+   divided by the faintest rule. Controls are the site's hairline controls —
+   a label whose brand segment draws in — except the one commit button in a
+   form, which is solid so the next step is never in doubt.
+   =================================================== */
+
+.adm,
+.adm-sheet,
+.adm-toasts {
+  --adm-rule: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  --adm-gutter: max(1.5rem, env(safe-area-inset-left));
+  --adm-sticky-offset: 2rem;
 }
 
-.admin-badge {
-  display: inline-flex;
-  align-items: center;
+/* Glyphs come from the Studio icon set: one 20px grid, one stroke. Dots are
+   filled by attribute, so only the stroked ones lose their fill here. */
+:is(.adm, .adm-sheet, .adm-toasts) .studio-glyph {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:is(.adm, .adm-sheet, .adm-toasts) .studio-glyph:not([fill]) {
+  fill: none;
+}
+
+:is(.adm, .adm-sheet, .adm-toasts) :is(button, a, input):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Frame ------------------------------------------------------------ */
+
+.adm,
+.adm-toasts {
+  /* The gutter line hung glyphs (grip, status dot) centre on. */
+  --adm-hang: -1.25rem;
+  --adm-rail-width: 12rem;
+  --adm-main-width: 54rem;
+  --adm-gap: clamp(3rem, 6vw, 6rem);
+}
+
+.adm {
+  display: grid;
+  grid-template-columns: var(--adm-rail-width) minmax(0, var(--adm-main-width));
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: var(--radius-pill);
-  background: var(--admin-accent);
-  color: var(--color-text-on-accent);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  line-height: 1;
+  column-gap: var(--adm-gap);
+  min-height: 100dvh;
+  padding: 0 max(1.5rem, env(safe-area-inset-right)) 0 var(--adm-gutter);
 }
 
-/* --- Metric cards --- */
-
-.admin-grid {
+.adm-main {
   display: grid;
-  gap: 12px;
+  align-content: start;
+  gap: 4.5rem;
+  min-width: 0;
+  padding: 2.5rem 0 8rem;
 }
 
-.admin-grid.cols-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+/* --- Rail -------------------------------------------------------------- */
+
+.adm-rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  padding: 2.5rem 0 2rem;
 }
 
-.admin-grid.cols-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.adm-rail__brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  align-self: flex-start;
+  text-decoration: none;
 }
 
-.metric-card {
-  padding: 16px;
-}
-
-.metric-card__label {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--admin-text-muted);
-}
-
-.metric-card__value {
-  display: block;
-  margin-top: 4px;
-  font-size: 1.5rem;
+.adm-rail__wordmark {
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
+  color: var(--color-text-primary);
+  transition: color 150ms ease;
 }
 
-/* --- Panels --- */
-
-.admin-panel {
-  padding: 20px;
-  scroll-margin-top: 20px;
+.adm-rail__brand:hover .adm-rail__wordmark {
+  color: var(--color-brand-strong);
 }
 
-.admin-panel h2 {
+.adm-rail__tag {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--color-text-disabled);
+}
+
+.adm-nav {
+  position: relative;
+  margin-top: 3rem;
+}
+
+/* The vertical horizon, one line under both groups, faded at its ends like
+   the site's. */
+.adm-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--color-rule-strong) 1.5rem,
+    var(--color-rule-strong) calc(100% - 1.5rem),
+    transparent
+  );
+}
+
+.adm-nav__list {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  padding: 0;
+  list-style: none;
 }
 
-.admin-section-head {
+.adm-nav__list--places {
+  margin-top: 1.75rem;
+}
+
+.adm-nav__signout form {
+  margin: 0;
+}
+
+.adm-rail__signout {
+  display: none;
+}
+
+.adm-nav__item {
+  position: relative;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-/* --- Split layout --- */
-
-.admin-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.admin-muted {
-  margin: 4px 0 0;
-  color: var(--admin-text-muted);
-  font-size: 0.8rem;
-}
-
-/* --- Pills --- */
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm-2);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: var(--admin-status-neutral-bg);
-  color: var(--admin-text-muted);
-}
-
-.pill.good {
-  color: var(--admin-success);
-  background: var(--admin-status-success-bg);
-}
-
-.pill.bad {
-  color: var(--admin-danger);
-  background: var(--admin-status-error-bg);
-}
-
-/* Reachable but not doing what the operator wants: rate limited, bypassed,
-   or configured but incomplete. Distinct from an outright failure. */
-.pill.warn {
-  color: var(--admin-warning);
-  background: var(--admin-status-warning-bg);
-}
-
-/* --- Integration table --- */
-
-.admin-table {
+  gap: 0.75rem;
   width: 100%;
-  border-collapse: collapse;
+  padding: 0.5625rem 0 0.5625rem 1rem;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--color-text-muted);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 150ms ease;
 }
 
-.admin-table tr:not(:last-child) {
-  border-bottom: 1px solid var(--admin-line);
+.admin-page a.adm-nav__item {
+  color: var(--color-text-muted);
 }
 
-.admin-table td {
-  padding: 10px 0;
-  font-size: 0.85rem;
-  vertical-align: middle;
+.adm-nav__item::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: 1px;
+  background: var(--color-brand);
+  transform: scaleY(0);
+  transition: transform 320ms var(--ease-draw);
 }
 
-.admin-table__name {
-  font-weight: 500;
-  color: var(--admin-text-primary);
-  white-space: nowrap;
+@media (hover: hover) {
+  .admin-page .adm-nav__item:hover {
+    color: var(--color-text-interactive-hover);
+  }
+
+  .adm-nav__item:hover::after {
+    transform: none;
+  }
 }
 
-.admin-table__detail {
-  color: var(--admin-text-muted);
-  font-size: 0.8rem;
-  padding: 0 12px;
+.admin-page .adm-nav__item[aria-current] {
+  color: var(--color-text-primary);
 }
 
-.admin-table__status {
-  text-align: right;
-  width: 1%;
-  white-space: nowrap;
+.adm-nav__item[aria-current]::after {
+  transform: none;
 }
 
-.admin-table__toggle {
-  text-align: right;
-  width: 1%;
-  white-space: nowrap;
-  padding-left: 12px;
+.adm-nav__count {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-brand-strong);
 }
 
-/* --- Integration list --- */
-
-.admin-integration-list {
-  display: grid;
-  gap: 0;
+.adm-nav__dot {
+  width: 6px;
+  height: 6px;
+  margin-right: 0.25rem;
+  border-radius: 50%;
+  background: var(--color-text-warning);
 }
 
-.admin-integration-row {
+.adm-nav__glyph {
+  display: inline-flex;
+  color: var(--color-text-disabled);
+}
+
+.adm-nav__glyph .studio-glyph {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* --- Section heads ----------------------------------------------------- */
+
+.adm-section {
+  min-width: 0;
+  scroll-margin-top: var(--adm-sticky-offset);
+}
+
+.adm-head {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 12px 0;
+  column-gap: 2rem;
 }
 
-.admin-integration-row:not(:last-child) {
-  border-bottom: 1px solid var(--admin-line);
+.adm-head::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--hairline);
+  pointer-events: none;
 }
 
-.admin-integration-row__info {
-  min-width: 0;
-  flex: 1;
+.adm-head__title {
+  margin: 0;
+  padding-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
 }
 
-.admin-integration-row__heading {
+/* Tools run down to the line, so a lit segment sits exactly on it. */
+.adm-head__tools {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-self: stretch;
+  gap: 1.75rem;
 }
 
-.admin-integration-row__name {
-  font-weight: 500;
-  color: var(--admin-text-primary);
-  font-size: 0.85rem;
-  overflow-wrap: break-word;
-  min-width: 0;
+.adm-tab {
+  gap: 0.5rem;
+  padding: 0.5rem 0 1rem;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
 }
 
-.admin-integration-row__detail {
-  margin: 4px 0 0;
-  color: var(--admin-text-muted);
-  font-size: 0.78rem;
-  line-height: 1.4;
-  overflow-wrap: break-word;
+.admin-page a.adm-tab {
+  color: var(--color-text-muted);
 }
 
-.admin-integration-row__muted {
-  color: var(--admin-text-muted);
-  font-style: italic;
+.adm-tab .studio-glyph {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: -0.125rem;
 }
 
-.admin-integration-row__checked {
+.adm-tab__count {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-disabled);
+}
+
+.hair-control.adm-tab.is-chosen .adm-tab__count {
+  color: var(--color-text-muted);
+}
+
+.admin-page .hair-control.adm-tab--go {
+  color: var(--color-brand-strong);
+}
+
+/* --- Quiet actions ----------------------------------------------------- */
+
+.adm-act {
+  padding: 0.375rem 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+/* In flight: still focusable (focus must not fall to the page), but quiet. */
+.admin-page .hair-control.adm-act[aria-disabled='true'] {
+  color: var(--color-text-disabled);
+  cursor: progress;
+}
+
+.hair-control.adm-act[aria-disabled='true']::after {
+  transform: scaleX(0);
+}
+
+.admin-page .hair-control.adm-act--go {
+  color: var(--color-brand-strong);
+}
+
+.admin-page .hair-control.adm-act--danger {
+  color: var(--color-text-error);
+}
+
+.hair-control.adm-act--danger::after {
+  background: var(--color-text-error);
+}
+
+/* A bulk action that cannot be undone stays out of the way until reached
+   for; the dialog it opens is where the red belongs. */
+.admin-page .hair-control.adm-act--quiet-danger {
+  color: var(--color-text-disabled);
+}
+
+@media (hover: hover) {
+  .admin-page .hair-control.adm-act--quiet-danger:hover:not(:disabled) {
+    color: var(--color-text-error);
+  }
+}
+
+.hair-control.adm-act--quiet-danger::after {
+  background: var(--color-text-error);
+}
+
+@media (hover: hover) {
+  .admin-page .hair-control.adm-act--danger:hover:not(:disabled) {
+    color: color-mix(in srgb, var(--color-text-error) 70%, white);
+  }
+}
+
+.adm-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm-2);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+@media (hover: hover) {
+  .adm-icon-button:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    background: var(--color-surface-elevated);
+  }
+}
+
+.adm-icon-button:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* --- Lists ------------------------------------------------------------- */
+
+.adm-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-list > li + li {
+  border-top: 1px solid var(--adm-rule);
+}
+
+.adm-empty {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  padding: 2rem 0 0.5rem;
+}
+
+.adm-empty__line {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--color-text-disabled);
+}
+
+.adm-empty__line--error {
+  color: var(--color-text-error);
+}
+
+.adm-skeletons {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+}
+
+.adm-skeletons .skeleton-row {
+  height: 3.5rem;
+  border-radius: var(--radius-md);
+}
+
+.adm-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--adm-rule);
+}
+
+/* --- Guestbook --------------------------------------------------------- */
+
+.adm-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2rem;
+  padding: 1.375rem 0;
+}
+
+.adm-entry__by {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.adm-entry__by strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.adm-entry__by time {
+  flex: none;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--admin-text-muted);
-  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+  color: var(--color-text-disabled);
 }
 
-.admin-integration-row__actions {
+.adm-entry__message {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.adm-entry__meta {
+  margin: 0.625rem 0 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--color-text-disabled);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.adm-entry__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+/* --- Integrations ------------------------------------------------------ */
+
+.adm-int {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.375rem 0;
+}
+
+/* Hangs in the gutter, so names line up with every other row. */
+.adm-int__dot {
+  position: absolute;
+  top: calc(1.375rem + 0.4375rem);
+  left: calc(var(--adm-hang) - 3.5px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.adm-int__dot--good {
+  background: var(--color-text-success);
+}
+
+.adm-int__dot--warn {
+  background: var(--color-text-warning);
+}
+
+.adm-int__dot--bad {
+  background: var(--color-text-error);
+}
+
+.adm-int__dot--off {
+  box-shadow: inset 0 0 0 1px var(--color-text-disabled);
+}
+
+.adm-int__heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.adm-int__heading strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.adm-int__state {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.adm-int__state--good {
+  color: var(--color-text-success);
+}
+
+.adm-int__state--warn {
+  color: var(--color-text-warning);
+}
+
+.adm-int__state--bad {
+  color: var(--color-text-error);
+}
+
+.adm-int__state--off {
+  color: var(--color-text-disabled);
+}
+
+.adm-int__detail {
+  margin: 0.375rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.adm-int__actions {
+  display: flex;
+  align-self: start;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: -0.125rem;
+}
+
+/* --- Switch ------------------------------------------------------------ */
+
+.adm-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 2.25rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
+}
+
+.adm-switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.25rem - 6px);
+  height: calc(1.25rem - 6px);
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  transition:
+    transform 240ms var(--ease-draw),
+    background-color 200ms ease;
+}
+
+/* On is a brand outline and knob, not a filled pill: the switch states
+   its position without being the loudest thing on the page. */
+.adm-switch:is([aria-checked='true'], :checked) {
+  border-color: var(--color-brand);
+}
+
+.adm-switch:is([aria-checked='true'], :checked)::before {
+  transform: translateX(1rem);
+  background: var(--color-brand);
+}
+
+.adm-switch:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* --- Toasts ------------------------------------------------------------ */
+
+.adm-toasts {
+  --adm-frame: calc(
+    var(--adm-rail-width) + var(--adm-gap) + var(--adm-main-width)
+  );
+  position: fixed;
+  /* Bottom-left of the content column: near what was acted on, but clear of
+     the action column on the right of every row. */
+  left: calc(
+    50% - var(--adm-frame) / 2 + var(--adm-rail-width) + var(--adm-gap)
+  );
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  z-index: 50;
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  width: min(26rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+/* Wide enough for a margin beside the column: the message sits there, over
+   nothing at all. */
+@media (min-width: 1720px) {
+  .adm-toasts {
+    left: calc(50% + var(--adm-frame) / 2 + 2.5rem);
+    width: min(24rem, calc(50% - var(--adm-frame) / 2 - 4rem));
+  }
+}
+
+.adm-toast {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  padding-left: 16px;
-  border-left: 1px solid var(--admin-line);
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.375rem 0.375rem 0.875rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  pointer-events: auto;
+  animation: adm-toast-in 260ms var(--ease-draw);
+}
+
+.adm-toast__message {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.adm-toast--error {
+  border-color: color-mix(in srgb, var(--color-text-error) 45%, transparent);
+}
+
+.adm-toast--error .adm-toast__message {
+  color: var(--color-text-error);
+}
+
+.adm-toast__undo {
+  flex: none;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-brand-strong);
+  cursor: pointer;
+}
+
+.adm-toast__undo:hover {
+  color: var(--color-text-interactive-hover);
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+}
+
+.adm-toast__close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-disabled);
+  cursor: pointer;
+}
+
+.adm-toast__close:hover {
+  color: var(--color-text-primary);
+}
+
+.adm-toast__close .studio-glyph {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+@keyframes adm-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* --- Narrow ------------------------------------------------------------ */
+
+/* Below the two-column width the rail folds back into the site header: the
+   wordmark and sign out on one row, the sections on a hairline under it,
+   sticky so the way around stays in reach. */
+@media (max-width: 860px) {
+  .adm,
+  .adm-sheet,
+  .adm-toasts {
+    --adm-sticky-offset: 7.5rem;
+  }
+
+  .adm {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 max(1rem, env(safe-area-inset-right)) 0
+      max(1rem, env(safe-area-inset-left));
+  }
+
+  .adm-rail {
+    z-index: 20;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: last baseline;
+    padding: calc(1.25rem + env(safe-area-inset-top)) 0 0;
+    background: var(--color-surface);
+  }
+
+  .adm-nav {
+    position: relative;
+    display: flex;
+    grid-column: 1 / -1;
+    min-width: 0;
+    gap: 1.5rem;
+    margin: 0.5rem calc(-1 * max(1rem, env(safe-area-inset-left))) 0;
+    padding: 0 max(1rem, env(safe-area-inset-left));
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* A row that runs past the edge fades there, so it reads as more. */
+    mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  .adm-nav::before {
+    display: none;
+  }
+
+  .adm-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .adm-nav::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 1px;
+    background: var(--hairline);
+    pointer-events: none;
+  }
+
+  .adm-nav__list {
+    display: flex;
+    flex: none;
+    gap: 1.5rem;
+  }
+
+  .adm-nav__list--places {
+    margin: 0;
+    padding-right: 2.5rem;
+  }
+
+  .adm-nav__signout {
+    display: none;
+  }
+
+  .adm-rail__signout {
+    display: block;
+    margin: 0;
+  }
+
+  .adm-nav__item {
+    gap: 0.4375rem;
+    width: auto;
+    padding: 0.875rem 0;
+    white-space: nowrap;
+  }
+
+  .adm-nav__item::after {
+    inset: auto 0 0;
+    width: auto;
+    height: 1px;
+    transform: scaleX(0);
+  }
+
+  .adm-nav__item[aria-current]::after {
+    transform: none;
+  }
+
+  .adm-main {
+    gap: 3.5rem;
+    padding-top: 2rem;
+  }
+
+  /* No gutter to hang in on a phone: the dot steps inside the row. */
+  .adm-int {
+    padding-left: 1.125rem;
+  }
+
+  .adm-int__dot {
+    left: 0;
+  }
+
+  .adm-toasts {
+    left: 50%;
+    transform: translateX(-50%);
+    justify-items: stretch;
+  }
 }
 
 @media (max-width: 560px) {
-  .admin-integration-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .admin-integration-row__actions {
-    padding-left: 0;
-    border-left: 0;
+  .adm-head__title {
     width: 100%;
-    justify-content: flex-end;
+  }
+
+  .adm-head__tools {
+    gap: 1.25rem;
+  }
+
+  .adm-tab {
+    padding-top: 0;
+  }
+
+  .adm-entry {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .adm-int {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0.75rem;
   }
 }
 
-/* --- Credentials form --- */
+@media (prefers-reduced-motion: reduce) {
+  .adm-toast {
+    animation: none;
+  }
 
-.admin-credentials {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.admin-credentials__hint {
-  margin: 0;
-  color: var(--admin-text-muted);
-  font-size: 0.72rem;
-  line-height: 1.4;
-}
-
-.admin-credentials__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.admin-credentials__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.admin-credentials__label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--admin-text-secondary);
-}
-
-.admin-credentials__optional {
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--admin-text-muted);
-}
-
-.admin-credentials__status {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--admin-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.admin-credentials__help {
-  font-family: inherit;
-  font-size: 0.68rem;
-  text-transform: none;
-  letter-spacing: normal;
-  line-height: 1.4;
-  color: var(--admin-text-muted);
-}
-
-.admin-credentials__clear {
-  align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--admin-accent);
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.admin-credentials__clear:hover {
-  text-decoration: underline;
-}
-
-.admin-credentials__clear:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.admin-credentials__issue {
-  font-size: 0.68rem;
-  line-height: 1.4;
-  color: var(--admin-danger);
-}
-
-.admin-input {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-  color: var(--admin-text-primary);
-  font-size: 0.8rem;
-  font-family: var(--font-mono);
-  outline: none;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.admin-input::placeholder {
-  color: var(--admin-text-muted);
-}
-
-.admin-input:hover:not(:disabled) {
-  border-color: var(--admin-line-strong);
-}
-
-.admin-input:focus {
-  border-color: var(--admin-accent);
-  background: var(--admin-surface-elevated);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent) 20%, transparent);
-}
-
-.admin-input:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.admin-credentials__error {
-  margin: 0;
-}
-
-.admin-credentials__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Revoke sits opposite Save so the destructive action is never adjacent to the
-   one the operator is reaching for. */
-.admin-credentials__actions .admin-button--danger {
-  margin-right: auto;
-}
-
-.admin-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm-2);
-  border: 1px solid var(--admin-line-strong);
-  background: var(--admin-surface);
-  color: var(--admin-text-primary);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
-}
-
-.admin-button:hover:not(:disabled) {
-  border-color: var(--admin-accent);
-}
-
-.admin-button.primary {
-  background: var(--admin-accent);
-  border-color: var(--admin-accent);
-  color: var(--color-text-on-accent);
-}
-
-.admin-button--danger {
-  border-color: color-mix(in srgb, var(--admin-danger), transparent 35%);
-  color: var(--admin-danger);
-}
-
-.admin-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.admin-button--ghost {
-  background: transparent;
-}
-
-/* --- Toggle switch --- */
-
-.admin-toggle {
-  position: relative;
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-}
-
-.admin-toggle input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.admin-toggle__track {
-  display: inline-block;
-  width: 40px;
-  height: 22px;
-  border-radius: var(--radius-pill);
-  background: var(--admin-line-strong);
-  transition: background 0.2s ease;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.admin-toggle__thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--admin-text-muted);
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
-}
-
-.admin-toggle input:checked ~ .admin-toggle__track {
-  background: var(--admin-success);
-}
-
-.admin-toggle input:checked ~ .admin-toggle__track .admin-toggle__thumb {
-  transform: translateX(18px);
-  background: #fff;
-}
-
-.admin-toggle input:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.admin-toggle--on .admin-toggle__track {
-  background: var(--admin-success);
-}
-
-.admin-toggle--on .admin-toggle__thumb {
-  transform: translateX(18px);
-  background: #fff;
-}
-
-/* --- Entry list --- */
-
-.entry-list {
-  display: grid;
-  gap: 8px;
-}
-
-.entry-card {
-  padding: 14px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-md);
-  background: var(--admin-surface);
-}
-
-.entry-card header {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-}
-
-.entry-card p {
-  margin: 4px 0 0;
-  font-size: 0.875rem;
-}
-
-.admin-entry-meta {
-  color: var(--admin-text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-}
-
-.admin-entry-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-
-/* --- Empty state --- */
-
-.admin-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 32px 16px;
-}
-
-.admin-empty-icon {
-  font-size: 1.5rem;
-  color: var(--admin-text-disabled);
-}
-
-.admin-empty {
-  margin: 0;
-  color: var(--admin-text-muted);
-  font-size: 0.85rem;
-}
-
-/* --- Responsive --- */
-
-@media (max-width: 1080px) {
-  .admin-split {
-    grid-template-columns: 1fr;
+  .adm-nav__item::after,
+  .adm-switch,
+  .adm-switch::before {
+    transition: none;
   }
 }
 
-@media (max-width: 680px) {
-  .admin-dashboard {
-    gap: 14px;
+@media (forced-colors: active) {
+  .adm-nav__item::after {
+    background: Highlight;
   }
 
-  .admin-grid.cols-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-panel,
-  .metric-card {
-    padding: 14px;
-  }
-
-  .admin-section-head {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .admin-credentials__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .admin-grid.cols-4 {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .metric-card__value {
-    font-size: 1.25rem;
-  }
-
-  .metric-card__label {
-    font-size: 0.6rem;
-  }
-
-  .admin-panel h2 {
-    font-size: 0.95rem;
-  }
-
-  .entry-card {
-    padding: 12px;
-  }
-
-  .entry-card header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .admin-integration-row__actions .admin-button {
-    min-height: 40px;
-    padding: 6px 12px;
+  .adm-switch:is([aria-checked='true'], :checked)::before {
+    background: Canvas;
   }
 }

@@ -148,7 +148,7 @@ async function statusFor(
     return {
       ...base,
       state: 'disabled',
-      detail: `${definition.name} is turned off. No requests are made to it.`,
+      detail: 'turned off. no requests are made to it.',
     };
   }
 
@@ -168,8 +168,8 @@ async function statusFor(
       state: 'unconfigured',
       code: 'not_configured',
       detail: missing.length
-        ? `Not configured. Set ${missing.join(', ')} in the deployment environment.`
-        : 'Not configured.',
+        ? `not configured. set ${missing.join(', ')} in the deployment environment.`
+        : 'not configured.',
     };
   }
 

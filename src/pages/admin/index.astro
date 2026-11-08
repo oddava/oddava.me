@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import AdminPanel from '../../components/admin/AdminPanel';
+import AdminUnavailable from '../../components/admin/AdminUnavailable.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
 
 const configured = isAdminConfigured();
@@ -12,60 +13,10 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
 }
 ---
 
-<AdminLayout title="Admin" description="Unified admin panel for oddava.me.">
-  {
-    configured ? (
-      <>
-        <header class="admin-header admin-header--with-nav">
-          <nav class="admin-header__nav" aria-label="Admin navigation">
-            <span class="admin-header__current">Dashboard</span>
-            <span class="admin-header__sep" aria-hidden="true">
-              /
-            </span>
-            <a href="/admin/files" class="admin-header__link">
-              Files
-            </a>
-          </nav>
-          <form method="post" action="/api/admin/logout">
-            <button
-              class="admin-header__action"
-              type="submit"
-              aria-label="Sign out"
-              title="Sign out"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M10 17l5-5-5-5" />
-                <path d="M15 12H3" />
-                <path d="M21 19V5a2 2 0 0 0-2-2h-5" />
-                <path d="M14 21h5a2 2 0 0 0 2-2" />
-              </svg>
-            </button>
-          </form>
-        </header>
-        <main class="admin-main">
-          <AdminPanel client:load />
-        </main>
-      </>
-    ) : (
-      <section class="admin-card admin-login">
-        <p class="admin-kicker">oddava</p>
-        <h1>Admin unavailable</h1>
-        <p class="admin-note">
-          Set <code>ADMIN_PANEL_TOKEN</code> or{' '}
-          <code>GUESTBOOK_ADMIN_TOKEN</code> in the environment, then reload
-          this page.
-        </p>
-      </section>
-    )
-  }
+<AdminLayout
+  title="Dashboard"
+  description="Unified admin panel for oddava.me."
+  bare={configured}
+>
+  {configured ? <AdminPanel client:load /> : <AdminUnavailable />}
 </AdminLayout>

@@ -2,49 +2,62 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { fetchIntegrations, testIntegration, toggleIntegration } from './api';
 import { SkeletonRow } from '../ui/Skeleton';
 import type { IntegrationState, IntegrationStatus } from '../../lib/contracts';
-import { useDialogConfirm } from './useDialogConfirm';
-import { VisuallyHidden } from '../ui/VisuallyHidden';
+import { errorMessage, useToast } from './toast';
+import '../ui/VisuallyHidden.css';
 
 const STATE_LABEL: Record<IntegrationState, string> = {
   ok: 'ok',
   degraded: 'degraded',
   error: 'error',
-  unconfigured: 'setup',
+  unconfigured: 'needs setup',
   disabled: 'off',
 };
 
 /**
- * `degraded` and `unconfigured` deliberately share the warning treatment: both
- * mean "working as configured, but not doing what you probably want", which is
- * a different call to action than a hard failure.
+ * `degraded` and `unconfigured` share the warning tone: both mean "working as
+ * configured, but not doing what you probably want", a different call to
+ * action than a hard failure.
  */
-const STATE_CLASS: Record<IntegrationState, string> = {
-  ok: 'pill good',
-  degraded: 'pill warn',
-  error: 'pill bad',
-  unconfigured: 'pill warn',
-  disabled: 'pill',
+const STATE_TONE: Record<IntegrationState, string> = {
+  ok: 'good',
+  degraded: 'warn',
+  error: 'bad',
+  unconfigured: 'warn',
+  disabled: 'off',
 };
+
+/** Worth a dot in the navigation: switched on, but not working. */
+export function needsAttention(integration: IntegrationStatus): boolean {
+  return (
+    integration.enabled &&
+    (integration.state === 'error' ||
+      integration.state === 'degraded' ||
+      integration.state === 'unconfigured')
+  );
+}
 
 function formatCheckedAt(iso: string | undefined): string | null {
   if (!iso) return null;
-
   const checkedAt = new Date(iso).getTime();
   if (Number.isNaN(checkedAt)) return null;
-
   const seconds = Math.max(0, Math.round((Date.now() - checkedAt) / 1000));
   if (seconds < 60) return 'checked just now';
   if (seconds < 3600) return `checked ${Math.round(seconds / 60)}m ago`;
   return `checked ${Math.round(seconds / 3600)}h ago`;
 }
 
-export function IntegrationsPanel() {
+interface IntegrationsPanelProps {
+  onAttention?: (attention: boolean) => void;
+}
+
+export function IntegrationsPanel({ onAttention }: IntegrationsPanelProps) {
+  const toast = useToast();
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const { confirm, dialog } = useDialogConfirm();
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ id: string; kind: 'test' | 'toggle' }>();
+  /** The row whose test just passed; its button says so for a moment. */
+  const [passed, setPassed] = useState<string | null>(null);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -60,12 +73,10 @@ export function IntegrationsPanel() {
       const data = await fetchIntegrations();
       if (!mounted.current) return;
       setIntegrations(data.integrations);
-      setError(null);
+      setLoadError(null);
     } catch (err) {
       if (!mounted.current) return;
-      setError(
-        err instanceof Error ? err.message : 'Could not load integrations.',
-      );
+      setLoadError(errorMessage(err, 'could not load integrations.'));
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -75,193 +86,187 @@ export function IntegrationsPanel() {
     void load();
   }, []);
 
-  /** Replaces a single row, so one integration's result never clobbers another's. */
-  const replace = (next: IntegrationStatus) => {
+  useEffect(() => {
+    onAttention?.(integrations.some(needsAttention));
+  }, [integrations, onAttention]);
+
+  /** Replaces one row, so one integration's result never clobbers another's. */
+  const replace = (next: IntegrationStatus) =>
     setIntegrations((current) =>
       current.map((item) => (item.id === next.id ? next : item)),
     );
-  };
 
-  const run = async (
-    id: string,
-    action: () => Promise<{ integration: IntegrationStatus }>,
-    describe: (integration: IntegrationStatus) => string,
+  /**
+   * A switch takes effect at once — that is what a switch promises — and
+   * flipping it back is its own undo, offered in the message too.
+   */
+  const setEnabled = async (
+    integration: IntegrationStatus,
+    enabled: boolean,
+    { offerUndo = true } = {},
   ) => {
-    setBusyId(id);
-    setNotice(null);
-    setError(null);
-
+    setBusy({ id: integration.id, kind: 'toggle' });
     try {
-      const data = await action();
+      const { integration: result } = await toggleIntegration(
+        integration.id,
+        enabled,
+      );
       if (!mounted.current) return;
-      replace(data.integration);
-      setNotice(describe(data.integration));
+      replace(result);
+      toast.show({
+        message: `${result.name} ${result.enabled ? 'enabled' : 'disabled'}.`,
+        undo: offerUndo
+          ? () => setEnabled(result, !enabled, { offerUndo: false })
+          : undefined,
+      });
     } catch (err) {
-      if (!mounted.current) return;
-      setError(err instanceof Error ? err.message : 'Request failed.');
+      toast.show({
+        message: errorMessage(err, 'could not change the integration.'),
+        tone: 'error',
+      });
     } finally {
-      if (mounted.current) setBusyId(null);
+      if (mounted.current) setBusy(undefined);
     }
   };
 
-  const handleToggle = async (integration: IntegrationStatus) => {
-    const next = !integration.enabled;
-    const ok = await confirm({
-      title: next ? 'Enable integration' : 'Disable integration',
-      message: next
-        ? `Enable ${integration.name}?`
-        : `Disable ${integration.name}? The site will stop making any requests to it.`,
-      confirmLabel: next ? 'Yes, enable' : 'Yes, disable',
-      danger: !next,
-    });
-    if (!ok) return;
-
-    void run(
-      integration.id,
-      () => toggleIntegration(integration.id, next),
-      (result) => `${result.name} ${result.enabled ? 'enabled' : 'disabled'}.`,
-    );
+  const test = async (integration: IntegrationStatus) => {
+    setBusy({ id: integration.id, kind: 'test' });
+    try {
+      const { integration: result } = await testIntegration(integration.id);
+      if (!mounted.current) return;
+      replace(result);
+      // A pass answers on the button itself; the row already shows the
+      // detail, so only a failure is worth a message.
+      if (result.state === 'error') {
+        toast.show({
+          message: `${result.name}: ${result.detail}`,
+          tone: 'error',
+        });
+      } else {
+        setPassed(result.id);
+        window.setTimeout(() => {
+          if (mounted.current) setPassed(null);
+        }, 2400);
+      }
+    } catch (err) {
+      toast.show({
+        message: errorMessage(err, 'the test could not run.'),
+        tone: 'error',
+      });
+    } finally {
+      if (mounted.current) setBusy(undefined);
+    }
   };
 
-  const handleTest = (integration: IntegrationStatus) =>
-    void run(
-      integration.id,
-      () => testIntegration(integration.id),
-      (result) => `${result.name}: ${result.detail}`,
-    );
-
   return (
-    <article id="integrations" className="admin-card admin-panel">
-      <div className="admin-section-head">
-        <div>
-          <p className="admin-kicker">connections</p>
-          <h2>Integrations</h2>
-        </div>
-        <button
-          type="button"
-          className="admin-button admin-button--ghost"
-          onClick={() => void load()}
-          disabled={loading}
-        >
-          Refresh
-        </button>
-      </div>
-
-      {error && (
-        <p className="admin-error" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="admin-success" role="status" aria-live="polite">
-          {notice}
-        </p>
-      )}
-
-      <div className="admin-integration-list">
-        {loading && integrations.length === 0 && (
-          <div
-            className="admin-integration-list__skeletons"
-            role="status"
-            aria-live="polite"
+    <section
+      id="integrations"
+      className="adm-section"
+      aria-labelledby="integrations-title"
+    >
+      <header className="adm-head">
+        <h2 id="integrations-title" className="adm-head__title">
+          integrations
+        </h2>
+        <div className="adm-head__tools">
+          <button
+            type="button"
+            className="hair-control adm-tab"
+            onClick={() => void load()}
+            disabled={loading}
           >
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-          </div>
-        )}
+            {loading && integrations.length > 0 ? 'checking…' : 'check all'}
+          </button>
+        </div>
+      </header>
 
-        {!loading && integrations.length === 0 && (
-          <div className="admin-empty-state" role="status">
-            <p className="admin-empty">
-              Integration statuses are unavailable right now.
-            </p>
-            <button
-              type="button"
-              className="admin-button admin-button--ghost"
-              onClick={() => void load()}
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {integrations.map((integration) => {
-          const busy = busyId === integration.id;
-          const checkedAt = formatCheckedAt(integration.checkedAt);
-          const toggleId = `integration-toggle-${integration.id}`;
-
-          return (
-            <div className="admin-integration-row" key={integration.id}>
-              <div className="admin-integration-row__info">
-                <div className="admin-integration-row__heading">
-                  <span className="admin-integration-row__name">
-                    {integration.name}
-                  </span>
-                  <span className={STATE_CLASS[integration.state]}>
-                    {STATE_LABEL[integration.state]}
-                  </span>
-                  {checkedAt && (
-                    <span className="admin-integration-row__checked">
-                      {checkedAt}
+      {loadError && integrations.length === 0 ? (
+        <div className="adm-empty">
+          <p className="adm-empty__line adm-empty__line--error" role="alert">
+            {loadError}
+          </p>
+          <button
+            type="button"
+            className="hair-control adm-act"
+            onClick={() => void load()}
+          >
+            retry
+          </button>
+        </div>
+      ) : loading && integrations.length === 0 ? (
+        <div className="adm-skeletons" role="status" aria-label="Loading">
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+      ) : (
+        <ul className="adm-list">
+          {integrations.map((integration) => {
+            const rowBusy = busy?.id === integration.id;
+            const checkedAt = formatCheckedAt(integration.checkedAt);
+            const tone = STATE_TONE[integration.state];
+            return (
+              <li className="adm-int" key={integration.id}>
+                <span
+                  className={`adm-int__dot adm-int__dot--${tone}`}
+                  title={checkedAt ?? undefined}
+                  aria-hidden="true"
+                />
+                <div className="adm-int__body">
+                  <p className="adm-int__heading">
+                    <strong>{integration.name}</strong>
+                    {/* The dot already says "fine"; words are for the
+                        states that ask for something. */}
+                    <span
+                      className={`adm-int__state adm-int__state--${tone} ${
+                        tone === 'good' ? 'visually-hidden' : ''
+                      }`}
+                      title={checkedAt ?? undefined}
+                    >
+                      {STATE_LABEL[integration.state]}
                     </span>
-                  )}
+                  </p>
+                  <p className="adm-int__detail" aria-live="polite">
+                    {integration.detail}
+                  </p>
                 </div>
-                <p className="admin-integration-row__detail">
-                  {integration.detail}
-                </p>
-              </div>
-
-              <div className="admin-integration-row__actions">
-                <button
-                  type="button"
-                  className="admin-button admin-button--ghost"
-                  disabled={busy || !integration.enabled}
-                  title={
-                    integration.enabled
-                      ? 'Run a live connection test'
-                      : 'Enable the integration to test it'
-                  }
-                  onClick={() => handleTest(integration)}
-                >
-                  {busy ? 'Testing…' : 'Test'}
-                </button>
-
-                {integration.manageable && (
-                  <label
-                    className={`admin-toggle ${
-                      integration.enabled ? 'admin-toggle--on' : ''
-                    }`}
-                    htmlFor={toggleId}
+                <div className="adm-int__actions">
+                  <button
+                    type="button"
+                    className="hair-control adm-act"
+                    disabled={rowBusy || !integration.enabled}
                     title={
                       integration.enabled
-                        ? 'Enabled — click to disable'
-                        : 'Disabled — click to enable'
+                        ? 'Run a live connection test'
+                        : 'Switch it on to test it'
                     }
+                    aria-label={`Test ${integration.name}`}
+                    onClick={() => void test(integration)}
                   >
-                    <input
-                      id={toggleId}
-                      type="checkbox"
-                      checked={integration.enabled}
-                      disabled={busy}
-                      onChange={() => void handleToggle(integration)}
+                    {rowBusy && busy?.kind === 'test'
+                      ? 'testing…'
+                      : passed === integration.id
+                        ? 'passed'
+                        : 'test'}
+                  </button>
+                  {integration.manageable && (
+                    <button
+                      type="button"
+                      role="switch"
+                      className="adm-switch"
+                      aria-checked={integration.enabled}
+                      aria-label={integration.name}
+                      disabled={rowBusy}
+                      onClick={() =>
+                        void setEnabled(integration, !integration.enabled)
+                      }
                     />
-                    <span className="admin-toggle__track">
-                      <span className="admin-toggle__thumb" />
-                    </span>
-                    <VisuallyHidden>
-                      {integration.name} integration toggle, currently{' '}
-                      {integration.enabled ? 'enabled' : 'disabled'}
-                    </VisuallyHidden>
-                  </label>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {dialog}
-    </article>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

@@ -94,7 +94,7 @@ test('a new image is sized, framed, and uploaded from the dialog', async ({
   page,
 }) => {
   const { saved, uploads } = await openPanel(page);
-  await page.getByRole('button', { name: 'Edit' }).click();
+  await page.getByRole('button', { name: 'Edit oddava.me' }).click();
 
   await page.locator('input[type="file"]').setInputFiles({
     name: 'shot.png',
@@ -131,8 +131,8 @@ test('a new image is sized, framed, and uploaded from the dialog', async ({
   expect(uploads[0].name).toMatch(/^shot\.(webp|jpg)$/);
   expect(uploads[0].type).toMatch(/^image\/(webp|jpeg)$/);
 
-  await page.getByLabel('Image alt text').fill('the site at night');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('image description').fill('the site at night');
+  await page.getByRole('button', { name: 'save', exact: true }).click();
   await expect(page.getByText('oddava.me saved.')).toBeVisible();
 
   const [body] = saved as { projects: { image?: unknown }[] }[];
@@ -147,9 +147,9 @@ test('a new image is sized, framed, and uploaded from the dialog', async ({
 
 test('an existing image can be switched to show whole', async ({ page }) => {
   const { saved, uploads } = await openPanel(page);
-  await page.getByRole('button', { name: 'Edit' }).click();
+  await page.getByRole('button', { name: 'Edit oddava.me' }).click();
   await page.locator('#admin-project-image-src').fill(UPLOADED);
-  await page.getByLabel('Image alt text').fill('the site');
+  await page.getByLabel('image description').fill('the site');
 
   await page.getByRole('button', { name: 'Adjust' }).click();
   const dialog = page.getByRole('dialog', { name: 'Adjust image' });
@@ -159,7 +159,7 @@ test('an existing image can be switched to show whole', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Apply' }).click();
   await expect(dialog).toBeHidden();
 
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'save', exact: true }).click();
   await expect(page.getByText('oddava.me saved.')).toBeVisible();
   expect(uploads).toHaveLength(0);
   const [body] = saved as { projects: { image?: unknown }[] }[];
@@ -174,7 +174,7 @@ test('escape closes the dialog without changing the draft', async ({
   page,
 }) => {
   const { uploads } = await openPanel(page);
-  await page.getByRole('button', { name: 'Edit' }).click();
+  await page.getByRole('button', { name: 'Edit oddava.me' }).click();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'shot.png',
     mimeType: 'image/png',
