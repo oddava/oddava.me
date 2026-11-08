@@ -111,15 +111,23 @@ test('a new image is sized, framed, and uploaded from the dialog', async ({
   );
   await expect(dialog.getByText(/3000×2000 · .* → 1600×1067 · /)).toBeVisible();
 
-  // Drag the desktop preview left by a quarter: the focus moves right.
-  const frame = dialog.getByRole('slider', { name: /desktop card/ });
+  // One 4:3 preview, the card's own frame, is the focus control.
+  await expect(dialog.getByRole('figure')).toHaveCount(1);
+  const frame = dialog.getByRole('slider', { name: 'Focus point' });
+  await expect(frame).toHaveAttribute('aria-valuetext', '50% across, 50% down');
   const box = (await frame.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(4 / 3, 1);
+
+  // Drag the preview left by a quarter: the focus moves right.
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 4, box.y + box.height / 2, {
     steps: 6,
   });
   await page.mouse.up();
+  await expect(frame).toHaveAttribute('aria-valuetext', '75% across, 50% down');
+  await expect(frame).toBeFocused();
+  // The arrow keys nudge it one step.
   await frame.press('ArrowDown');
   await expect(frame).toHaveAttribute('aria-valuetext', '75% across, 55% down');
 
