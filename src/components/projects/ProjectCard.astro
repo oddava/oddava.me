@@ -1,12 +1,11 @@
 ---
 /**
- * One gallery card: the image (or a night-sky blank with the project's
- * initial), and one line under it — name, year, links. What it is and what
- * it's built with rise over the image on hover or focus; where nothing
- * hovers, they sit under the line instead. The whole card
- * links to the project in the same tab — it is the card's one main action;
- * site and source stay their own links, opening a new tab and saying so.
- * Shared by /projects and home's strip so both speak the same card.
+ * One gallery card: the screenshot in a lit tray (or the empty tray with the
+ * project's initial), one line under it — name, year, links — and what it is
+ * under that. The whole card links to the project in the same tab — it is
+ * the card's one main action; site and source stay their own links, opening
+ * a new tab and saying so. Shared by /projects and home's strip so both
+ * speak the same card.
  */
 import type { Project } from '../../lib/contracts';
 import { displayAttributes } from '../../lib/project-image';
@@ -42,34 +41,21 @@ const hostOf = (url: string) => new URL(url).host;
 >
   <div class="pcard__media">
     {
-      project.image && contain && (
-        <img
-          class="pcard__backdrop"
-          src={project.image.src}
-          alt=""
-          aria-hidden="true"
-          width="1600"
-          height="1200"
-          loading={eager ? 'eager' : 'lazy'}
-          decoding="async"
-          draggable="false"
-        />
-      )
-    }
-    {
       project.image ? (
-        <img
-          class="pcard__img"
-          {...display}
-          src={project.image.src}
-          alt={project.image.alt}
-          width="1600"
-          height="1200"
-          loading={eager ? 'eager' : 'lazy'}
-          fetchpriority={eager ? 'high' : 'auto'}
-          decoding="async"
-          draggable="false"
-        />
+        <div class="pcard__shot">
+          <img
+            class="pcard__img"
+            {...display}
+            src={project.image.src}
+            alt={project.image.alt}
+            width="1600"
+            height="1200"
+            loading={eager ? 'eager' : 'lazy'}
+            fetchpriority={eager ? 'high' : 'auto'}
+            decoding="async"
+            draggable="false"
+          />
+        </div>
       ) : (
         <span class="pcard__glyph" aria-hidden="true">
           {project.name.charAt(0).toLowerCase()}
@@ -134,7 +120,7 @@ const hostOf = (url: string) => new URL(url).host;
   </div>
   {
     (project.description || project.stack.length > 0) && (
-      <div class="pcard__reveal">
+      <div class="pcard__about">
         {project.description && (
           <p class="pcard__description">{project.description}</p>
         )}

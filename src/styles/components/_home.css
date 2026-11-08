@@ -89,7 +89,7 @@
 }
 
 /* The last tile: how many more, and the way to the whole gallery. As tall
-   as a card's picture but narrower, an end to the row. */
+   as a card's tray but narrower, an end to the row. */
 .pcard--more {
   width: min(12rem, 50vw);
 }
@@ -103,6 +103,8 @@
   padding: 1.125rem 1.25rem;
   border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--color-text-primary) 8%, transparent);
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   color: var(--color-text-secondary);

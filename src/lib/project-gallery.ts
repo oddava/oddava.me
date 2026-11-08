@@ -184,4 +184,21 @@ export function mountGallery(gallery: HTMLElement, nav: HTMLElement) {
   );
   gallery.addEventListener('pointerup', endDrag);
   gallery.addEventListener('pointercancel', endDrag);
+
+  // A mouse lights the edge of the tray it is over, from where it points.
+  // Only the light moves; the styles decide when it shows.
+  gallery.addEventListener(
+    'pointermove',
+    (event) => {
+      if (event.pointerType !== 'mouse' || drag?.moved) return;
+      const media = (event.target as Element)
+        .closest('.pcard')
+        ?.querySelector<HTMLElement>('.pcard__media');
+      if (!media) return;
+      const box = media.getBoundingClientRect();
+      media.style.setProperty('--light-x', `${event.clientX - box.left}px`);
+      media.style.setProperty('--light-y', `${event.clientY - box.top}px`);
+    },
+    { passive: true },
+  );
 }
