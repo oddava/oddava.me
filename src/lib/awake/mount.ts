@@ -23,7 +23,6 @@ import { dartScore, gazeOffset, nearerEar, type Sample } from './gaze';
 import { CatLife, type Expression } from './life';
 import { CatMind, type MindEvent, type MindOutput } from './mind';
 import { skeleton, type BodyState, type Skeleton, type Vec } from './rig';
-import { MOTION_EVENT, motionPaused, restoreMotionPreference } from './motion';
 import { createSky } from './sky';
 import { bump, clamp } from './spring';
 
@@ -82,8 +81,6 @@ export function mountAwake(root: HTMLElement) {
   ];
   const dimEl = $<HTMLElement>('[data-awake-dim]');
   const live = $<HTMLElement>('[data-awake-live]');
-  // A pause chosen on any page holds before the first frame.
-  restoreMotionPreference();
   const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
   const coarse = matchMedia('(pointer: coarse)').matches;
   const now = () => performance.now();
@@ -200,9 +197,8 @@ export function mountAwake(root: HTMLElement) {
   }
 
   measure();
-  // The system setting or the page's own pause switch: either holds the
-  // still portrait.
-  const reduced = () => reducedQuery.matches || motionPaused();
+  // Reduced motion holds the still portrait.
+  const reduced = () => reducedQuery.matches;
   const mind = new CatMind(now());
   const life = new CatLife(now());
   const body = new CatBody(
@@ -1227,7 +1223,6 @@ export function mountAwake(root: HTMLElement) {
     relayout();
   };
   reducedQuery.addEventListener('change', onMotionChange);
-  document.addEventListener(MOTION_EVENT, onMotionChange);
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

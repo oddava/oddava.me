@@ -1,5 +1,5 @@
-/* Project image dialog: the card's two shapes side by side, live, with the
-   controls under them. Flat like the rest of the admin — a dim backdrop, a
+/* Project image dialog: the card's image as it will show, live, with the
+   controls under it. Flat like the rest of the admin — a dim backdrop, a
    lighter surface, hairlines. */
 
 .pid {
@@ -33,11 +33,9 @@
 
 /* --- Previews --- */
 
+/* The card's media is 4:3 at every width, so one preview is the card. */
 .pid__previews {
-  display: grid;
-  grid-template-columns: 4fr 2fr;
-  align-items: end;
-  gap: 16px;
+  max-width: 30rem;
 }
 
 .pid-preview {
@@ -46,10 +44,12 @@
 }
 
 .pid-preview figcaption {
-  margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--admin-text-muted);
+  margin-top: 10px;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .pid-frame {
@@ -57,19 +57,9 @@
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
-  box-shadow: inset 0 0 0 1px var(--admin-line);
+  aspect-ratio: 4 / 3;
   touch-action: none;
   user-select: none;
-}
-
-.pid-frame--wide {
-  aspect-ratio: 4 / 3;
-}
-
-/* The phone card is 2:3. At half the desktop card's width (the 4fr/2fr
-   columns) it stands exactly as tall. */
-.pid-frame--tall {
-  aspect-ratio: 2 / 3;
 }
 
 .pid-frame.is-pannable {
@@ -98,34 +88,6 @@
   object-fit: cover;
   filter: blur(18px) brightness(0.45) saturate(1.2);
   transform: scale(1.15);
-}
-
-/* The same scrim the public card lays under its caption. */
-.pid-frame__scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to top,
-    rgb(0 0 0 / 0.92) 0%,
-    rgb(0 0 0 / 0.82) 22%,
-    rgb(0 0 0 / 0.5) 42%,
-    rgb(0 0 0 / 0.14) 60%,
-    transparent 74%
-  );
-  pointer-events: none;
-}
-
-.pid-frame__name {
-  position: absolute;
-  left: 7%;
-  right: 7%;
-  bottom: 8%;
-  overflow: hidden;
-  font-size: 0.875rem;
-  font-weight: 700;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  pointer-events: none;
 }
 
 .pid-frame__focus {
@@ -254,11 +216,6 @@
 @media (max-width: 560px) {
   .pid {
     padding: 16px;
-  }
-
-  .pid__previews {
-    grid-template-columns: 3fr 2fr;
-    gap: 10px;
   }
 
   .pid__label {

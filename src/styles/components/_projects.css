@@ -63,14 +63,17 @@
    The scroller spans the whole viewport. Its inset is the distance from the
    viewport edge to the text column, so the first card lines up under the
    title and the next one runs off the right edge. Measured from the track's
-   own centred box, a classic scrollbar does not throw the alignment off. */
+   own centred box, a classic scrollbar does not throw the alignment off.
+
+   Every scroll — swipe, trackpad, shift+wheel, the buttons, the keys — comes
+   to rest on a card, and never skips one: `scroll-snap-stop: always`. */
 
 .gallery {
   --gallery-inset: max(
     var(--page-padding),
     50vw - var(--max-width) / 2 + var(--page-padding)
   );
-  --card-w: min(40rem, 100vw - 2 * var(--page-padding) - 2.75rem);
+  --card-w: min(36rem, 100vw - 2 * var(--page-padding) - 2.75rem);
 
   /* Positioned, so each card's offsetLeft is measured inside the track. */
   position: relative;
@@ -93,13 +96,13 @@
   outline: none;
 }
 
-/* Focus on the track itself (arrow keys step through it) rings its cards. */
+/* Focus on the track itself (arrow keys step through it) rings its images. */
 .gallery:focus-visible .pcard__media {
   box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
-/* While a mouse drags or a wheel steers, snapping waits for the input to
-   stop, then the script settles on the nearest card. */
+/* While a mouse drags, snapping waits; on release the script glides to the
+   next card in the drag's direction. */
 .gallery--free {
   scroll-snap-type: none;
 }
@@ -124,18 +127,21 @@
   padding: 0.5rem var(--gallery-inset) 0.625rem;
 }
 
-/* --- Card: the image is the card; the words sit on it --- */
+/* --- Card: the picture, and the words under it. No frame, no shade. --- */
 
+/* Picture, then the caption line, then what it is. Where a pointer can
+   hover, that last part moves up over the picture (see Reveal). */
 .pcard {
   position: relative;
   flex: none;
   width: var(--card-w);
-  aspect-ratio: 2 / 3;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-areas: 'media' 'caption' 'reveal';
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
+  row-gap: 0.75rem;
   scroll-snap-align: start;
-  isolation: isolate;
+  scroll-snap-stop: always;
 }
 
 /* The last card comes to rest flush with the column's right edge, so the
@@ -157,32 +163,13 @@
 }
 
 .pcard__media {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
+  grid-area: media;
+  position: relative;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
-}
-
-/* The scrim: clear across the top, near-black under the words, so the
-   caption holds on a white screenshot as well as a dark one. */
-.pcard__media::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    to top,
-    rgb(0 0 0 / 0.92) 0%,
-    rgb(0 0 0 / 0.82) 22%,
-    rgb(0 0 0 / 0.5) 42%,
-    rgb(0 0 0 / 0.14) 60%,
-    transparent 74%
-  );
-  box-shadow: inset 0 0 0 1px var(--color-rule);
-  pointer-events: none;
-  transition: box-shadow 240ms ease;
+  transition: box-shadow 200ms ease;
 }
 
 .pcard__media img {
@@ -224,14 +211,9 @@
 .pcard--blank .pcard__media {
   background:
     radial-gradient(
-      120% 80% at 85% 0%,
-      color-mix(in srgb, var(--color-brand) 32%, transparent),
-      transparent 62%
-    ),
-    radial-gradient(
-      90% 70% at 0% 100%,
-      color-mix(in srgb, var(--color-brand-strong) 10%, transparent),
-      transparent 70%
+      120% 90% at 85% 0%,
+      color-mix(in srgb, var(--color-brand) 26%, transparent),
+      transparent 64%
     ),
     var(--color-surface-raised);
 }
@@ -239,99 +221,66 @@
 .pcard--blank:nth-child(even) .pcard__media {
   background:
     radial-gradient(
-      120% 80% at 15% 0%,
-      color-mix(in srgb, var(--color-brand) 28%, transparent),
-      transparent 62%
-    ),
-    radial-gradient(
-      90% 70% at 100% 100%,
-      color-mix(in srgb, var(--color-brand-strong) 10%, transparent),
-      transparent 70%
+      120% 90% at 15% 0%,
+      color-mix(in srgb, var(--color-brand) 22%, transparent),
+      transparent 64%
     ),
     var(--color-surface-raised);
 }
 
-/* A sparse field of points, like the sky behind the page, thinning out
-   before it reaches the caption. */
-.pcard--blank .pcard__media::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(
-    circle at center,
-    color-mix(in srgb, var(--color-brand-strong) 34%, transparent) 0.6px,
-    transparent 1.4px
-  );
-  background-size: 1.375rem 1.375rem;
-  mask-image: linear-gradient(to bottom, #000, transparent 70%);
-}
-
 .pcard__glyph {
   position: absolute;
-  z-index: 1;
-  top: 6%;
-  left: 7%;
+  left: 8%;
+  bottom: -4%;
   font-family: var(--font-body);
-  font-size: calc(var(--card-w) * 0.5);
+  font-size: calc(var(--card-w) * 0.42);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.06em;
-  color: color-mix(in srgb, var(--color-brand-strong) 18%, transparent);
+  color: color-mix(in srgb, var(--color-brand-strong) 14%, transparent);
   user-select: none;
 }
 
-/* --- Caption --- */
+/* --- Caption: one line — name and year, then the links --- */
 
-/* The caption carries a second shade of its own, fading in a little above
-   the words, so they hold on a white screenshot however tall the caption
-   grows — a narrow card, a long description, enlarged text. It is the
-   caption's background, not a positioned layer: the name's link must keep
-   the whole card as its hit area. */
 .pcard__body {
-  --caption-fade: 2.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: calc(1.25rem + var(--caption-fade)) 1.25rem 1.125rem;
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-  background: linear-gradient(
-    to top,
-    rgb(0 0 0 / 0.5),
-    rgb(0 0 0 / 0.42) calc(100% - var(--caption-fade)),
-    transparent
-  );
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
-}
-
-.pcard__head {
+  grid-area: caption;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+  min-width: 0;
+}
+
+.pcard__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  min-width: 0;
 }
 
 .pcard__name {
   margin: 0;
   min-width: 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
 
 .pcard__name a {
   color: var(--color-text-primary);
-  transition: color 240ms ease;
+  transition: color 200ms ease;
 }
 
-/* The name's hit area covers the whole card. */
+/* The name's hit area covers the whole card, picture and words. */
 .pcard__name a::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
 }
 
 .pcard__name a:focus-visible {
@@ -340,75 +289,31 @@
 
 .pcard__name a:focus-visible::after {
   outline: 2px solid var(--color-focus-ring);
-  outline-offset: 3px;
+  outline-offset: 4px;
 }
 
 .pcard__year {
   flex: none;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
 }
 
 .pcard__year--now {
   color: var(--color-brand-strong);
 }
 
-.pcard__description {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  text-wrap: pretty;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pcard__foot {
+.pcard__links {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
+  flex: none;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: 1.5;
-}
-
-.pcard__stack,
-.pcard__links {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-/* Pills stay on one line and fade out at the edge rather than wrap and push
-   the caption up the image. */
-.pcard__stack {
-  flex: 1;
-  min-width: 0;
-  gap: 0.375rem;
-  overflow: hidden;
-  mask-image: linear-gradient(to left, transparent, #000 1.5rem);
-  text-shadow: none;
-}
-
-.pcard__stack li {
-  flex: none;
-  padding: 0.125rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: var(--radius-pill);
-  background: rgb(0 0 0 / 0.35);
-  color: var(--color-text-secondary);
-}
-
-.pcard__links {
-  flex: none;
-  gap: 1rem;
-  margin-left: auto;
 }
 
 .pcard__links a {
@@ -416,7 +321,7 @@
   z-index: 2;
   display: inline-flex;
   align-items: baseline;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   transition: color 200ms ease;
 }
 
@@ -446,12 +351,103 @@
   }
 }
 
-/* --- Interaction --- */
+/* --- Reveal: what it is, and what it's built with ---
 
-.pcard:hover .pcard__media::after,
-.pcard:focus-within .pcard__media::after {
-  box-shadow: inset 0 0 0 1px var(--color-rule-strong);
+   Where nothing hovers, it sits under the caption, always two lines tall so
+   the cards in a row end level. */
+
+.pcard__reveal {
+  grid-area: reveal;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
 }
+
+.pcard__description {
+  min-height: 3em;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The stack is one quiet line of words, fading out at the edge rather than
+   wrapping. */
+.pcard__stack {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(to left, transparent, #000 1.5rem);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.pcard__stack li + li::before {
+  content: '·' / '';
+  margin: 0 0.5em;
+}
+
+/* A mouse or trackpad: it rises over the picture's lower part on hover or
+   keyboard focus, on a shade dark enough to hold over a white screenshot. */
+@media (hover: hover) and (pointer: fine) {
+  .pcard {
+    grid-template-areas: 'media' 'caption';
+    grid-template-rows: auto auto;
+  }
+
+  .pcard__reveal {
+    grid-area: media;
+    align-self: end;
+    position: relative;
+    padding: 4rem 1.25rem 1.125rem;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    background: linear-gradient(
+      to top,
+      rgb(0 0 0 / 0.88),
+      rgb(0 0 0 / 0.7) 55%,
+      transparent
+    );
+    opacity: 0;
+    translate: 0 0.5rem;
+    transition:
+      opacity 240ms ease,
+      translate 420ms var(--ease-draw);
+    pointer-events: none;
+  }
+
+  .pcard__description {
+    min-height: 0;
+    -webkit-line-clamp: 3;
+    color: var(--color-text-primary);
+  }
+
+  .pcard__stack {
+    color: var(--color-text-secondary);
+  }
+
+  .pcard:hover .pcard__reveal,
+  .pcard:focus-within .pcard__reveal {
+    opacity: 1;
+    translate: none;
+  }
+
+  .gallery--dragging .pcard__reveal {
+    opacity: 0;
+  }
+}
+
+/* --- Interaction --- */
 
 .pcard:hover .pcard__name a,
 .pcard:focus-within .pcard__name a {
@@ -472,34 +468,22 @@
   }
 }
 
-/* --- Wider screens: landscape cards, sized to fit the viewport height --- */
+/* --- Wider screens: bigger cards, sized to fit the viewport height --- */
 
 @media (min-width: 48rem) {
   .gallery {
     --card-w: max(
-      22rem,
-      min(44rem, 100vw - var(--gallery-inset) - 6rem, (100svh - 17rem) * 4 / 3)
+      20rem,
+      min(32rem, 100vw - var(--gallery-inset) - 6rem, (100svh - 18rem) * 4 / 3)
     );
   }
 
   .gallery__track {
-    gap: 1.25rem;
-  }
-
-  .pcard {
-    aspect-ratio: 4 / 3;
-  }
-
-  .pcard__body {
-    padding: calc(1.5rem + var(--caption-fade)) 1.5rem 1.25rem;
+    gap: 1.5rem;
   }
 
   .pcard__name {
-    font-size: 1.375rem;
-  }
-
-  .pcard__glyph {
-    font-size: calc(var(--card-w) * 0.38);
+    font-size: 1.25rem;
   }
 }
 
@@ -508,21 +492,8 @@
     gap: 0.75rem;
   }
 
-  .pcard__body {
-    padding: calc(1rem + var(--caption-fade)) 1rem 0.875rem;
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  }
-
-  .pcard__name {
-    font-size: 1.125rem;
-  }
-
-  .pcard__media {
-    border-radius: var(--radius-lg);
-  }
-
-  .pcard__name a::after {
-    border-radius: var(--radius-lg);
+  .pcard {
+    row-gap: 0.625rem;
   }
 }
 
@@ -532,16 +503,19 @@
     scale: none;
     transition: none;
   }
+
+  .pcard__reveal {
+    translate: none;
+    transition: opacity 120ms ease;
+  }
 }
 
 @media (forced-colors: active) {
-  .pcard__media::after {
-    background: none;
-    box-shadow: none;
+  .pcard__media {
     border: 1px solid CanvasText;
   }
 
-  .pcard__body {
+  .pcard__reveal {
     background: Canvas;
   }
 }

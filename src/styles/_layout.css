@@ -85,16 +85,8 @@
 
 /* --- Footer: the floor the page ends on --- */
 .site-footer {
-  position: relative;
   margin-top: auto;
   padding: 3rem 0 2rem;
-}
-
-/* The pause switch stands on the floor's far end from the cat. */
-.site-footer__motion {
-  position: absolute;
-  left: -0.75rem;
-  bottom: 2rem;
 }
 
 .site-footer__floor {
@@ -167,11 +159,6 @@
     opacity: 0;
     transform: translateY(8px);
   }
-}
-
-/* The reader paused motion on home (lib/awake/motion.ts). */
-:root[data-motion='paused'] .site-footer__nap {
-  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

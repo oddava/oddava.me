@@ -2,15 +2,12 @@
 /**
  * Site footer: the floor the page ends on, with the cat asleep on it. Only
  * pages under the quiet sky have one — a floor with no cat on it reads as a
- * stray rule. Its breathing runs as long as the page is open, so the floor
- * also carries the pause switch, at the far end from the cat.
+ * stray rule.
  */
-import MotionToggle from './MotionToggle.astro';
 ---
 
-<footer class="site-footer">
-  <div class="site-footer__floor" aria-hidden="true">
+<footer class="site-footer" aria-hidden="true">
+  <div class="site-footer__floor">
     <canvas class="site-footer__nap" data-quiet-nap></canvas>
   </div>
-  <MotionToggle class="site-footer__motion" />
 </footer>

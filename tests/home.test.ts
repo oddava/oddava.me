@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Project } from '../src/lib/contracts';
 import type { GardenDocument } from '../src/lib/garden/types';
-import { pickHomeProjects, pickNoteShelves } from '../src/lib/home';
+import { pickHomeProjects, pickRecentNotes } from '../src/lib/home';
 
 const project = (id: string, extra: Partial<Project> = {}): Project => ({
   id,
@@ -65,7 +65,7 @@ describe('pickHomeProjects', () => {
   });
 });
 
-describe('pickNoteShelves', () => {
+describe('pickRecentNotes', () => {
   const garden = [
     note('index', '2026-11-05', ['diary', 'reading']),
     note('diary', '2026-11-04', ['diary/a', 'diary/b']),
@@ -79,47 +79,33 @@ describe('pickNoteShelves', () => {
     note('loose', '2026-03-03'),
   ];
 
-  it('gives each top folder its newest note, freshest folder first', () => {
-    expect(pickNoteShelves(garden, root)).toEqual([
+  it('lists the newest notes first, each with its topic and day', () => {
+    expect(pickRecentNotes(garden, root)).toEqual([
       {
+        href: '/notes/diary/b',
+        title: 'DIARY/B',
         topic: 'diary',
-        href: '/notes/diary',
-        latest: {
-          href: '/notes/diary/b',
-          title: 'DIARY/B',
-          summary: 'about diary/b',
-          date: '2026-10-20',
-        },
-        more: 1,
+        date: '2026-10-20',
       },
-      {
-        topic: 'knowledge',
-        href: '/notes/knowledge',
-        latest: expect.objectContaining({ href: '/notes/knowledge/backend' }),
-        more: 0,
-      },
-      {
-        topic: 'reading',
-        href: '/notes/reading',
-        latest: expect.objectContaining({ href: '/notes/reading/books/sleep' }),
-        more: 0,
-      },
+      expect.objectContaining({ href: '/notes/knowledge/backend' }),
+      expect.objectContaining({ href: '/notes/diary/a' }),
+      expect.objectContaining({ topic: 'reading', date: '2026-07-11' }),
+      expect.objectContaining({ href: '/notes/loose', topic: '' }),
     ]);
   });
 
-  it('never lets a hub stand in for a note, however fresh', () => {
-    const titles = pickNoteShelves(garden, root, 10).map((s) => s.latest.title);
+  it('never lets a hub or the root stand in for a note, however fresh', () => {
+    const titles = pickRecentNotes(garden, root, 10).map((n) => n.title);
     expect(titles).not.toContain('READING/BOOKS');
     expect(titles).not.toContain('INDEX');
+    expect(titles).toHaveLength(5);
   });
 
-  it('shelves top-level notes together under the garden root', () => {
-    const loose = pickNoteShelves(garden, root, 10).at(-1);
-    expect(loose).toMatchObject({ topic: 'notes', href: '/notes', more: 0 });
-    expect(loose?.latest.title).toBe('LOOSE');
+  it('caps the list', () => {
+    expect(pickRecentNotes(garden, root, 2)).toHaveLength(2);
   });
 
   it('is empty for a garden holding only its root', () => {
-    expect(pickNoteShelves([note('index', '2026-01-01')], root)).toEqual([]);
+    expect(pickRecentNotes([note('index', '2026-01-01')], root)).toEqual([]);
   });
 });

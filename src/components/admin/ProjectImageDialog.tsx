@@ -117,7 +117,7 @@ export function ProjectImageDialog({
 }: {
   source: ProjectImageSource;
   initial: ProjectImageDisplay;
-  /** The project's name, set on the previews the way the card sets it. */
+  /** The project's name, set under the preview the way the card sets it. */
   name: string;
   busy: boolean;
   onApply: (result: ProjectImageResult) => void;
@@ -245,13 +245,13 @@ export function ProjectImageDialog({
     return `${from} → ${encoded.width}×${encoded.height} · ${formatBytes(encoded.blob.size)} ${kind}`;
   })();
 
-  const frame = (variant: 'wide' | 'tall', label: string) => (
+  const preview = (
     <figure className="pid-preview">
       <div
-        className={`pid-frame pid-frame--${variant} ${cover ? 'is-pannable' : ''}`}
+        className={`pid-frame ${cover ? 'is-pannable' : ''}`}
         tabIndex={cover ? 0 : -1}
         role={cover ? 'slider' : undefined}
-        aria-label={cover ? `Focus point, ${label} card` : undefined}
+        aria-label={cover ? 'Focus point' : undefined}
         aria-valuetext={
           cover ? `${display.x}% across, ${display.y}% down` : undefined
         }
@@ -320,10 +320,6 @@ export function ProjectImageDialog({
           draggable={false}
           style={imageStyle(display)}
         />
-        <div className="pid-frame__scrim" aria-hidden="true" />
-        <span className="pid-frame__name" aria-hidden="true">
-          {name || 'project name'}
-        </span>
         {cover && (
           <span
             className="pid-frame__focus"
@@ -332,7 +328,7 @@ export function ProjectImageDialog({
           />
         )}
       </div>
-      <figcaption>{label}</figcaption>
+      <figcaption>{name || 'project name'}</figcaption>
     </figure>
   );
 
@@ -355,10 +351,7 @@ export function ProjectImageDialog({
         </p>
       </div>
 
-      <div className="pid__previews">
-        {frame('wide', 'desktop')}
-        {frame('tall', 'phone')}
-      </div>
+      <div className="pid__previews">{preview}</div>
 
       <div className="pid__controls">
         <div className="pid__row">

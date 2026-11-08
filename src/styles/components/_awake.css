@@ -208,17 +208,6 @@ body:has(.awake) {
   }
 }
 
-/* ---------- the pause switch (status pages) ---------- */
-
-/* 404 has no footer floor: the switch takes the bottom right corner, just
-   above the floor the cat walks. */
-.status-page .motion-toggle {
-  position: fixed;
-  right: max(0.75rem, env(safe-area-inset-right));
-  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 0.5rem);
-  z-index: 61;
-}
-
 /* ---------- load-in (also the no-JS entrance) ---------- */
 
 .awake-in {
