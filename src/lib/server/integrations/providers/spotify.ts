@@ -400,8 +400,8 @@ export const spotifyIntegration: IntegrationDefinition = {
     return {
       state: 'ok',
       detail: state.isPlaying
-        ? `Connected. Currently playing “${state.title}”.`
-        : 'Connected. Nothing is playing right now.',
+        ? `connected. playing “${state.title}”.`
+        : 'connected. nothing is playing right now.',
     };
   },
 };

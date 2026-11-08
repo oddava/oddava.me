@@ -116,7 +116,7 @@ describe('integration status', () => {
 
     expect(check).not.toHaveBeenCalled();
     expect(status.state).toBe('disabled');
-    expect(status.detail).toContain('No requests are made to it');
+    expect(status.detail).toContain('no requests are made to it');
   });
 
   it('never contacts an unconfigured integration, and names what is missing', async () => {

@@ -310,7 +310,7 @@ describe('spotify provider', () => {
 
     await expect(spotifyIntegration.check(CREDENTIALS)).resolves.toEqual({
       state: 'ok',
-      detail: 'Connected. Currently playing “Check Track”.',
+      detail: 'connected. playing “Check Track”.',
     });
   });
 });
