@@ -16,14 +16,14 @@ test('approving takes the entry off the inbox, and undo puts it back', async ({
   page,
 }) => {
   const state = await open(page);
-  const nav = page.getByRole('navigation', { name: 'Admin' });
-  await expect(nav.getByRole('link', { name: /guestbook/ })).toContainText('3');
+  const pendingTab = page.getByRole('button', { name: /^pending/ });
+  await expect(pendingTab).toContainText('3');
 
   await page.getByRole('button', { name: 'Approve mira' }).click();
   await expect(page.getByRole('button', { name: 'Approve mira' })).toHaveCount(
     0,
   );
-  await expect(nav.getByRole('link', { name: /guestbook/ })).toContainText('2');
+  await expect(pendingTab).toContainText('2');
   expect(state.guestbook.find((e) => e.id === 'g1')?.status).toBe('approved');
 
   await page.getByRole('button', { name: 'undo' }).click();

@@ -14,7 +14,11 @@ const invalid = Astro.url.searchParams.get('error') === 'invalid';
 const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
 ---
 
-<AdminLayout title="Sign in" description="Authenticate to manage oddava.me.">
+<AdminLayout
+  title="Sign in"
+  description="Authenticate to manage oddava.me."
+  sky
+>
   <section class="admin-gate">
     <h1 class="admin-gate__brand">
       <span class="admin-gate__wordmark">oddava</span>
