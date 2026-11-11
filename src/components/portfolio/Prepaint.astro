@@ -9,6 +9,7 @@
 import {
   APPEARANCE_CANVAS_STYLE,
   APPEARANCE_PREPAINT_SCRIPT,
+  THEME_CANVAS,
 } from '../../lib/portfolio/appearance';
 ---
 
@@ -16,12 +17,12 @@ import {
 <meta
   name="theme-color"
   media="(prefers-color-scheme: light)"
-  content="#ffffff"
+  content={THEME_CANVAS.light}
 />
 <meta
   name="theme-color"
   media="(prefers-color-scheme: dark)"
-  content="#15181d"
+  content={THEME_CANVAS.dark}
 />
 <!-- The odd-eyed cat. Every file is written by scripts/render-icons.mjs. -->
 <link rel="icon" href="/favicon.ico" sizes="32x32" />

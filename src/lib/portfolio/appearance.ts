@@ -30,6 +30,13 @@ export const APPEARANCE_DEFAULTS = Object.fromEntries(
 ) as Appearance;
 
 /**
+ * Each forced theme's canvas colour. The pre-paint script and the panel's
+ * controller also point both `theme-color` metas at it, so a phone's
+ * browser bar matches the chosen theme instead of the system's.
+ */
+export const THEME_CANVAS = { light: '#ffffff', dark: '#15181d' } as const;
+
+/**
  * Only known keys with allowed values survive; anything else (a stale
  * format, a hand-edited value, a non-object) yields an empty result, and the
  * page keeps the defaults already in its markup.
@@ -59,17 +66,19 @@ export const APPEARANCE_PREPAINT_SCRIPT = `(function(){var a=${JSON.stringify(
   APPEARANCE_PREFS,
 )},s=null;try{s=JSON.parse(window.localStorage.getItem(${JSON.stringify(
   APPEARANCE_STORAGE_KEY,
-)})||"null")}catch(e){s=null}if(!s||typeof s!=="object"||Array.isArray(s))return;var r=document.documentElement;for(var k in a){if(typeof s[k]==="string"&&a[k].indexOf(s[k])!==-1)r.setAttribute("data-"+k,s[k])}})();`;
+)})||"null")}catch(e){s=null}if(!s||typeof s!=="object"||Array.isArray(s))return;var r=document.documentElement;for(var k in a){if(typeof s[k]==="string"&&a[k].indexOf(s[k])!==-1)r.setAttribute("data-"+k,s[k])}var t=${JSON.stringify(
+  THEME_CANVAS,
+)};if(typeof s.theme==="string"&&Object.prototype.hasOwnProperty.call(t,s.theme)){var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++)m[i].setAttribute("content",t[s.theme])}})();`;
 
 /**
  * Paints the canvas in the right theme before the stylesheet arrives, so a
  * dark-theme visit never flashes white (and the reverse). Hashed with CSP.
  */
 export const APPEARANCE_CANVAS_STYLE =
-  'html{color-scheme:light dark;background-color:#ffffff}' +
-  '@media (prefers-color-scheme:dark){html{background-color:#15181d}}' +
-  'html[data-theme=light]{color-scheme:light;background-color:#ffffff}' +
-  'html[data-theme=dark]{color-scheme:dark;background-color:#15181d}';
+  `html{color-scheme:light dark;background-color:${THEME_CANVAS.light}}` +
+  `@media (prefers-color-scheme:dark){html{background-color:${THEME_CANVAS.dark}}}` +
+  `html[data-theme=light]{color-scheme:light;background-color:${THEME_CANVAS.light}}` +
+  `html[data-theme=dark]{color-scheme:dark;background-color:${THEME_CANVAS.dark}}`;
 
 /** Ink swatches, light and dark, for the panel; values match the tokens. */
 export const INK_LABELS: Record<Appearance['ink'], string> = {

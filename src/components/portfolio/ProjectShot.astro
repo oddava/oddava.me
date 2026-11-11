@@ -3,7 +3,8 @@
  * One project on /projects: a large rounded picture, then the name (the
  * whole card is its link), the year and the one-line description. Focus and
  * zoom set in the admin carry over through data attributes. A project with
- * no picture, or marked unavailable, says so plainly instead.
+ * no picture, or marked unavailable, says so plainly instead. A picture
+ * fades in whole once loaded (scripts/shot-reveal.ts).
  */
 import { displayAttributes } from '../../lib/project-image';
 import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
@@ -28,7 +29,7 @@ const href = projectHref(project);
 <li class:list={['pf-card', href && 'pf-card--linked']}>
   {
     image ? (
-      <div class:list={['pf-shot', contain && 'pf-shot--contain']}>
+      <div class:list={['pf-shot', contain && 'pf-shot--contain']} data-loading>
         <img
           class="pcard__img"
           {...display}

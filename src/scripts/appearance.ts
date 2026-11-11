@@ -11,6 +11,7 @@ import {
   APPEARANCE_KEYS,
   APPEARANCE_STORAGE_KEY,
   sanitizeAppearance,
+  THEME_CANVAS,
   type Appearance,
 } from '../lib/portfolio/appearance';
 
@@ -44,10 +45,31 @@ export function mountAppearance(): void {
     ),
   });
 
+  // A phone paints its browser bar from the theme-color metas, which follow
+  // the system by media query. A forced theme points both at its canvas;
+  // system gives each back its own. The 404 keeps its dark page whatever
+  // is chosen, so its metas are left alone.
+  const themeMetas = scoped
+    ? []
+    : [
+        ...document.querySelectorAll<HTMLMetaElement>(
+          'meta[name="theme-color"]',
+        ),
+      ];
+  const paintThemeColor = (theme: Appearance['theme']) => {
+    for (const meta of themeMetas) {
+      const own = meta.media.includes('dark')
+        ? THEME_CANVAS.dark
+        : THEME_CANVAS.light;
+      meta.content = theme === 'system' ? own : THEME_CANVAS[theme];
+    }
+  };
+
   const apply = (prefs: Appearance) => {
     for (const key of APPEARANCE_KEYS) {
       root.setAttribute(`data-${key}`, prefs[key]);
     }
+    paintThemeColor(prefs.theme);
   };
 
   const syncForm = (prefs: Appearance) => {
