@@ -48,8 +48,10 @@
     "astro": "^7.3.3",
     "d3-force": "^3.0.0",
     "marked": "^18.0.6",
+    "marked-footnote": "^1.4.0",
     "preact": "^10.29.7",
     "redis": "^6.1.0",
+    "shiki": "^4.6.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 ---
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { hasLocalMap } from '@lib/garden/local-map';
-import { renderNote } from '@lib/garden/render';
+import { renderNoteAsync } from '@lib/garden/render';
 import {
   bodyProvidesTitleHeading,
   shouldShowNoteTitle,
@@ -23,7 +23,9 @@ interface Props {
 
 const { document, index } = Astro.props;
 const rendered = document.body.trim()
-  ? renderNote(document.body, { wikiLinkHrefs: index.wikiLinkHrefs })
+  ? await renderNoteAsync(document.body, {
+      wikiLinkHrefs: index.wikiLinkHrefs,
+    })
   : { html: '', headings: [] };
 const tocHeadings = rendered.headings.length >= 2 ? rendered.headings : [];
 

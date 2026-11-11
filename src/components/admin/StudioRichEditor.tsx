@@ -23,6 +23,11 @@ import TaskItem from '@tiptap/extension-task-item';
 import { RichImage } from './studioRichImage';
 import { YoutubeVideo } from './studioYoutube';
 import { youtubeEmbedUrl } from '../../lib/garden/youtube';
+import {
+  hasFencedCode,
+  isHighlighterLoaded,
+  loadHighlighter,
+} from '../../lib/garden/render';
 import StudioEditorPopover from './StudioEditorPopover';
 import type { ImageEditRequest } from './StudioImageDialog';
 import type { ImageMarkupOptions } from './studioEditorCommands';
@@ -573,6 +578,13 @@ export default function StudioRichEditor(props: Props) {
                   content.textContent = 'Custom block';
               };
               render(node.attrs.raw);
+              // Code inside a custom block (a callout, say) is highlighted
+              // like the page once the lazily loaded highlighter arrives.
+              if (!isHighlighterLoaded() && hasFencedCode(node.attrs.raw))
+                loadHighlighter().then(
+                  () => dom.isConnected && render(node.attrs.raw),
+                  () => {},
+                );
               return {
                 dom,
                 update(next) {

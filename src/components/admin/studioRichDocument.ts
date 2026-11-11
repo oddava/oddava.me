@@ -147,11 +147,14 @@ export class RichDocument {
         continue;
       }
 
-      // HTML, reference definitions and inline HTML cannot safely be reduced
-      // to the rich schema. Keep their source losslessly behind the rendered custom block.
+      // HTML, reference definitions, footnotes, callouts, highlights and
+      // inline HTML cannot safely be reduced to the rich schema. Keep their
+      // source losslessly behind the rendered custom block.
       const custom =
         (block.type !== 'code' &&
           (/\[\^[^\]]+\]|\[[^\]]+\]\[[^\]]*\]/.test(block.raw) ||
+            /^ {0,3}> ?\[!/.test(block.raw) ||
+            /==(?=[^\s=])[^\n]*?[^\s=]==/.test(block.raw) ||
             (hasReferences && /\[[^\]]+\]/.test(block.raw)))) ||
         block.type === 'html' ||
         /^\s*</.test(block.raw) ||

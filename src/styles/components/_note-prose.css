@@ -15,6 +15,8 @@
    to win against it.
    =================================================== */
 
+@import './_code.css';
+
 .note-page-icon {
   display: block;
   width: clamp(4rem, 8vw, 5rem);
@@ -272,14 +274,19 @@
 }
 
 .prose pre {
-  background: var(--color-surface-raised);
-  padding: var(--space-sm);
-  border-radius: 4px;
+  background: var(--paper-sunken);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-2);
   margin: 1.5em 0;
   max-width: 100%;
   overflow-x: auto;
-  font-size: var(--text-sm);
+  font-size: 0.9375rem;
   line-height: 1.6;
+  tab-size: 2;
+}
+
+.prose pre code {
+  font-size: inherit;
 }
 
 .prose pre code {
@@ -580,4 +587,134 @@
 .prose .note-column img {
   width: var(--note-image-width, auto);
   max-width: 100%;
+}
+
+/* --- Highlights, callouts, footnotes --- */
+
+/* A highlighter stroke in the rubric's wash: marked, not shouted. */
+.prose mark {
+  background: var(--rubric-wash);
+  color: inherit;
+  padding: 0 0.1em;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.prose .callout {
+  margin: 1.5em 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--rubric);
+  background: var(--paper-sunken);
+  border-radius: 0 var(--radius-2) var(--radius-2) 0;
+}
+
+.prose .callout__title {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: var(--step--1);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--label-tracking);
+  color: var(--rubric);
+}
+
+.prose .callout__body {
+  margin-top: var(--space-2);
+}
+
+.prose .callout__body > :last-child {
+  margin-bottom: 0;
+}
+
+.prose details.callout > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.prose details.callout > summary::-webkit-details-marker {
+  display: none;
+}
+
+.prose details.callout > summary::before {
+  content: '▸' / '';
+  display: inline-block;
+  margin-right: 0.4em;
+  transition: rotate var(--dur-2) var(--ease-out);
+}
+
+.prose details.callout[open] > summary::before {
+  rotate: 90deg;
+}
+
+.prose details.callout:not([open]) > .callout__body {
+  display: none;
+}
+
+/* An aside is a margin note in waiting; in the column it is set small. */
+.prose .callout--aside {
+  background: none;
+  border-left-color: var(--rule-strong);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.prose .callout--aside .callout__title {
+  color: var(--ink-3);
+}
+
+.prose .callout--aside .callout__title::before {
+  content: '⊕ ' / '';
+}
+
+.prose [data-footnote-ref] {
+  font-family: var(--sans);
+  font-size: 0.75em;
+  font-variant-numeric: lining-nums;
+  color: var(--rubric);
+  text-decoration: none;
+  padding: 0 0.1em;
+}
+
+.prose sup:has(> [data-footnote-ref]) {
+  line-height: 0;
+}
+
+.prose .footnotes {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.prose .footnotes ol {
+  margin: 0;
+}
+
+.prose .footnotes li::marker {
+  color: var(--rubric);
+  font-family: var(--sans);
+  font-variant-numeric: lining-nums;
+}
+
+.prose [data-footnote-backref] {
+  text-decoration: none;
+  font-family: var(--sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prose details.callout > summary::before {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .prose mark {
+    background: Mark;
+    color: MarkText;
+  }
+
+  .prose .callout {
+    border-left-color: CanvasText;
+  }
 }

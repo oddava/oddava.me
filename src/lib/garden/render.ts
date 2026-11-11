@@ -1,5 +1,7 @@
 import { readColumns } from './columns';
 import { marked, Renderer, type Token, type Tokens } from 'marked';
+import markedFootnote from 'marked-footnote';
+import type { HighlighterCore } from 'shiki/core';
 import { slugifyHeading } from './headings';
 import { normalizeWikiLinkTarget } from './utils';
 import { notesTagUrl } from '../notes-url';
@@ -23,7 +25,15 @@ import { notesTagUrl } from '../notes-url';
 //     unresolved ones an inert `<span class="wiki-link wiki-link--broken">`
 //   - inline `#tags` become `<a class="note-tag">` pointing at their tag page
 //   - external http(s) links gain `class="external-link"` and rel hygiene
-//   - h2–h4 gain a slug id, `tabindex="-1"`, and a trailing `#` anchor
+//   - h2–h4 gain a slug id, `tabindex="-1"`, and a trailing `¶` anchor
+//   - `[^n]` footnotes become endnotes: `sup > a[data-footnote-ref]` in the
+//     text, one `section.footnotes[data-footnotes]` at the end
+//   - Obsidian callouts `> [!type] title` become `aside.callout`, or
+//     `details.callout` when foldable (`-` closed, `+` open)
+//   - `==text==` becomes `<mark>`
+//   - fenced code in a language we carry becomes rubricated
+//     `pre.code-block` with `tok-*` spans, once the highlighter has loaded;
+//     until then, and for every other language, marked's own `pre > code`
 
 function escapeHtml(value: string): string {
   return value
@@ -149,10 +159,135 @@ const noteTagExtension = {
   },
 };
 
+interface HighlightToken extends Tokens.Generic {
+  type: 'highlight';
+  raw: string;
+  tokens: Token[];
+}
+
+interface InlineLexer {
+  lexer: { inlineTokens(src: string): Token[] };
+}
+
+interface InlineParser {
+  parser: { parseInline(tokens: Token[]): string };
+}
+
+// `==text==`, as Obsidian writes it. The text must not start or end with a
+// space, so prose like `a == b` stays prose.
+const highlightExtension = {
+  name: 'highlight',
+  level: 'inline' as const,
+  start(src: string) {
+    const index = src.indexOf('==');
+    return index < 0 ? undefined : index;
+  },
+  tokenizer(this: InlineLexer, src: string): HighlightToken | undefined {
+    const match = /^==(?=[^\s=])([^\n]*?[^\s=])==(?!=)/.exec(src);
+    if (!match) return undefined;
+    return {
+      type: 'highlight',
+      raw: match[0],
+      tokens: this.lexer.inlineTokens(match[1]!),
+    };
+  },
+  renderer(this: InlineParser, token: Tokens.Generic) {
+    return `<mark>${this.parser.parseInline(token.tokens as Token[])}</mark>`;
+  },
+};
+
+interface CalloutToken extends Tokens.Generic {
+  type: 'callout';
+  raw: string;
+  kind: string;
+  fold: '' | '+' | '-';
+  title: Token[];
+  body: Token[];
+}
+
+const CALLOUT =
+  /^ {0,3}> ?\[!([a-z][a-z0-9-]*)\]([+-]?)[^\S\n]*([^\n]*)(?:\n|$)((?: {0,3}>[^\n]*(?:\n|$))*)/i;
+
+// Obsidian's callouts. Every line belongs to the callout while it keeps its
+// `>`; the first blank or unquoted line ends it, as in Obsidian's reading view.
+// The kind is free text, as in Obsidian: the stylesheet gives the known ones
+// their look, and an unknown one still reads as a plain callout.
+const calloutExtension = {
+  name: 'callout',
+  level: 'block' as const,
+  start(src: string) {
+    const match = /^ {0,3}> ?\[!/m.exec(src);
+    return match ? match.index : undefined;
+  },
+  tokenizer(
+    this: {
+      lexer: {
+        blockTokens(src: string, tokens?: Token[]): Token[];
+        inlineTokens(src: string): Token[];
+      };
+    },
+    src: string,
+  ): CalloutToken | undefined {
+    const match = CALLOUT.exec(src);
+    if (!match) return undefined;
+    const kind = match[1]!.toLowerCase();
+    const body = match[4]!
+      .split('\n')
+      .map((line) => line.replace(/^ {0,3}> ?/, ''))
+      .join('\n');
+    return {
+      type: 'callout',
+      raw: match[0],
+      kind,
+      fold: match[2] as CalloutToken['fold'],
+      title: this.lexer.inlineTokens(match[3]!.trim() || kind),
+      body: this.lexer.blockTokens(body, []),
+    };
+  },
+  childTokens: ['title', 'body'],
+  renderer(
+    this: {
+      parser: {
+        parse(tokens: Token[]): string;
+        parseInline(tokens: Token[]): string;
+      };
+    },
+    token: Tokens.Generic,
+  ) {
+    const callout = token as CalloutToken;
+    const kind = escapeAttr(callout.kind);
+    const title = this.parser.parseInline(callout.title);
+    const body = this.parser.parse(callout.body);
+    const classes = `callout callout--${kind}`;
+    const inner = body ? `<div class="callout__body">${body}</div>` : '';
+    if (callout.fold) {
+      return `<details class="${classes}" data-callout="${kind}"${callout.fold === '+' ? ' open' : ''}><summary class="callout__title">${title}</summary>${inner}</details>\n`;
+    }
+    return `<aside class="${classes}" data-callout="${kind}"><p class="callout__title">${title}</p>${inner}</aside>\n`;
+  },
+};
+
+// The endnotes marked-footnote writes, with their DPUB roles. `doc-endnote`
+// is deprecated, so the list items keep their implicit role inside a
+// `doc-endnotes` section; the references and the way back carry theirs.
+function withFootnoteRoles(html: string): string {
+  return html
+    .replace(/<a (id="footnote-ref-[^"]*")/g, '<a role="doc-noteref" $1')
+    .replace(
+      /<section class="footnotes" data-footnotes>/g,
+      '<section class="footnotes" role="doc-endnotes" data-footnotes>',
+    )
+    .replace(
+      /<a (href="#footnote-ref-[^"]*" data-footnote-backref)/g,
+      '<a role="doc-backlink" $1',
+    );
+}
+
 let configured = false;
 
 function ensureConfigured(): void {
   if (configured) return;
+  marked.use(markedFootnote({ description: 'Notes' }));
   marked.use({
     gfm: true,
     // Obsidian's reading view, not CommonMark: a single newline is a line
@@ -163,6 +298,8 @@ function ensureConfigured(): void {
     extensions: [
       wikiLinkExtension,
       noteTagExtension,
+      highlightExtension,
+      calloutExtension,
       {
         name: 'noteColumns',
         level: 'block',
@@ -185,8 +322,11 @@ function ensureConfigured(): void {
       },
     ],
   });
+  extensionWalkTokens = marked.defaults.walkTokens ?? null;
   configured = true;
 }
+
+let extensionWalkTokens: ((token: Token) => unknown) | null = null;
 
 export interface NoteHeading {
   id: string;
@@ -260,9 +400,16 @@ function createRenderer(
         text: plainTextFromHtml(text),
         depth: depth as NoteHeading['depth'],
       });
-      return `<h${depth} id="${slug}" tabindex="-1">${text}<a href="#${slug}" class="anchor" aria-hidden="true">#</a></h${depth}>\n`;
+      return `<h${depth} id="${slug}" tabindex="-1">${text}<a href="#${slug}" class="anchor" aria-hidden="true">¶</a></h${depth}>\n`;
     }
     return `<h${depth}>${text}</h${depth}>\n`;
+  };
+
+  renderer.code = function code(token: Tokens.Code): string {
+    const highlighted = highlighter
+      ? renderHighlighted(highlighter, token.text, token.lang)
+      : null;
+    return highlighted ?? Renderer.prototype.code.call(this, token);
   };
 
   // Outbound http(s) links get a class for the outward affordance and the
@@ -309,6 +456,40 @@ function createRenderer(
   return renderer;
 }
 
+type HighlightModule = typeof import('./highlight');
+
+let highlighter: HighlighterCore | null = null;
+let renderHighlighted: HighlightModule['renderHighlighted'];
+let loading: Promise<void> | null = null;
+
+/**
+ * Loads the code highlighter once. Until it resolves, fenced code renders as
+ * plain `pre > code`; afterwards every render rubricates it. The module is
+ * imported dynamically so nothing pays for Shiki until code is shown.
+ */
+export function loadHighlighter(): Promise<void> {
+  loading ??= import('./highlight')
+    .then(async (module) => {
+      const created = await module.createRubricHighlighter();
+      renderHighlighted = module.renderHighlighted;
+      highlighter = created;
+    })
+    .catch((error: unknown) => {
+      loading = null;
+      throw error;
+    });
+  return loading;
+}
+
+export function isHighlighterLoaded(): boolean {
+  return highlighter !== null;
+}
+
+/** Fenced code anywhere in a Markdown body: the cue to load the highlighter. */
+export function hasFencedCode(body: string): boolean {
+  return /^ {0,3}(?:`{3,}|~{3,})/m.test(body);
+}
+
 export interface RenderNoteOptions {
   wikiLinkHrefs?: ReadonlyMap<string, string>;
 }
@@ -322,7 +503,11 @@ export function renderNote(
   const html = marked.parse(body, {
     async: false,
     renderer: createRenderer(headings, options.wikiLinkHrefs),
+    // A per-call walkTokens replaces the one `marked.use` built, so the
+    // extensions' own (marked-footnote moves its endnotes to the end of the
+    // document there) are called first.
     walkTokens(token) {
+      extensionWalkTokens?.call(this, token);
       if (!isWikiLinkToken(token)) return;
       token.href = options.wikiLinkHrefs?.get(
         normalizeWikiLinkTarget(token.target),
@@ -330,7 +515,16 @@ export function renderNote(
     },
   }) as string;
 
-  return { html, headings };
+  return { html: withFootnoteRoles(html), headings };
+}
+
+/** `renderNote`, with fenced code highlighted when the note has any. */
+export async function renderNoteAsync(
+  body: string,
+  options: RenderNoteOptions = {},
+): Promise<RenderedNote> {
+  if (hasFencedCode(body)) await loadHighlighter();
+  return renderNote(body, options);
 }
 
 export function renderNoteHtml(

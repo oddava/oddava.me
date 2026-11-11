@@ -1,0 +1,47 @@
+/* ===================================================
+   Rubricated code — the colours of `pre.code-block`.
+
+   `src/lib/garden/highlight.ts` tokenises fenced code and marks each token
+   with one role from its fixed vocabulary (`TOKEN_ROLES`); this file is the
+   only place those roles get a look. Two tones, as in a rubricated page:
+   keywords in the rubric, comments set back in italic ink-3, everything
+   else ink. `tests/design-tokens.test.ts` fails if a role has no rule here.
+   =================================================== */
+
+.prose .code-block {
+  color: var(--ink);
+}
+
+.prose .code-block .tok-keyword {
+  color: var(--rubric);
+}
+
+.prose .code-block .tok-comment {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+/* Strings stay ink, a step back so a long literal does not read as prose. */
+.prose .code-block .tok-string {
+  color: var(--ink-2);
+}
+
+.prose .code-block .tok-inserted {
+  color: var(--ok);
+}
+
+.prose .code-block .tok-deleted {
+  color: var(--danger);
+}
+
+@media (forced-colors: active) {
+  .prose
+    .code-block
+    :is(.tok-keyword, .tok-string, .tok-inserted, .tok-deleted) {
+    color: CanvasText;
+  }
+
+  .prose .code-block .tok-comment {
+    color: GrayText;
+  }
+}

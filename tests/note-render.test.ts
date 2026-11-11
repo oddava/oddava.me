@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { buildImageMarkup } from '../src/components/admin/studioEditorCommands';
-import { renderNote, renderNoteHtml } from '../src/lib/garden/render';
+import {
+  hasFencedCode,
+  loadHighlighter,
+  renderNote,
+  renderNoteAsync,
+  renderNoteHtml,
+} from '../src/lib/garden/render';
 
 // `renderNoteHtml` is the only note renderer: the published page and the Studio
 // preview both call it, so these assertions describe what BOTH surfaces show.
@@ -53,6 +59,8 @@ describe('renderNoteHtml', () => {
     const html = renderNoteHtml('## The Idea');
     expect(html).toContain('<h2 id="the-idea" tabindex="-1">The Idea');
     expect(html).toContain('<a href="#the-idea" class="anchor"');
+    // Deliberate (Rubric): the anchor glyph is a pilcrow, not a hash.
+    expect(html).toContain('class="anchor" aria-hidden="true">¶</a>');
   });
 
   it('keeps repeated heading anchors unique within a document', () => {
@@ -268,5 +276,183 @@ describe('renderNoteHtml', () => {
     );
     expect(html).toContain('&lt;caption&gt;');
     expect(html).not.toContain('<caption>');
+  });
+});
+
+describe('footnotes', () => {
+  const body =
+    'A claim[^1] and another[^why].\n\n[^1]: First, *emphasised*.\n[^why]: Second.';
+
+  it('turns references into numbered note references', () => {
+    const html = renderNoteHtml(body);
+    expect(html).toContain(
+      '<sup><a role="doc-noteref" id="footnote-ref-1" href="#footnote-1" data-footnote-ref aria-describedby="footnote-label">1</a></sup>',
+    );
+    // Labels are renumbered in reading order.
+    expect(html).toContain(
+      'href="#footnote-why" data-footnote-ref aria-describedby="footnote-label">2</a>',
+    );
+  });
+
+  it('collects the definitions into one endnotes section at the end', () => {
+    const html = renderNoteHtml(`${body}\n\n## After`);
+    expect(html.indexOf('<section class="footnotes"')).toBeGreaterThan(
+      html.indexOf('id="after"'),
+    );
+    expect(html).toContain(
+      '<section class="footnotes" role="doc-endnotes" data-footnotes>',
+    );
+    expect(html).toContain(
+      '<h2 id="footnote-label" class="sr-only">Notes</h2>',
+    );
+    expect(html).toContain('<li id="footnote-1">');
+    expect(html).toContain('<em>emphasised</em>');
+    expect(html).toContain(
+      '<a role="doc-backlink" href="#footnote-ref-1" data-footnote-backref',
+    );
+  });
+
+  it('does not count the endnotes heading as a section of the note', () => {
+    expect(renderNote(`## One\n\n${body}`).headings).toEqual([
+      { id: 'one', text: 'One', depth: 2 },
+    ]);
+  });
+
+  it('leaves a reference with no definition as text', () => {
+    expect(renderNoteHtml('A dangling[^nope] note.')).toBe(
+      '<p>A dangling[^nope] note.</p>\n',
+    );
+  });
+
+  it('numbers from 1 again on the next render', () => {
+    renderNoteHtml(body);
+    expect(renderNoteHtml('Again[^x].\n\n[^x]: Note.')).toContain(
+      '>1</a></sup>',
+    );
+  });
+});
+
+describe('callouts', () => {
+  it('renders an Obsidian callout as an aside with its title', () => {
+    expect(renderNoteHtml('> [!tip] Keep **it** short\n> Body line')).toBe(
+      '<aside class="callout callout--tip" data-callout="tip"><p class="callout__title">Keep <strong>it</strong> short</p><div class="callout__body"><p>Body line</p>\n</div></aside>\n',
+    );
+  });
+
+  it('titles an untitled callout with its kind, lowercased', () => {
+    expect(renderNoteHtml('> [!NOTE]\n> Body')).toContain(
+      '<aside class="callout callout--note" data-callout="note"><p class="callout__title">note</p>',
+    );
+  });
+
+  it('folds a `-` callout closed and a `+` callout open', () => {
+    expect(renderNoteHtml('> [!warning]- Careful\n> hidden')).toContain(
+      '<details class="callout callout--warning" data-callout="warning"><summary class="callout__title">Careful</summary>',
+    );
+    expect(renderNoteHtml('> [!info]+ Open\n> shown')).toContain(
+      'data-callout="info" open><summary class="callout__title">Open</summary>',
+    );
+  });
+
+  it('marks `[!aside]` for the margin', () => {
+    expect(renderNoteHtml('> [!aside]\n> in the margin')).toContain(
+      '<aside class="callout callout--aside" data-callout="aside">',
+    );
+  });
+
+  it('renders block content inside the body', () => {
+    const html = renderNoteHtml('> [!note] List\n> - one\n> - two');
+    expect(html).toContain('<div class="callout__body"><ul>\n<li>one</li>');
+  });
+
+  it('ends at the first line without a quote marker', () => {
+    const html = renderNoteHtml('> [!note]\n> inside\n\noutside');
+    expect(html).toMatch(/<\/aside>\n<p>outside<\/p>/);
+  });
+
+  it('leaves an ordinary blockquote alone', () => {
+    expect(renderNoteHtml('> quoted')).toBe(
+      '<blockquote>\n<p>quoted</p>\n</blockquote>\n',
+    );
+  });
+
+  it('keeps a malformed marker as an ordinary blockquote', () => {
+    expect(renderNoteHtml('> [!] nothing')).toContain('<blockquote>');
+    expect(renderNoteHtml('> [!two words] x')).toContain('<blockquote>');
+  });
+});
+
+describe('highlights', () => {
+  it('turns ==text== into mark, with inline Markdown inside', () => {
+    expect(renderNoteHtml('Some ==bright *words*== here.')).toBe(
+      '<p>Some <mark>bright <em>words</em></mark> here.</p>\n',
+    );
+  });
+
+  it('leaves comparisons and spaced markers as text', () => {
+    expect(renderNoteHtml('a == b and c == d')).toBe(
+      '<p>a == b and c == d</p>\n',
+    );
+    expect(renderNoteHtml('== spaced ==')).toBe('<p>== spaced ==</p>\n');
+  });
+
+  it('leaves highlights inside code untouched', () => {
+    expect(renderNoteHtml('`a ==b== c`')).toBe(
+      '<p><code>a ==b== c</code></p>\n',
+    );
+  });
+});
+
+describe('code', () => {
+  const fence = '```ts\n// note\nconst x = "s"; // c\n```';
+
+  it('notices fenced code, and only fenced code', () => {
+    expect(hasFencedCode(fence)).toBe(true);
+    expect(hasFencedCode('~~~\nplain\n~~~')).toBe(true);
+    expect(hasFencedCode('inline `code` only')).toBe(false);
+  });
+
+  it('rubricates a known language with classes, never inline styles', async () => {
+    const { html } = await renderNoteAsync(fence);
+    expect(html).toBe(
+      '<pre class="code-block" data-language="ts" tabindex="0"><code class="language-ts"><span class="tok-comment">// note</span>\n<span class="tok-keyword">const</span> x = <span class="tok-string">"s"</span>; <span class="tok-comment">// c</span>\n</code></pre>\n',
+    );
+    expect(html).not.toContain('style=');
+  });
+
+  it('escapes code text inside the highlighted spans', async () => {
+    await loadHighlighter();
+    const html = renderNoteHtml('```html\n<b>&amp;</b>\n```');
+    expect(html).toContain('&lt;');
+    expect(html).not.toContain('<b>');
+  });
+
+  it('keeps an unknown language as plain pre > code', async () => {
+    await loadHighlighter();
+    expect(renderNoteHtml('```klingon\nqapla\n```')).toBe(
+      '<pre><code class="language-klingon">qapla\n</code></pre>\n',
+    );
+    expect(renderNoteHtml('```\nplain\n```')).toBe(
+      '<pre><code>plain\n</code></pre>\n',
+    );
+  });
+
+  it('resolves common aliases to the grammars it carries', async () => {
+    await loadHighlighter();
+    for (const lang of [
+      'js',
+      'jsx',
+      'sh',
+      'py',
+      'yml',
+      'rs',
+      'md',
+      'diff',
+      'tsx',
+    ]) {
+      expect(renderNoteHtml('```' + lang + '\nx\n```')).toContain(
+        `<pre class="code-block" data-language="${lang}"`,
+      );
+    }
   });
 });

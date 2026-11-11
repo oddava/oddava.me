@@ -132,6 +132,41 @@ describe('rich Markdown document boundary', () => {
     ).toBe(true);
     expect(document.serialize(editor)).toBe(body);
   });
+  // Each of these is outside the rich schema: it must open as a source block
+  // and come back byte-identical after an edit somewhere else in the note.
+  it.each([
+    ['a callout', '> [!tip] Keep **it** short\n> Body line\n> - item'],
+    ['a foldable callout', '> [!warning]- Folded\n> hidden until opened'],
+    ['an aside', '> [!aside]\n> in the margin'],
+    ['a footnote reference', 'A claim[^1] with a note.'],
+    ['a footnote definition', '[^1]: The note, *with* emphasis.'],
+    ['a highlight', 'Some ==bright *words*== in a line.'],
+  ])('keeps %s byte-identical after an unrelated edit', (_name, block) => {
+    const body = `# Title\n\n${block}\n\nAfter.`;
+    const { editor, document } = open(body);
+    expect(editor.getJSON().content?.[1]?.type).toBe('sourceBlock');
+    editor.commands.insertContentAt(3, 'new ');
+    expect(document.serialize(editor)).toBe(
+      body.replace('# Title', '# Tinew tle'),
+    );
+  });
+  it('keeps a fenced block with a language byte-identical after an unrelated edit', () => {
+    const block = '```ts\nconst x: number = 1; // keep\n```';
+    const body = `# Title\n\n${block}\n\nAfter.`;
+    const { editor, document } = open(body);
+    expect(editor.getJSON().content?.[1]).toMatchObject({
+      type: 'codeBlock',
+      attrs: { language: 'ts' },
+    });
+    editor.commands.insertContentAt(3, 'new ');
+    expect(document.serialize(editor)).toBe(
+      body.replace('# Title', '# Tinew tle'),
+    );
+  });
+  it('leaves prose comparisons like a == b editable', () => {
+    const { editor } = open('Check that a == b holds.');
+    expect(editor.getJSON().content?.[0]?.type).toBe('paragraph');
+  });
   it('undo restores the original Markdown after a block edit', () => {
     const body = '*one* and __two__\n\nUntouched.';
     const { editor, document } = open(body);

@@ -13,6 +13,7 @@ import {
   type ThemeName,
 } from '../src/lib/design/palette';
 import { SITE_SPRING, springEasing } from '../src/lib/design/spring';
+import { TOKEN_ROLES } from '../src/lib/garden/highlight';
 
 const tokensCss = readFileSync(
   new URL('../src/styles/_tokens.css', import.meta.url),
@@ -125,5 +126,23 @@ describe('design tokens', () => {
     // A colour that already reads is left exactly as chosen.
     expect(deriveCustomInk('#b9381f')?.light).toBe('#b9381f');
     expect(deriveCustomInk('not a colour')).toBeNull();
+  });
+});
+
+describe('rubricated code', () => {
+  const codeCss = readFileSync(
+    new URL('../src/styles/components/_code.css', import.meta.url),
+    'utf8',
+  );
+
+  it('styles every token role the highlighter emits, and no other', () => {
+    const styled = new Set(
+      [...codeCss.matchAll(/\.tok-([a-z]+)/g)].map((match) => match[1]),
+    );
+    expect([...styled].sort()).toEqual([...TOKEN_ROLES].sort());
+  });
+
+  it('colours tokens only from the design tokens', () => {
+    expect(codeCss).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 });
