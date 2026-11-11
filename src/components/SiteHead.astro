@@ -23,7 +23,13 @@ export interface Props {
    * `body` preloads only the regular body face; the bold and mono faces still
    * load from CSS when a page uses them. The notes host uses it.
    */
-  fontPreloads?: 'all' | 'body';
+  fontPreloads?: 'all' | 'body' | 'none';
+  /**
+   * The shared dark canvas and icon links (DocumentTheme). The portfolio
+   * pages turn it off and paint their own themed canvas instead; every other
+   * caller keeps the default.
+   */
+  documentTheme?: boolean;
 }
 
 const {
@@ -36,6 +42,7 @@ const {
   type = 'website',
   modifiedTime,
   fontPreloads = 'all',
+  documentTheme = true,
 } = Astro.props;
 
 const pageTitle = title === SITE_NAME ? SITE_TITLE : `${title} | ${SITE_NAME}`;
@@ -76,7 +83,7 @@ const structuredData =
 ---
 
 <meta charset="utf-8" />
-<DocumentTheme />
+{documentTheme && <DocumentTheme />}
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content={description} />
 <meta name="author" content={SITE_AUTHOR_NAME} />
@@ -121,14 +128,18 @@ const structuredData =
 }
 
 <!-- Preload critical fonts -->
-<link
-  rel="preload"
-  as="font"
-  type="font/woff2"
-  href="/fonts/m-plus-rounded-1c-latin-400-normal.woff2"
-  crossorigin
-  fetchpriority="high"
-/>
+{
+  fontPreloads !== 'none' && (
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/m-plus-rounded-1c-latin-400-normal.woff2"
+      crossorigin
+      fetchpriority="high"
+    />
+  )
+}
 {
   fontPreloads === 'all' && (
     <>

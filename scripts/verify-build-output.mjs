@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,58 @@ async function collectHtmlFiles(directory) {
     }
   }
   return files;
+}
+
+const sha256 = (source) =>
+  `'sha256-${createHash('sha256').update(source).digest('base64')}'`;
+
+/**
+ * Every inline script the browser would run, and every inline style element,
+ * must be covered by its exact hash in the page's own CSP. JSON-LD and other
+ * data blocks are not executed, so they need none. Portfolio pages must also
+ * carry the appearance pre-paint: it is the one inline script they add.
+ */
+function inlineHashFailures(html, relativePath) {
+  const failures = [];
+  const policy =
+    /<meta\s+http-equiv=["']content-security-policy["']\s+content=(["'])([\s\S]*?)\1/i.exec(
+      html,
+    )?.[2] ?? '';
+  const executable = (attributes) => {
+    const type = /\btype=["']?([^"'\s>]+)/i.exec(attributes)?.[1];
+    return (
+      !type ||
+      /^(?:module|text\/javascript|application\/javascript)$/i.test(type)
+    );
+  };
+  for (const match of html.matchAll(
+    /<script\b([^>]*)>([\s\S]*?)<\/script>/gi,
+  )) {
+    const [, attributes, body] = match;
+    if (/\bsrc=/i.test(attributes) || !executable(attributes) || !body)
+      continue;
+    if (!policy.includes(sha256(body))) {
+      failures.push(`${relativePath}: inline script not covered by a CSP hash`);
+    }
+  }
+  for (const match of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    if (match[1] && !policy.includes(sha256(match[1]))) {
+      failures.push(`${relativePath}: inline style not covered by a CSP hash`);
+    }
+  }
+  if (/<html\b[^>]*\bdata-site=["']portfolio["']/i.test(html)) {
+    const prepaints = [
+      ...html.matchAll(
+        /<script\b[^>]*\bdata-appearance-prepaint\b[^>]*>([\s\S]*?)<\/script>/gi,
+      ),
+    ];
+    if (prepaints.length !== 1 || !prepaints[0][1]) {
+      failures.push(
+        `${relativePath}: portfolio page lacks the appearance pre-paint`,
+      );
+    }
+  }
+  return failures;
 }
 
 const htmlFiles = await collectHtmlFiles(clientRoot);
@@ -54,6 +107,9 @@ for (const filePath of htmlFiles) {
   }
   if (isRedirect && /<(?:script|style)\b/i.test(html)) {
     failures.push(`${relativePath}: redirect contains executable content`);
+  }
+  if (!isRedirect) {
+    failures.push(...inlineHashFailures(html, relativePath));
   }
 }
 

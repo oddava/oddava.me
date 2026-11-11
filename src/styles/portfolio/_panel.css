@@ -1,0 +1,199 @@
+/* ===================================================
+   PORTFOLIO — appearance panel
+
+   Anchored in CSS alone: the panel hangs from the right end of the header
+   row, where the icon sits, so its right edge lines up with the icon. Its
+   width is capped at the viewport minus 12px a side, and its height at what
+   is left of the screen below the header; anything taller scrolls inside.
+   No inline styles (the CSP allows none).
+   =================================================== */
+
+[data-site='portfolio'] .pf-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 4;
+  width: min(27rem, calc(100vw - 24px));
+  max-height: calc(100vh - 7.5rem);
+  max-height: calc(100dvh - 7.5rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+  transform-origin: 100% 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+[data-site='portfolio'] .pf-panel[hidden] {
+  display: none;
+}
+
+[data-site='portfolio'] .pf-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+[data-site='portfolio'] .pf-panel-head h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+[data-site='portfolio'] .pf-panel-head .face {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  font-family: system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+[data-site='portfolio'] .pf-pref {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  margin: 0;
+  padding: 7px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+[data-site='portfolio'] .pf-pref:first-of-type {
+  border-top: 0;
+}
+
+[data-site='portfolio'] .pf-pref legend {
+  float: left;
+  padding: 0;
+  color: var(--ink-2);
+}
+
+[data-site='portfolio'] .pf-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+[data-site='portfolio'] .pf-seg label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+/* Native radios, visually replaced by their labels but still the controls:
+   arrow keys move within a group, Tab moves between groups. */
+[data-site='portfolio'] .pf-seg input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+
+[data-site='portfolio'] .pf-seg label:has(input:checked) {
+  color: var(--ink);
+  background: var(--hover);
+  font-weight: 500;
+}
+
+[data-site='portfolio'] .pf-seg label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-seg label:hover {
+    color: var(--ink);
+  }
+}
+
+/* Each swatch shows its ink as it will look in the current theme. */
+[data-site='portfolio'] .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sl);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+
+[data-site='portfolio'] .swatch--ai {
+  --sl: #245dcc;
+  --sd: #8db1ff;
+}
+[data-site='portfolio'] .swatch--sakura {
+  --sl: #b5306b;
+  --sd: #f391ba;
+}
+[data-site='portfolio'] .swatch--matcha {
+  --sl: #2f7a3b;
+  --sd: #86cc90;
+}
+[data-site='portfolio'] .swatch--fuji {
+  --sl: #6a4cc2;
+  --sd: #b8a5ff;
+}
+[data-site='portfolio'] .swatch--sora {
+  --sl: #0c6c8a;
+  --sd: #72c8e3;
+}
+
+[data-site='portfolio'][data-theme='dark'] .swatch {
+  background: var(--sd);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-site='portfolio'][data-theme='system'] .swatch {
+    background: var(--sd);
+  }
+}
+
+[data-site='portfolio'] .pf-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+[data-site='portfolio'] .pf-reset {
+  min-height: 36px;
+  margin-left: -10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline 1px var(--accent);
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+}
+
+[data-site='portfolio'] .pf-status {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+@media (max-width: 30em) {
+  [data-site='portfolio'] .pf-pref {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+}

@@ -1,0 +1,58 @@
+---
+/**
+ * The portfolio's first bytes in <head>: the canvas colour for the chosen
+ * theme, and the pre-paint script that applies the saved appearance before
+ * anything is drawn. Both are inline, so both are registered with the CSP by
+ * the hash of their exact bytes, the same way DocumentTheme registers its
+ * style. There is no unhashed path: a production render without the CSP API
+ * fails instead of shipping inline code the policy would not cover.
+ */
+import { createHash } from 'node:crypto';
+import {
+  APPEARANCE_CANVAS_STYLE,
+  APPEARANCE_PREPAINT_SCRIPT,
+} from '../../lib/portfolio/appearance';
+
+const sha256 = (source: string): `sha256-${string}` =>
+  `sha256-${createHash('sha256').update(source).digest('base64')}`;
+
+if (Astro.csp) {
+  Astro.csp.insertStyleHash(sha256(APPEARANCE_CANVAS_STYLE));
+  Astro.csp.insertScriptHash(sha256(APPEARANCE_PREPAINT_SCRIPT));
+} else if (import.meta.env.PROD) {
+  throw new Error(
+    'Portfolio pre-paint needs Astro.csp to register its hashes; refusing to render unhashed inline code.',
+  );
+}
+---
+
+<meta name="color-scheme" content="light dark" />
+<meta
+  name="theme-color"
+  media="(prefers-color-scheme: light)"
+  content="#ffffff"
+/>
+<meta
+  name="theme-color"
+  media="(prefers-color-scheme: dark)"
+  content="#15181d"
+/>
+<!-- The odd-eyed cat. Every file is written by scripts/render-icons.mjs. -->
+<link rel="icon" href="/favicon.ico" sizes="32x32" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<style is:inline set:html={APPEARANCE_CANVAS_STYLE}></style>
+<script
+  is:inline
+  data-appearance-prepaint
+  set:html={APPEARANCE_PREPAINT_SCRIPT}
+/>
+<link
+  rel="preload"
+  as="font"
+  type="font/woff2"
+  href="/fonts/dm-sans-latin-variable.woff2"
+  crossorigin
+  fetchpriority="high"
+/>

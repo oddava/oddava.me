@@ -1,0 +1,32 @@
+---
+/**
+ * Portfolio footer: a hairline, then the off-site contacts and the feed —
+ * the same links home used to list under the tagline, now on every page.
+ */
+import linksData from '../../data/links.json';
+
+const contacts = linksData.links.flatMap(({ url, title }) =>
+  url && !url.startsWith('/') ? [{ url, title }] : [],
+);
+---
+
+<footer class="pf-footer">
+  <nav class="pf-contacts" aria-label="contact and feeds">
+    {
+      contacts.map((link) => {
+        const isExternal = link.url.startsWith('http');
+        return (
+          <a
+            href={link.url}
+            target={isExternal ? '_blank' : undefined}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+          >
+            {link.title.toLowerCase()}
+            {isExternal && <span class="sr-only"> (opens in new tab)</span>}
+          </a>
+        );
+      })
+    }
+    <a href="/rss.xml">rss</a>
+  </nav>
+</footer>
