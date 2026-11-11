@@ -8,6 +8,7 @@ import {
   APPEARANCE_PREPAINT_SCRIPT,
   APPEARANCE_STORAGE_KEY,
   sanitizeAppearance,
+  THEME_CANVAS,
 } from '../src/lib/portfolio/appearance';
 
 /** Runs the real pre-paint string against a fake document and storage. */
@@ -28,6 +29,10 @@ function runPrepaint(stored: string | null | (() => never)) {
         attributes[name] = value;
       },
     },
+    querySelectorAll(selector: string) {
+      expect(selector).toBe('meta[name="theme-color"]');
+      return metas;
+    },
   };
   new Function('window', 'document', APPEARANCE_PREPAINT_SCRIPT)(
     window,
@@ -35,6 +40,20 @@ function runPrepaint(stored: string | null | (() => never)) {
   );
   return attributes;
 }
+
+/** The two theme-color metas the pre-paint script repaints, as rendered. */
+const metas = [
+  { content: THEME_CANVAS.light, setAttribute: setContent },
+  { content: THEME_CANVAS.dark, setAttribute: setContent },
+];
+function setContent(this: { content: string }, name: string, value: string) {
+  expect(name).toBe('content');
+  this.content = value;
+}
+const resetMetas = () => {
+  metas[0]!.content = THEME_CANVAS.light;
+  metas[1]!.content = THEME_CANVAS.dark;
+};
 
 describe('appearance preferences', () => {
   it('has two keys whose first value is the default', () => {
@@ -103,6 +122,33 @@ describe('pre-paint script', () => {
         throw new DOMException('denied', 'SecurityError');
       }),
     ).toEqual({});
+  });
+
+  it('points the browser bar at a forced theme, and leaves system alone', () => {
+    resetMetas();
+    runPrepaint('{"theme":"dark"}');
+    expect(metas.map((meta) => meta.content)).toEqual([
+      THEME_CANVAS.dark,
+      THEME_CANVAS.dark,
+    ]);
+    resetMetas();
+    runPrepaint('{"theme":"light"}');
+    expect(metas.map((meta) => meta.content)).toEqual([
+      THEME_CANVAS.light,
+      THEME_CANVAS.light,
+    ]);
+    for (const saved of [
+      '{"theme":"system"}',
+      '{"theme":"__proto__"}',
+      '{"theme":"toString"}',
+    ]) {
+      resetMetas();
+      runPrepaint(saved);
+      expect(metas.map((meta) => meta.content)).toEqual([
+        THEME_CANVAS.light,
+        THEME_CANVAS.dark,
+      ]);
+    }
   });
 
   it('carries the same allow-list as the module', () => {

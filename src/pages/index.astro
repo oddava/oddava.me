@@ -1,8 +1,8 @@
 ---
-// Prerendered: the name, tagline and links are the same for everyone. The
-// project rows read the live list, so they are a server island, fetched
-// after first paint.
-export const prerender = true;
+// Rendered per request, with the project rows in the same response. They
+// were a server island once: the page arrived first and the rows a second
+// round trip later, popping in under it. Reading the list costs about as
+// much as serving the static page did, so it comes with the page now.
 import Portfolio from '@layouts/Portfolio.astro';
 import ProjectList from '../components/portfolio/ProjectList.astro';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
@@ -39,12 +39,10 @@ const pageHref = (label: string) =>
 
   <section class="pf-work" aria-labelledby="home-projects">
     <h2 class="sr-only" id="home-projects">projects</h2>
-    <ProjectList server:defer>
-      <div class="pf-entries-pending" slot="fallback"></div>
-    </ProjectList>
+    <ProjectList />
     <p class="pf-more">
       <a class="link" href={pageHref('projects')}
-        >see all<span class="pf-arrow" aria-hidden="true">→</span></a
+        >all projects<span class="pf-arrow" aria-hidden="true">→</span></a
       >
     </p>
   </section>

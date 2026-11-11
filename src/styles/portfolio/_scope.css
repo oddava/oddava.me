@@ -60,3 +60,13 @@
 .pf-scope[data-site='portfolio'] .pf-header {
   flex: 1 1 auto;
 }
+
+/* On a phone the panel takes the content width, as on the portfolio pages.
+   Here the header already sits inside the gutters, so it spans the header. */
+@media (max-width: 40em) {
+  .pf-scope[data-site='portfolio'] .pf-panel {
+    left: 0;
+    right: 0;
+    width: auto;
+  }
+}

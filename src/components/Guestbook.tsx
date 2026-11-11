@@ -67,7 +67,7 @@ export function Guestbook() {
           <input
             type="text"
             value={name}
-            onChange={(event) => setName(event.currentTarget.value)}
+            onInput={(event) => setName(event.currentTarget.value)}
             placeholder="anon or preferably twt username"
             maxLength={32}
             autoComplete="nickname"
@@ -77,7 +77,7 @@ export function Guestbook() {
           <span>message</span>
           <textarea
             value={message}
-            onChange={(event) => setMessage(event.currentTarget.value)}
+            onInput={(event) => setMessage(event.currentTarget.value)}
             placeholder="say hi or leave a thought"
             maxLength={MAX_MESSAGE_LENGTH}
             rows={3}

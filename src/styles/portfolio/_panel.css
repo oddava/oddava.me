@@ -227,6 +227,12 @@
   }
 }
 
+/* The 404's header is always dark (_tokens.css), so its swatches show the
+   dark inks, whatever theme is saved. */
+.pf-scope[data-site='portfolio'] .swatch {
+  background: var(--sd);
+}
+
 [data-site='portfolio'] .pf-panel-foot {
   display: flex;
   align-items: center;

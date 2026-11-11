@@ -114,8 +114,9 @@ for (const filePath of htmlFiles) {
 }
 
 // The pre-paint check above only bites on portfolio pages, so name the
-// prerendered ones: if either stops being one, the check would pass empty.
-for (const name of ['index.html', 'about.html']) {
+// prerendered one: if it stops being one, the check would pass empty. Home
+// and /projects render per request; tests/portfolio-csp.test.ts holds them.
+for (const name of ['about.html']) {
   const html = await readFile(path.join(clientRoot, name), 'utf8').catch(
     () => '',
   );

@@ -77,7 +77,8 @@
   padding: calc(12px * var(--d) + 2px) 16px calc(14px * var(--d) + 2px);
   border-radius: 14px;
   text-decoration: none;
-  transition: background-color 160ms ease;
+  /* Timing comes from .press (_shell.css): a colour fade and a spring on
+     release. Declaring a transition here would replace both. */
 }
 
 [data-site='portfolio'] .pf-entry-head {
@@ -119,14 +120,20 @@
   }
 }
 
+/* Touch screens have no hover, and the tap highlight is off: a press lights
+   the row the way hover does, so a tap is seen to land. */
+@media (hover: none) {
+  [data-site='portfolio'] a.pf-entry:active {
+    background-color: var(--hover);
+  }
+  [data-site='portfolio'] a.pf-entry:active .pf-entry-name {
+    color: var(--accent);
+  }
+}
+
 [data-site='portfolio'] a.pf-entry:focus-visible {
   outline-offset: 0;
   border-radius: 14px;
-}
-
-/* Holds the island's place while it loads, so "see all" does not jump. */
-[data-site='portfolio'] .pf-entries-pending {
-  min-height: calc(3 * (5.25rem + 20px * var(--d)));
 }
 
 [data-site='portfolio'] .pf-home-empty {

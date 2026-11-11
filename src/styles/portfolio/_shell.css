@@ -131,7 +131,8 @@
   position: absolute;
   left: 16px;
   top: 12px;
-  z-index: 5;
+  /* Above the phone's sticky header (10), or focus lands on a hidden link. */
+  z-index: 11;
   padding: 10px 14px;
   background: var(--bg);
   color: var(--ink);
@@ -403,6 +404,10 @@
    portfolio pages' own header does this; the 404's scoped header does not. */
 
 @media (max-width: 40em) {
+  /* In-page jumps (the skip link) land below the sticky bar, not under it. */
+  :root[data-site='portfolio'] {
+    scroll-padding-top: 72px;
+  }
   [data-site='portfolio'] .pf-page {
     padding-top: 0;
   }
@@ -477,9 +482,14 @@
   }
 }
 
+/* At 320px the wordmark, three links and the 44px appearance button only
+   just fit: tighter link padding and gap keep the button whole on screen. */
 @media (max-width: 22.5em) {
   [data-site='portfolio'] .pf-nav a {
-    padding: 0 6px;
+    padding: 0 3px;
+  }
+  [data-site='portfolio'] .pf-page > .pf-header {
+    column-gap: 6px;
   }
 }
 

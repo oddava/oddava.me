@@ -46,11 +46,13 @@
   object-fit: contain;
 }
 
-/* No picture: a slot the same shape as the others, plainly labelled, on a
-   faint dot grid that fades out toward the edges, so the label reads first
+/* No picture: a short band rather than a full-size frame, so two missing
+   pictures do not read as two empty pages. Plainly labelled, on a faint dot
+   grid that fades out toward the edges, so the label reads first
    and the slot reads as intentional rather than unfinished. */
 [data-site='portfolio'] .pf-shot--unavailable {
   position: relative;
+  aspect-ratio: 16 / 4;
   display: grid;
   place-items: center;
   background-color: color-mix(in srgb, var(--ink) 3%, var(--surface-2));
@@ -172,4 +174,74 @@
   [data-site='portfolio'] .pf-card--linked:hover .pf-shot {
     transform: translateY(-2px);
   }
+}
+
+/* Touch screens: no hover, and the tap highlight is off, so a press frames
+   the picture in the ink and presses it in a touch. The card opens in a new
+   tab; without this a tap looked as if it had not landed. */
+@media (hover: none) {
+  [data-site='portfolio'] .pf-card--linked:active .pf-shot {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  }
+  [data-site='portfolio'] .pf-card--linked:active .pf-card-title a {
+    color: var(--accent);
+  }
+}
+
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .pf-card--linked:active .pf-shot {
+    transform: scale(0.99);
+    transition-duration: 200ms, 300ms, 90ms;
+  }
+}
+
+/* --- Pictures arrive whole ---
+
+   While a picture loads, its frame shows only its quiet surface; the
+   picture fades in once it has loaded and decoded, rather than a slow
+   connection painting it in strips from the top. scripts/shot-reveal.ts
+   drives it and shows a cached picture at once. Without the script, the
+   picture is revealed after a few seconds anyway (`data-loading` with no
+   value); the script replaces that with "js" as it takes over. A picture
+   that fails to load keeps the empty frame rather than a broken-image
+   glyph. Under reduced motion the fade is instant (_shell.css).
+
+   Only a picture that actually waited fades (`data-fade`). The page's first
+   style pass sees every picture hidden, so a fade declared on all of them
+   would also play for a cached picture as the script reveals it: a staged
+   entrance on every return to the page. */
+[data-site='portfolio'] .pf-shot[data-loading] img {
+  opacity: 0;
+}
+
+[data-site='portfolio'] .pf-shot[data-loading=''] img {
+  animation: pf-shot-fallback 0s 3s forwards;
+}
+
+@keyframes pf-shot-fallback {
+  to {
+    opacity: 1;
+  }
+}
+
+[data-site='portfolio'] .pf-shot[data-fade] img {
+  transition:
+    opacity 480ms var(--ease-out),
+    transform 420ms var(--ease-out);
+}
+
+/* A picture that failed to load says so, like a project with none. */
+[data-site='portfolio'] .pf-shot[data-loading='failed'] {
+  position: relative;
+}
+
+[data-site='portfolio'] .pf-shot[data-loading='failed']::after {
+  content: 'preview unavailable';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
 }

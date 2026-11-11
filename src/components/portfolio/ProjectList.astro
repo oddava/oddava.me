@@ -1,8 +1,8 @@
 ---
 /**
  * Home's projects: the first three of the presented list, as plain rows
- * (name and year, then the one-line description). A server island, so home stays
- * prerendered while this reads the live list per request. The self entry
+ * (name and year, then the one-line description), read from the live list
+ * as home renders, so a save in the admin shows without a deploy. The self entry
  * is dropped before the three are picked (presentProjects, then
  * pickHomeProjects), so it never takes a slot.
  */

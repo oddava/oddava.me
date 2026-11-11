@@ -1,0 +1,27 @@
+/* ===================================================
+   PORTFOLIO — moving between pages
+
+   Home, about and projects cross-fade into each other (a cross-document
+   view transition) instead of blanking between loads. The fade is the
+   browser's own, synchronised, so whatever is identical on both pages — the
+   header, the footer, the canvas — stays perfectly still and only what
+   differs dissolves. Nothing is named out of the fade: a named element
+   becomes a stacking context and a backdrop root, which would trap the
+   appearance panel under the page and stop the phone header's glass from
+   blurring.
+
+   Both documents must opt in. This file reaches the portfolio pages and,
+   through ScopedHeader's import, the 404; the notes site, Studio and the
+   admin never load it, so jumps there stay plain page loads. Off entirely
+   under reduced motion.
+   =================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  :root[data-site='portfolio']::view-transition-group(root) {
+    animation-duration: 200ms;
+  }
+}
