@@ -40,8 +40,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* The arrival fade (see "Pictures arrive whole" below). */
-  transition: opacity 480ms var(--ease-out);
 }
 
 [data-site='portfolio'] .pf-shot--contain img {
@@ -167,9 +165,7 @@
    the zoom set in the admin rather than replacing it. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   [data-site='portfolio'] .pf-shot img {
-    transition:
-      opacity 480ms var(--ease-out),
-      transform 420ms var(--ease-out);
+    transition: transform 420ms var(--ease-out);
   }
   [data-site='portfolio'] .pf-card--linked:hover .pf-shot img {
     transform: scale(calc(var(--zoom, 1) * 1.025));
@@ -208,7 +204,12 @@
    picture is revealed after a few seconds anyway (`data-loading` with no
    value); the script replaces that with "js" as it takes over. A picture
    that fails to load keeps the empty frame rather than a broken-image
-   glyph. Under reduced motion the fade is instant (_shell.css). */
+   glyph. Under reduced motion the fade is instant (_shell.css).
+
+   Only a picture that actually waited fades (`data-fade`). The page's first
+   style pass sees every picture hidden, so a fade declared on all of them
+   would also play for a cached picture as the script reveals it: a staged
+   entrance on every return to the page. */
 [data-site='portfolio'] .pf-shot[data-loading] img {
   opacity: 0;
 }
@@ -221,4 +222,26 @@
   to {
     opacity: 1;
   }
+}
+
+[data-site='portfolio'] .pf-shot[data-fade] img {
+  transition:
+    opacity 480ms var(--ease-out),
+    transform 420ms var(--ease-out);
+}
+
+/* A picture that failed to load says so, like a project with none. */
+[data-site='portfolio'] .pf-shot[data-loading='failed'] {
+  position: relative;
+}
+
+[data-site='portfolio'] .pf-shot[data-loading='failed']::after {
+  content: 'preview unavailable';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
 }

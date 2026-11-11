@@ -131,7 +131,8 @@
   position: absolute;
   left: 16px;
   top: 12px;
-  z-index: 5;
+  /* Above the phone's sticky header (10), or focus lands on a hidden link. */
+  z-index: 11;
   padding: 10px 14px;
   background: var(--bg);
   color: var(--ink);
