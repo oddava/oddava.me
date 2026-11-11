@@ -37,35 +37,28 @@ function runPrepaint(stored: string | null | (() => never)) {
 }
 
 describe('appearance preferences', () => {
-  it('has six keys whose first value is the default', () => {
-    expect(APPEARANCE_KEYS).toEqual([
-      'theme',
-      'ink',
-      'read',
-      'size',
-      'density',
-      'motion',
-    ]);
-    expect(APPEARANCE_DEFAULTS).toEqual({
-      theme: 'system',
-      ink: 'ai',
-      read: 'sans',
-      size: 'standard',
-      density: 'comfortable',
-      motion: 'system',
-    });
+  it('has two keys whose first value is the default', () => {
+    expect(APPEARANCE_KEYS).toEqual(['theme', 'ink']);
+    expect(APPEARANCE_DEFAULTS).toEqual({ theme: 'system', ink: 'ai' });
   });
 
   it('keeps only known keys with allowed values', () => {
     expect(
+      sanitizeAppearance({ theme: 'dark', ink: 'coral', extra: 'x' }),
+    ).toEqual({ theme: 'dark' });
+    expect(sanitizeAppearance({ ink: 'matcha', theme: 9 })).toEqual({
+      ink: 'matcha',
+    });
+    // Saved choices from the six-preference panel drop the retired keys.
+    expect(
       sanitizeAppearance({
-        theme: 'dark',
-        ink: 'coral',
+        theme: 'light',
         read: 'serif',
-        size: 9,
-        extra: 'x',
+        size: 'large',
+        density: 'compact',
+        motion: 'reduced',
       }),
-    ).toEqual({ theme: 'dark', read: 'serif' });
+    ).toEqual({ theme: 'light' });
     expect(sanitizeAppearance(null)).toEqual({});
     expect(sanitizeAppearance('dark')).toEqual({});
     expect(sanitizeAppearance(['dark'])).toEqual({});
@@ -74,29 +67,18 @@ describe('appearance preferences', () => {
 
 describe('pre-paint script', () => {
   it('applies a full saved choice before paint', () => {
-    const saved = {
-      theme: 'dark',
-      ink: 'sakura',
-      read: 'serif',
-      size: 'large',
-      density: 'compact',
-      motion: 'reduced',
-    };
+    const saved = { theme: 'dark', ink: 'sakura' };
     expect(runPrepaint(JSON.stringify(saved))).toEqual({
       'data-theme': 'dark',
       'data-ink': 'sakura',
-      'data-read': 'serif',
-      'data-size': 'large',
-      'data-density': 'compact',
-      'data-motion': 'reduced',
     });
   });
 
   it('agrees with sanitizeAppearance on bogus and partial values', () => {
     const samples: unknown[] = [
-      { theme: 'vellum', ink: 'coral', size: 9 },
+      { theme: 'vellum', ink: 'coral' },
       { theme: 'light' },
-      { density: 'compact', motion: 'sideways', read: ['serif'] },
+      { ink: ['sora'], density: 'compact', size: 'large' },
     ];
     for (const sample of samples) {
       const expected = Object.fromEntries(

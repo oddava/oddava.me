@@ -1,6 +1,6 @@
 ---
 /**
- * The appearance icon and its panel: six preferences as native radio groups.
+ * The appearance icon and its panel: theme and ink as native radio groups.
  * The panel opens under the icon (see _panel.css); the controller is the
  * bundled module in scripts/appearance.ts, served from 'self'.
  */
@@ -13,10 +13,6 @@ import {
 const legends: Record<AppearanceKey, string> = {
   theme: 'theme',
   ink: 'ink',
-  read: 'reading font',
-  size: 'text size',
-  density: 'density',
-  motion: 'motion',
 };
 
 const groups = (Object.keys(APPEARANCE_PREFS) as AppearanceKey[]).map(
@@ -68,7 +64,12 @@ const groups = (Object.keys(APPEARANCE_PREFS) as AppearanceKey[]).map(
       groups.map((group) => (
         <fieldset class="pf-pref">
           <legend>{group.legend}</legend>
-          <div class="pf-seg">
+          <div
+            class:list={[
+              'pf-seg',
+              `pf-seg--${Math.min(group.values.length, 3)}`,
+            ]}
+          >
             {group.values.map((value) => (
               <label>
                 <input type="radio" name={group.key} value={value} />

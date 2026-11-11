@@ -10,8 +10,15 @@ const INITIAL_VISIBLE_ENTRIES = 12;
 const COUNT_SHOWN_AT = 40;
 
 export function Guestbook() {
-  const { entries, error, loading, refreshEntries, setError, writable } =
-    useGuestbookEntries();
+  const {
+    entries,
+    error,
+    loadFailed,
+    loading,
+    refreshEntries,
+    setError,
+    writable,
+  } = useGuestbookEntries();
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [showAllEntries, setShowAllEntries] = useState(false);
@@ -96,7 +103,7 @@ export function Guestbook() {
             {submitting ? 'posting…' : 'post'}
           </button>
         </div>
-        {!writable && (
+        {!writable && !loadFailed && (
           <p className="guestbook__error" role="alert">
             posting is paused for now.
           </p>
@@ -115,7 +122,7 @@ export function Guestbook() {
             <SkeletonRow />
           </div>
         )}
-        {!loading && entries.length === 0 && (
+        {!loading && !loadFailed && entries.length === 0 && (
           <p className="guestbook__empty">no notes yet.</p>
         )}
         {visibleEntries.map((entry) => (
@@ -147,10 +154,17 @@ export function Guestbook() {
             {notice}
           </p>
         )}
-        {error && (
+        {/* A failed read says one thing, not "empty" and "paused" too. */}
+        {loadFailed ? (
           <p className="guestbook__error" role="alert">
-            {error}
+            the notes couldn't load just now. try again in a bit.
           </p>
+        ) : (
+          error && (
+            <p className="guestbook__error" role="alert">
+              {error}
+            </p>
+          )
         )}
       </div>
     </section>

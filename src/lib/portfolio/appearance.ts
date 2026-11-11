@@ -1,5 +1,8 @@
 /**
- * The six visitor preferences of the portfolio pages (home, about, projects).
+ * The visitor preferences of the portfolio pages (home, about, projects):
+ * the theme and the ink (accent colour). Text size, motion, reading font and
+ * density were dropped: the browser's zoom and the system's reduced-motion
+ * setting already cover the first two, and the panel stays small.
  * One definition feeds the panel markup, the pre-paint script and the client
  * controller, so the three cannot disagree on keys, values or defaults.
  *
@@ -12,10 +15,6 @@ export const APPEARANCE_STORAGE_KEY = 'appearance';
 export const APPEARANCE_PREFS = {
   theme: ['system', 'light', 'dark'],
   ink: ['ai', 'sakura', 'matcha', 'fuji', 'sora'],
-  read: ['sans', 'serif'],
-  size: ['standard', 'large'],
-  density: ['comfortable', 'compact'],
-  motion: ['system', 'reduced'],
 } as const;
 
 export type AppearanceKey = keyof typeof APPEARANCE_PREFS;

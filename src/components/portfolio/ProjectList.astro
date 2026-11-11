@@ -1,7 +1,7 @@
 ---
 /**
  * Home's projects: the first three of the presented list, as plain rows
- * (name, then the one-line description). A server island, so home stays
+ * (name and year, then the one-line description). A server island, so home stays
  * prerendered while this reads the live list per request. The self entry
  * is dropped before the three are picked (presentProjects, then
  * pickHomeProjects), so it never takes a slot.
@@ -9,6 +9,7 @@
 import type { Project } from '../../lib/contracts';
 import { pickHomeProjects } from '../../lib/home';
 import { presentProjects, projectHref } from '../../lib/portfolio-projects';
+import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
 import { isStorageUnavailableError } from '../../lib/server/core';
 import { readPublicProjects } from '../../lib/server/projects';
 
@@ -33,14 +34,31 @@ const shown = all ? pickHomeProjects(presentProjects(all)) : [];
         const href = projectHref(project);
         const body = (
           <>
-            <span class="pf-entry-name link">{project.name}</span>
+            <span class="pf-entry-head">
+              <span class="pf-entry-name">
+                {project.name}
+                {href && (
+                  <span class="pf-arrow" aria-hidden="true">
+                    {isExternalHref(href) ? '↗' : '→'}
+                  </span>
+                )}
+              </span>
+              {isExternalHref(href) && (
+                <span class="sr-only"> (opens in new tab)</span>
+              )}
+              <span class="pf-entry-year">{String(project.year)}</span>
+            </span>
             <span class="pf-entry-what prose">{project.description}</span>
           </>
         );
         return (
           <li>
             {href ? (
-              <a class="pf-entry press" href={href}>
+              <a
+                class="pf-entry press"
+                href={href}
+                {...externalLinkAttrs(href)}
+              >
                 {body}
               </a>
             ) : (

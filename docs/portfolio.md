@@ -8,8 +8,10 @@ own look.
 
 ## Appearance
 
-There are six preferences: `theme`, `ink`, `read`, `size`, `density` and
-`motion`.
+There are two preferences: `theme` and `ink`. Reading font, text size,
+density and motion were dropped: browser zoom and the system's reduced-motion
+setting already cover size and motion, and the panel stays small on a phone.
+Saved choices that still carry the old keys are ignored key by key.
 
 - They are defined once in `src/lib/portfolio/appearance.ts` and saved as JSON
   in `localStorage.appearance`.
@@ -51,9 +53,8 @@ and its dark theme) and swaps only the header for the portfolio one.
 - The appearance controller writes to `[data-appearance-root]` (the wrapper)
   when there is one, else `<html>`, and loads the saved choices itself.
 - The wrapper is always dark, since it sits on the dark sky. Choices are
-  still shown, saved and applied on the portfolio pages. Ink, density and
-  motion also apply in the header. Text size does not: it sets the root
-  font size, which would resize the 404's body.
+  still shown, saved and applied on the portfolio pages. Ink also applies
+  in the header.
 - `_scope.css` gives the wrapper the old header's outer box, so nothing below
   it moves. `tests/portfolio-404-header.test.ts` holds these rules.
 
@@ -86,7 +87,6 @@ the admin panel are untouched.
   - **Redaction:** names in its demo table and payslip are covered with the
     local background colour. The boxes, in pixels, are (80,644)–(250,672),
     (80,820)–(245,848) and (926,772)–(1080,798).
-- **`public/fonts/dm-sans-latin-variable.woff2`** (sha256 `ca72d2bc…`) and
-  **`public/fonts/lora-latin-variable.woff2`** (sha256 `ddb8c660…`):
-  - the Google Fonts latin subsets of DM Sans and Lora, SIL OFL 1.1;
-  - licences are in `public/fonts/licenses/`.
+- **`public/fonts/dm-sans-latin-variable.woff2`** (sha256 `ca72d2bc…`):
+  - the Google Fonts latin subset of DM Sans, SIL OFL 1.1;
+  - the licence is in `public/fonts/licenses/`.

@@ -1,5 +1,5 @@
 /**
- * The appearance panel's controller: six preferences, saved as JSON in
+ * The appearance panel's controller: theme and ink, saved as JSON in
  * `localStorage.appearance` and applied as `data-*` attributes on <html>.
  * The pre-paint script (lib/portfolio/appearance.ts) applies a saved choice
  * before first paint; this keeps the panel and storage in step after that.
@@ -114,9 +114,9 @@ export function mountAppearance(): void {
     }
   });
 
-  // A short scale-and-fade from the icon, only when motion is on.
+  // A short scale-and-fade from the icon, unless the system asks for less
+  // motion.
   const motionOn = () =>
-    root.getAttribute('data-motion') !== 'reduced' &&
     !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let running: Animation | null = null;

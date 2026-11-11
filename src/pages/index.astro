@@ -24,8 +24,8 @@ const pageHref = (label: string) =>
     <svg
       class="pf-tilde"
       viewBox="0 0 44 10"
-      width="44"
-      height="10"
+      width="56"
+      height="13"
       aria-hidden="true"
       focusable="false"
     >
@@ -43,7 +43,9 @@ const pageHref = (label: string) =>
       <div class="pf-entries-pending" slot="fallback"></div>
     </ProjectList>
     <p class="pf-more">
-      <a class="link" href={pageHref('projects')}>see all</a>
+      <a class="link" href={pageHref('projects')}
+        >see all<span class="pf-arrow" aria-hidden="true">→</span></a
+      >
     </p>
   </section>
 </Portfolio>

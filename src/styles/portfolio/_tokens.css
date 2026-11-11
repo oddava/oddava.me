@@ -15,26 +15,12 @@
 }
 
 @font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url(/fonts/lora-latin-variable.woff2) format('woff2');
-}
-
-@font-face {
   font-family: 'DM Sans Fallback';
   src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
   size-adjust: 105%;
   ascent-override: 94.5%;
   descent-override: 29.5%;
   line-gap-override: 0%;
-}
-
-@font-face {
-  font-family: 'Lora Fallback';
-  src: local('Georgia'), local('Times New Roman');
-  size-adjust: 104%;
 }
 
 :root[data-site='portfolio'],
@@ -45,9 +31,14 @@
   --ink: #20242a;
   --ink-2: #59616b;
   --hover: #f2f5f9;
+  --scrim: rgb(10 12 16 / 0.18);
   --line: #e3e7ec;
+  --line-2: #cfd5dd;
+  --surface-2: #f6f8fa;
   --panel: #ffffff;
-  --panel-shadow: 0 12px 32px -12px rgb(32 36 42 / 0.22);
+  --panel-shadow:
+    0 1px 2px rgb(32 36 42 / 0.06), 0 18px 40px -16px rgb(32 36 42 / 0.24);
+  --on-accent: #ffffff;
   --ok: #1d6b3c;
   --bad: #b3261e;
 
@@ -60,12 +51,18 @@
   --focus: var(--foc-l);
 
   --sans: 'DM Sans', 'DM Sans Fallback', ui-sans-serif, system-ui, sans-serif;
-  --serif: 'Lora', 'Lora Fallback', Georgia, serif;
   --prose: var(--sans);
 
-  /* Density: 1 comfortable, 0.68 compact. */
+  /* Spacing multiplier, kept at 1 (density was dropped from the panel). */
   --d: 1;
   --lh: 1.6;
+
+  /* Type scale: one page-title size on every page, the name a step up. */
+  --t-name: clamp(2.25rem, 1.6rem + 2.2vw, 3rem);
+  --t-title: clamp(1.875rem, 1.5rem + 1.2vw, 2.375rem);
+  --t-item: 1.3125rem;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   --settle: linear(
     0,
@@ -116,9 +113,14 @@
   --ink: #e6e9ee;
   --ink-2: #a3abb6;
   --hover: #1f242b;
+  --scrim: rgb(0 0 0 / 0.4);
   --line: #2b3139;
+  --line-2: #3a414b;
+  --surface-2: #1a1e24;
   --panel: #1b1f25;
-  --panel-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+  --panel-shadow:
+    0 1px 2px rgb(0 0 0 / 0.3), 0 20px 44px -18px rgb(0 0 0 / 0.7);
+  --on-accent: #10141a;
   --ok: #91e3bf;
   --bad: #ffa3ad;
   --accent: var(--acc-d);
@@ -132,27 +134,19 @@
     --ink: #e6e9ee;
     --ink-2: #a3abb6;
     --hover: #1f242b;
+    --scrim: rgb(0 0 0 / 0.4);
     --line: #2b3139;
+    --line-2: #3a414b;
+    --surface-2: #1a1e24;
     --panel: #1b1f25;
-    --panel-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+    --panel-shadow:
+      0 1px 2px rgb(0 0 0 / 0.3), 0 20px 44px -18px rgb(0 0 0 / 0.7);
+    --on-accent: #10141a;
     --ok: #91e3bf;
     --bad: #ffa3ad;
     --accent: var(--acc-d);
     --focus: var(--foc-d);
   }
-}
-
-:root[data-site='portfolio'][data-read='serif'],
-.pf-scope[data-site='portfolio'][data-read='serif'] {
-  --prose: var(--serif);
-}
-:root[data-site='portfolio'][data-size='large'] {
-  font-size: 112.5%;
-}
-:root[data-site='portfolio'][data-density='compact'],
-.pf-scope[data-site='portfolio'][data-density='compact'] {
-  --d: 0.68;
-  --lh: 1.5;
 }
 
 /* The shared islands (guestbook, page preview, loading line, now-playing)

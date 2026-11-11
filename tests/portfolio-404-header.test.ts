@@ -34,12 +34,8 @@ describe('the 404 header', () => {
     expect(tokens).toMatch(
       /:root\[data-site='portfolio'\]\[data-theme='dark'\],\s*\.pf-scope\[data-site='portfolio'\] \{/,
     );
-    // Text size sets font-size on its element; on the wrapper that would
-    // not reach the rem-sized header and must never reach <html> there.
-    expect(tokens).toMatch(
-      /:root\[data-site='portfolio'\]\[data-size='large'\] \{/,
-    );
-    expect(tokens).not.toMatch(/\.pf-scope[^{]*data-size/);
+    // No preference sets font-size any more: the 404's root size is Base's.
+    expect(tokens).not.toMatch(/data-size|data-read|data-density/);
   });
 
   it('lets the controller load saved choices onto the wrapper', () => {

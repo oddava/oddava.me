@@ -2,11 +2,13 @@
 /**
  * Portfolio header: the wordmark home, then projects, about and notes, then
  * the appearance icon. Notes is the separate notes site, so it is a plain
- * outbound link and never the current page here.
+ * outbound link (a new tab when it is on another origin) and never the
+ * current page here.
  */
 import LoadingIndicator from '../LoadingIndicator.astro';
 import AppearanceControl from './AppearanceControl.astro';
 import { notesIndexUrl } from '../../lib/notes-url';
+import { externalLinkAttrs } from '../../lib/portfolio/links';
 
 const pathname =
   Astro.url.pathname.replace(/(?:\/index)?\.html$|\/$/, '') || '/';
@@ -40,7 +42,17 @@ const current = (href: string) =>
           </a>
         ))
       }
-      <a href={notesIndexUrl()} data-page-preview-ignore>notes</a>
+      <a
+        href={notesIndexUrl()}
+        {...externalLinkAttrs(notesIndexUrl())}
+        data-page-preview-ignore
+      >
+        notes{
+          externalLinkAttrs(notesIndexUrl()).target && (
+            <span class="sr-only"> (opens in new tab)</span>
+          )
+        }
+      </a>
     </nav>
     <AppearanceControl />
   </div>

@@ -12,33 +12,40 @@ registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 <Portfolio
   title="About"
   description="Oddava is a software engineer based in Uzbekistan, building web applications and working on Ishbay."
-  split
 >
-  <h1 class="pf-about-title">about</h1>
+  <div class="pf-column">
+    <h1 class="pf-title">about</h1>
 
-  <div class="pf-about-body prose">
-    <p>
-      i'm a software engineer based in uzbekistan. i build web applications,
-      currently working on <a class="link" href="https://ishbay.com">Ishbay</a>,
-      a payroll management platform for businesses.
-    </p>
-
-    <p>
-      i'm interested in backend engineering, system design, self-hosting, and
-      developer tools.
-    </p>
-
-    <p>outside of coding, i enjoy games, anime, and going on long walks.</p>
-  </div>
-
-  <div class="pf-about-guestbook">
-    <Guestbook client:idle />
-    <noscript>
-      <p class="guestbook-noscript">
-        the guestbook needs javascript to load and post notes. with it off, you
-        can still say hi at <a href="mailto:hello@oddava.me">hello@oddava.me</a
-        >.
+    <div class="pf-about-body prose">
+      <p>
+        i'm a software engineer based in uzbekistan. i build web applications,
+        currently working on <a
+          class="link"
+          href="https://ishbay.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Ishbay<span class="sr-only"> (opens in new tab)</span></a
+        >, a payroll management platform for businesses.
       </p>
-    </noscript>
+
+      <p>
+        i'm interested in backend engineering, system design, self-hosting, and
+        developer tools.
+      </p>
+
+      <p>outside of coding, i enjoy games, anime, and going on long walks.</p>
+    </div>
+
+    <div class="pf-about-guestbook">
+      <Guestbook client:idle />
+      <noscript>
+        <p class="guestbook-noscript">
+          the guestbook needs javascript to load and post notes. with it off,
+          you can still say hi at <a href="mailto:hello@oddava.me"
+            >hello@oddava.me</a
+          >.
+        </p>
+      </noscript>
+    </div>
   </div>
 </Portfolio>

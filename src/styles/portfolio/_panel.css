@@ -1,10 +1,10 @@
 /* ===================================================
    PORTFOLIO — appearance panel
 
-   Anchored in CSS alone: the panel hangs from the right end of the header
-   row, where the icon sits, so its right edge lines up with the icon. Its
-   width is capped at the viewport minus 12px a side, and its height at what
-   is left of the screen below the header; anything taller scrolls inside.
+   Anchored in CSS alone: the panel hangs from the header row, right edge on
+   the page's content edge, so on a phone it takes the content width with
+   the page's own gutters on both sides. Its height is capped at what is
+   left of the screen below the header; anything taller scrolls inside.
    No inline styles (the CSP allows none).
    =================================================== */
 
@@ -13,14 +13,14 @@
   top: calc(100% + 8px);
   right: 0;
   z-index: 4;
-  width: min(27rem, calc(100vw - 24px));
+  width: min(20rem, 100%);
   max-height: calc(100vh - 7.5rem);
   max-height: calc(100dvh - 7.5rem);
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 16px 18px 18px;
+  padding: 16px 18px 14px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--panel);
   box-shadow: var(--panel-shadow);
   color: var(--ink);
@@ -38,7 +38,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 14px;
 }
 
 [data-site='portfolio'] .pf-panel-head h2 {
@@ -53,47 +53,79 @@
   white-space: nowrap;
 }
 
+/* Each group puts its legend above its options, so the options get the
+   panel's full width. */
 [data-site='portfolio'] .pf-pref {
   display: grid;
-  grid-template-columns: 6rem minmax(0, 1fr);
-  align-items: center;
-  column-gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 8px;
   margin: 0;
-  padding: 7px 0;
+  padding: 0;
   border: 0;
-  border-top: 1px solid var(--line);
   min-width: 0;
 }
 
-[data-site='portfolio'] .pf-pref:first-of-type {
-  border-top: 0;
+[data-site='portfolio'] .pf-pref + .pf-pref {
+  margin-top: 18px;
 }
 
 [data-site='portfolio'] .pf-pref legend {
   float: left;
   padding: 0;
   color: var(--ink-2);
+  font-size: 0.875rem;
 }
 
+/* A segmented control: a recessed track, the chosen option raised on it.
+   Options share the width evenly; five inks sit three over two. */
 [data-site='portfolio'] .pf-seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  --track: #eef1f4;
+  --on: #ffffff;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--track);
+}
+
+[data-site='portfolio'] .pf-seg--2 {
+  --n: 2;
+}
+[data-site='portfolio'] .pf-seg--3 {
+  --n: 3;
+}
+
+[data-site='portfolio'][data-theme='dark'] .pf-seg,
+.pf-scope[data-site='portfolio'] .pf-seg {
+  --track: #12151a;
+  --on: #2f3640;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-site='portfolio'][data-theme='system'] .pf-seg {
+    --track: #12151a;
+    --on: #2f3640;
+  }
 }
 
 [data-site='portfolio'] .pf-seg label {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  min-height: 36px;
-  padding: 0 10px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
   border-radius: 8px;
   color: var(--ink-2);
+  white-space: nowrap;
   cursor: pointer;
   transition:
     color 120ms ease,
-    background-color 150ms ease;
+    background-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 /* Native radios, visually replaced by their labels but still the controls:
@@ -106,9 +138,40 @@
   margin: 0;
 }
 
+[data-site='portfolio'][data-theme='dark'] .pf-seg label:has(input:checked),
+.pf-scope[data-site='portfolio'] .pf-seg label:has(input:checked) {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.08),
+    0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-site='portfolio'][data-theme='system']
+    .pf-seg
+    label:has(input:checked) {
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.08),
+      0 1px 2px rgb(0 0 0 / 0.4);
+  }
+}
+
+/* Five inks: three over two, the second row centred under the first. */
+[data-site='portfolio'] .pf-seg:has(.swatch) {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+[data-site='portfolio'] .pf-seg:has(.swatch) label {
+  grid-column: span 2;
+}
+[data-site='portfolio'] .pf-seg:has(.swatch) label:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
 [data-site='portfolio'] .pf-seg label:has(input:checked) {
   color: var(--ink);
-  background: var(--hover);
+  background: var(--on);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.1),
+    0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);
   font-weight: 500;
 }
 
@@ -125,6 +188,7 @@
 
 /* Each swatch shows its ink as it will look in the current theme. */
 [data-site='portfolio'] .swatch {
+  flex: none;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -168,7 +232,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 [data-site='portfolio'] .pf-reset {
@@ -192,8 +256,13 @@
 }
 
 @media (max-width: 30em) {
-  [data-site='portfolio'] .pf-pref {
-    grid-template-columns: 1fr;
-    row-gap: 4px;
+  [data-site='portfolio'] .pf-panel {
+    padding: 14px 14px 8px;
+  }
+  [data-site='portfolio'] .pf-panel-head {
+    margin-bottom: 10px;
+  }
+  [data-site='portfolio'] .pf-pref + .pf-pref {
+    margin-top: 14px;
   }
 }

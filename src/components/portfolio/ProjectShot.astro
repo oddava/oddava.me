@@ -6,6 +6,7 @@
  * no picture, or marked unavailable, says so plainly instead.
  */
 import { displayAttributes } from '../../lib/project-image';
+import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
 import {
   projectHref,
   type PresentedProject,
@@ -50,8 +51,14 @@ const href = projectHref(project);
     <h2 class="pf-card-title">
       {
         href ? (
-          <a class="link" href={href}>
+          <a href={href} {...externalLinkAttrs(href)}>
             {project.name}
+            <span class="pf-arrow" aria-hidden="true">
+              {isExternalHref(href) ? '↗' : '→'}
+            </span>
+            {isExternalHref(href) && (
+              <span class="sr-only"> (opens in new tab)</span>
+            )}
           </a>
         ) : (
           project.name
