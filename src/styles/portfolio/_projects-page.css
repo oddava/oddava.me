@@ -46,11 +46,13 @@
   object-fit: contain;
 }
 
-/* No picture: a slot the same shape as the others, plainly labelled, on a
-   faint dot grid that fades out toward the edges, so the label reads first
+/* No picture: a short band rather than a full-size frame, so two missing
+   pictures do not read as two empty pages. Plainly labelled, on a faint dot
+   grid that fades out toward the edges, so the label reads first
    and the slot reads as intentional rather than unfinished. */
 [data-site='portfolio'] .pf-shot--unavailable {
   position: relative;
+  aspect-ratio: 16 / 4;
   display: grid;
   place-items: center;
   background-color: color-mix(in srgb, var(--ink) 3%, var(--surface-2));
