@@ -10,6 +10,8 @@
  * script switches that fallback off as it takes over (`data-loading="js"`).
  */
 const FADE_MS = 480;
+/** A load this soon after the script takes over came from the disk cache. */
+const INSTANT_MS = 100;
 
 export function revealShots(root: ParentNode = document): void {
   for (const shot of root.querySelectorAll<HTMLElement>(
@@ -27,24 +29,6 @@ export function revealShots(root: ParentNode = document): void {
       else shot.dataset.loading = 'failed';
       continue;
     }
-    // The CSS fallback already showed it (the script came late): hiding it
-    // again to fade it back would flicker.
-    if (getComputedStyle(image).opacity !== '0') {
-      delete shot.dataset.loading;
-      continue;
-    }
-    shot.dataset.loading = 'js';
-    shot.dataset.fade = '';
-    const settle = () => {
-      // Decode first, so the fade starts on a finished picture rather than
-      // on the frame that decodes it.
-      const ready = image.decode ? image.decode().catch(() => {}) : null;
-      void Promise.resolve(ready).then(() => {
-        delete shot.dataset.loading;
-        setTimeout(() => delete shot.dataset.fade, FADE_MS + 100);
-      });
-    };
-    image.addEventListener('load', settle, { once: true });
     // A broken picture stays hidden, and the frame says so: that reads better
     // than the browser's broken-image glyph.
     image.addEventListener(
@@ -55,5 +39,25 @@ export function revealShots(root: ParentNode = document): void {
       },
       { once: true },
     );
+    // The CSS fallback already showed it (the script came late): hiding it
+    // again to fade it back would flicker.
+    if (getComputedStyle(image).opacity !== '0') {
+      delete shot.dataset.loading;
+      continue;
+    }
+    shot.dataset.loading = 'js';
+    shot.dataset.fade = '';
+    const takenOver = performance.now();
+    const settle = () => {
+      if (performance.now() - takenOver < INSTANT_MS) delete shot.dataset.fade;
+      // Decode first, so the fade starts on a finished picture rather than
+      // on the frame that decodes it.
+      const ready = image.decode ? image.decode().catch(() => {}) : null;
+      void Promise.resolve(ready).then(() => {
+        delete shot.dataset.loading;
+        setTimeout(() => delete shot.dataset.fade, FADE_MS + 100);
+      });
+    };
+    image.addEventListener('load', settle, { once: true });
   }
 }
