@@ -113,6 +113,17 @@ for (const filePath of htmlFiles) {
   }
 }
 
+// The pre-paint check above only bites on portfolio pages, so name the
+// prerendered ones: if either stops being one, the check would pass empty.
+for (const name of ['index.html', 'about.html']) {
+  const html = await readFile(path.join(clientRoot, name), 'utf8').catch(
+    () => '',
+  );
+  if (!/<html\b[^>]*\bdata-site=["']portfolio["']/i.test(html)) {
+    failures.push(`dist/client/${name}: not a prerendered portfolio page`);
+  }
+}
+
 const staticHeaders = await readFile(path.join(clientRoot, '_headers'), 'utf8');
 if (
   !staticHeaders.includes("Content-Security-Policy: frame-ancestors 'none'")
