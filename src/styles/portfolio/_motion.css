@@ -1,14 +1,19 @@
 /* ===================================================
-   PORTFOLIO — opening a page, and moving between pages
+   PORTFOLIO — moving between pages
 
-   Two pieces, both off under reduced motion:
-   - On open, the page's own content arrives a beat after the header, in
-     reading order: title, then what follows it, then each row or card.
-   - Between home, about and projects the browser cross-fades the documents
-     (a cross-document view transition). The header is lifted out of the fade
-     so it never flickers. Only portfolio pages load this file, and both
-     documents must opt in, so a jump to the notes site or the admin stays a
-     plain page load.
+   Home, about and projects cross-fade into each other (a cross-document
+   view transition) instead of blanking between loads. The fade is the
+   browser's own, synchronised, so whatever is identical on both pages — the
+   header, the footer, the canvas — stays perfectly still and only what
+   differs dissolves. Nothing is named out of the fade: a named element
+   becomes a stacking context and a backdrop root, which would trap the
+   appearance panel under the page and stop the phone header's glass from
+   blurring.
+
+   Both documents must opt in. This file reaches the portfolio pages and,
+   through ScopedHeader's import, the 404; the notes site, Studio and the
+   admin never load it, so jumps there stay plain page loads. Off entirely
+   under reduced motion.
    =================================================== */
 
 @media (prefers-reduced-motion: no-preference) {
@@ -16,71 +21,7 @@
     navigation: auto;
   }
 
-  [data-site='portfolio'] .pf-page > .pf-header {
-    view-transition-name: pf-header;
-  }
-
-  /* The old page leaves quickly and the new one settles in behind it. Only
-     opacity: moving the whole document would uncover the canvas at an edge. */
-  :root[data-site='portfolio']::view-transition-old(root) {
-    animation: pf-vt-out 140ms ease-in both;
-  }
-
-  :root[data-site='portfolio']::view-transition-new(root) {
-    animation: pf-vt-in 280ms var(--ease-out) 40ms both;
-  }
-
-  /* The header is the same on every page; only the current link changes. */
-  :root[data-site='portfolio']::view-transition-group(pf-header) {
+  :root[data-site='portfolio']::view-transition-group(root) {
     animation-duration: 200ms;
-  }
-
-  /* Content enters in reading order. `backwards` holds the first frame
-     during each delay and lets go at the end, so nothing stays pinned by the
-     animation afterwards (hover lifts and presses keep their transforms). */
-  [data-site='portfolio'] :is(.pf-split, .pf-column) > :not(.pf-cards),
-  [data-site='portfolio'] :is(.pf-cards, .pf-entries) > li {
-    animation: pf-enter 520ms var(--ease-out) backwards;
-  }
-
-  [data-site='portfolio'] :is(.pf-split, .pf-column) > :nth-child(2) {
-    animation-delay: 70ms;
-  }
-
-  [data-site='portfolio'] :is(.pf-split, .pf-column) > :nth-child(n + 3) {
-    animation-delay: 140ms;
-  }
-
-  /* Rows and cards follow their section, a little apart. Home's rows are a
-     server island, so they run this when they arrive rather than on open. */
-  [data-site='portfolio'] :is(.pf-cards, .pf-entries) > li:nth-child(1) {
-    animation-delay: 120ms;
-  }
-
-  [data-site='portfolio'] :is(.pf-cards, .pf-entries) > li:nth-child(2) {
-    animation-delay: 180ms;
-  }
-
-  [data-site='portfolio'] :is(.pf-cards, .pf-entries) > li:nth-child(n + 3) {
-    animation-delay: 240ms;
-  }
-}
-
-@keyframes pf-enter {
-  from {
-    opacity: 0;
-    translate: 0 10px;
-  }
-}
-
-@keyframes pf-vt-out {
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes pf-vt-in {
-  from {
-    opacity: 0;
   }
 }

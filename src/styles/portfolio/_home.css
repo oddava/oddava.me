@@ -124,11 +124,6 @@
   border-radius: 14px;
 }
 
-/* Holds the island's place while it loads, so "all projects" does not jump. */
-[data-site='portfolio'] .pf-entries-pending {
-  min-height: calc(3 * (5.25rem + 20px * var(--d)));
-}
-
 [data-site='portfolio'] .pf-home-empty {
   color: var(--ink-2);
 }

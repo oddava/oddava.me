@@ -31,10 +31,10 @@ Saved choices that still carry the old keys are ignored key by key.
   code.
 - `scripts/verify-build-output.mjs` fails the build if any inline executable
   script or style on a prerendered page is not covered by its exact hash, if
-  a portfolio page lacks the pre-paint, or if `index.html` or `about.html`
-  stops being a portfolio page. Server-rendered pages are outside its reach;
-  the SSR header was checked by hand against a production build (see the
-  build results).
+  a portfolio page lacks the pre-paint, or if `about.html` stops
+  being a portfolio page. Server-rendered pages (home and `/projects`) are
+  outside its reach; the SSR header was checked by hand against a production
+  build (see the build results).
 - Known, pre-existing and left alone: `DocumentTheme.astro` registers its
   canvas style the same component-level way, so on server-rendered pages that
   use `Base` its inline style is not in the CSP header.
