@@ -2,28 +2,14 @@
 /**
  * The portfolio's first bytes in <head>: the canvas colour for the chosen
  * theme, and the pre-paint script that applies the saved appearance before
- * anything is drawn. Both are inline, so both are registered with the CSP by
- * the hash of their exact bytes, the same way DocumentTheme registers its
- * style. There is no unhashed path: a production render without the CSP API
- * fails instead of shipping inline code the policy would not cover.
+ * anything is drawn. Both are inline and covered by the hash of their exact
+ * bytes, which each page registers from its own frontmatter: here would be
+ * too late for a server-rendered page's header (see lib/portfolio/csp.ts).
  */
-import { createHash } from 'node:crypto';
 import {
   APPEARANCE_CANVAS_STYLE,
   APPEARANCE_PREPAINT_SCRIPT,
 } from '../../lib/portfolio/appearance';
-
-const sha256 = (source: string): `sha256-${string}` =>
-  `sha256-${createHash('sha256').update(source).digest('base64')}`;
-
-if (Astro.csp) {
-  Astro.csp.insertStyleHash(sha256(APPEARANCE_CANVAS_STYLE));
-  Astro.csp.insertScriptHash(sha256(APPEARANCE_PREPAINT_SCRIPT));
-} else if (import.meta.env.PROD) {
-  throw new Error(
-    'Portfolio pre-paint needs Astro.csp to register its hashes; refusing to render unhashed inline code.',
-  );
-}
 ---
 
 <meta name="color-scheme" content="light dark" />

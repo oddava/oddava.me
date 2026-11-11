@@ -6,7 +6,10 @@ export const prerender = true;
 import Portfolio from '@layouts/Portfolio.astro';
 import ProjectList from '../components/portfolio/ProjectList.astro';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
+import { registerPortfolioCsp } from '../lib/portfolio/csp';
 import '../styles/portfolio/_home.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 const routes = getPublicNavigationRoutes();
 const pageHref = (label: string) =>

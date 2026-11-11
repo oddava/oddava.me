@@ -4,9 +4,12 @@ import ProjectShot from '../../components/portfolio/ProjectShot.astro';
 import { isStorageUnavailableError } from '../../lib/server/core';
 import { readPublicProjects } from '../../lib/server/projects';
 import { presentProjects } from '../../lib/portfolio-projects';
+import { registerPortfolioCsp } from '../../lib/portfolio/csp';
 import type { Project } from '../../lib/contracts';
 import '../../styles/components/_project-image.css';
 import '../../styles/portfolio/_projects-page.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 // Rendered per request: the list is edited from the admin dashboard and lives
 // in Redis, so a save shows here without a deploy. Featured projects come

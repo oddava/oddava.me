@@ -2,8 +2,11 @@
 export const prerender = true;
 import Portfolio from '@layouts/Portfolio.astro';
 import { Guestbook } from '../components/Guestbook';
+import { registerPortfolioCsp } from '../lib/portfolio/csp';
 import '../styles/components/_control.css';
 import '../styles/portfolio/_about.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 ---
 
 <Portfolio

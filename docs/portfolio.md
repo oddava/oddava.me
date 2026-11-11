@@ -14,13 +14,28 @@ There are six preferences: `theme`, `ink`, `read`, `size`, `density` and
 - They are defined once in `src/lib/portfolio/appearance.ts` and saved as JSON
   in `localStorage.appearance`.
 - A fixed inline pre-paint script applies a saved choice to `<html>` before
-  first paint. `Prepaint.astro` registers its hash, and the canvas style's
-  hash, through `Astro.csp`.
+  first paint. `Prepaint.astro` renders it and the canvas style; each page
+  on the Portfolio layout registers both hashes by calling
+  `registerPortfolioCsp(Astro.csp, import.meta.env.PROD)` from its own
+  frontmatter (`src/lib/portfolio/csp.ts`).
+- Why the page, not the layout: a streamed server-rendered page (`/projects`)
+  gets its CSP header once the page frontmatter has run, before the layout
+  renders. A hash added from the layout or a component lands in a prerendered
+  page's meta but never in that header, so the browser would block the
+  pre-paint. `tests/portfolio-csp.test.ts` fails if a Portfolio page skips the
+  call, or if the layout or Prepaint registers too (Astro does not
+  de-duplicate).
 - A production render without that API throws rather than emit unhashed
   code.
 - `scripts/verify-build-output.mjs` fails the build if any inline executable
-  script or style on a prerendered page is not covered by its exact hash, or
-  if a portfolio page lacks the pre-paint.
+  script or style on a prerendered page is not covered by its exact hash, if
+  a portfolio page lacks the pre-paint, or if `index.html` or `about.html`
+  stops being a portfolio page. Server-rendered pages are outside its reach;
+  the SSR header was checked by hand against a production build (see the
+  build results).
+- Known, pre-existing and left alone: `DocumentTheme.astro` registers its
+  canvas style the same component-level way, so on server-rendered pages that
+  use `Base` its inline style is not in the CSP header.
 
 ## Projects: presentation only
 
