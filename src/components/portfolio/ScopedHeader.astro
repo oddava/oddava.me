@@ -1,0 +1,31 @@
+---
+/**
+ * The portfolio header on a page that is not a portfolio page (the 404).
+ *
+ * Everything portfolio stays inside this wrapper: it carries
+ * data-site="portfolio" itself, so the scoped header and panel styles match
+ * only in here, and it is where the appearance controller writes its
+ * data-* attributes (data-appearance-root) instead of <html>. The page's
+ * <html>, body, tokens and theme are left exactly as they were.
+ *
+ * The wrapper is always dark (see _scope.css): the 404 sits on a dark sky,
+ * so the header must read there whatever theme is saved. The saved choices
+ * are still shown and kept, for the portfolio pages.
+ */
+import Header from './Header.astro';
+import { APPEARANCE_DEFAULTS } from '../../lib/portfolio/appearance';
+import '../../styles/portfolio/portfolio.css';
+import '../../styles/portfolio/_scope.css';
+
+const defaults = APPEARANCE_DEFAULTS;
+---
+
+<div
+  class="pf-scope"
+  data-site="portfolio"
+  data-appearance-root
+  data-theme={defaults.theme}
+  data-ink={defaults.ink}
+>
+  <Header />
+</div>

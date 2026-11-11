@@ -1,0 +1,102 @@
+---
+/**
+ * The appearance icon and its panel: theme and ink as native radio groups.
+ * The panel opens under the icon (see _panel.css); the controller is the
+ * bundled module in scripts/appearance.ts, served from 'self'.
+ */
+import {
+  APPEARANCE_PREFS,
+  INK_LABELS,
+  type AppearanceKey,
+} from '../../lib/portfolio/appearance';
+
+const legends: Record<AppearanceKey, string> = {
+  theme: 'theme',
+  ink: 'ink',
+};
+
+const groups = (Object.keys(APPEARANCE_PREFS) as AppearanceKey[]).map(
+  (key) => ({
+    key,
+    legend: legends[key],
+    values: APPEARANCE_PREFS[key] as readonly string[],
+  }),
+);
+---
+
+<span class="pf-tool" data-appearance-tool>
+  <button
+    class="pf-icon-btn"
+    id="appearance-toggle"
+    type="button"
+    aria-expanded="false"
+    aria-controls="appearance-panel"
+    aria-labelledby="appearance-tip"
+  >
+    <svg
+      viewBox="0 0 20 20"
+      width="18"
+      height="18"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M3 5.5h14M3 10h14M3 14.5h14"></path>
+      <circle class="knob" cx="7.5" cy="5.5" r="1.9"></circle>
+      <circle class="knob" cx="12.75" cy="10" r="1.9"></circle>
+      <circle class="knob" cx="6.5" cy="14.5" r="1.9"></circle>
+    </svg>
+  </button>
+  <span class="pf-tip" id="appearance-tip" role="tooltip">appearance</span>
+</span>
+<div
+  class="pf-panel"
+  id="appearance-panel"
+  role="group"
+  aria-labelledby="appearance-title"
+  hidden
+>
+  <div class="pf-panel-head">
+    <h2 id="appearance-title">appearance</h2>
+    <span class="face" aria-hidden="true">( ˘ω˘ )</span>
+  </div>
+  <form id="appearance-form">
+    {
+      groups.map((group) => (
+        <fieldset class="pf-pref">
+          <legend>{group.legend}</legend>
+          <div
+            class:list={[
+              'pf-seg',
+              `pf-seg--${Math.min(group.values.length, 3)}`,
+            ]}
+          >
+            {group.values.map((value) => (
+              <label>
+                <input type="radio" name={group.key} value={value} />
+                {group.key === 'ink' && (
+                  <span class={`swatch swatch--${value}`} aria-hidden="true" />
+                )}
+                {value}
+                {group.key === 'ink' && (
+                  <span class="sr-only">
+                    {' '}
+                    ({INK_LABELS[value as keyof typeof INK_LABELS]})
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ))
+    }
+  </form>
+  <div class="pf-panel-foot">
+    <button class="pf-reset" id="appearance-reset" type="button">reset</button>
+    <p class="pf-status" id="appearance-status" role="status"></p>
+  </div>
+</div>
+
+<script>
+  import { mountAppearance } from '../../scripts/appearance';
+  mountAppearance();
+</script>

@@ -1,0 +1,82 @@
+---
+/**
+ * The portfolio pages' layout: home, about and projects. Its own head
+ * (themed canvas, hashed pre-paint), header, footer and stylesheet, all
+ * scoped to <html data-site="portfolio">. Base.astro, the notes host, Studio
+ * and the admin are untouched by it.
+ *
+ * The shared islands stay: page previews (off home, as before), the loading
+ * line in the header, and the now-playing widget when it is enabled.
+ */
+import '../styles/_variables.css';
+import '../styles/portfolio/portfolio.css';
+import SiteHead, {
+  type Props as SiteHeadProps,
+} from '../components/SiteHead.astro';
+import Prepaint from '../components/portfolio/Prepaint.astro';
+import Header from '../components/portfolio/Header.astro';
+import Footer from '../components/portfolio/Footer.astro';
+import PagePreview from '../components/PagePreview.astro';
+import {
+  APPEARANCE_DEFAULTS,
+  type Appearance,
+} from '../lib/portfolio/appearance';
+import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
+
+export interface Props extends Omit<
+  SiteHeadProps,
+  'documentTheme' | 'fontPreloads'
+> {
+  /** Lay the main content out as a narrow left column and the rest. */
+  split?: boolean;
+}
+
+const {
+  title,
+  description,
+  image,
+  imageAlt,
+  type,
+  modifiedTime,
+  split = false,
+} = Astro.props;
+
+const defaults: Appearance = APPEARANCE_DEFAULTS;
+const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
+---
+
+<!doctype html>
+<html
+  lang="en"
+  data-site="portfolio"
+  data-theme={defaults.theme}
+  data-ink={defaults.ink}
+>
+  <head>
+    <SiteHead
+      {title}
+      {description}
+      {image}
+      {imageAlt}
+      {type}
+      {modifiedTime}
+      documentTheme={false}
+      fontPreloads="none"
+    >
+      <Prepaint />
+      <slot name="head" />
+    </SiteHead>
+  </head>
+  <body>
+    <a href="#main" class="skip-link link">skip to content</a>
+    <div class="pf-page">
+      <Header />
+      <main id="main" class:list={['pf-main', split && 'pf-split']}>
+        <slot />
+      </main>
+      <Footer />
+    </div>
+    {Astro.url.pathname !== '/' && <PagePreview />}
+    {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
+  </body>
+</html>

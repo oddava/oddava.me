@@ -1,0 +1,181 @@
+/* ===================================================
+   PORTFOLIO — tokens (home, about, projects only)
+
+   Everything here is scoped to <html data-site="portfolio">, which only the
+   Portfolio layout renders. The notes host, Studio and the admin never carry
+   the attribute, so none of this can reach them.
+   =================================================== */
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url(/fonts/dm-sans-latin-variable.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
+  size-adjust: 105%;
+  ascent-override: 94.5%;
+  descent-override: 29.5%;
+  line-gap-override: 0%;
+}
+
+:root[data-site='portfolio'],
+.pf-scope[data-site='portfolio'] {
+  font-size: 100%;
+  color-scheme: light;
+  --bg: #ffffff;
+  --ink: #20242a;
+  --ink-2: #59616b;
+  --hover: #f2f5f9;
+  --scrim: rgb(10 12 16 / 0.18);
+  --line: #e3e7ec;
+  --line-2: #cfd5dd;
+  --surface-2: #f6f8fa;
+  --panel: #ffffff;
+  --panel-shadow:
+    0 1px 2px rgb(32 36 42 / 0.06), 0 18px 40px -16px rgb(32 36 42 / 0.24);
+  --on-accent: #ffffff;
+  --ok: #1d6b3c;
+  --bad: #b3261e;
+
+  /* Ink (accent) per theme; ai is the default. */
+  --acc-l: #245dcc;
+  --foc-l: #17489e;
+  --acc-d: #8db1ff;
+  --foc-d: #b9cfff;
+  --accent: var(--acc-l);
+  --focus: var(--foc-l);
+
+  --sans: 'DM Sans', 'DM Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  --prose: var(--sans);
+
+  /* Spacing multiplier, kept at 1 (density was dropped from the panel). */
+  --d: 1;
+  --lh: 1.6;
+
+  /* Type scale: one page-title size on every page, the name a step up. */
+  --t-name: clamp(2.25rem, 1.6rem + 2.2vw, 3rem);
+  --t-title: clamp(1.875rem, 1.5rem + 1.2vw, 2.375rem);
+  --t-item: 1.3125rem;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --settle: linear(
+    0,
+    0.34 9%,
+    0.72 20%,
+    0.98 33%,
+    1.05 44%,
+    1.03 56%,
+    1 72%,
+    1
+  );
+}
+
+:root[data-site='portfolio'][data-ink='sakura'],
+.pf-scope[data-site='portfolio'][data-ink='sakura'] {
+  --acc-l: #b5306b;
+  --foc-l: #8e2252;
+  --acc-d: #f391ba;
+  --foc-d: #f9c2d9;
+}
+:root[data-site='portfolio'][data-ink='matcha'],
+.pf-scope[data-site='portfolio'][data-ink='matcha'] {
+  --acc-l: #2f7a3b;
+  --foc-l: #225c2b;
+  --acc-d: #86cc90;
+  --foc-d: #b5e3bb;
+}
+:root[data-site='portfolio'][data-ink='fuji'],
+.pf-scope[data-site='portfolio'][data-ink='fuji'] {
+  --acc-l: #6a4cc2;
+  --foc-l: #523799;
+  --acc-d: #b8a5ff;
+  --foc-d: #d5cbff;
+}
+:root[data-site='portfolio'][data-ink='sora'],
+.pf-scope[data-site='portfolio'][data-ink='sora'] {
+  --acc-l: #0c6c8a;
+  --foc-l: #08546b;
+  --acc-d: #72c8e3;
+  --foc-d: #a8dff0;
+}
+
+/* The scoped header (the 404) is always dark: it sits on a dark sky. */
+:root[data-site='portfolio'][data-theme='dark'],
+.pf-scope[data-site='portfolio'] {
+  color-scheme: dark;
+  --bg: #15181d;
+  --ink: #e6e9ee;
+  --ink-2: #a3abb6;
+  --hover: #1f242b;
+  --scrim: rgb(0 0 0 / 0.4);
+  --line: #2b3139;
+  --line-2: #3a414b;
+  --surface-2: #1a1e24;
+  --panel: #1b1f25;
+  --panel-shadow:
+    0 1px 2px rgb(0 0 0 / 0.3), 0 20px 44px -18px rgb(0 0 0 / 0.7);
+  --on-accent: #10141a;
+  --ok: #91e3bf;
+  --bad: #ffa3ad;
+  --accent: var(--acc-d);
+  --focus: var(--foc-d);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-site='portfolio'][data-theme='system'] {
+    color-scheme: dark;
+    --bg: #15181d;
+    --ink: #e6e9ee;
+    --ink-2: #a3abb6;
+    --hover: #1f242b;
+    --scrim: rgb(0 0 0 / 0.4);
+    --line: #2b3139;
+    --line-2: #3a414b;
+    --surface-2: #1a1e24;
+    --panel: #1b1f25;
+    --panel-shadow:
+      0 1px 2px rgb(0 0 0 / 0.3), 0 20px 44px -18px rgb(0 0 0 / 0.7);
+    --on-accent: #10141a;
+    --ok: #91e3bf;
+    --bad: #ffa3ad;
+    --accent: var(--acc-d);
+    --focus: var(--foc-d);
+  }
+}
+
+/* The shared islands (guestbook, page preview, loading line, now-playing)
+   read the site-wide colour roles. On portfolio pages those roles point at
+   the portfolio tokens, so the islands follow the theme and ink; their own
+   stylesheets are untouched. */
+:root[data-site='portfolio'],
+.pf-scope[data-site='portfolio'] {
+  --color-brand: var(--accent);
+  --color-brand-strong: var(--focus);
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--ink-2);
+  --color-text-muted: var(--ink-2);
+  --color-text-accent: var(--accent);
+  --color-text-interactive: var(--accent);
+  --color-text-interactive-hover: var(--focus);
+  --color-text-success: var(--ok);
+  --color-text-error: var(--bad);
+  --color-surface: var(--bg);
+  --color-surface-raised: var(--panel);
+  --color-surface-elevated: var(--panel);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent);
+  --color-accent-hover: var(--focus);
+  --color-rule: var(--line);
+  --color-rule-strong: color-mix(in srgb, var(--ink-2) 45%, var(--line));
+  --color-overlay-soft: var(--hover);
+  --color-focus-ring: var(--focus);
+  --color-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+  --font-body: var(--sans);
+  --font-prose: var(--prose);
+}

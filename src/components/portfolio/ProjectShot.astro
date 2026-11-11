@@ -1,0 +1,71 @@
+---
+/**
+ * One project on /projects: a large rounded picture, then the name (the
+ * whole card is its link), the year and the one-line description. Focus and
+ * zoom set in the admin carry over through data attributes. A project with
+ * no picture, or marked unavailable, says so plainly instead.
+ */
+import { displayAttributes } from '../../lib/project-image';
+import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
+import {
+  projectHref,
+  type PresentedProject,
+} from '../../lib/portfolio-projects';
+
+interface Props {
+  project: PresentedProject;
+  /** Only the first picture can be on screen at load. */
+  eager?: boolean;
+}
+
+const { project, eager = false } = Astro.props;
+const image = project.previewUnavailable ? undefined : project.image;
+const contain = image?.fit === 'contain';
+const display = image && !contain ? displayAttributes(image) : {};
+const href = projectHref(project);
+---
+
+<li class:list={['pf-card', href && 'pf-card--linked']}>
+  {
+    image ? (
+      <div class:list={['pf-shot', contain && 'pf-shot--contain']}>
+        <img
+          class="pcard__img"
+          {...display}
+          src={image.src}
+          alt={image.alt}
+          width="1600"
+          height="1000"
+          loading={eager ? 'eager' : 'lazy'}
+          fetchpriority={eager ? 'high' : 'auto'}
+          decoding="async"
+        />
+      </div>
+    ) : (
+      <div class="pf-shot pf-shot--unavailable">
+        <span>preview unavailable</span>
+      </div>
+    )
+  }
+  <div class="pf-card-head">
+    <h2 class="pf-card-title">
+      {
+        href ? (
+          <a href={href} {...externalLinkAttrs(href)}>
+            {project.name}
+            <span class="pf-arrow" aria-hidden="true">
+              {isExternalHref(href) ? '↗' : '→'}
+            </span>
+            {isExternalHref(href) && (
+              <span class="sr-only"> (opens in new tab)</span>
+            )}
+          </a>
+        ) : (
+          project.name
+        )
+      }
+    </h2>
+    <span class="pf-year">{String(project.year)}</span>
+  </div>
+  <p class="pf-card-desc prose">{project.description}</p>
+</li>

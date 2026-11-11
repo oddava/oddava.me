@@ -47,7 +47,10 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
     <div class:list={['page', wide && 'page--wide', sky && 'page--sky']}>
       <a href="#main" class="skip-link">Skip to content</a>
 
-      {!hideNav && <SiteNav />}
+      {
+        !hideNav &&
+          (Astro.slots.has('header') ? <slot name="header" /> : <SiteNav />)
+      }
 
       <main id="main">
         <slot />

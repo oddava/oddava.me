@@ -1,0 +1,60 @@
+---
+/**
+ * Portfolio header: the wordmark home, then projects, about and notes, then
+ * the appearance icon. Notes is the separate notes site, so it is a plain
+ * outbound link (a new tab when it is on another origin) and never the
+ * current page here.
+ */
+import LoadingIndicator from '../LoadingIndicator.astro';
+import AppearanceControl from './AppearanceControl.astro';
+import { notesIndexUrl } from '../../lib/notes-url';
+import { externalLinkAttrs } from '../../lib/portfolio/links';
+
+const pathname =
+  Astro.url.pathname.replace(/(?:\/index)?\.html$|\/$/, '') || '/';
+
+const pages = [
+  { href: '/projects', name: 'projects' },
+  { href: '/about', name: 'about' },
+] as const;
+
+const current = (href: string) =>
+  pathname === href ? ('page' as const) : undefined;
+---
+
+<header class="pf-header">
+  <a
+    class="pf-mark"
+    href="/"
+    aria-current={current('/')}
+    data-page-preview-ignore>oddava</a
+  >
+  <div class="pf-end">
+    <nav class="pf-nav" aria-label="primary">
+      {
+        pages.map((page) => (
+          <a
+            href={page.href}
+            aria-current={current(page.href)}
+            data-page-preview-ignore
+          >
+            {page.name}
+          </a>
+        ))
+      }
+      <a
+        href={notesIndexUrl()}
+        {...externalLinkAttrs(notesIndexUrl())}
+        data-page-preview-ignore
+      >
+        notes{
+          externalLinkAttrs(notesIndexUrl()).target && (
+            <span class="sr-only"> (opens in new tab)</span>
+          )
+        }
+      </a>
+    </nav>
+    <AppearanceControl />
+  </div>
+  <LoadingIndicator />
+</header>

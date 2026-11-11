@@ -6,7 +6,7 @@ import type { ProjectImage } from './contracts';
  *
  * Values are stepped, not free: the public pages run under a hashed CSP with
  * no inline styles, so the card cannot carry `style="object-position: …"`.
- * Each step instead has one rule in `_projects.css`, picked by a data
+ * Each step instead has one rule in `_project-image.css`, picked by a data
  * attribute. Defaults are omitted from storage, so an image saved before these
  * fields existed reads back unchanged.
  */

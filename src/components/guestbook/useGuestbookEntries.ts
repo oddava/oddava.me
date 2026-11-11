@@ -9,12 +9,15 @@ export function useGuestbookEntries() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [writable, setWritable] = useState(true);
+  /** The last read failed: the list and the posting state are unknown. */
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const refreshEntries = useCallback(async () => {
     try {
       const data = await fetchGuestbookState();
       setEntries(data.entries);
       setWritable(data.writable);
+      setLoadFailed(false);
       setError(null);
     } catch (loadError) {
       setError(
@@ -23,6 +26,7 @@ export function useGuestbookEntries() {
           : 'Could not load guestbook messages.',
       );
       setWritable(false);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -72,6 +76,7 @@ export function useGuestbookEntries() {
   return {
     entries,
     error,
+    loadFailed,
     loading,
     refreshEntries,
     setError,

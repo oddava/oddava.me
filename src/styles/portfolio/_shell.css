@@ -1,0 +1,620 @@
+/* ===================================================
+   PORTFOLIO — page frame, header, footer, links
+   =================================================== */
+
+[data-site='portfolio'] *,
+[data-site='portfolio'] *::before,
+[data-site='portfolio'] *::after {
+  box-sizing: border-box;
+}
+
+[data-site='portfolio'] {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--bg);
+  scrollbar-gutter: stable;
+}
+
+[data-site='portfolio'] body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-optical-sizing: auto;
+  font-size: 1.0625rem; /* 17px at standard size */
+  line-height: var(--lh);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-site='portfolio'] :where(h1, h2, h3, p, ul, ol, fieldset, figure) {
+  margin: 0;
+}
+
+[data-site='portfolio'] :where(ul, ol) {
+  padding: 0;
+  list-style: none;
+}
+
+[data-site='portfolio'] h1 {
+  text-wrap: balance;
+}
+
+[data-site='portfolio'] p {
+  text-wrap: pretty;
+}
+
+[data-site='portfolio'] ::selection {
+  background: var(--color-selection);
+}
+
+[data-site='portfolio'] .prose {
+  font-family: var(--prose);
+}
+
+[data-site='portfolio'] .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+[data-site='portfolio'] a {
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-site='portfolio'] :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Underline means link: straight at rest, a small tilde wave in the ink
+   colour on hover. */
+[data-site='portfolio'] .link {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  transition:
+    color 120ms ease,
+    text-decoration-color 120ms ease;
+}
+
+[data-site='portfolio'] a.link {
+  padding: 0.25em 0.2em;
+  margin: -0.25em -0.2em;
+  border-radius: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .link:hover,
+  [data-site='portfolio'] a:hover .link {
+    color: var(--accent);
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* A small arrow that slides in beside a link's label on hover or focus. */
+[data-site='portfolio'] .pf-arrow {
+  display: inline-block;
+  margin-left: 0.3em;
+  color: var(--accent);
+  font-weight: 400;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity 160ms ease,
+    transform 260ms var(--ease-out);
+}
+
+[data-site='portfolio'] a:focus-visible .pf-arrow,
+[data-site='portfolio'] .pf-arrow--shown {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] a:hover .pf-arrow,
+  [data-site='portfolio'] .pf-card--linked:hover .pf-arrow {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-site='portfolio'] .skip-link {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 5;
+  padding: 10px 14px;
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 8px;
+  transform: translateY(-160%);
+}
+
+[data-site='portfolio'] .skip-link:focus-visible {
+  transform: none;
+}
+
+/* ---- Page frame -------------------------------------------------------- */
+
+/* The frame fills the screen, so the footer rests at the bottom of a short
+   page instead of floating mid-screen. */
+[data-site='portfolio'] .pf-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 68rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 28px 20px calc(28px * var(--d));
+}
+
+[data-site='portfolio'] .pf-main {
+  margin-top: calc(48px * var(--d));
+}
+
+/* Projects and about: one centred column, the title above the content.
+   Home keeps the two-column split below. */
+[data-site='portfolio'] .pf-column {
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+/* Every page title: the same size, weight and tracking. */
+[data-site='portfolio'] .pf-title {
+  font-size: var(--t-title);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+}
+
+/* Home: the name in a narrow left column, the work beside it. On narrow
+   screens the two stack. */
+@media (min-width: 55em) {
+  [data-site='portfolio'] .pf-page {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  [data-site='portfolio'] .pf-main {
+    margin-top: calc(112px * var(--d));
+  }
+  [data-site='portfolio'] .pf-split {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+    column-gap: clamp(64px, 9vw, 128px);
+    align-items: start;
+  }
+}
+
+/* ---- Header ------------------------------------------------------------ */
+
+[data-site='portfolio'] .pf-header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+}
+
+/* Plain wordmark: the site's name in the UI face. */
+[data-site='portfolio'] .pf-mark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 1.1875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* The links and the appearance icon sit at the right end; when the row is
+   too narrow they wrap under the wordmark and stay right-aligned, so the
+   panel anchored to the icon always has the page width to open into. */
+[data-site='portfolio'] .pf-end {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  /* The 44px icon button is wider than its 18px glyph; pull it out so the
+     glyph, not the hit area, ends on the content edge. */
+  margin-right: -13px;
+}
+
+[data-site='portfolio'] .pf-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+[data-site='portfolio'] .pf-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 7px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+@media (min-width: 30em) {
+  [data-site='portfolio'] .pf-nav a {
+    padding: 0 10px;
+  }
+}
+
+/* The ring is the link's own box, so it never reaches the next link. */
+[data-site='portfolio'] .pf-nav a:focus-visible,
+[data-site='portfolio'] .pf-mark:focus-visible,
+[data-site='portfolio'] .pf-contacts a:focus-visible,
+[data-site='portfolio'] .pf-icon-btn:focus-visible {
+  outline-offset: 0;
+  border-radius: 8px;
+}
+
+/* The page you are on: ink text with a small wave under it. */
+[data-site='portfolio'] .pf-nav a[aria-current='page'] {
+  color: var(--ink);
+  text-decoration: underline wavy var(--accent) 1.5px;
+  text-underline-offset: 0.3em;
+}
+
+/* Appearance: an icon drawn like the nav text beside it — same grey, same
+   line weight, no fill and never a box. The 44px button is only the hit
+   area: it overhangs the content edge so the glyph can end on it, so any
+   fill would stick out. Hover darkens the glyph; open adds a short ink
+   line under it, like the current page's wave. */
+[data-site='portfolio'] .pf-tool {
+  position: static;
+}
+
+[data-site='portfolio'] .pf-icon-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: max(44px, 2.75rem);
+  height: max(44px, 2.75rem);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+[data-site='portfolio'] .pf-icon-btn svg {
+  display: block;
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Knobs are rings in the page colour, so the slider lines break around
+   them: the same single-weight drawing, nothing filled in. */
+[data-site='portfolio'] .pf-icon-btn .knob {
+  fill: var(--bg);
+}
+
+[data-site='portfolio'] .pf-icon-btn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 18px;
+  height: 1.5px;
+  margin-left: -9px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform 180ms var(--ease-out);
+}
+
+[data-site='portfolio'] .pf-icon-btn[aria-expanded='true'] {
+  color: var(--ink);
+}
+
+[data-site='portfolio'] .pf-icon-btn[aria-expanded='true']::after {
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-mark:hover,
+  [data-site='portfolio'] .pf-nav a:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+  [data-site='portfolio'] .pf-icon-btn:hover {
+    color: var(--ink);
+  }
+}
+
+/* The tooltip is the button's accessible name (aria-labelledby). It shows on
+   keyboard focus at once and on hover after a short pause. */
+[data-site='portfolio'] .pf-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 3;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    visibility 0s linear 120ms;
+}
+
+[data-site='portfolio'] .pf-icon-btn:focus-visible + .pf-tip {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-icon-btn:hover + .pf-tip {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 120ms ease 300ms;
+  }
+}
+
+/* Escape dismisses the tooltip (WCAG 1.4.13); an open panel hides it too. */
+[data-site='portfolio'] .pf-tool.tip-off .pf-tip,
+[data-site='portfolio'] .pf-icon-btn[aria-expanded='true'] + .pf-tip {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* ---- Phone header --------------------------------------------------------
+   Below 40em the page header becomes a 56px bar that stays at the top while
+   the page scrolls, over a frosted copy of the page colour. A hairline fades
+   in once the page has moved, driven by scroll alone (no script). The glass
+   sits on ::before so the header itself never gets a backdrop-filter, which
+   would trap the fixed loading line and the panel scrim inside it. Only the
+   portfolio pages' own header does this; the 404's scoped header does not. */
+
+@media (max-width: 40em) {
+  [data-site='portfolio'] .pf-page {
+    padding-top: 0;
+  }
+  [data-site='portfolio'] .pf-page > .pf-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-wrap: nowrap;
+    min-height: 56px;
+    margin: 0 -20px;
+    padding: 6px 20px;
+    border-bottom: 1px solid transparent;
+  }
+  [data-site='portfolio'] .pf-page > .pf-header::before {
+    content: '';
+    position: absolute;
+    /* The glass runs 48px past the bar and is masked back to it: a blur
+       samples only its own box, so without the overhang text just below
+       the bar's edge would be read unblurred as it slides under. */
+    inset: 0 0 -48px;
+    z-index: -1;
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent 0);
+    mask-image: linear-gradient(#000 calc(100% - 48px), transparent 0);
+    background: linear-gradient(
+      color-mix(in srgb, var(--bg) 90%, transparent) calc(100% - 48px),
+      transparent 0
+    );
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+  [data-site='portfolio'] .pf-mark {
+    font-size: 1.125rem;
+  }
+  [data-site='portfolio'] .pf-end {
+    gap: 0;
+  }
+  [data-site='portfolio'] .pf-nav {
+    flex-wrap: nowrap;
+  }
+  [data-site='portfolio'] .pf-nav a {
+    padding: 0 9px;
+    font-size: 0.96875rem;
+  }
+  [data-site='portfolio'] .pf-main {
+    margin-top: calc(32px * var(--d));
+  }
+  /* The bar spans the gutters; the panel keeps to the content width. */
+  [data-site='portfolio'] .pf-page > .pf-header .pf-panel {
+    left: 20px;
+    right: 20px;
+    width: auto;
+  }
+
+  /* With the settings open, a soft scrim dims the page behind the panel;
+     a tap on it lands outside the panel, which closes it. */
+  [data-site='portfolio']
+    .pf-page
+    > .pf-header:has(#appearance-panel:not([hidden]))::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background: var(--scrim);
+    animation: pf-fade-in 160ms ease both;
+  }
+  /* The bar stays above the scrim; its hairline marks where the dim
+     starts. A shadow, since the scroll animation owns the border. */
+  [data-site='portfolio']
+    .pf-page
+    > .pf-header:has(#appearance-panel:not([hidden])) {
+    box-shadow: 0 1px 0 var(--line);
+  }
+}
+
+@media (max-width: 22.5em) {
+  [data-site='portfolio'] .pf-nav a {
+    padding: 0 6px;
+  }
+}
+
+@keyframes pf-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (max-width: 40em) {
+    [data-site='portfolio'] .pf-page > .pf-header {
+      animation: pf-head-rule linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 48px;
+    }
+  }
+}
+
+@keyframes pf-head-rule {
+  to {
+    border-bottom-color: var(--line);
+  }
+}
+
+/* ---- Footer ------------------------------------------------------------ */
+
+[data-site='portfolio'] .pf-footer {
+  margin-top: auto;
+  padding-top: calc(64px * var(--d));
+}
+
+[data-site='portfolio'] .pf-footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 55em) {
+  [data-site='portfolio'] .pf-footer {
+    padding-top: calc(112px * var(--d));
+  }
+}
+
+[data-site='portfolio'] .pf-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: -10px;
+}
+
+[data-site='portfolio'] .pf-contacts a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+[data-site='portfolio'] .pf-contacts a {
+  gap: 7px;
+}
+
+[data-site='portfolio'] .pf-glyph {
+  flex: none;
+  opacity: 0.85;
+}
+
+[data-site='portfolio'] .pf-glyph--github,
+[data-site='portfolio'] .pf-glyph--twitter {
+  fill: currentColor;
+}
+
+[data-site='portfolio'] .pf-glyph--twitter {
+  transform: scale(0.86);
+}
+
+[data-site='portfolio'] .pf-glyph--mail,
+[data-site='portfolio'] .pf-glyph--rss {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+[data-site='portfolio'] .pf-glyph--rss circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-contacts a:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+}
+
+/* ---- Press response ---------------------------------------------------- */
+
+[data-site='portfolio'] .press {
+  transition: background-color 150ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .press {
+    transition:
+      background-color 150ms ease,
+      transform 220ms var(--settle);
+  }
+  [data-site='portfolio'] .press:active {
+    transform: translateY(1px);
+    transition-duration: 150ms, 60ms;
+    transition-timing-function: ease, ease-out;
+  }
+}
+
+/* Reduced motion, from the system: no movement anywhere on the
+   page, including the shared islands. */
+@media (prefers-reduced-motion: reduce) {
+  [data-site='portfolio'] *,
+  [data-site='portfolio'] *::before,
+  [data-site='portfolio'] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,128 +1,51 @@
 ---
-// Prerendered: the hero and the static lines are the same for everyone. The
-// two Redis-backed parts — the project strip and the latest notes — are
-// server islands, fetched after first paint.
+// Prerendered: the name, tagline and links are the same for everyone. The
+// project rows read the live list, so they are a server island, fetched
+// after first paint.
 export const prerender = true;
-import Base from '@layouts/Base.astro';
-import Footer from '../components/Footer.astro';
-import AwakeSky from '../components/awake/AwakeSky.astro';
-import RecentNotes from '../components/home/RecentNotes.astro';
-import ProjectStrip from '../components/home/ProjectStrip.astro';
-import linksData from '../data/links.json';
+import Portfolio from '@layouts/Portfolio.astro';
+import ProjectList from '../components/portfolio/ProjectList.astro';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
-import '../styles/components/_awake.css';
-import '../styles/components/_projects.css';
-import '../styles/components/_home.css';
+import { registerPortfolioCsp } from '../lib/portfolio/csp';
+import '../styles/portfolio/_home.css';
 
-// Off-site contacts only; the header already covers on-site pages.
-const contacts = linksData.links.flatMap(({ url, ...link }) =>
-  url && !url.startsWith('/') ? [{ ...link, url }] : [],
-);
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
+
 const routes = getPublicNavigationRoutes();
 const pageHref = (label: string) =>
   routes.find((route) => route.label === label)?.href ?? '/';
 ---
 
-<Base>
-  <div class="awake-band" data-awake-band slot="background" aria-hidden="true">
-    <AwakeSky />
-    <canvas class="awake-cat" data-awake-cat></canvas>
-    <div class="awake-ground" data-awake-ground></div>
-    <canvas class="awake-fx" data-awake-fx></canvas>
-    <div class="awake-dim" data-awake-dim></div>
-  </div>
-
-  <section class="awake awake--band" data-awake>
-    <div class="awake-stage">
-      <div class="awake-intro">
-        <h1 class="awake-name awake-in awake-in--name" data-awake-perch>
-          oddava
-        </h1>
-        <p class="awake-tagline awake-in awake-in--tagline">
-          i write software, interrogate SI (silly intellect), and make tools for
-          small&nbsp;annoyances.
-        </p>
-      </div>
-    </div>
-    <button class="awake-pet" type="button" data-awake-pet>pet the cat</button>
-    <p class="sr-only" aria-live="polite" data-awake-live></p>
+<Portfolio split>
+  <section class="pf-person" aria-labelledby="name">
+    <h1 id="name">
+      <a class="pf-name-link" href={pageHref('about')}>oddava</a>
+    </h1>
+    <svg
+      class="pf-tilde"
+      viewBox="0 0 44 10"
+      width="56"
+      height="13"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M2 6 C 7 1.5, 12 1.5, 17 6 S 27 10.5, 32 6 S 40 2, 42 4"></path>
+    </svg>
+    <p class="pf-tagline prose">
+      i write software, interrogate SI (silly intellect), and make tools for
+      small&nbsp;annoyances.
+    </p>
   </section>
 
-  <section class="home-strip" aria-labelledby="home-projects">
-    <div class="home-head">
-      <h2 class="home-head__label" id="home-projects">
-        <a href={pageHref('projects')}>projects</a>
-      </h2>
-      <div class="gallery-nav" data-gallery-nav hidden>
-        <button type="button" data-step="-1" aria-label="previous project">
-          <span aria-hidden="true">←</span>
-        </button>
-        <button type="button" data-step="1" aria-label="next project">
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
-    </div>
-    <ProjectStrip server:defer galleryHref={pageHref('projects')}>
-      <div class="home-strip__pending" slot="fallback"></div>
-    </ProjectStrip>
+  <section class="pf-work" aria-labelledby="home-projects">
+    <h2 class="sr-only" id="home-projects">projects</h2>
+    <ProjectList server:defer>
+      <div class="pf-entries-pending" slot="fallback"></div>
+    </ProjectList>
+    <p class="pf-more">
+      <a class="link" href={pageHref('projects')}
+        >see all<span class="pf-arrow" aria-hidden="true">→</span></a
+      >
+    </p>
   </section>
-
-  <section class="home-garden" aria-labelledby="home-notes">
-    <div class="home-head">
-      <h2 class="home-head__label" id="home-notes">
-        <a href={pageHref('notes')}>notes</a>
-      </h2>
-    </div>
-    <RecentNotes server:defer>
-      <div class="note-rows--pending" slot="fallback"></div>
-    </RecentNotes>
-  </section>
-
-  <p class="home-links" aria-label="contact and feeds">
-    {
-      contacts.map((link) => {
-        const isExternal = link.url.startsWith('http');
-        return (
-          <a
-            href={link.url}
-            target={isExternal ? '_blank' : undefined}
-            rel={isExternal ? 'noopener noreferrer' : undefined}
-          >
-            {link.title.toLowerCase()}
-            {isExternal && <span class="sr-only"> (opens in new tab)</span>}
-          </a>
-        );
-      })
-    }
-    <a href="/rss.xml">rss</a>
-  </p>
-
-  <Footer slot="footer" />
-</Base>
-
-<script>
-  import { mountAwake } from '../lib/awake/mount';
-  import { mountQuiet } from '../lib/awake/quiet';
-  import { mountGallery } from '../lib/project-gallery';
-
-  const root = document.querySelector<HTMLElement>('[data-awake]');
-  if (root) mountAwake(root);
-  // The cat asleep on the footer; home has no quiet sky to paint.
-  mountQuiet();
-
-  // The strip is a server island: it arrives after this runs, so wait for it.
-  const nav = document.querySelector<HTMLElement>('[data-gallery-nav]');
-  const strip = document.querySelector<HTMLElement>('.home-strip');
-  const mountStrip = () => {
-    const gallery = strip?.querySelector<HTMLElement>('[data-gallery]');
-    if (!gallery || !nav) return false;
-    mountGallery(gallery, nav);
-    return true;
-  };
-  if (strip && !mountStrip()) {
-    const watch = new MutationObserver(() => {
-      if (mountStrip()) watch.disconnect();
-    });
-    watch.observe(strip, { childList: true, subtree: true });
-  }
-</script>
+</Portfolio>

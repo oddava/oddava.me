@@ -1,0 +1,62 @@
+/* ===================================================
+   PORTFOLIO — the scoped header (the 404)
+
+   The wrapper keeps the old header's outer height, so nothing below it
+   moves, but lays the header out exactly as the portfolio pages do: the
+   same 68rem frame, side gutters and top line. The 44px header
+   overhangs the box by a few pixels into empty sky; nothing sits there.
+   =================================================== */
+
+.pf-scope[data-site='portfolio'] {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  /* Base's page column is narrower than the portfolio frame, so the header
+     breaks out of it to the same centred 68rem as on the other pages.
+     100vw counts a classic scrollbar; the 16px keeps the box inside it. */
+  --pf-frame: min(68rem, 100vw - 16px);
+  width: var(--pf-frame);
+  height: 4rem;
+  margin: 0 calc((100% - var(--pf-frame)) / 2);
+  padding: 28px 20px 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-optical-sizing: auto;
+  font-size: 1.0625rem;
+  line-height: var(--lh);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Once Base's column fills the screen, its own gutters are the exact
+   breakout, scrollbar or not. */
+@media (max-width: 38rem) {
+  .pf-scope[data-site='portfolio'] {
+    --pf-frame: calc(100% + 2 * var(--page-padding));
+  }
+}
+
+@media (max-width: 640px) {
+  .pf-scope[data-site='portfolio'] {
+    height: 3.375rem;
+  }
+}
+
+/* On a phone the portfolio pages' bar centres its row 28px from the top;
+   the 404's header sits on the same line. The box height is unchanged. */
+@media (max-width: 40em) {
+  .pf-scope[data-site='portfolio'] {
+    padding-top: 6px;
+  }
+}
+
+@media (min-width: 55em) {
+  .pf-scope[data-site='portfolio'] {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+.pf-scope[data-site='portfolio'] .pf-header {
+  flex: 1 1 auto;
+}

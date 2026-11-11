@@ -1,23 +1,31 @@
 ---
 export const prerender = true;
-import Base from '@layouts/Base.astro';
+import Portfolio from '@layouts/Portfolio.astro';
 import { Guestbook } from '../components/Guestbook';
-import '../styles/components/_about.css';
+import { registerPortfolioCsp } from '../lib/portfolio/csp';
+import '../styles/components/_control.css';
+import '../styles/portfolio/_about.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 ---
 
-<Base
+<Portfolio
   title="About"
   description="Oddava is a software engineer based in Uzbekistan, building web applications and working on Ishbay."
-  sky
 >
-  <article class="about">
-    <h1 class="page-title rise">about</h1>
+  <div class="pf-column">
+    <h1 class="pf-title">about</h1>
 
-    <div class="about__body rise rise--1">
+    <div class="pf-about-body prose">
       <p>
         i'm a software engineer based in uzbekistan. i build web applications,
-        currently working on <a href="https://ishbay.com">Ishbay</a>, a payroll
-        management platform for businesses.
+        currently working on <a
+          class="link"
+          href="https://ishbay.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Ishbay<span class="sr-only"> (opens in new tab)</span></a
+        >, a payroll management platform for businesses.
       </p>
 
       <p>
@@ -27,16 +35,17 @@ import '../styles/components/_about.css';
 
       <p>outside of coding, i enjoy games, anime, and going on long walks.</p>
     </div>
-  </article>
 
-  <div class="about__guestbook rise rise--2">
-    <Guestbook client:idle />
-    <noscript>
-      <p class="guestbook-noscript">
-        the guestbook needs javascript to load and post notes. with it off, you
-        can still say hi at <a href="mailto:hello@oddava.me">hello@oddava.me</a
-        >.
-      </p>
-    </noscript>
+    <div class="pf-about-guestbook">
+      <Guestbook client:idle />
+      <noscript>
+        <p class="guestbook-noscript">
+          the guestbook needs javascript to load and post notes. with it off,
+          you can still say hi at <a href="mailto:hello@oddava.me"
+            >hello@oddava.me</a
+          >.
+        </p>
+      </noscript>
+    </div>
   </div>
-</Base>
+</Portfolio>
