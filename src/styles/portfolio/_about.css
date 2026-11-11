@@ -1,0 +1,48 @@
+/* ===================================================
+   PORTFOLIO — about: the heading beside a short story, then the guestbook
+   =================================================== */
+
+[data-site='portfolio'] .pf-about-title {
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+[data-site='portfolio'] .pf-about-body {
+  margin-top: calc(14px * var(--d));
+  max-width: 62ch;
+  font-size: 1.125rem; /* 18px */
+  line-height: calc(var(--lh) + 0.05);
+  overflow-wrap: break-word;
+}
+
+[data-site='portfolio'] .pf-about-body p + p {
+  margin-top: calc(1.05em * var(--d) + 0.2em);
+}
+
+/* The guestbook island keeps its own stylesheet; here it only takes the
+   content column and the page's rhythm. */
+[data-site='portfolio'] .pf-about-guestbook {
+  max-width: 62ch;
+}
+
+[data-site='portfolio'] .pf-about-guestbook .guestbook {
+  margin-top: calc(56px * var(--d));
+  padding-top: calc(40px * var(--d));
+}
+
+/* Shown only when the guestbook island cannot run (JS disabled). */
+[data-site='portfolio'] .guestbook-noscript {
+  margin-top: calc(40px * var(--d));
+  font-size: 0.9375rem;
+  color: var(--ink-2);
+}
+
+@media (min-width: 55em) {
+  [data-site='portfolio'] .pf-about-body {
+    margin-top: 0;
+  }
+  [data-site='portfolio'] .pf-about-guestbook {
+    grid-column: 2;
+  }
+}

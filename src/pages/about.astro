@@ -1,35 +1,34 @@
 ---
 export const prerender = true;
-import Base from '@layouts/Base.astro';
+import Portfolio from '@layouts/Portfolio.astro';
 import { Guestbook } from '../components/Guestbook';
-import '../styles/components/_about.css';
+import '../styles/components/_control.css';
+import '../styles/portfolio/_about.css';
 ---
 
-<Base
+<Portfolio
   title="About"
   description="Oddava is a software engineer based in Uzbekistan, building web applications and working on Ishbay."
-  sky
+  split
 >
-  <article class="about">
-    <h1 class="page-title rise">about</h1>
+  <h1 class="pf-about-title">about</h1>
 
-    <div class="about__body rise rise--1">
-      <p>
-        i'm a software engineer based in uzbekistan. i build web applications,
-        currently working on <a href="https://ishbay.com">Ishbay</a>, a payroll
-        management platform for businesses.
-      </p>
+  <div class="pf-about-body prose">
+    <p>
+      i'm a software engineer based in uzbekistan. i build web applications,
+      currently working on <a class="link" href="https://ishbay.com">Ishbay</a>,
+      a payroll management platform for businesses.
+    </p>
 
-      <p>
-        i'm interested in backend engineering, system design, self-hosting, and
-        developer tools.
-      </p>
+    <p>
+      i'm interested in backend engineering, system design, self-hosting, and
+      developer tools.
+    </p>
 
-      <p>outside of coding, i enjoy games, anime, and going on long walks.</p>
-    </div>
-  </article>
+    <p>outside of coding, i enjoy games, anime, and going on long walks.</p>
+  </div>
 
-  <div class="about__guestbook rise rise--2">
+  <div class="pf-about-guestbook">
     <Guestbook client:idle />
     <noscript>
       <p class="guestbook-noscript">
@@ -39,4 +38,4 @@ import '../styles/components/_about.css';
       </p>
     </noscript>
   </div>
-</Base>
+</Portfolio>
