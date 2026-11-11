@@ -67,7 +67,10 @@ describe('project image display', () => {
   // The card cannot use inline styles (hashed CSP), so every step needs its
   // own rule. A step added to the module without a rule would do nothing.
   it('has a stylesheet rule for every step', () => {
-    const css = readFileSync('src/styles/components/_projects.css', 'utf8');
+    const css = readFileSync(
+      'src/styles/components/_project-image.css',
+      'utf8',
+    );
     for (let value = 0; value <= 100; value += FOCUS_STEP) {
       if (value === 50) continue;
       expect(css).toContain(`.pcard__img[data-x='${value}']`);

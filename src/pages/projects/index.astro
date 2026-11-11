@@ -1,70 +1,50 @@
 ---
-import Base from '@layouts/Base.astro';
-import ProjectCard from '../../components/projects/ProjectCard.astro';
+import Portfolio from '@layouts/Portfolio.astro';
+import ProjectShot from '../../components/portfolio/ProjectShot.astro';
 import { isStorageUnavailableError } from '../../lib/server/core';
 import { readPublicProjects } from '../../lib/server/projects';
+import { presentProjects } from '../../lib/portfolio-projects';
 import type { Project } from '../../lib/contracts';
-import '../../styles/components/_projects.css';
+import '../../styles/components/_project-image.css';
+import '../../styles/portfolio/_projects-page.css';
 
 // Rendered per request: the list is edited from the admin dashboard and lives
 // in Redis, so a save shows here without a deploy. Featured projects come
-// first; see readPublicProjects.
-let projects: Project[];
+// first (readPublicProjects); presentProjects only changes how they show.
+let stored: Project[];
 try {
-  projects = await readPublicProjects();
+  stored = await readPublicProjects();
 } catch (error) {
   if (isStorageUnavailableError(error)) return Astro.rewrite('/503');
   throw error;
 }
 
-// Only the first image can be on screen at load; the rest wait for the scroll.
-const firstImageId = projects.find((project) => project.image)?.id;
+const projects = presentProjects(stored);
+// Only the first picture can be on screen at load; the rest wait for scroll.
+const firstImageId = projects.find(
+  (project) => !project.previewUnavailable,
+)?.id;
 ---
 
-<Base
+<Portfolio
   title="Projects"
   description="Software oddava has built, from day-job work to side projects."
-  sky
 >
-  <article class="projects-page">
-    <div class="gallery-head">
-      <h1 class="page-title rise">projects</h1>
-      <div class="gallery-nav rise" data-gallery-nav hidden>
-        <button type="button" data-step="-1" aria-label="previous project">
-          <span aria-hidden="true">←</span>
-        </button>
-        <button type="button" data-step="1" aria-label="next project">
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
-    </div>
-
-    <div
-      class="gallery"
-      data-gallery
-      tabindex="0"
-      role="region"
-      aria-label="projects, scroll sideways"
-    >
-      <ol class="gallery__track">
-        {
-          projects.map((project) => (
-            <ProjectCard
+  <div class="pf-column">
+    <h1>projects</h1>
+    {
+      projects.length === 0 ? (
+        <p class="pf-empty">nothing here yet.</p>
+      ) : (
+        <ul class="pf-cards">
+          {projects.map((project) => (
+            <ProjectShot
               project={project}
               eager={project.id === firstImageId}
-              class="rise"
             />
-          ))
-        }
-      </ol>
-    </div>
-  </article>
-</Base>
-
-<script>
-  import { mountGallery } from '../../lib/project-gallery';
-
-  const gallery = document.querySelector<HTMLElement>('[data-gallery]');
-  const nav = document.querySelector<HTMLElement>('[data-gallery-nav]');
-  if (gallery && nav) mountGallery(gallery, nav);
-</script>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</Portfolio>
