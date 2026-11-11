@@ -1,0 +1,54 @@
+---
+/**
+ * Home's projects: the first three of the presented list, as plain rows
+ * (name, then the one-line description). A server island, so home stays
+ * prerendered while this reads the live list per request. The self entry
+ * is dropped before the three are picked (presentProjects, then
+ * pickHomeProjects), so it never takes a slot.
+ */
+import type { Project } from '../../lib/contracts';
+import { pickHomeProjects } from '../../lib/home';
+import { presentProjects, projectHref } from '../../lib/portfolio-projects';
+import { isStorageUnavailableError } from '../../lib/server/core';
+import { readPublicProjects } from '../../lib/server/projects';
+
+let all: Project[] | null;
+try {
+  all = await readPublicProjects();
+} catch (error) {
+  if (!isStorageUnavailableError(error)) throw error;
+  all = null;
+}
+const shown = all ? pickHomeProjects(presentProjects(all)) : [];
+---
+
+{
+  all === null ? (
+    <p class="pf-home-empty">the shelf is out of reach just now.</p>
+  ) : shown.length === 0 ? (
+    <p class="pf-home-empty">nothing here yet.</p>
+  ) : (
+    <ul class="pf-entries">
+      {shown.map((project) => {
+        const href = projectHref(project);
+        const body = (
+          <>
+            <span class="pf-entry-name link">{project.name}</span>
+            <span class="pf-entry-what prose">{project.description}</span>
+          </>
+        );
+        return (
+          <li>
+            {href ? (
+              <a class="pf-entry press" href={href}>
+                {body}
+              </a>
+            ) : (
+              <div class="pf-entry">{body}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  )
+}
