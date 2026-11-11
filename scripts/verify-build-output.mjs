@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cspPolicyFailures } from './lib/csp-policy.mjs';
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -42,11 +43,19 @@ for (const filePath of htmlFiles) {
   if (!isRedirect && !/sha256-[a-z0-9+/]+=*/i.test(html)) {
     failures.push(`${relativePath}: CSP does not contain generated hashes`);
   }
-  if (/unsafe-inline/i.test(html)) {
-    failures.push(`${relativePath}: CSP contains unsafe-inline`);
+  // Astro writes the policy in a double-quoted attribute; its sources are
+  // single-quoted ('self', 'sha256-…').
+  const policy =
+    /<meta\s+http-equiv=["']content-security-policy["']\s+content="([^"]+)"/i.exec(
+      html,
+    )?.[1];
+  if (!isRedirect && !policy) {
+    failures.push(`${relativePath}: CSP meta policy could not be read`);
   }
-  if (/\sstyle\s*=/i.test(html)) {
-    failures.push(`${relativePath}: contains a blocked inline style attribute`);
+  if (policy) {
+    for (const failure of cspPolicyFailures(policy)) {
+      failures.push(`${relativePath}: CSP ${failure}`);
+    }
   }
   const canonical = /<link rel="canonical" href="([^"]+)"/i.exec(html)?.[1];
   if (canonical && /\.html$/i.test(canonical)) {

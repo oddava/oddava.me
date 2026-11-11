@@ -174,7 +174,13 @@ multi-key operations use Lua.
 ### Security
 
 Astro emits a hashed, page-specific CSP (configured in `astro.config.mjs`;
-`markdown.syntaxHighlight` is off so Shiki's inline styles can't loosen it).
+`markdown.syntaxHighlight` is off so Astro's own Shiki pass never runs).
+Scripts and `<style>` elements are hash-only. The one loosening is
+`style-src-attr 'unsafe-inline'` (inline `style` attributes, via the
+`kind: 'attribute'` resource): never widen it to `style-src`, which would stop
+hashing style elements, and never add `unsafe-*` to `script-src`.
+`scripts/lib/csp-policy.mjs` holds these rules; the build verifier applies them
+to every prerendered page and `tests/csp-policy.test.ts` pins them.
 Middleware adds baseline headers and header-only `frame-ancestors` to dynamic
 responses; `public/_headers` applies the same policy to asset-first prerendered
 pages; admin pages are `no-store` and API routes own their cache policy. Secrets

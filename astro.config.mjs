@@ -50,8 +50,18 @@ export default defineConfig({
       scriptDirective: {
         resources: ["'self'"],
       },
+      // Inline `style` attributes are allowed, and only those: the
+      // `attribute` kind lands in `style-src-attr`, so `style-src` and
+      // `style-src-elem` keep their generated hashes and a `<style>` element
+      // still needs one. A style attribute has no selectors, so it cannot read
+      // the page the way an injected stylesheet can. It carries per-element
+      // values (entrance order, image ratios, a note's own ink) and the
+      // `style=` sizing on Studio-authored figures. Scripts stay hash-only.
       styleDirective: {
-        resources: ["'self'"],
+        resources: [
+          "'self'",
+          { resource: "'unsafe-inline'", kind: 'attribute' },
+        ],
       },
     },
   },
