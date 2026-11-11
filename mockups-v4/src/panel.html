@@ -1,0 +1,101 @@
+    <div
+      class="panel"
+      id="appearance-panel"
+      role="group"
+      aria-labelledby="appearance-title"
+      hidden
+    >
+      <div class="panel-head">
+        <h2 id="appearance-title">appearance</h2>
+        <span class="face" aria-hidden="true">( ˘ω˘ )</span>
+      </div>
+      <form id="appearance-form">
+        <fieldset class="pref">
+          <legend>theme</legend>
+          <div class="seg">
+            <label><input type="radio" name="theme" value="system" />system</label>
+            <label><input type="radio" name="theme" value="light" />light</label>
+            <label><input type="radio" name="theme" value="dark" />dark</label>
+          </div>
+        </fieldset>
+        <fieldset class="pref">
+          <legend>ink</legend>
+          <div class="seg">
+            <label
+              ><input type="radio" name="ink" value="ai" /><span
+                class="swatch"
+                style="--sl: #245dcc; --sd: #8db1ff"
+                aria-hidden="true"
+              ></span
+              >ai<span class="sr"> (indigo)</span></label
+            >
+            <label
+              ><input type="radio" name="ink" value="sakura" /><span
+                class="swatch"
+                style="--sl: #b5306b; --sd: #f391ba"
+                aria-hidden="true"
+              ></span
+              >sakura<span class="sr"> (pink)</span></label
+            >
+            <label
+              ><input type="radio" name="ink" value="matcha" /><span
+                class="swatch"
+                style="--sl: #2f7a3b; --sd: #86cc90"
+                aria-hidden="true"
+              ></span
+              >matcha<span class="sr"> (green)</span></label
+            >
+            <label
+              ><input type="radio" name="ink" value="fuji" /><span
+                class="swatch"
+                style="--sl: #6a4cc2; --sd: #b8a5ff"
+                aria-hidden="true"
+              ></span
+              >fuji<span class="sr"> (wisteria)</span></label
+            >
+            <label
+              ><input type="radio" name="ink" value="sora" /><span
+                class="swatch"
+                style="--sl: #0c6c8a; --sd: #72c8e3"
+                aria-hidden="true"
+              ></span
+              >sora<span class="sr"> (sky)</span></label
+            >
+          </div>
+        </fieldset>
+        <fieldset class="pref">
+          <legend>reading font</legend>
+          <div class="seg">
+            <label><input type="radio" name="read" value="sans" />sans</label>
+            <label><input type="radio" name="read" value="serif" />serif</label>
+          </div>
+        </fieldset>
+        <fieldset class="pref">
+          <legend>text size</legend>
+          <div class="seg">
+            <label><input type="radio" name="size" value="standard" />standard</label>
+            <label><input type="radio" name="size" value="large" />large</label>
+          </div>
+        </fieldset>
+        <fieldset class="pref">
+          <legend>density</legend>
+          <div class="seg">
+            <label
+              ><input type="radio" name="density" value="comfortable" />comfortable</label
+            >
+            <label><input type="radio" name="density" value="compact" />compact</label>
+          </div>
+        </fieldset>
+        <fieldset class="pref">
+          <legend>motion</legend>
+          <div class="seg">
+            <label><input type="radio" name="motion" value="system" />system</label>
+            <label><input type="radio" name="motion" value="reduced" />reduced</label>
+          </div>
+        </fieldset>
+      </form>
+      <div class="panel-foot">
+        <button class="reset" id="appearance-reset" type="button">reset</button>
+        <p class="status" id="appearance-status" role="status"></p>
+      </div>
+    </div>

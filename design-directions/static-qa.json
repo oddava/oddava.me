@@ -1,0 +1,8 @@
+{
+  "noteCount": 15,
+  "mockCount": 6,
+  "localLinksAndAnchors": "pass",
+  "embeddedFonts": "pass",
+  "remoteAssets": "none",
+  "source": "node design-directions/qa.mjs"
+}

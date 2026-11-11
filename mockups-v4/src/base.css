@@ -1,0 +1,644 @@
+/* oddava mockups v4 (B). One system, two themes, six visitor preferences. */
+
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
+  size-adjust: 105%;
+  ascent-override: 94.5%;
+  descent-override: 29.5%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Lora Fallback';
+  src: local('Georgia'), local('Times New Roman');
+  size-adjust: 104%;
+}
+
+/* ---- Tokens ------------------------------------------------------------ */
+
+:root {
+  font-size: 100%;
+  color-scheme: light;
+  --bg: #ffffff;
+  --ink: #20242a;
+  --ink-2: #59616b;
+  --hover: #f2f5f9;
+  --line: #e3e7ec;
+  --panel: #ffffff;
+  --panel-shadow: 0 12px 32px -12px rgb(32 36 42 / 0.22);
+
+  /* Ink (accent) per theme; ai is the default. */
+  --acc-l: #245dcc;
+  --foc-l: #17489e;
+  --acc-d: #8db1ff;
+  --foc-d: #b9cfff;
+  --accent: var(--acc-l);
+  --focus: var(--foc-l);
+
+  --sans: 'DM Sans', 'DM Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  --serif: 'Lora', 'Lora Fallback', Georgia, serif;
+  --prose: var(--sans);
+
+  /* Density: 1 comfortable, 0.68 compact. */
+  --d: 1;
+  --lh: 1.6;
+
+  --settle: linear(0, 0.34 9%, 0.72 20%, 0.98 33%, 1.05 44%, 1.03 56%, 1 72%, 1);
+}
+
+:root[data-ink='sakura'] {
+  --acc-l: #b5306b;
+  --foc-l: #8e2252;
+  --acc-d: #f391ba;
+  --foc-d: #f9c2d9;
+}
+:root[data-ink='matcha'] {
+  --acc-l: #2f7a3b;
+  --foc-l: #225c2b;
+  --acc-d: #86cc90;
+  --foc-d: #b5e3bb;
+}
+:root[data-ink='fuji'] {
+  --acc-l: #6a4cc2;
+  --foc-l: #523799;
+  --acc-d: #b8a5ff;
+  --foc-d: #d5cbff;
+}
+:root[data-ink='sora'] {
+  --acc-l: #0c6c8a;
+  --foc-l: #08546b;
+  --acc-d: #72c8e3;
+  --foc-d: #a8dff0;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15181d;
+  --ink: #e6e9ee;
+  --ink-2: #a3abb6;
+  --hover: #1f242b;
+  --line: #2b3139;
+  --panel: #1b1f25;
+  --panel-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+  --accent: var(--acc-d);
+  --focus: var(--foc-d);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] {
+    color-scheme: dark;
+    --bg: #15181d;
+    --ink: #e6e9ee;
+    --ink-2: #a3abb6;
+    --hover: #1f242b;
+    --line: #2b3139;
+    --panel: #1b1f25;
+    --panel-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+    --accent: var(--acc-d);
+    --focus: var(--foc-d);
+  }
+}
+
+:root[data-read='serif'] {
+  --prose: var(--serif);
+}
+:root[data-size='large'] {
+  font-size: 112.5%;
+}
+:root[data-density='compact'] {
+  --d: 0.68;
+  --lh: 1.5;
+}
+
+/* ---- Base -------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-optical-sizing: auto;
+  font-size: 1.0625rem; /* 17px at standard size */
+  line-height: var(--lh);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p,
+ul,
+fieldset {
+  margin: 0;
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+h1 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.prose {
+  font-family: var(--prose);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+a {
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Underline means link. Straight at rest; on hover it turns into a little
+   tilde wave in the ink colour. */
+.link {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: var(--accent);
+  transition:
+    color 120ms ease,
+    text-decoration-color 120ms ease;
+}
+
+a.link {
+  padding: 0.25em 0.2em;
+  margin: -0.25em -0.2em;
+  border-radius: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link:hover,
+  a:hover .link {
+    color: var(--accent);
+    text-decoration-style: wavy;
+    text-decoration-thickness: 1.5px;
+  }
+}
+
+.skip {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 3;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+  transform: translateY(-160%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* ---- Page frame -------------------------------------------------------- */
+
+.page {
+  width: 100%;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 28px 20px calc(40px * var(--d));
+}
+
+main {
+  margin-top: calc(40px * var(--d));
+}
+
+.site {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+  row-gap: 0;
+}
+
+/* Plain wordmark: the site's name in the UI face, normal glyphs and kerning. */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 1.1875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mark:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+}
+
+/* Negative margins line the link text up with the page edges, including
+   when the nav wraps under the wordmark on very narrow screens. */
+.site-end {
+  display: flex;
+  align-items: center;
+  margin-right: -10px;
+  margin-left: -8px;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 7px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+@media (min-width: 30em) {
+  .nav a {
+    padding: 0 9px;
+  }
+}
+
+/* The page you're on: ink text with a small wave under it. */
+.nav a[aria-current='page'] {
+  color: var(--ink);
+  text-decoration: underline wavy var(--accent) 1.5px;
+  text-underline-offset: 0.3em;
+}
+
+/* Appearance: a 44px icon button at the end of the nav. The tooltip is its
+   accessible name (aria-labelledby) and shows on hover or keyboard focus. */
+.tool {
+  position: relative;
+  margin-left: 2px;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  /* 44px at standard size; grows with text size and zoom. */
+  width: max(44px, 2.75rem);
+  height: max(44px, 2.75rem);
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.icon-btn svg {
+  display: block;
+  width: 1.375rem;
+  height: 1.375rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.icon-btn .knob {
+  fill: var(--bg);
+}
+
+.icon-btn .knob-ink {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.icon-btn[aria-expanded='true'] {
+  color: var(--ink);
+  background-color: var(--hover);
+}
+
+.tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 3;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    visibility 0s linear 120ms;
+}
+
+.icon-btn:focus-visible + .tip {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav a:hover,
+  .icon-btn:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+  .icon-btn:hover + .tip {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 120ms ease 300ms;
+  }
+}
+
+/* Escape dismisses the tooltip; the panel being open also hides it. */
+.tool.tip-off .tip,
+.icon-btn[aria-expanded='true'] + .tip {
+  visibility: hidden;
+  opacity: 0;
+}
+
+@media (min-width: 55em) {
+  .page {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  main {
+    margin-top: calc(80px * var(--d));
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+    column-gap: clamp(64px, 9vw, 128px);
+    align-items: baseline;
+  }
+}
+
+/* ---- Press response ---------------------------------------------------- */
+
+.press {
+  transition: background-color 150ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion='reduced']) .press {
+    transition:
+      background-color 150ms ease,
+      transform 220ms var(--settle);
+  }
+  :root:not([data-motion='reduced']) .press:active {
+    transform: translateY(1px);
+    transition-duration: 150ms, 60ms;
+    transition-timing-function: ease, ease-out;
+  }
+}
+
+/* ---- Footer + appearance ---------------------------------------------- */
+
+.foot {
+  margin-top: calc(56px * var(--d));
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 55em) {
+  .foot {
+    margin-top: calc(88px * var(--d));
+  }
+}
+
+.foot .contacts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -8px;
+}
+
+.foot .contacts a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .foot .contacts a:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+}
+
+/* Anchored to the appearance icon by app.js (document coordinates), kept
+   inside the viewport horizontally, flipped above when there is no room. */
+.panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  width: min(27rem, calc(100vw - 24px));
+  overflow: auto;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  transform-origin: 100% 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.panel.above {
+  transform-origin: 100% 100%;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.panel-head h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.panel-head .face {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  font-family: system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+.pref {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  padding: 7px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.pref:first-of-type {
+  border-top: 0;
+}
+
+.pref legend {
+  float: left;
+  padding: 0;
+  color: var(--ink-2);
+}
+
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.seg label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.seg input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seg label:has(input:checked) {
+  color: var(--ink);
+  background: var(--hover);
+  font-weight: 500;
+}
+
+.seg label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .seg label:hover {
+    color: var(--ink);
+  }
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sl);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+
+/* Swatches show each ink as it will look in the current theme. */
+:root[data-theme='dark'] .swatch {
+  background: var(--sd);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] .swatch {
+    background: var(--sd);
+  }
+}
+
+.panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.reset {
+  min-height: 36px;
+  margin-left: -10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline 1px var(--accent);
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+}
+
+.status {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+@media (max-width: 30em) {
+  .pref {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+}

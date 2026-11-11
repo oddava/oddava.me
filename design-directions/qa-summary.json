@@ -1,0 +1,434 @@
+[
+  {
+    "file": "margin-home.html",
+    "width": 1440,
+    "rawHeight": 1880,
+    "cropHeight": 1000,
+    "checks": 18,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 9.2,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "margin-home.html",
+    "width": 390,
+    "rawHeight": 2347,
+    "cropHeight": 844,
+    "checks": 18,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 9.2,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "margin-note.html",
+    "width": 1440,
+    "rawHeight": 1394,
+    "cropHeight": 1000,
+    "checks": 19,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 9.2,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "margin-note.html",
+    "width": 390,
+    "rawHeight": 1845,
+    "cropHeight": 844,
+    "checks": 19,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.34,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 9.2,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "parts-home.html",
+    "width": 1440,
+    "rawHeight": 2386,
+    "cropHeight": 1000,
+    "checks": 20,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 8.03,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 8.03,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 8.03,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "parts-home.html",
+    "width": 390,
+    "rawHeight": 3026,
+    "cropHeight": 844,
+    "checks": 20,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 8.03,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 8.03,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 8.03,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "atlas-home.html",
+    "width": 1440,
+    "rawHeight": 1920,
+    "cropHeight": 1000,
+    "checks": 18,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 8.99,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 8.99,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 8.99,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "atlas-home.html",
+    "width": 390,
+    "rawHeight": 3088,
+    "cropHeight": 844,
+    "checks": 18,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 8.99,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 8.99,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 8.99,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "atlas-note.html",
+    "width": 1440,
+    "rawHeight": 1351,
+    "cropHeight": 1000,
+    "checks": 19,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 9.2,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "atlas-note.html",
+    "width": 390,
+    "rawHeight": 1849,
+    "cropHeight": 844,
+    "checks": 19,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.48,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 9.2,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 9.2,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "parts-note.html",
+    "width": 1440,
+    "rawHeight": 1504,
+    "cropHeight": 1000,
+    "checks": 19,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 7.49,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 7.14,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 8.03,
+        "failures": []
+      }
+    }
+  },
+  {
+    "file": "parts-note.html",
+    "width": 390,
+    "rawHeight": 2072,
+    "cropHeight": 844,
+    "checks": 19,
+    "errors": [],
+    "storage": true,
+    "networkAssets": 0,
+    "minimumContrast": {
+      "light-default": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-blue": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "light-green": {
+        "minimum": 5.35,
+        "failures": []
+      },
+      "dark-default": {
+        "minimum": 8.03,
+        "failures": []
+      },
+      "dark-blue": {
+        "minimum": 8.03,
+        "failures": []
+      },
+      "dark-green": {
+        "minimum": 8.03,
+        "failures": []
+      }
+    }
+  }
+]

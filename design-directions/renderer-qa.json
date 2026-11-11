@@ -1,0 +1,314 @@
+[
+  {
+    "name": "margin-home",
+    "width": 1440,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/margin-home-desktop-full.png",
+    "contentHeight": 1880,
+    "capturedHeight": 1880,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"margin-home.html\",\"width\":1440,\"errors\":[],\"checks\":18,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.34,\"failures\":[]},\"light-blue\":{\"minimum\":5.34,\"failures\":[]},\"light-green\":{\"minimum\":5.34,\"failures\":[]},\"dark-default\":{\"minimum\":9.2,\"failures\":[]},\"dark-blue\":{\"minimum\":9.2,\"failures\":[]},\"dark-green\":{\"minimum\":9.2,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 1440,
+      "height": 1880
+    }
+  },
+  {
+    "name": "margin-home",
+    "width": 390,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/margin-home-mobile-full.png",
+    "contentHeight": 2347,
+    "capturedHeight": 2347,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"margin-home.html\",\"width\":390,\"errors\":[],\"checks\":18,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.34,\"failures\":[]},\"light-blue\":{\"minimum\":5.34,\"failures\":[]},\"light-green\":{\"minimum\":5.34,\"failures\":[]},\"dark-default\":{\"minimum\":9.2,\"failures\":[]},\"dark-blue\":{\"minimum\":9.2,\"failures\":[]},\"dark-green\":{\"minimum\":9.2,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 390,
+      "height": 2347
+    }
+  },
+  {
+    "name": "margin-note",
+    "width": 1440,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/margin-note-desktop-full.png",
+    "contentHeight": 1394,
+    "capturedHeight": 1394,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"margin-note.html\",\"width\":1440,\"errors\":[],\"checks\":19,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.34,\"failures\":[]},\"light-blue\":{\"minimum\":5.34,\"failures\":[]},\"light-green\":{\"minimum\":5.34,\"failures\":[]},\"dark-default\":{\"minimum\":9.2,\"failures\":[]},\"dark-blue\":{\"minimum\":9.2,\"failures\":[]},\"dark-green\":{\"minimum\":9.2,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 1440,
+      "height": 1394
+    }
+  },
+  {
+    "name": "margin-note",
+    "width": 390,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/margin-note-mobile-full.png",
+    "contentHeight": 1845,
+    "capturedHeight": 1845,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"margin-note.html\",\"width\":390,\"errors\":[],\"checks\":19,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.34,\"failures\":[]},\"light-blue\":{\"minimum\":5.34,\"failures\":[]},\"light-green\":{\"minimum\":5.34,\"failures\":[]},\"dark-default\":{\"minimum\":9.2,\"failures\":[]},\"dark-blue\":{\"minimum\":9.2,\"failures\":[]},\"dark-green\":{\"minimum\":9.2,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 390,
+      "height": 1845
+    }
+  },
+  {
+    "name": "parts-home",
+    "width": 1440,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/parts-home-desktop-full.png",
+    "contentHeight": 2386,
+    "capturedHeight": 2386,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"parts-home.html\",\"width\":1440,\"errors\":[],\"checks\":20,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.35,\"failures\":[]},\"light-blue\":{\"minimum\":5.35,\"failures\":[]},\"light-green\":{\"minimum\":5.35,\"failures\":[]},\"dark-default\":{\"minimum\":8.03,\"failures\":[]},\"dark-blue\":{\"minimum\":8.03,\"failures\":[]},\"dark-green\":{\"minimum\":8.03,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 1440,
+      "height": 2386
+    }
+  },
+  {
+    "name": "parts-home",
+    "width": 390,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/parts-home-mobile-full.png",
+    "contentHeight": 3026,
+    "capturedHeight": 3026,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"parts-home.html\",\"width\":390,\"errors\":[],\"checks\":20,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.35,\"failures\":[]},\"light-blue\":{\"minimum\":5.35,\"failures\":[]},\"light-green\":{\"minimum\":5.35,\"failures\":[]},\"dark-default\":{\"minimum\":8.03,\"failures\":[]},\"dark-blue\":{\"minimum\":8.03,\"failures\":[]},\"dark-green\":{\"minimum\":8.03,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 390,
+      "height": 3026
+    }
+  },
+  {
+    "name": "atlas-home",
+    "width": 1440,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/atlas-home-desktop-full.png",
+    "contentHeight": 1920,
+    "capturedHeight": 1920,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"atlas-home.html\",\"width\":1440,\"errors\":[],\"checks\":18,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.48,\"failures\":[]},\"light-blue\":{\"minimum\":5.48,\"failures\":[]},\"light-green\":{\"minimum\":5.48,\"failures\":[]},\"dark-default\":{\"minimum\":8.99,\"failures\":[]},\"dark-blue\":{\"minimum\":8.99,\"failures\":[]},\"dark-green\":{\"minimum\":8.99,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 1440,
+      "height": 1920
+    }
+  },
+  {
+    "name": "atlas-home",
+    "width": 390,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/atlas-home-mobile-full.png",
+    "contentHeight": 3088,
+    "capturedHeight": 3088,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"atlas-home.html\",\"width\":390,\"errors\":[],\"checks\":18,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.48,\"failures\":[]},\"light-blue\":{\"minimum\":5.48,\"failures\":[]},\"light-green\":{\"minimum\":5.48,\"failures\":[]},\"dark-default\":{\"minimum\":8.99,\"failures\":[]},\"dark-blue\":{\"minimum\":8.99,\"failures\":[]},\"dark-green\":{\"minimum\":8.99,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 390,
+      "height": 3088
+    }
+  },
+  {
+    "name": "atlas-note",
+    "width": 1440,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/atlas-note-desktop-full.png",
+    "contentHeight": 1351,
+    "capturedHeight": 1351,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"atlas-note.html\",\"width\":1440,\"errors\":[],\"checks\":19,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.48,\"failures\":[]},\"light-blue\":{\"minimum\":5.48,\"failures\":[]},\"light-green\":{\"minimum\":5.48,\"failures\":[]},\"dark-default\":{\"minimum\":9.2,\"failures\":[]},\"dark-blue\":{\"minimum\":9.2,\"failures\":[]},\"dark-green\":{\"minimum\":9.2,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 1440,
+      "height": 1351
+    }
+  },
+  {
+    "name": "atlas-note",
+    "width": 390,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/atlas-note-mobile-full.png",
+    "contentHeight": 1849,
+    "capturedHeight": 1849,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"atlas-note.html\",\"width\":390,\"errors\":[],\"checks\":19,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.48,\"failures\":[]},\"light-blue\":{\"minimum\":5.48,\"failures\":[]},\"light-green\":{\"minimum\":5.48,\"failures\":[]},\"dark-default\":{\"minimum\":9.2,\"failures\":[]},\"dark-blue\":{\"minimum\":9.2,\"failures\":[]},\"dark-green\":{\"minimum\":9.2,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"},{\"family\":\"Rounded\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 390,
+      "height": 1849
+    }
+  },
+  {
+    "name": "parts-note",
+    "width": 1440,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/parts-note-desktop-full.png",
+    "contentHeight": 1504,
+    "capturedHeight": 1504,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"parts-note.html\",\"width\":1440,\"errors\":[],\"checks\":19,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.35,\"failures\":[]},\"light-blue\":{\"minimum\":5.35,\"failures\":[]},\"light-green\":{\"minimum\":5.35,\"failures\":[]},\"dark-default\":{\"minimum\":7.49,\"failures\":[]},\"dark-blue\":{\"minimum\":7.14,\"failures\":[]},\"dark-green\":{\"minimum\":8.03,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 1440,
+      "height": 1504
+    }
+  },
+  {
+    "name": "parts-note",
+    "width": 390,
+    "dest": "C:/Users/Oddava/.t3/worktrees/oddava.me/redesign-directions-11493ac24bf8a153/design-directions/screenshots/parts-note-mobile-full.png",
+    "contentHeight": 2072,
+    "capturedHeight": 2072,
+    "consoleMessages": [
+      {
+        "level": "log",
+        "text": "ODDAVA_RESULT {\"file\":\"parts-note.html\",\"width\":390,\"errors\":[],\"checks\":19,\"storage\":true,\"networkAssets\":0}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_CONTRAST {\"light-default\":{\"minimum\":5.35,\"failures\":[]},\"light-blue\":{\"minimum\":5.35,\"failures\":[]},\"light-green\":{\"minimum\":5.35,\"failures\":[]},\"dark-default\":{\"minimum\":8.03,\"failures\":[]},\"dark-blue\":{\"minimum\":8.03,\"failures\":[]},\"dark-green\":{\"minimum\":8.03,\"failures\":[]}}"
+      },
+      {
+        "level": "log",
+        "text": "ODDAVA_FONTS [{\"family\":\"Lora\",\"status\":\"unloaded\"},{\"family\":\"PublicSans\",\"status\":\"loaded\"},{\"family\":\"JB\",\"status\":\"loaded\"}]"
+      }
+    ],
+    "screenshot": {
+      "mimeType": "image/png",
+      "width": 390,
+      "height": 2072
+    }
+  }
+]

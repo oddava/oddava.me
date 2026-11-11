@@ -1,0 +1,28 @@
+      <header class="site">
+        <a class="mark" href="home.html"{{cur:home}}>oddava</a>
+        <div class="site-end">
+          <nav class="nav" aria-label="primary">
+            <a href="projects.html"{{cur:projects}}>projects</a>
+            <a href="about.html"{{cur:about}}>about</a>
+            <a href="https://notes.oddava.me">notes</a>
+          </nav>
+          <span class="tool">
+            <button
+              class="icon-btn"
+              id="appearance-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="appearance-panel"
+              aria-labelledby="appearance-tip"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+                <circle class="knob-ink" cx="9" cy="7" r="2.25" />
+                <circle class="knob" cx="15.5" cy="12" r="2.25" />
+                <circle class="knob" cx="7.5" cy="17" r="2.25" />
+              </svg>
+            </button>
+            <span class="tip" id="appearance-tip" role="tooltip">appearance</span>
+          </span>
+        </div>
+      </header>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html
+  lang="en"
+  data-theme="system"
+  data-ink="ai"
+  data-read="sans"
+  data-size="standard"
+  data-density="comfortable"
+  data-motion="system"
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Oddava</title>
+    <meta
+      name="description"
+      content="oddava is a backend developer. Notes on the software I build, the books I read, and what I learn along the way."
+    />
+    <!--PREPAINT-->
+    <!--STYLE-->
+    <style>
+      .person h1 {
+        font-size: 1.625rem; /* 26px */
+        line-height: 1.2;
+        font-weight: 600;
+        letter-spacing: -0.012em;
+      }
+
+      /* A small hand-drawn tilde under the name, in the ink colour. */
+      .tilde {
+        display: block;
+        margin-top: 6px;
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        stroke-linecap: round;
+      }
+
+      /* The name links to About: same accent underline as the project
+         names, so it reads as a link without changing the glyphs. */
+      .name-link {
+        text-decoration-line: underline;
+        text-decoration-thickness: 1px;
+        text-decoration-color: var(--accent);
+        text-underline-offset: 0.18em;
+        border-radius: 6px;
+        transition: color 120ms ease;
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .name-link:hover {
+          color: var(--accent);
+        }
+      }
+
+      .tagline {
+        margin-top: calc(10px * var(--d) + 2px);
+        max-width: 30ch;
+        color: var(--ink-2);
+      }
+
+
+      .work {
+        margin-top: calc(32px * var(--d));
+      }
+
+      .entries {
+        margin: 0 -14px;
+      }
+
+      .entries li + li {
+        margin-top: calc(6px * var(--d));
+      }
+
+      .entry {
+        display: block;
+        padding: calc(8px * var(--d) + 2px) 14px calc(10px * var(--d) + 2px);
+        border-radius: 12px;
+        text-decoration: none;
+      }
+
+      .entry .name {
+        font-size: 1.375rem; /* 22px */
+        line-height: 1.3;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        text-underline-offset: 0.18em;
+      }
+
+      .entry .what {
+        display: block;
+        margin-top: 2px;
+        max-width: 46ch;
+        color: var(--ink-2);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .entry:hover {
+          background-color: var(--hover);
+        }
+      }
+
+
+      .more {
+        margin-top: calc(10px * var(--d) + 4px);
+      }
+
+      @media (min-width: 55em) {
+        .work {
+          margin-top: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip link" href="#main">skip to content</a>
+    <div class="page">
+<!--HEADER-->
+      <main id="main">
+        <section class="person" aria-labelledby="name">
+          <h1 id="name"><a class="name-link" href="about.html">oddava</a></h1>
+          <svg class="tilde" viewBox="0 0 44 10" width="44" height="10" aria-hidden="true" focusable="false"><path d="M2 6 C 7 1.5, 12 1.5, 17 6 S 27 10.5, 32 6 S 40 2, 42 4" /></svg>
+          <p class="tagline prose">
+            i write software, interrogate SI (silly intellect), and make tools
+            for small&nbsp;annoyances.
+          </p>
+        </section>
+
+        <section class="work" aria-labelledby="projects-title">
+          <h2 class="sr" id="projects-title">projects</h2>
+          <ul class="entries">
+            <li>
+              <a class="entry press" href="https://minesweeper.oddava.me">
+                <span class="name link">Oddava's minesweeper</span>
+                <span class="what prose"
+                  >a daily minesweeper game with no 50/50</span
+                >
+              </a>
+            </li>
+            <li>
+              <a class="entry press" href="https://ishbay.com">
+                <span class="name link">Ishbay</span>
+                <span class="what prose"
+                  >payroll management specifically for sock manufacturing
+                  businesses</span
+                >
+              </a>
+            </li>
+            <li>
+              <a class="entry press" href="https://github.com/oddava/aniShows">
+                <span class="name link">AniShows</span>
+                <span class="what prose"
+                  >an anime tracker with reviews, forums, and a catalog</span
+                >
+              </a>
+            </li>
+          </ul>
+          <p class="more"><a class="link" href="projects.html">see all</a></p>
+        </section>
+      </main>
+<!--FOOTER-->
+    </div>
+<!--PANEL-->
+    <!--APP-->
+  </body>
+</html>

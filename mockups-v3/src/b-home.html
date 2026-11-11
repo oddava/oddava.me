@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>oddava</title>
+    <meta
+      name="description"
+      content="Javlon (oddava), a backend developer in Tashkent."
+    />
+    <!--STYLE-->
+    <style>
+      .page {
+        width: 100%;
+        max-width: 68rem;
+        margin: 0 auto;
+        padding: 28px 20px 72px;
+      }
+
+      main {
+        margin-top: 40px;
+      }
+
+      .person h1 {
+        font-size: 1.0625rem;
+        line-height: 1.5;
+        font-weight: 600;
+      }
+
+      .person p {
+        margin-top: 8px;
+        color: var(--ink-2);
+        max-width: 30ch;
+      }
+
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .work {
+        margin-top: 24px;
+      }
+
+      /* Two selected projects, set large. */
+      .entries {
+        margin: 0 -14px;
+      }
+
+      .entries li + li {
+        margin-top: 6px;
+      }
+
+      .entry {
+        display: block;
+        padding: 8px 14px 10px;
+        border-radius: 12px;
+        text-decoration: none;
+      }
+
+      .entry .name {
+        display: inline-block;
+        font-size: 1.5rem; /* 24px */
+        line-height: 1.3;
+        font-weight: 600;
+        letter-spacing: -0.012em;
+        text-underline-offset: 0.18em;
+      }
+
+      .entry .what {
+        display: block;
+        margin-top: 2px;
+        font-size: 1.125rem; /* 18px */
+        line-height: 1.5;
+        color: var(--ink-2);
+        max-width: 40ch;
+      }
+
+      /* The other two, at body size: name and line on one baseline. */
+      .others {
+        margin: 24px -14px 0;
+      }
+
+      .other {
+        display: grid;
+        grid-template-columns: 8.5rem minmax(0, 1fr);
+        column-gap: 16px;
+        align-items: baseline;
+        padding: 6px 14px;
+        border-radius: 10px;
+        text-decoration: none;
+      }
+
+      .other .name {
+        font-weight: 500;
+      }
+
+      .other .what {
+        color: var(--ink-2);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .entry:hover,
+        .other:hover {
+          background-color: var(--hover);
+        }
+        .entry:hover .name,
+        .other:hover .name {
+          color: var(--accent);
+        }
+      }
+
+      @media (max-width: 32.5em) {
+        .other {
+          display: block;
+          padding-top: 7px;
+          padding-bottom: 7px;
+        }
+        .other .what {
+          display: block;
+          margin-top: 1px;
+        }
+      }
+
+      @media (min-width: 55em) {
+        .page {
+          padding-left: 40px;
+          padding-right: 40px;
+        }
+        main {
+          margin-top: 80px;
+          display: grid;
+          grid-template-columns: 17rem minmax(0, 1fr);
+          column-gap: clamp(64px, 9vw, 128px);
+          align-items: baseline;
+        }
+        .work {
+          margin-top: 0;
+        }
+        .others {
+          margin-top: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip link" href="#main">Skip to content</a>
+    <div class="page">
+      <header class="site">
+        <a class="mark" href="b-home.html" aria-label="oddava, home"
+          ><span aria-hidden="true">o<span class="dd">dd</span>ava</span></a
+        >
+        <nav class="nav" aria-label="Main">
+          <a href="#projects">projects</a>
+          <a href="b-about.html">about</a>
+          <a href="https://notes.oddava.me">notes</a>
+        </nav>
+      </header>
+
+      <main id="main">
+        <section class="person" aria-labelledby="who">
+          <h1 id="who">javlon, backend developer in tashkent.</h1>
+          <p>when i'm not writing code, it's games, anime, or a long walk.</p>
+          <p>
+            i'm oddava on
+            <a class="link" href="https://github.com/oddava">github</a> and
+            <a class="link" href="https://x.com/oddava">x</a>.
+          </p>
+        </section>
+
+        <section class="work" id="projects" aria-labelledby="projects-title">
+          <h2 class="sr" id="projects-title">projects</h2>
+          <ul class="entries">
+            <li>
+              <a class="entry press" href="https://ishbay.com">
+                <span class="name link">Ishbay</span>
+                <span class="what"
+                  >payroll management for businesses. my day job.</span
+                >
+              </a>
+            </li>
+            <li>
+              <a class="entry press" href="https://github.com/oddava/aniShows">
+                <span class="name link">AniShows</span>
+                <span class="what"
+                  >an anime tracker with reviews, forums, and a catalog synced
+                  from AniList.</span
+                >
+              </a>
+            </li>
+          </ul>
+          <ul class="others">
+            <li>
+              <a
+                class="other press"
+                href="https://github.com/oddava/obsidian-oddava-notes"
+              >
+                <span class="name link">oddava notes</span>
+                <span class="what"
+                  >an obsidian plugin that publishes and syncs notes from my
+                  vault.</span
+                >
+              </a>
+            </li>
+            <li>
+              <a class="other press" href="https://github.com/oddava/oddava.me">
+                <span class="name link">oddava.me</span>
+                <span class="what">my personal site, built with Astro.</span>
+              </a>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script>
+      document.addEventListener('touchstart', function () {}, {
+        passive: true,
+      });
+    </script>
+  </body>
+</html>

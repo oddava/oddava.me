@@ -1,0 +1,245 @@
+/* Shared system for A and B. One palette, one family, one signature. */
+
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
+  size-adjust: 105%;
+  ascent-override: 94.5%;
+  descent-override: 29.5%;
+  line-gap-override: 0%;
+}
+
+:root {
+  /* Respect the reader's default size; also overrides host preview sheets. */
+  font-size: 100%;
+  color-scheme: light;
+  --bg: #ffffff;
+  --ink: #20242a;
+  --ink-2: #59616b;
+  --hover: #f2f5f9;
+  --accent: #245dcc;
+  --focus: #17489e;
+  --font: 'DM Sans', 'DM Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  /* Settle: ~1px damped return with an imperceptible overshoot. */
+  --settle: linear(
+    0,
+    0.34 9%,
+    0.72 20%,
+    0.98 33%,
+    1.05 44%,
+    1.03 56%,
+    1 72%,
+    1
+  );
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-optical-sizing: auto;
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p,
+ul {
+  margin: 0;
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+/* Optical line breaks: no one-word last lines where the browser can help. */
+h1 {
+  text-wrap: balance;
+}
+
+p,
+.what {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease,
+    text-decoration-color 120ms ease;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Underline means link. Blue line, ink text; text turns blue on hover. */
+.link {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: var(--accent);
+}
+
+/* Inline links: larger hit area without moving the text (inline exception
+   in WCAG 2.5.8 applies anyway; this is for comfort). */
+a.link {
+  padding: 0.25em 0.2em;
+  margin: -0.25em -0.2em;
+  border-radius: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link:hover {
+    color: var(--accent);
+  }
+}
+
+.skip {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 2;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+  transform: translateY(-160%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* Header: wordmark + three plain links. Wraps rather than shrinks. */
+.site {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 24px;
+  row-gap: 4px;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 1.1875rem; /* 19px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+/*
+ * The dd tie: the two d ascenders joined by one lintel, like a ligature.
+ * Geometry measured from DM Sans 600: ascender top 0.70em over the baseline,
+ * first stem from 0.439em, second stem ends at 0.601 + 0.558em. The span's
+ * content box begins 0.992em above the baseline (hhea ascender). The lintel
+ * is a horizontal stroke's weight, in ink. A deliberate press tints it blue.
+ */
+.dd {
+  position: relative;
+}
+
+.dd::before {
+  content: '';
+  position: absolute;
+  left: 0.439em;
+  width: 0.72em;
+  top: 0.292em;
+  height: 0.085em;
+  background: currentColor;
+  transition: background-color 120ms ease;
+}
+
+.mark:active .dd::before {
+  background: var(--accent);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  margin-inline: -10px;
+}
+
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.nav a[aria-current='page'] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav a:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+  .mark:hover {
+    background-color: var(--hover);
+  }
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--ink-2);
+}
+
+/* Reduced motion: no spatial movement. Colour feedback and focus remain. */
+@media (prefers-reduced-motion: reduce) {
+  .press {
+    transition-property: background-color !important;
+  }
+  .press:active {
+    transform: none !important;
+  }
+}
+
+/* Press response shared by project entries. */
+.press {
+  transition:
+    background-color 150ms ease,
+    transform 220ms var(--settle);
+}
+
+.press:active {
+  transform: translateY(1px);
+  transition-duration: 150ms, 60ms;
+  transition-timing-function: ease, ease-out;
+}

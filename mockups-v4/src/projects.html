@@ -1,0 +1,202 @@
+<!doctype html>
+<html
+  lang="en"
+  data-theme="system"
+  data-ink="ai"
+  data-read="sans"
+  data-size="standard"
+  data-density="comfortable"
+  data-motion="system"
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Projects | oddava</title>
+    <meta
+      name="description"
+      content="Software oddava has built, from day-job work to side projects."
+    />
+    <!--PREPAINT-->
+    <!--STYLE-->
+    <style>
+      /* One centred column of large picture cards. */
+      .column {
+        max-width: 44rem;
+        margin-inline: auto;
+      }
+
+      .column h1 {
+        font-size: 1.625rem;
+        line-height: 1.2;
+        font-weight: 600;
+        letter-spacing: -0.012em;
+      }
+
+      .cards {
+        margin-top: calc(28px * var(--d) + 4px);
+      }
+
+      .cards > li + li {
+        margin-top: calc(48px * var(--d) + 8px);
+      }
+
+      /* The title link stretches over the whole card, so the picture is
+         clickable without a second link in the tab order. */
+      .card {
+        position: relative;
+      }
+
+      .shot {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--hover);
+        overflow: hidden;
+      }
+
+      .shot img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 0;
+      }
+
+      /* No screenshot: a short, plainly labelled slot, not a fake one. */
+      .shot.unavailable {
+        display: grid;
+        place-items: center;
+        aspect-ratio: 16 / 5;
+        border-style: dashed;
+        background: transparent;
+        color: var(--ink-2);
+        font-size: 0.9375rem;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 14px;
+      }
+
+      .card h2 {
+        font-size: 1.375rem;
+        line-height: 1.3;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .card h2 a {
+        text-underline-offset: 0.18em;
+      }
+
+      .card h2 a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 18px;
+      }
+
+      .card h2 a:focus-visible {
+        outline: none;
+      }
+
+      .card:has(h2 a:focus-visible) {
+        outline: 2px solid var(--focus);
+        outline-offset: 8px;
+        border-radius: 20px;
+      }
+
+      .year {
+        flex: none;
+        color: var(--ink-2);
+        font-size: 0.9375rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .card p {
+        margin-top: 2px;
+        color: var(--ink-2);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .card:hover .shot {
+          border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+        }
+        .card:hover h2 a {
+          color: var(--accent);
+          text-decoration-style: wavy;
+          text-decoration-thickness: 1.5px;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        :root:not([data-motion='reduced']) .shot {
+          transition: border-color 150ms ease;
+        }
+      }
+
+      @media (min-width: 55em) {
+        main.column {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip link" href="#main">skip to content</a>
+    <div class="page">
+<!--HEADER-->
+      <main id="main" class="column">
+        <h1>projects</h1>
+        <ul class="cards">
+          <li class="card">
+            <div class="shot">
+              <img
+                src="{{img:minesweeper-cover.jpg}}"
+                width="1085"
+                height="1269"
+                alt="Oddava's minesweeper: the win screen of a medium board, with time, medals and rank."
+              />
+            </div>
+            <div class="card-head">
+              <h2><a class="link" href="https://minesweeper.oddava.me">Oddava's minesweeper</a></h2>
+              <span class="year">2026</span>
+            </div>
+            <p class="prose">a daily minesweeper game with no 50/50</p>
+          </li>
+          <li class="card">
+            <div class="shot">
+              <img
+                src="{{img:ishbay-cover-redacted.jpg}}"
+                width="1280"
+                height="962"
+                alt="Ishbay: the landing page, with a review table of knitting and packing work and a payslip."
+              />
+            </div>
+            <div class="card-head">
+              <h2><a class="link" href="https://ishbay.com">Ishbay</a></h2>
+              <span class="year">now</span>
+            </div>
+            <p class="prose">payroll management specifically for sock manufacturing businesses</p>
+          </li>
+          <li class="card">
+            <div class="shot unavailable"><span>preview unavailable</span></div>
+            <div class="card-head">
+              <h2><a class="link" href="https://github.com/oddava/aniShows">AniShows</a></h2>
+              <span class="year">2025</span>
+            </div>
+            <p class="prose">an anime tracker with reviews, forums, and a catalog</p>
+          </li>
+        </ul>
+      </main>
+<!--FOOTER-->
+    </div>
+<!--PANEL-->
+    <!--APP-->
+  </body>
+</html>
