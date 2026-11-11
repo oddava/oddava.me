@@ -1,0 +1,314 @@
+/* ===================================================
+   The shell: header, footer, the manicule, and the page transition.
+   The shell never animates on its own; only what changes moves.
+   =================================================== */
+
+/* --- The manicule --- */
+.manicule {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 11px;
+  fill: var(--rubric);
+  overflow: visible;
+}
+
+.manicule__crease {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+}
+
+/* A list's travelling hand: parked in the left margin of its list, moved by
+   src/lib/manicule.ts through --hand-y. A new target interrupts the old
+   one mid-flight; while it travels it tips forward a little. */
+[data-manicule-list] {
+  position: relative;
+}
+
+[data-manicule-hand] {
+  position: absolute;
+  top: 0;
+  left: -1.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(var(--hand-y, 0px) - 50%)) rotate(0deg);
+  transition:
+    transform var(--dur-3) var(--ease-spring),
+    opacity var(--dur-2) var(--ease-out);
+}
+
+[data-manicule-hand][data-shown] {
+  opacity: 1;
+}
+
+[data-manicule-hand][data-moving] {
+  transform: translateY(calc(var(--hand-y, 0px) - 50%)) rotate(-4deg);
+}
+
+/* Appearing from hidden: no travel, only the fade. */
+[data-manicule-hand][data-arriving] {
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* Narrow screens have no margin to park a hand in; the row's own state
+   (weight, underline, aria-current) carries it there. */
+@media (max-width: 47.99rem), (hover: none) {
+  [data-manicule-hand] {
+    display: none;
+  }
+}
+
+/* --- Header --- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  view-transition-name: site-header;
+}
+
+/* The hairline under the header fades in once the page has scrolled under
+   it; at the top of the page there is nothing to separate. */
+.site-header::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--rule);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@supports (animation-timeline: scroll()) {
+  .site-header::after {
+    animation: header-rule linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 48px;
+  }
+}
+
+@supports not (animation-timeline: scroll()) {
+  .site-header::after {
+    opacity: 1;
+  }
+}
+
+@keyframes header-rule {
+  to {
+    opacity: 1;
+  }
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  width: min(100% - 2 * var(--gutter), 72rem);
+  height: 56px;
+  margin: 0 auto;
+}
+
+.site-header__mark {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
+  text-decoration: none;
+  padding: var(--space-2) 0;
+}
+
+.site-header__mark:hover {
+  color: var(--ink);
+}
+
+.site-header__nav {
+  margin-left: auto;
+}
+
+.site-header__nav ul {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-header__nav li + li::before {
+  content: '·' / '';
+  margin: 0 var(--space-2);
+  color: var(--ink-3);
+}
+
+.site-header__nav a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  font-family: var(--sans);
+  font-size: var(--step-0);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--label-tracking);
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+.site-header__nav a:hover {
+  color: var(--ink);
+}
+
+.site-header__nav a[aria-current] {
+  color: var(--ink);
+}
+
+.site-header__nav li:has(> a[aria-current])::before {
+  visibility: hidden;
+}
+
+.site-header__hand {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  margin-right: 2px;
+  translate: 0 -50%;
+  view-transition-name: manicule;
+}
+
+.site-header .note-search__trigger {
+  margin-left: var(--space-2);
+}
+
+@media (max-width: 30rem) {
+  .site-header__inner {
+    gap: var(--space-3);
+  }
+
+  .site-header__nav li + li::before {
+    margin: 0 var(--space-1);
+  }
+
+  /* No room for a hand to the left of the first item; the current one is
+     already in ink, the others in ink-2. */
+  .site-header__nav li:has(> a[aria-current])::before {
+    visibility: hidden;
+  }
+
+  .site-header__hand {
+    display: none;
+  }
+}
+
+/* --- Footer: the colophon --- */
+.site-footer {
+  margin-top: auto;
+  padding: var(--section) 0 var(--space-8);
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  width: min(100% - 2 * var(--gutter), 72rem);
+  margin: 0 auto;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--rule);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.site-footer__colophon {
+  margin: 0;
+  font-style: italic;
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer__links a {
+  display: inline-block;
+  padding: var(--space-2) 0;
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--label-tracking);
+  color: var(--ink-2);
+}
+
+.site-footer__links a:hover {
+  color: var(--ink);
+}
+
+/* --- Page transition: native cross-document View Transitions --- */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
+/* The page itself never cross-fades: the paper is the same paper. Only the
+   content changes, and the header and footer stay where they are. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+.page > main {
+  view-transition-name: page-main;
+}
+
+::view-transition-group(page-main),
+::view-transition-group(site-header) {
+  animation: none;
+}
+
+::view-transition-old(page-main) {
+  animation: vt-fade-out 120ms var(--ease-exit) both;
+}
+
+::view-transition-new(page-main) {
+  animation: vt-rise-in var(--dur-3) var(--ease-out) both;
+}
+
+::view-transition-old(site-header),
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+::view-transition-group(manicule) {
+  animation-duration: var(--dur-4);
+  animation-timing-function: var(--ease-spring);
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (forced-colors: active) {
+  .manicule {
+    fill: CanvasText;
+  }
+
+  .site-header::after {
+    background: CanvasText;
+  }
+}

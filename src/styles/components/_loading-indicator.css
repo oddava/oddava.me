@@ -10,11 +10,11 @@
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 240ms ease,
-    visibility 0s 240ms;
+    opacity var(--dur-2) var(--ease-exit),
+    visibility 0s var(--dur-2);
 }
 
-.site-nav > .loading-indicator {
+.site-header > .loading-indicator {
   position: absolute;
   inset: auto 0 -1px;
 }
@@ -23,12 +23,7 @@
   display: block;
   width: 35%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--color-brand),
-    var(--color-brand-strong)
-  );
+  background: linear-gradient(90deg, transparent, var(--rubric));
   border-radius: 2px;
 }
 

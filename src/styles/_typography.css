@@ -1,33 +1,53 @@
 /* ===================================================
-   Base Typography
+   Base typography and the two primitives every page shares: the link and
+   the focus ring. Rubrication rules (docs/design-system.md): the ink colours
+   link underlines, focus and marks — never text runs, fills or buttons.
    =================================================== */
+
+html {
+  hanging-punctuation: first last;
+}
 
 body {
   isolation: isolate;
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  line-height: var(--leading-body);
-  color: var(--color-text-primary);
-  background-color: var(--color-surface);
+  font-family: var(--sans);
+  font-size: var(--step-0);
+  line-height: var(--leading-ui);
+  font-kerning: normal;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  color: var(--ink);
+  background-color: var(--paper);
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
+/* Focus: a ring of ink, only for keyboard focus, never animated. */
 :focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 
-/* --- Links --- */
-a {
-  color: var(--color-text-interactive);
-  text-decoration: none;
-  transition: color 0.15s ease;
+/* --- Links ---
+   Ink text standing on a rubric underline: 1px at 40% at rest, 2px at full
+   strength under the pointer. Zero specificity, so any component that sets
+   its own decoration wins. */
+:where(a) {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--rubric-line);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-skip-ink: auto;
+  transition:
+    text-decoration-color var(--dur-2) var(--ease-out),
+    text-decoration-thickness var(--dur-2) var(--ease-out);
 }
 
-a:hover {
-  color: var(--color-text-interactive-hover);
+:where(a):hover {
+  text-decoration-color: var(--rubric);
+  text-decoration-thickness: 2px;
 }
 
 /* --- Headings --- */
@@ -35,35 +55,56 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-body);
+  font-family: var(--serif);
+  font-weight: 500;
   line-height: var(--leading-tight);
-  color: var(--color-text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
+  color: var(--ink);
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  margin-bottom: var(--space-sm);
+  font-size: var(--step-4);
+  margin-bottom: var(--space-4);
 }
 
 h2 {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  margin-top: var(--space-lg);
-  margin-bottom: var(--space-sm);
+  font-size: var(--step-3);
+  margin-top: var(--space-10);
+  margin-bottom: var(--space-4);
 }
 
 h3 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin-top: var(--space-md);
-  margin-bottom: var(--space-xs);
+  font-size: var(--step-2);
+  font-style: italic;
+  font-weight: 400;
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-2);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Dates and counts line up: lining, tabular figures. */
+time,
+.figures-tabular {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* A small-caps label: real small caps, never faked with a smaller size. */
+.label {
+  font-family: var(--sans);
+  font-size: var(--step-0);
+  font-variant-caps: all-small-caps;
+  font-variant-numeric: lining-nums;
+  letter-spacing: var(--label-tracking);
+  color: var(--ink-3);
 }
 
 /* --- Horizontal Rule --- */
 hr {
   border: none;
-  border-top: 1px solid var(--color-rule);
-  margin: var(--space-lg) 0;
+  border-top: 1px solid var(--rule);
+  margin: var(--space-10) 0;
 }

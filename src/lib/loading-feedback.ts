@@ -1,26 +1,56 @@
 /** Shared, reference-counted feedback for navigation and foreground requests. */
 const pending = new Set<symbol>();
 let revealTimer: ReturnType<typeof setTimeout> | undefined;
+let hideTimer: ReturnType<typeof setTimeout> | undefined;
+let shownAt = 0;
+
+/** Fast responses never flash a loader: it appears only after this. */
+export const LOADING_REVEAL_DELAY = 200;
+/** Once shown, it stays this long, so it reads as a signal, not a flicker. */
+export const LOADING_MIN_VISIBLE = 400;
 
 export function resetLoadingFeedback() {
   pending.clear();
   clearTimeout(revealTimer);
+  clearTimeout(hideTimer);
   revealTimer = undefined;
+  hideTimer = undefined;
+  shownAt = 0;
   delete document.documentElement.dataset.loading;
+}
+
+function settle() {
+  clearTimeout(revealTimer);
+  revealTimer = undefined;
+  if (!shownAt) {
+    resetLoadingFeedback();
+    return;
+  }
+  const remaining = LOADING_MIN_VISIBLE - (Date.now() - shownAt);
+  if (remaining <= 0) {
+    resetLoadingFeedback();
+    return;
+  }
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    if (pending.size === 0) resetLoadingFeedback();
+  }, remaining);
 }
 
 export function beginLoading() {
   const token = Symbol();
   pending.add(token);
-  if (pending.size === 1) {
-    // Fast responses should never flash a loader.
+  clearTimeout(hideTimer);
+  hideTimer = undefined;
+  if (pending.size === 1 && !shownAt) {
     revealTimer = setTimeout(() => {
+      shownAt = Date.now();
       document.documentElement.dataset.loading = 'true';
-    }, 140);
+    }, LOADING_REVEAL_DELAY);
   }
   return () => {
     pending.delete(token);
-    if (pending.size === 0) resetLoadingFeedback();
+    if (pending.size === 0) settle();
   };
 }
 

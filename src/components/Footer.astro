@@ -1,14 +1,46 @@
 ---
 /**
- * Site footer: where else to find the site. A plain line until the Rubric
- * shell (colophon and appearance) replaces it.
+ * The colophon: what the site is set in and since when, then where else to
+ * find it. Machine-readable links (rss, sitemap) sit with the people ones.
  */
+import linksData from '../data/links.json';
+
+interface Props {
+  /** The notes host has its own sitemap; the apex has the index. */
+  sitemapHref?: string;
+}
+
+const { sitemapHref = '/sitemap-index.xml' } = Astro.props;
+
+const elsewhere = linksData.links.flatMap(({ url, title }) =>
+  url && !url.startsWith('/') ? [{ url, title: title.toLowerCase() }] : [],
+);
 ---
 
 <footer class="site-footer">
-  <p class="site-footer__line">
-    <a href="/rss.xml">rss</a>
-    <span aria-hidden="true">·</span>
-    <a href="/sitemap-index.xml">sitemap</a>
-  </p>
+  <div class="site-footer__inner">
+    <p class="site-footer__colophon">
+      set in Alegreya &amp; Commit Mono · tended since 2024
+    </p>
+    <ul class="site-footer__links" aria-label="elsewhere">
+      {
+        elsewhere.map((link) => {
+          const external = link.url.startsWith('http');
+          return (
+            <li>
+              <a
+                href={link.url}
+                rel={external ? 'me noopener noreferrer' : undefined}
+              >
+                {link.title}
+              </a>
+            </li>
+          );
+        })
+      }
+      <li><a href="/rss.xml" type="application/rss+xml">rss</a></li>
+      <li><a href={sitemapHref}>sitemap</a></li>
+    </ul>
+    <slot />
+  </div>
 </footer>

@@ -6,7 +6,8 @@ import PagePreview from '../components/PagePreview.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
-import SiteNav from '../components/SiteNav.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import ManiculeLists from '../components/ManiculeLists.astro';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
 export interface Props extends SiteHeadProps {
@@ -37,19 +38,15 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
     </SiteHead>
   </head>
   <body>
-    {hideNav && <LoadingIndicator />}
-    <slot name="background" />
+    <a href="#main" class="skip-link">Skip to content</a>
+    {hideNav ? <LoadingIndicator /> : <SiteHeader />}
     <div class:list={['page', wide && 'page--wide']}>
-      <a href="#main" class="skip-link">Skip to content</a>
-
-      {!hideNav && <SiteNav />}
-
       <main id="main">
         <slot />
       </main>
-
-      <slot name="footer">{!hideNav && <Footer />}</slot>
     </div>
+    <slot name="footer"><Footer /></slot>
+    <ManiculeLists />
     {Astro.url.pathname !== '/' && <PagePreview />}
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
   </body>

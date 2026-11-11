@@ -4,7 +4,6 @@
 // server islands, fetched after first paint.
 export const prerender = true;
 import Base from '@layouts/Base.astro';
-import Footer from '../components/Footer.astro';
 import RecentNotes from '../components/home/RecentNotes.astro';
 import ProjectStrip from '../components/home/ProjectStrip.astro';
 import linksData from '../data/links.json';
@@ -78,8 +77,6 @@ const pageHref = (label: string) =>
     }
     <a href="/rss.xml">rss</a>
   </p>
-
-  <Footer slot="footer" />
 </Base>
 
 <script>

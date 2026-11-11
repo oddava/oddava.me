@@ -1,0 +1,77 @@
+---
+/**
+ * The header: the wordmark, then the three places — about · projects ·
+ * notes — in small caps, with the manicule pointing at the one you are in.
+ * The hand carries `view-transition-name: manicule`, so across a navigation
+ * it glides from the old item to the new one. Note search mounts wherever
+ * notes are read.
+ *
+ * `notes` is the notes host's own header: the wordmark goes back to the
+ * personal site, and the notes are the only place listed.
+ */
+import '../styles/components/_note-search.css';
+import LoadingIndicator from './LoadingIndicator.astro';
+import Manicule from './Manicule.astro';
+import NoteSearch from './garden/NoteSearch.tsx';
+import { apexOriginFor } from '../lib/notes-host';
+import { isNotesRoute, notesIndexUrl } from '../lib/notes-url';
+
+interface Props {
+  variant?: 'site' | 'notes';
+}
+
+const { variant = 'site' } = Astro.props;
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+const onNotes = isNotesRoute(pathname);
+
+const pages =
+  variant === 'notes'
+    ? [{ href: notesIndexUrl(), name: 'notes', section: true }]
+    : [
+        { href: '/about', name: 'about', section: pathname === '/about' },
+        {
+          href: '/projects',
+          name: 'projects',
+          section:
+            pathname === '/projects' || pathname.startsWith('/projects/'),
+        },
+        { href: notesIndexUrl(), name: 'notes', section: onNotes },
+      ];
+
+const exact = (href: string) =>
+  href === pathname || href.replace(/\/$/, '') === pathname;
+const markHref = variant === 'notes' ? apexOriginFor(Astro.url) : '/';
+---
+
+<header class="site-header" data-variant={variant}>
+  <div class="site-header__inner">
+    <a
+      class="site-header__mark"
+      href={markHref}
+      data-page-preview-ignore
+      aria-label={variant === 'notes' ? 'oddava, home' : undefined}>oddava</a
+    >
+    <nav class="site-header__nav" aria-label="primary">
+      <ul>
+        {
+          pages.map((page) => (
+            <li>
+              <a
+                href={page.href}
+                aria-current={
+                  exact(page.href) ? 'page' : page.section ? 'true' : undefined
+                }
+                data-page-preview-ignore
+              >
+                {page.section && <Manicule class="site-header__hand" />}
+                {page.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    {(onNotes || variant === 'notes') && <NoteSearch client:load />}
+  </div>
+  <LoadingIndicator />
+</header>

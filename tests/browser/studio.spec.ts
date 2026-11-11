@@ -577,6 +577,9 @@ test('the unified editor uses published prose typography', async ({
     const frame = document.createElement('iframe');
     document.body.append(frame);
     const doc = frame.contentDocument!;
+    // The published page is read in the same theme as the editor.
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (theme) doc.documentElement.setAttribute('data-theme', theme);
     for (const sheet of document.querySelectorAll(
       'style, link[rel="stylesheet"]',
     ))

@@ -11,25 +11,24 @@
 }
 
 html {
-  color-scheme: dark;
   background-color: var(--paper, #15130f);
   scrollbar-gutter: stable;
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
+  /* Anchors land below the sticky header, not under it. */
+  scroll-padding-top: 72px;
 }
 
 ::selection {
-  background: var(--color-selection);
-  color: var(--color-text-primary);
+  background: var(--selection);
+  color: var(--ink);
 }
 
-/* Keep document changes opaque. Cross-document snapshots can expose the
-   browser canvas during navigation, producing a full-screen flash. */
-@view-transition {
-  navigation: none;
-}
+/* Cross-document view transitions are declared with the shell
+   (components/_shell.css), behind a reduced-motion guard. The root snapshot
+   never animates, so the paper does not flash between pages. */
 
 @media (prefers-reduced-motion: reduce) {
   html {

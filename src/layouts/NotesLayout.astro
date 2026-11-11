@@ -1,21 +1,18 @@
 ---
 /**
  * The notes garden's own shell, used when a page is served on the notes
- * hostname. Compared with Base: its own header (the `oddava` wordmark, a link
- * back to the personal site, and search), no music widget, and one
+ * hostname. Compared with Base: its own header (the `oddava` wordmark back
+ * to the personal site, the notes, and search), no music widget, and one
  * font preload. See docs/notes-host.md.
  */
 import '../styles/global.css';
-import '../styles/components/_site-nav.css';
-import '../styles/components/_note-search.css';
-import '../styles/components/_notes-shell.css';
-import LoadingIndicator from '../components/LoadingIndicator.astro';
+import Footer from '../components/Footer.astro';
+import ManiculeLists from '../components/ManiculeLists.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 import PagePreview from '../components/PagePreview.astro';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
-import NoteSearch from '../components/garden/NoteSearch.tsx';
-import { apexOriginFor } from '../lib/notes-host';
 
 export interface Props extends SiteHeadProps {
   wide?: boolean;
@@ -48,23 +45,15 @@ const {
     </SiteHead>
   </head>
   <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <SiteHeader variant="notes" />
     <div class:list={['page', wide && 'page--wide']}>
-      <a href="#main" class="skip-link">Skip to content</a>
-
-      <header class="site-nav notes-shell__nav">
-        <a
-          class="site-nav__wordmark notes-shell__mark"
-          href={apexOriginFor(Astro.url)}
-          data-page-preview-ignore>oddava</a
-        >
-        <NoteSearch client:load />
-        <LoadingIndicator />
-      </header>
-
       <main id="main">
         <slot />
       </main>
     </div>
+    <Footer sitemapHref="/sitemap.xml" />
     <PagePreview />
+    <ManiculeLists />
   </body>
 </html>

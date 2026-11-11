@@ -1,0 +1,25 @@
+---
+/**
+ * Wires every `[data-manicule-list]` on the page to its travelling hand, and
+ * any list that arrives later (server islands, client islands) as it lands.
+ */
+---
+
+<script>
+  import { mountManiculeLists } from '../lib/manicule';
+
+  mountManiculeLists();
+  // Batched to one pass per frame, however many nodes arrive.
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      mountManiculeLists();
+    });
+  }).observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+</script>

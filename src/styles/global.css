@@ -10,6 +10,7 @@
 @import './_layout.css';
 @import './_responsive.css';
 @import './components/_control.css';
+@import './components/_shell.css';
 
 /* A11Y-11: Global reduced-motion override. Complements component-specific
    overrides (Batch C). Suppresses transitions/animations site-wide when the

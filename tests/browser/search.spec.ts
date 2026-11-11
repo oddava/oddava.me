@@ -21,7 +21,7 @@ test('search shows pending feedback, empty results, and errors', async ({
     page.locator('.note-search__field .note-search__loading'),
   ).toBeVisible();
   await expect(page.locator('html')).not.toHaveAttribute('data-loading');
-  await expect(page.locator('.site-nav > .loading-indicator')).toHaveCSS(
+  await expect(page.locator('.site-header > .loading-indicator')).toHaveCSS(
     'opacity',
     '0',
   );

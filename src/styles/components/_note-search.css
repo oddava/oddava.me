@@ -1,5 +1,5 @@
 /* Site-wide note search trigger, placed in the site header on /notes/* pages,
-   and its command-palette overlay. The header (`_site-nav.css`) is a flex row;
+   and its command-palette overlay. The header (`_shell.css`) is a flex row;
    the trigger sits at the right edge of the 44rem header column. */
 
 .note-search__trigger {
