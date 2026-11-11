@@ -4,6 +4,7 @@
 // 404 would be served 200 by those rewrites (a soft 404).
 import Base from '../layouts/Base.astro';
 import AwakeSky from '../components/awake/AwakeSky.astro';
+import ScopedHeader from '../components/portfolio/ScopedHeader.astro';
 import '../styles/components/_awake.css';
 import '../styles/components/_status-page.css';
 
@@ -15,6 +16,7 @@ Astro.response.status = 404;
   description="This page doesn't exist on oddava.me."
 >
   <meta slot="head" name="robots" content="noindex" />
+  <ScopedHeader slot="header" />
   <AwakeSky slot="background" />
   <section class="awake status-page" data-awake>
     <canvas class="awake-cat" data-awake-cat aria-hidden="true"></canvas>

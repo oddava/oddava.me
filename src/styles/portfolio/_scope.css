@@ -1,0 +1,32 @@
+/* ===================================================
+   PORTFOLIO — the header on a non-portfolio page (the 404)
+   =================================================== */
+
+/* Takes the place, and the exact outer box, of the header it replaces
+   (.site-nav: centred, up to 44rem wide, 64px tall, 54px on narrow
+   screens), so nothing below it moves. Transparent, so the page's sky
+   shows through; the shared base rule would otherwise paint var(--bg). */
+.pf-scope[data-site='portfolio'] {
+  display: flex;
+  align-items: center;
+  width: min(100%, 44rem);
+  height: 4rem;
+  margin: 0 auto;
+  background: none;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-optical-sizing: auto;
+  font-size: 1.0625rem;
+  line-height: var(--lh);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 640px) {
+  .pf-scope[data-site='portfolio'] {
+    height: 3.375rem;
+  }
+}
+
+.pf-scope[data-site='portfolio'] .pf-header {
+  flex: 1 1 auto;
+}

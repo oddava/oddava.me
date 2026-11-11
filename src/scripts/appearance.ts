@@ -18,7 +18,11 @@ const NOT_KEPT =
   "this browser isn't keeping settings, so they'll reset on reload.";
 
 export function mountAppearance(): void {
-  const root = document.documentElement;
+  // Portfolio pages keep their choices on <html>. A page that only borrows
+  // the header (the 404) marks a wrapper instead, so its own theme is left
+  // alone; there is no pre-paint there, so the saved choices load here.
+  const scoped = document.querySelector<HTMLElement>('[data-appearance-root]');
+  const root = scoped ?? document.documentElement;
   const toggle = document.getElementById('appearance-toggle');
   const panel = document.getElementById('appearance-panel');
   const form = document.getElementById(
@@ -67,15 +71,27 @@ export function mountAppearance(): void {
     }
   };
 
-  syncForm(current());
-
   // Storage can be blocked (private modes, site-data settings). The controls
   // still work for this visit; say so instead of failing silently.
+  let stored: string | null = null;
   try {
-    window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
+    stored = window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
   } catch {
     status.textContent = NOT_KEPT;
   }
+
+  if (scoped && stored) {
+    try {
+      apply({
+        ...APPEARANCE_DEFAULTS,
+        ...sanitizeAppearance(JSON.parse(stored)),
+      });
+    } catch {
+      // A malformed value leaves the defaults, as the pre-paint does.
+    }
+  }
+
+  syncForm(current());
 
   form.addEventListener('change', () => {
     const data = new FormData(form);

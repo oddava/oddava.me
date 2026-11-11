@@ -37,6 +37,26 @@ There are six preferences: `theme`, `ink`, `read`, `size`, `density` and
   canvas style the same component-level way, so on server-rendered pages that
   use `Base` its inline style is not in the CSP header.
 
+## The 404's header
+
+The 404 keeps its own page (the sky, the cat, the big 404, the copy, `Base`
+and its dark theme) and swaps only the header for the portfolio one.
+
+- `Base.astro` has a `header` slot. Only `404.astro` fills it, with
+  `ScopedHeader.astro`; every other `Base` page still gets `SiteNav`.
+- `ScopedHeader` wraps the header in `.pf-scope[data-site="portfolio"]`. The
+  portfolio styles match only inside that wrapper, and `_tokens.css` gives
+  the wrapper the tokens. `<html>` keeps `data-theme="dark"`, there is no
+  pre-paint, and the body's tokens are untouched.
+- The appearance controller writes to `[data-appearance-root]` (the wrapper)
+  when there is one, else `<html>`, and loads the saved choices itself.
+- The wrapper is always dark, since it sits on the dark sky. Choices are
+  still shown, saved and applied on the portfolio pages. Ink, density and
+  motion also apply in the header. Text size does not: it sets the root
+  font size, which would resize the 404's body.
+- `_scope.css` gives the wrapper the old header's outer box, so nothing below
+  it moves. `tests/portfolio-404-header.test.ts` holds these rules.
+
 ## Projects: presentation only
 
 `src/lib/portfolio-projects.ts` changes how the stored list is **shown**,
