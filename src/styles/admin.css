@@ -1,6 +1,25 @@
-/* Admin tokens alias the public design-system tokens from _variables.css
+/* Admin tokens alias the public design-system tokens from _tokens.css
    so there is a single source-of-truth. The --admin-* names are kept because
    component-loaded CSS (Studio, the dialogs) references them directly. */
+
+/* Until the admin's own pass, it keeps its blue for what is chosen or asks
+   for action; the neutrals and the type are already the site's. */
+:root.admin-page {
+  --color-brand: #7aa7ff;
+  --color-brand-strong: #adcaff;
+  --color-text-accent: #adcaff;
+  --color-text-interactive: #adcaff;
+  --color-text-interactive-hover: #d6e4ff;
+  --color-accent: #adcaff;
+  --color-accent-soft: #adcaff;
+  --color-accent-hover: #d6e4ff;
+  --color-text-on-accent: #0a0f14;
+  --color-overlay-soft: color-mix(in srgb, #7aa7ff 10%, transparent);
+  --color-overlay-strong: color-mix(in srgb, #7aa7ff 18%, transparent);
+  --color-focus-ring: #adcaff;
+  --color-selection: color-mix(in srgb, #7aa7ff 24%, transparent);
+}
+
 .admin-page {
   --admin-bg: var(--color-surface);
   --admin-surface: var(--color-surface-raised);

@@ -1,0 +1,46 @@
+/* ===================================================
+   Pre-Rubric faces, loaded by the admin only: Studio draws per-note share
+   cards on a canvas in M PLUS Rounded 1c and JetBrains Mono, and a card
+   drawn today should match the ones already stored. Retired together with
+   those files when the card moves to the Rubric faces.
+   =================================================== */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'M PLUS Rounded 1c';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(/fonts/m-plus-rounded-1c-latin-400-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'M PLUS Rounded 1c';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(/fonts/m-plus-rounded-1c-latin-500-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'M PLUS Rounded 1c';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(/fonts/m-plus-rounded-1c-latin-700-normal.woff2) format('woff2');
+}

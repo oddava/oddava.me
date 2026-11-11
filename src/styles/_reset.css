@@ -12,7 +12,7 @@
 
 html {
   color-scheme: dark;
-  background-color: var(--color-surface, #000000);
+  background-color: var(--paper, #15130f);
   scrollbar-gutter: stable;
   font-size: 100%;
   -webkit-text-size-adjust: 100%;

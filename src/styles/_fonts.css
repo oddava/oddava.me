@@ -1,44 +1,112 @@
 /* ===================================================
    ODDAVA.ME — @font-face declarations
    Single source of truth for public and admin layouts.
+
+   Alegreya, Alegreya Sans and Commit Mono, all SIL OFL 1.1 (licences beside
+   the files in public/fonts). Subset to Latin from the upstream binaries with
+   smcp, c2sc, onum, lnum, tnum, pnum, case, frac and liga kept, so small caps
+   and old-style figures are real.
+
+   Each family has a metric-matched fallback (size-adjust plus ascent/descent
+   overrides over a local system face), so the swap to the web font does not
+   move a line.
    =================================================== */
 
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: 'Alegreya';
   font-style: normal;
+  font-weight: 400 900;
   font-display: swap;
+  src: url(/fonts/alegreya-latin-wght-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Alegreya';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url(/fonts/alegreya-latin-wght-italic.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Alegreya Sans';
+  font-style: normal;
   font-weight: 400;
-  src: url(/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+  font-display: swap;
+  src: url(/fonts/alegreya-sans-latin-400-normal.woff2) format('woff2');
 }
 
 @font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url(/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
-}
-
-@font-face {
-  font-family: 'M PLUS Rounded 1c';
-  font-style: normal;
-  font-display: swap;
+  font-family: 'Alegreya Sans';
+  font-style: italic;
   font-weight: 400;
-  src: url(/fonts/m-plus-rounded-1c-latin-400-normal.woff2) format('woff2');
+  font-display: swap;
+  src: url(/fonts/alegreya-sans-latin-400-italic.woff2) format('woff2');
 }
 
 @font-face {
-  font-family: 'M PLUS Rounded 1c';
+  font-family: 'Alegreya Sans';
   font-style: normal;
-  font-display: swap;
   font-weight: 500;
-  src: url(/fonts/m-plus-rounded-1c-latin-500-normal.woff2) format('woff2');
+  font-display: swap;
+  src: url(/fonts/alegreya-sans-latin-500-normal.woff2) format('woff2');
 }
 
 @font-face {
-  font-family: 'M PLUS Rounded 1c';
+  font-family: 'Alegreya Sans';
   font-style: normal;
-  font-display: swap;
   font-weight: 700;
-  src: url(/fonts/m-plus-rounded-1c-latin-700-normal.woff2) format('woff2');
+  font-display: swap;
+  src: url(/fonts/alegreya-sans-latin-700-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Commit Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/commit-mono-latin-400-normal.woff2) format('woff2');
+}
+
+/* --- Metric-matched fallbacks (measured with fontTools against the local
+   face; see docs/design-system.md) --- */
+
+@font-face {
+  font-family: 'Alegreya Fallback';
+  font-style: normal;
+  src: local('Georgia'), local('Times New Roman');
+  size-adjust: 91.99%;
+  ascent-override: 110.45%;
+  descent-override: 37.5%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Alegreya Fallback';
+  font-style: italic;
+  src:
+    local('Georgia Italic'), local('Georgia-Italic'),
+    local('Times New Roman Italic');
+  size-adjust: 79.95%;
+  ascent-override: 127.08%;
+  descent-override: 43.15%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Alegreya Sans Fallback';
+  src: local('Arial'), local('Helvetica');
+  size-adjust: 85.82%;
+  ascent-override: 104.88%;
+  descent-override: 34.96%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Commit Mono Fallback';
+  src: local('Consolas'), local('Menlo'), local('Courier New');
+  size-adjust: 109.13%;
+  ascent-override: 82.47%;
+  descent-override: 18.33%;
+  line-gap-override: 0%;
 }

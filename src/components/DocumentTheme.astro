@@ -4,14 +4,14 @@ import { createHash } from 'node:crypto';
 // Paint the canvas before external stylesheets arrive. Keep this inline and
 // register its exact bytes with CSP rather than allowing arbitrary inline CSS.
 const css =
-  'html{color-scheme:dark;background-color:#000000;background-color:var(--color-surface,#000000)}';
+  'html{color-scheme:dark;background-color:#15130f;background-color:var(--paper,#15130f)}';
 Astro.csp?.insertStyleHash(
   `sha256-${createHash('sha256').update(css).digest('base64')}`,
 );
 ---
 
 <meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#000000" />
+<meta name="theme-color" content="#15130f" />
 <!-- Every icon file is written by scripts/render-icons.mjs. -->
 <link rel="icon" href="/favicon.ico" sizes="32x32" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

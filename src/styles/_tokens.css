@@ -1,0 +1,376 @@
+/* ===================================================
+   ODDAVA.ME — Rubric tokens
+   Primitives first, then semantic tokens per theme, then the scales.
+   docs/design-system.md is the reference; src/lib/design/palette.ts holds
+   the same colours as data and tests/design-tokens.test.ts keeps them equal
+   and checks every text/paper pair in both themes and every ink.
+
+   Themes switch on :root[data-theme] ('light' = Vellum, 'dark' =
+   Lamplight), defaulting to prefers-color-scheme. The ink switches on
+   [data-ink]; a site-wide default arrives as --site-ink-light/-dark.
+   =================================================== */
+
+/* --- Primitives --- */
+:root {
+  --vellum-paper: #fbfaf6;
+  --vellum-paper-raised: #ffffff;
+  --vellum-paper-sunken: #f2efe8;
+  --vellum-ink: #1d1a16;
+  --vellum-ink-2: #4f4a42;
+  --vellum-ink-3: #6f695f;
+  --vellum-rule: #dad4c8;
+  --vellum-rule-strong: #8c8579;
+  --vellum-ok: #2e6b3f;
+  --vellum-warn: #85570f;
+  --vellum-danger: #a3301b;
+
+  --lamplight-paper: #15130f;
+  --lamplight-paper-raised: #1e1b16;
+  --lamplight-paper-sunken: #100e0b;
+  --lamplight-ink: #ede6da;
+  --lamplight-ink-2: #bdb4a6;
+  --lamplight-ink-3: #9c9384;
+  --lamplight-rule: #2c2822;
+  --lamplight-rule-strong: #6e665a;
+  --lamplight-ok: #8fd1a0;
+  --lamplight-warn: #e6b86a;
+  --lamplight-danger: #ff9a85;
+
+  --ink-vermilion-light: #b9381f;
+  --ink-vermilion-dark: #f2836b;
+  --ink-ultramarine-light: #2d4fb0;
+  --ink-ultramarine-dark: #8fa8ff;
+  --ink-viridian-light: #1f6b55;
+  --ink-viridian-dark: #6fcba8;
+  --ink-aubergine-light: #6a2e5a;
+  --ink-aubergine-dark: #d99ac8;
+  --ink-ochre-light: #8a5a12;
+  --ink-ochre-dark: #e3b465;
+
+  --shadow-hue: 35 20% 15%;
+}
+
+/* --- The ink: the site default unless a visitor (on :root) or a note (on
+   its article) names another. --- */
+:root {
+  --rubric-light: var(--site-ink-light, var(--ink-vermilion-light));
+  --rubric-dark: var(--site-ink-dark, var(--ink-vermilion-dark));
+}
+
+[data-ink='vermilion'] {
+  --rubric-light: var(--ink-vermilion-light);
+  --rubric-dark: var(--ink-vermilion-dark);
+}
+
+[data-ink='ultramarine'] {
+  --rubric-light: var(--ink-ultramarine-light);
+  --rubric-dark: var(--ink-ultramarine-dark);
+}
+
+[data-ink='viridian'] {
+  --rubric-light: var(--ink-viridian-light);
+  --rubric-dark: var(--ink-viridian-dark);
+}
+
+[data-ink='aubergine'] {
+  --rubric-light: var(--ink-aubergine-light);
+  --rubric-dark: var(--ink-aubergine-dark);
+}
+
+[data-ink='ochre'] {
+  --rubric-light: var(--ink-ochre-light);
+  --rubric-dark: var(--ink-ochre-dark);
+}
+
+/* --- Vellum (light), the default --- */
+:root,
+:root [data-ink] {
+  --rubric: var(--rubric-light);
+}
+
+:root {
+  --paper: var(--vellum-paper);
+  --paper-raised: var(--vellum-paper-raised);
+  --paper-sunken: var(--vellum-paper-sunken);
+  --ink: var(--vellum-ink);
+  --ink-2: var(--vellum-ink-2);
+  --ink-3: var(--vellum-ink-3);
+  --rule: var(--vellum-rule);
+  --rule-strong: var(--vellum-rule-strong);
+  --ok: var(--vellum-ok);
+  --warn: var(--vellum-warn);
+  --danger: var(--vellum-danger);
+  --shadow-1:
+    0 1px 1px hsl(var(--shadow-hue) / 0.06),
+    0 2px 4px hsl(var(--shadow-hue) / 0.06);
+  --shadow-2:
+    0 1px 1px hsl(var(--shadow-hue) / 0.07),
+    0 4px 8px hsl(var(--shadow-hue) / 0.07),
+    0 12px 24px hsl(var(--shadow-hue) / 0.07);
+  --shadow-3:
+    0 2px 2px hsl(var(--shadow-hue) / 0.06),
+    0 8px 12px hsl(var(--shadow-hue) / 0.06),
+    0 24px 32px hsl(var(--shadow-hue) / 0.07),
+    0 48px 64px hsl(var(--shadow-hue) / 0.08);
+  --plate-edge: 0 0 0 1px var(--rule);
+  color-scheme: light;
+}
+
+/* --- Lamplight (dark): tuned on its own terms, not inverted --- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']),
+  :root:not([data-theme='light']) [data-ink] {
+    --rubric: var(--rubric-dark);
+  }
+
+  :root:not([data-theme='light']) {
+    --paper: var(--lamplight-paper);
+    --paper-raised: var(--lamplight-paper-raised);
+    --paper-sunken: var(--lamplight-paper-sunken);
+    --ink: var(--lamplight-ink);
+    --ink-2: var(--lamplight-ink-2);
+    --ink-3: var(--lamplight-ink-3);
+    --rule: var(--lamplight-rule);
+    --rule-strong: var(--lamplight-rule-strong);
+    --ok: var(--lamplight-ok);
+    --warn: var(--lamplight-warn);
+    --danger: var(--lamplight-danger);
+    --shadow-1: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+    --shadow-2:
+      inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 24px hsl(0 0% 0% / 0.35);
+    --shadow-3:
+      inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 12px 32px hsl(0 0% 0% / 0.45),
+      0 32px 64px hsl(0 0% 0% / 0.3);
+    --plate-edge: 0 0 0 1px var(--rule);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'],
+:root[data-theme='dark'] [data-ink] {
+  --rubric: var(--rubric-dark);
+}
+
+:root[data-theme='dark'] {
+  --paper: var(--lamplight-paper);
+  --paper-raised: var(--lamplight-paper-raised);
+  --paper-sunken: var(--lamplight-paper-sunken);
+  --ink: var(--lamplight-ink);
+  --ink-2: var(--lamplight-ink-2);
+  --ink-3: var(--lamplight-ink-3);
+  --rule: var(--lamplight-rule);
+  --rule-strong: var(--lamplight-rule-strong);
+  --ok: var(--lamplight-ok);
+  --warn: var(--lamplight-warn);
+  --danger: var(--lamplight-danger);
+  --shadow-1: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  --shadow-2:
+    inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 24px hsl(0 0% 0% / 0.35);
+  --shadow-3:
+    inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 12px 32px hsl(0 0% 0% / 0.45),
+    0 32px 64px hsl(0 0% 0% / 0.3);
+  --plate-edge: 0 0 0 1px var(--rule);
+  color-scheme: dark;
+}
+
+/* --- Derived from the current ink and paper (redeclared wherever the ink
+   changes, so a note's own ink carries its wash and focus with it) --- */
+:root,
+[data-ink] {
+  --rubric-wash: color-mix(in srgb, var(--rubric) 12%, var(--paper));
+  --rubric-line: color-mix(in srgb, var(--rubric) 40%, transparent);
+  --focus: var(--rubric);
+  --selection: color-mix(in srgb, var(--rubric) 22%, var(--paper));
+  --ok-wash: color-mix(in srgb, var(--ok) 12%, var(--paper));
+  --warn-wash: color-mix(in srgb, var(--warn) 12%, var(--paper));
+  --danger-wash: color-mix(in srgb, var(--danger) 12%, var(--paper));
+  --scrim: color-mix(in srgb, var(--paper-sunken) 72%, transparent);
+}
+
+/* --- Type, space, radius, motion --- */
+:root {
+  --serif: 'Alegreya', 'Alegreya Fallback', Georgia, serif;
+  --sans: 'Alegreya Sans', 'Alegreya Sans Fallback', system-ui, sans-serif;
+  --mono: 'Commit Mono', 'Commit Mono Fallback', ui-monospace, monospace;
+  /* Prose follows the visitor's reading choice (serif or sans). */
+  --prose: var(--serif);
+
+  --density: 1;
+  --step--2: 0.75rem;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5rem;
+  --step-3: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+  --step-4: clamp(2.25rem, 1.7rem + 2.2vw, 3.25rem);
+  --step-5: clamp(3rem, 1.8rem + 5.5vw, 5.5rem);
+  --leading-prose: 1.6;
+  --leading-ui: 1.45;
+  --leading-tight: 1.15;
+  --measure: 34em;
+  --label-tracking: 0.06em;
+
+  --space-1: calc(4px * var(--density));
+  --space-2: calc(8px * var(--density));
+  --space-3: calc(12px * var(--density));
+  --space-4: calc(16px * var(--density));
+  --space-5: calc(20px * var(--density));
+  --space-6: calc(24px * var(--density));
+  --space-7: calc(32px * var(--density));
+  --space-8: calc(40px * var(--density));
+  --space-9: calc(48px * var(--density));
+  --space-10: calc(64px * var(--density));
+  --space-11: calc(96px * var(--density));
+  --space-12: calc(128px * var(--density));
+  --section: calc(clamp(72px, 10vw, 128px) * var(--density));
+  --gutter: clamp(16px, 4vw, 32px);
+
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 16px;
+
+  --dur-1: 100ms;
+  --dur-2: 160ms;
+  --dur-3: 220ms;
+  --dur-4: 320ms;
+  --dur-5: 480ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* Generated by springEasing() in src/lib/design/spring.ts (stiffness 380,
+     damping 32); the token test fails if this drifts. */
+  --ease-spring: var(--ease-out);
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring: linear(
+      0,
+      0.053,
+      0.173,
+      0.32,
+      0.467,
+      0.6,
+      0.712,
+      0.802,
+      0.871,
+      0.922,
+      0.957,
+      0.981,
+      0.996,
+      1.005,
+      1.009,
+      1.011,
+      1.011,
+      1.01,
+      1.008,
+      1.006,
+      1.005,
+      1.004,
+      1.002,
+      1.002,
+      1
+    );
+  }
+}
+
+:root[data-density='compact'] {
+  --density: 0.875;
+}
+
+:root[data-size='large'] {
+  font-size: 112.5%;
+}
+
+:root[data-read='sans'] {
+  --prose: var(--sans);
+}
+
+/* ===================================================
+   Compatibility aliases — the pre-Rubric names, mapped onto the tokens
+   above so unmigrated CSS (Studio, the graph canvas, admin) keeps working.
+   =================================================== */
+:root,
+[data-ink] {
+  --font-body: var(--sans);
+  --font-prose: var(--prose);
+  --font-mono: var(--mono);
+
+  --text-2xs: 0.65rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --leading-body: 1.6;
+
+  --space-quarter: 0.25rem;
+  --space-half: 0.5rem;
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-1-5: 1.5rem;
+  --space-md: 2rem;
+  --space-2-5: 2.5rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
+
+  --radius-sm: 4px;
+  --radius-sm-2: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --max-width: 38rem;
+  --max-width-wide: 70rem;
+  --page-padding: var(--gutter);
+
+  --color-brand: var(--rubric);
+  --color-brand-strong: var(--rubric);
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--ink-2);
+  --color-text-muted: var(--ink-3);
+  --color-text-disabled: var(--ink-3);
+  --color-text-accent: var(--rubric);
+  --color-text-interactive: var(--ink);
+  --color-text-interactive-hover: var(--ink);
+  --color-text-success: var(--ok);
+  --color-text-warning: var(--warn);
+  --color-text-error: var(--danger);
+  --color-text-on-accent: var(--paper);
+  --color-on-danger: var(--paper);
+  --color-surface: var(--paper);
+  --color-surface-raised: var(--paper-raised);
+  --color-surface-elevated: var(--paper-raised);
+  --color-surface-glass: color-mix(
+    in srgb,
+    var(--paper-raised) 92%,
+    transparent
+  );
+  --color-surface-overlay: color-mix(
+    in srgb,
+    var(--paper-raised) 96%,
+    transparent
+  );
+  --color-accent: var(--rubric);
+  --color-accent-soft: var(--rubric);
+  --color-accent-hover: var(--rubric);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  /* Hover washes are neutral: the ink never fills. */
+  --color-overlay-soft: color-mix(in srgb, var(--ink) 5%, transparent);
+  --color-overlay-strong: color-mix(in srgb, var(--ink) 9%, transparent);
+  --color-shadow: hsl(var(--shadow-hue) / 0.12);
+  --color-focus-ring: var(--focus);
+  --color-selection: var(--selection);
+  --hairline: linear-gradient(
+    90deg,
+    transparent,
+    var(--rule) 8%,
+    var(--rule) 92%,
+    transparent
+  );
+  --ease-draw: var(--ease-out);
+}

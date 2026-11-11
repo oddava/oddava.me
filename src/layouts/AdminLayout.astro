@@ -1,7 +1,8 @@
 ---
 import DocumentTheme from '../components/DocumentTheme.astro';
 import '../styles/_fonts.css';
-import '../styles/_variables.css';
+import '../styles/_fonts-legacy.css';
+import '../styles/_tokens.css';
 import '../styles/admin.css';
 
 export interface Props {
@@ -47,7 +48,7 @@ const viewport =
       rel="preload"
       as="font"
       type="font/woff2"
-      href="/fonts/m-plus-rounded-1c-latin-400-normal.woff2"
+      href="/fonts/alegreya-sans-latin-400-normal.woff2"
       crossorigin
       fetchpriority="high"
     />
@@ -55,17 +56,8 @@ const viewport =
       rel="preload"
       as="font"
       type="font/woff2"
-      href="/fonts/m-plus-rounded-1c-latin-700-normal.woff2"
+      href="/fonts/alegreya-sans-latin-700-normal.woff2"
       crossorigin
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/jetbrains-mono-latin-400-normal.woff2"
-      crossorigin
-      fetchpriority="high"
     />
   </head>
   <body class="admin-page__body">
