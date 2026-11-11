@@ -1,5 +1,5 @@
 // Renders public/og-default.png from scripts/og-default-card.ts in headless
-// Chromium, with the site's own fonts. Run after changing the card or the cat.
+// Chromium, with the site's own fonts. Run after changing the card.
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,11 +31,18 @@ async function fontFace(family, weight, file) {
   const data = await readFile(path.join(projectRoot, 'public', 'fonts', file));
   return `@font-face { font-family: '${family}'; font-weight: ${weight}; src: url(data:font/woff2;base64,${data.toString('base64')}) format('woff2'); }`;
 }
-const fonts = await fontFace(
-  'M PLUS Rounded 1c',
-  700,
-  'm-plus-rounded-1c-latin-700-normal.woff2',
-);
+const fonts = [
+  await fontFace(
+    'M PLUS Rounded 1c',
+    700,
+    'm-plus-rounded-1c-latin-700-normal.woff2',
+  ),
+  await fontFace(
+    'M PLUS Rounded 1c',
+    400,
+    'm-plus-rounded-1c-latin-400-normal.woff2',
+  ),
+].join('');
 
 const browser = await chromium.launch();
 try {

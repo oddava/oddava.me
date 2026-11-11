@@ -38,11 +38,6 @@
   padding-bottom: var(--space-lg);
 }
 
-/* Personal pages breathe a little more under the header than notes do. */
-.page--sky > main {
-  padding: 3.5rem 0 2rem;
-}
-
 .page--immersive > main {
   min-height: 0;
   padding: 0;
@@ -83,49 +78,18 @@
   border: 0;
 }
 
-/* --- Footer: the floor the page ends on --- */
+/* --- Footer --- */
 .site-footer {
   margin-top: auto;
   padding: 3rem 0 2rem;
 }
 
-.site-footer__floor {
-  position: relative;
-  height: 1px;
-  background: var(--hairline-floor);
-}
-
-/* Asleep on the line. Breathing is the canvas swelling from its feet. */
-.site-footer__nap {
-  position: absolute;
-  right: 12%;
-  bottom: 0;
-  display: block;
-  transform-origin: 50% 100%;
-  animation: nap-breathe 4.2s ease-in-out infinite;
-}
-
-@keyframes nap-breathe {
-  50% {
-    transform: scaleY(1.025);
-  }
-}
-
-/* --- Quiet sky: home's stars with the lights down --- */
-.quiet-sky {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  animation: quiet-sky-in 600ms ease-out both;
-}
-
-@keyframes quiet-sky-in {
-  from {
-    opacity: 0;
-  }
+.site-footer__line {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 /* --- Page title and entrance --- */
@@ -162,20 +126,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-footer__nap,
-  .quiet-sky,
   .rise {
     animation: none;
-  }
-}
-
-@media (forced-colors: active) {
-  .quiet-sky,
-  .site-footer__nap {
-    display: none;
-  }
-
-  .site-footer__floor {
-    background: CanvasText;
   }
 }

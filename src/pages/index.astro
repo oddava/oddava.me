@@ -5,12 +5,10 @@
 export const prerender = true;
 import Base from '@layouts/Base.astro';
 import Footer from '../components/Footer.astro';
-import AwakeSky from '../components/awake/AwakeSky.astro';
 import RecentNotes from '../components/home/RecentNotes.astro';
 import ProjectStrip from '../components/home/ProjectStrip.astro';
 import linksData from '../data/links.json';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
-import '../styles/components/_awake.css';
 import '../styles/components/_projects.css';
 import '../styles/components/_home.css';
 
@@ -24,28 +22,12 @@ const pageHref = (label: string) =>
 ---
 
 <Base>
-  <div class="awake-band" data-awake-band slot="background" aria-hidden="true">
-    <AwakeSky />
-    <canvas class="awake-cat" data-awake-cat></canvas>
-    <div class="awake-ground" data-awake-ground></div>
-    <canvas class="awake-fx" data-awake-fx></canvas>
-    <div class="awake-dim" data-awake-dim></div>
-  </div>
-
-  <section class="awake awake--band" data-awake>
-    <div class="awake-stage">
-      <div class="awake-intro">
-        <h1 class="awake-name awake-in awake-in--name" data-awake-perch>
-          oddava
-        </h1>
-        <p class="awake-tagline awake-in awake-in--tagline">
-          i write software, interrogate SI (silly intellect), and make tools for
-          small&nbsp;annoyances.
-        </p>
-      </div>
-    </div>
-    <button class="awake-pet" type="button" data-awake-pet>pet the cat</button>
-    <p class="sr-only" aria-live="polite" data-awake-live></p>
+  <section class="home-hero">
+    <h1 class="home-hero__name rise">oddava</h1>
+    <p class="home-hero__tagline rise rise--1">
+      i write software, interrogate SI (silly intellect), and make tools for
+      small&nbsp;annoyances.
+    </p>
   </section>
 
   <section class="home-strip" aria-labelledby="home-projects">
@@ -101,14 +83,7 @@ const pageHref = (label: string) =>
 </Base>
 
 <script>
-  import { mountAwake } from '../lib/awake/mount';
-  import { mountQuiet } from '../lib/awake/quiet';
   import { mountGallery } from '../lib/project-gallery';
-
-  const root = document.querySelector<HTMLElement>('[data-awake]');
-  if (root) mountAwake(root);
-  // The cat asleep on the footer; home has no quiet sky to paint.
-  mountQuiet();
 
   // The strip is a server island: it arrives after this runs, so wait for it.
   const nav = document.querySelector<HTMLElement>('[data-gallery-nav]');

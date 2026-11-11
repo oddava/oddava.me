@@ -10,7 +10,6 @@ import { VisuallyHidden } from '../ui/VisuallyHidden';
 import type { GuestbookEntry, GuestbookStatus } from '../../lib/contracts';
 import { errorMessage, useToast } from './toast';
 import { useDialogConfirm } from './useDialogConfirm';
-import { paintNap } from '../../lib/awake/quiet';
 
 /** How long a decided entry takes to fold shut before it leaves the list. */
 const FOLD_MS = 260;
@@ -347,23 +346,11 @@ export function GuestbookModeration({
   );
 }
 
-/**
- * Nothing waiting: the site's cat, asleep on the inbox line. It is painted
- * once, like the one on the footer floor, and breathes in CSS.
- */
+/** Nothing waiting: one quiet line. */
 function QuietInbox() {
-  const nap = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (nap.current) paintNap(nap.current);
-  }, []);
-
   return (
-    <div className="adm-empty adm-empty--asleep">
+    <div className="adm-empty">
       <p className="adm-empty__line">nothing waiting.</p>
-      <div className="adm-nap" aria-hidden="true">
-        <canvas ref={nap} className="adm-nap__cat" />
-      </div>
     </div>
   );
 }

@@ -78,7 +78,7 @@
   background: var(--color-surface-raised);
 }
 
-/* No image: the site's horizon, low in the frame — an empty sky, not a
+/* No image: the site's horizon, low in the frame — an empty frame, not a
    picture that failed to load. */
 .adm-project__thumb:not(:has(img)) {
   position: relative;

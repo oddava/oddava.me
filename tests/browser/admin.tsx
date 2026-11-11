@@ -5,6 +5,4 @@ import AdminPanel from '../../src/components/admin/AdminPanel';
 import '../../src/styles/_variables.css';
 import '../../src/styles/_fonts.css';
 import '../../src/styles/admin.css';
-import { mountQuiet } from '../../src/lib/awake/quiet';
 render(<AdminPanel />, document.getElementById('app')!);
-mountQuiet();

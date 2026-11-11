@@ -43,7 +43,7 @@ export async function mockAdmin(page: Page): Promise<AdminMockState> {
       {
         id: 'g2',
         name: 'tomasz',
-        message: 'hello from kraków 👋 love the cat.',
+        message: 'hello from kraków 👋 love the site.',
         status: 'pending',
         createdAt: new Date(now - 26 * HOUR).toISOString(),
         ipFingerprint: 'c0de44aa91b2ff10',

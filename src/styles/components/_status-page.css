@@ -1,5 +1,4 @@
-/* Shared shell for the status pages (404, 500, 503): one numeral, one line.
-   The 404 is the cat's page too — it perches on the numeral. */
+/* Shared shell for the status pages (404, 500, 503): one numeral, one line. */
 .status-page {
   flex: 1;
   display: flex;
@@ -37,8 +36,10 @@
   font-size: var(--text-sm);
 }
 
-@media (max-width: 639px) {
-  .status-page.awake {
-    padding: 4rem 0 5.5rem;
-  }
+.status-page__links {
+  display: flex;
+  gap: 1.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
 }

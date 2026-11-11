@@ -96,7 +96,7 @@ mapping, and fails when a name is missing.
 The notes shell (`src/layouts/NotesLayout.astro`):
 
 - has its own header: a blue `oddava` wordmark (back to the apex) and search;
-- has no music widget and no sky;
+- has no music widget;
 - preloads one font face (regular body) instead of three;
 - keeps the live graph in each note's rail, as the apex does. There is no
   graph page: `/graph` answers with a 301 to the root.

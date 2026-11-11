@@ -19,9 +19,6 @@ const pages = [
   { href: notesIndexUrl(), name: 'notes' },
 ] as const;
 
-// On home the cat below walks over to sit under the page you point at.
-const onHome = pathname === '/';
-
 const isCurrent = (href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 ---
@@ -43,7 +40,6 @@ const isCurrent = (href: string) =>
                     : undefined
               }
               data-page-preview-ignore
-              data-home-nav={onHome ? page.name : undefined}
             >
               {page.name}
             </a>

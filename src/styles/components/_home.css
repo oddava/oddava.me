@@ -1,15 +1,24 @@
 /* ===================================================
-   HOME — the horizon and what stands on it.
-
-   Under the hero's floor the work starts at once: the start of the /projects
-   gallery, then the latest notes, then one row of links and the cat
-   asleep at the end of the page. Everything anchors on the reading column's
-   left edge and runs out to the right, the way the strip does.
+   HOME — a name, one line, then the work: the start of the /projects
+   gallery, the latest notes and one row of links.
    =================================================== */
 
-/* The hero sits right under the header; the sections carry their own space. */
-.page:has(.awake--band) > main {
-  padding: 0;
+.home-hero {
+  padding: 2.5rem 0 3.5rem;
+}
+
+.home-hero__name {
+  margin: 0;
+  font-size: clamp(2.5rem, 2rem + 3vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.home-hero__tagline {
+  max-width: 30rem;
+  margin: 1.25rem 0 0;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
 }
 
 /* --- A section's label: mono, lighting its segment like a header page --- */

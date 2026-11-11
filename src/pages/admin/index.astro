@@ -17,7 +17,6 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
   title="Dashboard"
   description="Unified admin panel for oddava.me."
   bare={configured}
-  sky
 >
   {configured ? <AdminPanel client:load /> : <AdminUnavailable />}
 </AdminLayout>

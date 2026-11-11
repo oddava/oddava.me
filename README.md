@@ -11,8 +11,8 @@ to write.
 
 ## What's here
 
-- **Homepage**: a cat-shaped card with a little orbit of links around it. It plays a short
-  intro the first time it loads.
+- **Homepage**: a short page of what's here: the latest projects and notes, and where
+  else to find me.
 - **Notes garden**: notes with folders, tags, backlinks, search, and an interactive graph that
   shows how everything connects.
 - **Studio**: a private editor at `/admin/studio`. I type and it autosaves to the live store,

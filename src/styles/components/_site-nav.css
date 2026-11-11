@@ -10,8 +10,7 @@
   margin: 0 auto;
 }
 
-/* The rule, drawn with faded ends so it reads as the same horizon the cat
-   walks on at home. */
+/* The rule, drawn with faded ends. */
 .site-nav::after {
   content: '';
   position: absolute;

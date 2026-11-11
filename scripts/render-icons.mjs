@@ -1,8 +1,6 @@
 /**
- * The site mark: an odd-eyed black cat in the dark. The tile is the night and
- * the cat is black on black, so all of it you see is two eyes — one
- * --color-brand, one --color-text-interactive-hover, the blues of the
- * homepage cat's iris. Heterochromia in cats is called "odd eyes".
+ * The site mark, for now: a plain lowercase "o" on the dark tile. A stand-in
+ * until the Rubric mark replaces it.
  *
  * Every icon in public/ is written from the geometry below; rerun with
  * `pnpm run icons` after changing it.
@@ -18,42 +16,26 @@ const publicRoot = path.resolve(
   'public',
 );
 
-// A 32-unit grid, so 2 units are one pixel at 16 and every vertical edge that
-// matters lands on a pixel boundary at 16 and 32. This is the right eye; the
-// left mirrors it. Inner corner low and pointed, outer corner round.
-const EYE =
-  'M18 18C19.6 14.6 22.4 13 25 13C27 13 28 14.8 28 16.8C28 19.4 25.8 21 23.4 21C21.2 21 19.4 19.9 18 18Z';
-// Tab sizes: straight-sided through the middle, exactly one pixel column at
-// 16px, so the slit stays a crisp black line instead of a grey smear.
-const TAB_SLIT =
-  'M23 13.6C23.8 14.6 24 15.6 24 16.6V17.6C24 18.6 23.8 19.6 23 20.6C22.2 19.6 22 18.6 22 17.6V16.6C22 15.6 22.2 14.6 23 13.6Z';
-// Large sizes have the pixels for a true tapered slit.
-const LARGE_SLIT =
-  'M23 13.4C24.3 15.4 24.3 18.8 23 20.8C21.7 18.8 21.7 15.4 23 13.4Z';
-const BRAND = '#7aa7ff';
-const LIGHT = '#d6e4ff';
-const NIGHT = '#000000';
-const MIRROR = 'matrix(-1 0 0 1 32 0)';
-
-const eyes = (slit) =>
-  `<path fill="${BRAND}" d="${EYE}" transform="${MIRROR}"/>` +
-  `<path fill="${LIGHT}" d="${EYE}"/>` +
-  `<path fill="${NIGHT}" d="${slit}" transform="${MIRROR}"/>` +
-  `<path fill="${NIGHT}" d="${slit}"/>`;
+const INK = '#adcaff';
+const TILE = '#000000';
+// A round "o": a ring on a 32-unit grid, even-odd filled.
+const O =
+  'M16 8.5a7.5 7.5 0 1 0 0 15a7.5 7.5 0 1 0 0-15Zm0 3.2a4.3 4.3 0 1 1 0 8.6a4.3 4.3 0 1 1 0-8.6Z';
+const mark = `<path fill="${INK}" fill-rule="evenodd" d="${O}"/>`;
 
 const svg = (body) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${body}</svg>\n`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${body}</svg>
+`;
 
-// The rounded tile is part of the mark: the eyes need the dark on a light tab.
 const favicon = svg(
-  `<rect width="32" height="32" rx="7.5" fill="${NIGHT}"/>${eyes(TAB_SLIT)}`,
+  `<rect width="32" height="32" rx="7.5" fill="${TILE}"/>${mark}`,
 );
 // Full-bleed for platforms that cut their own shape. `scale` keeps maskable
 // icons inside the 80% safe zone.
 const square = (scale = 1) =>
   svg(
-    `<rect width="32" height="32" fill="${NIGHT}"/>` +
-      `<g transform="translate(16 16) scale(${scale}) translate(-16 -16)">${eyes(LARGE_SLIT)}</g>`,
+    `<rect width="32" height="32" fill="${TILE}"/>` +
+      `<g transform="translate(16 16) scale(${scale}) translate(-16 -16)">${mark}</g>`,
   );
 
 const png = (source, size) =>

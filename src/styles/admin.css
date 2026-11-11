@@ -108,36 +108,6 @@
     max(24px, env(safe-area-inset-left));
 }
 
-/* Home's stars with the lights down, behind the dashboard and sign-in — the
-   same canvas the personal pages paint (see _layout.css). */
-.admin-page .quiet-sky {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  animation: admin-sky-in 900ms ease-out both;
-}
-
-@keyframes admin-sky-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .admin-page .quiet-sky {
-    animation: none;
-  }
-}
-
-@media (forced-colors: active) {
-  .admin-page .quiet-sky {
-    display: none;
-  }
-}
-
 /* The dashboard draws its own frame: header and desk, full height. */
 .admin-shell--bare {
   max-width: none;

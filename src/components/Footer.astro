@@ -1,13 +1,14 @@
 ---
 /**
- * Site footer: the floor the page ends on, with the cat asleep on it. Only
- * pages under the quiet sky have one — a floor with no cat on it reads as a
- * stray rule.
+ * Site footer: where else to find the site. A plain line until the Rubric
+ * shell (colophon and appearance) replaces it.
  */
 ---
 
-<footer class="site-footer" aria-hidden="true">
-  <div class="site-footer__floor">
-    <canvas class="site-footer__nap" data-quiet-nap></canvas>
-  </div>
+<footer class="site-footer">
+  <p class="site-footer__line">
+    <a href="/rss.xml">rss</a>
+    <span aria-hidden="true">·</span>
+    <a href="/sitemap-index.xml">sitemap</a>
+  </p>
 </footer>
