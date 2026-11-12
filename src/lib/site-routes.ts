@@ -21,5 +21,6 @@ export function getPublicNavigationRoutes(): PublicNavigationRoute[] {
 }
 
 export function getStaticSitemapPaths(): string[] {
+  // /sky is an easter egg: no nav entry, but still listed for search.
   return [...publicNavigationRoutes().map((route) => route.href), '/sky'];
 }
