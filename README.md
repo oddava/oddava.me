@@ -2,36 +2,42 @@
 
 Hey, I'm oddava. I got into code because my Telegram name needed a working clock.
 This is the code behind my personal site, [oddava.me](https://oddava.me).
-It's a small corner of the internet with a homepage, a notes garden, and an admin studio I use
-to write.
+It's a small corner of the internet with a homepage, my projects, a notes garden, and an
+admin studio I use to write.
 
 <p align="center">
-  <img src=".github/assets/intro.gif" alt="Homepage intro animation" width="860">
+  <img src=".github/assets/tour.gif" alt="The homepage switching to the dark theme and a few inks, then the projects page" width="860">
 </p>
 
 ## What's here
 
-- **Homepage**: a cat-shaped card with a little orbit of links around it. It plays a short
-  intro the first time it loads.
-- **Notes garden**: notes with folders, tags, backlinks, search, and an interactive graph that
-  shows how everything connects.
+- **Homepage**: my name, a one-line tagline, and my top projects. An appearance panel in the
+  header picks the theme (system, light, or dark) and one of five ink colours, and remembers
+  the choice.
+- **Projects**: one column of picture cards. I add, edit, hide, and reorder them from the
+  admin dashboard, and the page updates on the next load.
+- **Notes garden**: lives on its own host, [notes.oddava.me](https://notes.oddava.me). Notes
+  have folders, tags, backlinks, search, and an interactive graph that shows how everything
+  connects.
 - **Studio**: a private editor at `/admin/studio`. I type and it autosaves to the live store,
   so a note is up a second later. No commit and no deploy.
+- **Admin dashboard**: guestbook moderation, projects, integrations, and a launcher for the
+  other apps I self-host.
 - **Now playing**: a widget that shows what I'm listening to (Spotify + Lanyard).
-- **Guestbook**: signed, rate limited, and moderated.
+- **Guestbook**: on the about page. Signed, rate limited, and moderated.
 
 ## Screenshots
 
-| Home                               | Notes                              |
-| ---------------------------------- | ---------------------------------- |
-| ![Home](.github/assets/home.png)   | ![Notes](.github/assets/notes.png) |
-| **About**                          | **Graph**                          |
-| ![About](.github/assets/about.png) | ![Graph](.github/assets/graph.png) |
+| Home                               | Projects                                 |
+| ---------------------------------- | ---------------------------------------- |
+| ![Home](.github/assets/home.png)   | ![Projects](.github/assets/projects.png) |
+| **About**                          | **Notes**                                |
+| ![About](.github/assets/about.png) | ![Notes](.github/assets/notes.png)       |
 
 <p align="center">
-  <img src=".github/assets/graph.gif" alt="Dragging the notes graph" width="640">
+  <img src=".github/assets/graph.gif" alt="Dragging a node in the global notes graph" width="640">
   &nbsp;
-  <img src=".github/assets/mobile.png" alt="Mobile homepage" width="200">
+  <img src=".github/assets/mobile.png" alt="The homepage on a phone, dark theme" width="200">
 </p>
 
 ## Stack
@@ -77,6 +83,8 @@ docker compose up -d      # local Redis, ephemeral by design
 pnpm notes:migrate        # seed Redis from src/content/notes
 pnpm dev
 ```
+
+The site is at http://localhost:4321 and the notes garden at http://notes.localhost:4321.
 
 Other useful scripts:
 
