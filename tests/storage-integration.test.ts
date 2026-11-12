@@ -171,6 +171,231 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       });
     });
 
+    it('caps the sky, keeps approved stars and moderates words', async () => {
+      const {
+        appendStar,
+        clearUnapprovedStars,
+        getPublicStars,
+        MAX_STARS,
+        readStars,
+        updateStarStatus,
+      } = await import('../src/lib/server/sky');
+      await cleanupClient.flushDb();
+
+      const star = (id: string, word?: string) => ({
+        id,
+        x: 0.5,
+        y: 0.5,
+        ...(word ? { word } : {}),
+        createdAt: new Date(2026, 10, 1).toISOString(),
+        status: word ? ('pending' as const) : ('approved' as const),
+      });
+
+      await appendStar(star('quiet'));
+      await appendStar(star('worded', 'hello'));
+      await appendStar(star('spam', 'buy now'));
+      expect(await updateStarStatus('worded', 'approved')).toBe(true);
+      expect(await updateStarStatus('spam', 'rejected')).toBe(true);
+
+      expect(getPublicStars(await readStars())).toEqual([
+        expect.objectContaining({ id: 'worded', word: 'hello' }),
+        expect.not.objectContaining({ word: expect.anything() }),
+      ]);
+      expect(await clearUnapprovedStars()).toBe(1);
+      expect((await readStars()).map((s) => s.id)).toEqual(['worded', 'quiet']);
+
+      // At the ceiling the list is left alone and the append says so.
+      const key = 'dev:sky:stars';
+      await cleanupClient.del(key);
+      await cleanupClient.rPush(
+        key,
+        Array.from({ length: MAX_STARS }, (_, i) =>
+          JSON.stringify(star(`filler-${i}`)),
+        ),
+      );
+      await expect(appendStar(star('one-too-many'))).resolves.toBe('full');
+      expect(await cleanupClient.lLen(key)).toBe(MAX_STARS);
+
+      // Rejecting gives the place back: the next star drops the rejected.
+      expect(await updateStarStatus('filler-7', 'rejected')).toBe(true);
+      await expect(appendStar(star('room-at-last'))).resolves.toBe('ok');
+      const ids = (await readStars()).map((s) => s.id);
+      expect(ids).toHaveLength(MAX_STARS);
+      expect(ids[0]).toBe('room-at-last');
+      expect(ids).not.toContain('filler-7');
+    });
+
+    it("rejects everything one visitor left, and nobody else's", async () => {
+      const { appendStar, readStars, updateVisitorStarStatus } =
+        await import('../src/lib/server/sky');
+      await cleanupClient.flushDb();
+      const star = (id: string, ipFingerprint?: string) => ({
+        id,
+        x: 0.5,
+        y: 0.5,
+        createdAt: new Date(2026, 10, 1).toISOString(),
+        status: 'approved' as const,
+        ...(ipFingerprint ? { ipFingerprint } : {}),
+      });
+      for (const [id, who] of [
+        ['a1', 'flooder'],
+        ['b1', 'someone'],
+        ['a2', 'flooder'],
+        ['n1', undefined],
+        ['a3', 'flooder'],
+      ] as const) {
+        await appendStar(star(id, who));
+      }
+
+      await expect(updateVisitorStarStatus('a2', 'rejected')).resolves.toBe(3);
+      const status = Object.fromEntries(
+        (await readStars()).map((s) => [s.id, s.status]),
+      );
+      expect(status).toEqual({
+        a1: 'rejected',
+        a2: 'rejected',
+        a3: 'rejected',
+        b1: 'approved',
+        n1: 'approved',
+      });
+      // A star with no fingerprint matches nothing, not every other one.
+      await expect(updateVisitorStarStatus('n1', 'rejected')).resolves.toBe(0);
+      await expect(
+        updateVisitorStarStatus('missing', 'rejected'),
+      ).resolves.toBe(0);
+    });
+
+    it('counts who is here and who has been in one round trip', async () => {
+      const { PRESENCE_WINDOW_MS, recordPulse } =
+        await import('../src/lib/server/visitors');
+      await cleanupClient.flushDb();
+      const now = Date.UTC(2026, 10, 12, 12);
+
+      // Two people behind one home address are two visitors.
+      await recordPulse('home', 'alice', now);
+      await recordPulse('home', 'alice', now + 1000);
+      const both = await recordPulse('home', 'bob', now + 2000);
+      expect(both).toEqual({ here: 2, visitors: 2, today: 2 });
+
+      // Alice goes quiet past the window; Bob is still here.
+      const later = now + PRESENCE_WINDOW_MS + 5000;
+      expect(await recordPulse('home', 'bob', later)).toEqual({
+        here: 1,
+        visitors: 2,
+        today: 2,
+      });
+
+      // The presence key expires on its own; the day key is short-lived.
+      expect(await cleanupClient.pTTL('dev:visitors:here')).toBeGreaterThan(0);
+      expect(
+        await cleanupClient.pTTL('dev:visitors:day:2026-11-12'),
+      ).toBeGreaterThan(0);
+      expect(await cleanupClient.pTTL('dev:visitors:all')).toBe(-1);
+    });
+
+    it('lets one network bring only a few invented visitors a day', async () => {
+      const { IDS_PER_NETWORK, recordPulse } =
+        await import('../src/lib/server/visitors');
+      await cleanupClient.flushDb();
+      const now = Date.UTC(2026, 10, 12, 12);
+
+      let last = { here: 0, visitors: 0, today: 0 };
+      for (let i = 0; i < IDS_PER_NETWORK + 20; i++) {
+        last = await recordPulse('flooder', `fake-${i}`, now + i);
+      }
+      // The allowance, plus the network itself for everything past it.
+      expect(last.here).toBe(IDS_PER_NETWORK + 1);
+      // An id already counted today keeps counting as itself.
+      expect((await recordPulse('flooder', 'fake-0', now + 100)).here).toBe(
+        IDS_PER_NETWORK + 1,
+      );
+      // Another network is unaffected.
+      expect((await recordPulse('elsewhere', 'someone', now + 200)).here).toBe(
+        IDS_PER_NETWORK + 2,
+      );
+    });
+
+    it('counts at most so many new visitors a minute, ids or not', async () => {
+      const { NEW_IDS_PER_MINUTE, recordPulse } =
+        await import('../src/lib/server/visitors');
+      await cleanupClient.flushDb();
+      const now = Date.UTC(2026, 10, 12, 12);
+
+      // A pool of addresses, none sending an id: each a new network.
+      let last = { here: 0, visitors: 0, today: 0 };
+      for (let i = 0; i < NEW_IDS_PER_MINUTE + 30; i++) {
+        last = await recordPulse(`pool-${i}`, null, now + i);
+      }
+      expect(last.here).toBe(NEW_IDS_PER_MINUTE);
+      // Someone already counted today is still counted, cap or not.
+      expect((await recordPulse('pool-0', null, now + 500)).here).toBe(
+        NEW_IDS_PER_MINUTE,
+      );
+      // The next minute has room again.
+      expect((await recordPulse('newcomer', null, now + 60_000)).here).toBe(
+        NEW_IDS_PER_MINUTE + 1,
+      );
+    });
+
+    it('rejects everything placed since a moment, and nothing before', async () => {
+      const { appendStar, readStars, updateStarStatusSince } =
+        await import('../src/lib/server/sky');
+      await cleanupClient.flushDb();
+      const at = (id: string, iso: string) =>
+        appendStar({
+          id,
+          x: 0.5,
+          y: 0.5,
+          createdAt: iso,
+          status: 'approved',
+        });
+      await at('old', '2026-11-12T08:00:00.000Z');
+      await at('edge', '2026-11-12T09:00:00.000Z');
+      await at('new', '2026-11-12T09:30:00.000Z');
+      await expect(
+        updateStarStatusSince('2026-11-12T09:00:00.000Z', 'rejected'),
+      ).resolves.toBe(2);
+      const status = Object.fromEntries(
+        (await readStars()).map((s) => [s.id, s.status]),
+      );
+      expect(status).toEqual({
+        old: 'approved',
+        edge: 'rejected',
+        new: 'rejected',
+      });
+    });
+
+    it('never evicts a shining star for a pending word', async () => {
+      const { appendStar, readStars, UNAPPROVED_STAR_LIMIT, MAX_STARS } =
+        await import('../src/lib/server/sky');
+      await cleanupClient.flushDb();
+      expect(UNAPPROVED_STAR_LIMIT).toBe(MAX_STARS);
+      const count = 201;
+      const key = 'dev:sky:stars';
+      await cleanupClient.rPush(
+        key,
+        Array.from({ length: count }, (_, i) =>
+          JSON.stringify({
+            id: `pending-${i}`,
+            x: 0.5,
+            y: 0.5,
+            word: 'hi',
+            createdAt: new Date(2026, 10, 1).toISOString(),
+            status: 'pending',
+          }),
+        ),
+      );
+      await appendStar({
+        id: 'newest',
+        x: 0.5,
+        y: 0.5,
+        word: 'hello',
+        createdAt: new Date(2026, 10, 2).toISOString(),
+        status: 'pending',
+      });
+      expect(await readStars()).toHaveLength(count + 1);
+    });
+
     it('saves projects with a compare-and-set revision', async () => {
       const { DEFAULT_PROJECTS, readProjects, writeProjects } =
         await import('../src/lib/server/projects');

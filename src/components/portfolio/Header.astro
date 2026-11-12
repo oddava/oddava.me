@@ -1,7 +1,7 @@
 ---
 /**
- * Portfolio header: the wordmark home, then projects, about and notes, then
- * the appearance icon. Notes is the separate notes site, so it is a plain
+ * Portfolio header: the wordmark home, then projects, about, sky and notes,
+ * then the appearance icon. Notes is the separate notes site, so it is a plain
  * outbound link (a new tab when it is on another origin) and never the
  * current page here.
  */
@@ -16,6 +16,7 @@ const pathname =
 const pages = [
   { href: '/projects', name: 'projects' },
   { href: '/about', name: 'about' },
+  { href: '/sky', name: 'sky' },
 ] as const;
 
 const current = (href: string) =>

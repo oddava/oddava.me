@@ -6,6 +6,7 @@
  */
 import linksData from '../../data/links.json';
 import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
+import VisitorPulse from './VisitorPulse.astro';
 
 type Glyph = 'github' | 'twitter' | 'mail' | 'rss';
 
@@ -61,5 +62,6 @@ const links = [
         })
       }
     </nav>
+    <VisitorPulse />
   </div>
 </footer>

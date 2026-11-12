@@ -21,5 +21,9 @@ export function getPublicNavigationRoutes(): PublicNavigationRoute[] {
 }
 
 export function getStaticSitemapPaths(): string[] {
-  return [...publicNavigationRoutes().map((route) => route.href), '/links'];
+  return [
+    ...publicNavigationRoutes().map((route) => route.href),
+    '/sky',
+    '/links',
+  ];
 }

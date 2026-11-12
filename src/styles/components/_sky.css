@@ -1,0 +1,752 @@
+/* ===================================================
+   PORTFOLIO — sky (/sky): an evening that visitors leave stars in.
+
+   The page is a portfolio page like about: the header, the title, a line
+   of prose, then the evening itself, full width and unframed, its edges
+   dissolving into the page, with the "leave a star" bar below. It is dusk
+   in both themes (stars need the dark); everything the page adds to it,
+   the rings, the ghost, the sparkles, the buttons, takes the site's ink,
+   and the label and composer are the site's own panels.
+   =================================================== */
+
+[data-site='portfolio'] .pf-sky {
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+}
+
+[data-site='portfolio'] .sky-page {
+  /* Dark theme: how far in from each side the sky has fully faded in. */
+  --sky-side: clamp(48px, 9vw, 160px);
+  /* Where the light theme's fade has fully come in, as fractions of the
+     sky, top and sides. SkyField keeps the stars inside these; each theme
+     sets its own (the dark values are below). */
+  --sky-field-top: 0.22;
+  --sky-field-side: 0.16;
+  /* The ink at night: the dark-theme variant reads on the sky in either
+     theme. The renderer reads this one property for the canvas. */
+  --sky-accent: var(--acc-d);
+  --sky-night-ink: #e6e9ee;
+  --sky-radius: 16px;
+  display: grid;
+  margin-top: calc(24px * var(--d) + 4px);
+}
+
+/* ---- the words above the sky ----------------------------------------- */
+
+[data-site='portfolio'] .sky-lede {
+  max-width: 44rem;
+  font-size: 1.1875rem;
+  line-height: calc(var(--lh) + 0.05);
+  text-wrap: pretty;
+}
+
+/* ---- the panel -------------------------------------------------------- */
+
+/* The sky runs the full width of the window, with no frame: it is not a
+   picture on the page but the evening behind it, showing through. */
+html:has(.sky-page),
+body:has(.sky-page) {
+  overflow-x: clip;
+}
+
+[data-site='portfolio'] .sky {
+  /* The window less its scrollbar (SkyField measures --scrollbar), so the
+     full-bleed sky is exactly the page's width, centred. */
+  --bleed: calc(100vw - var(--scrollbar, 0px));
+  position: relative;
+  width: var(--bleed);
+  /* Tall, but short enough to leave "leave a star" above the fold. */
+  height: clamp(22rem, calc(100svh - 26.5rem), 44rem);
+  margin-top: 4px;
+  margin-inline: calc((100% - var(--bleed)) / 2);
+  color: var(--sky-night-ink);
+  isolation: isolate;
+}
+
+/* On a light page, a dusk glow behind the evening: the faded edges pass
+   through lavender and peach on their way to white, as a real sky does
+   near the sun's side, instead of through grey. */
+[data-site='portfolio'] .sky::before {
+  content: '';
+  position: absolute;
+  inset: 4% -2% -4%;
+  z-index: -1;
+  background:
+    radial-gradient(
+      60% 70% at 50% 62%,
+      rgb(150 128 214 / 0.55),
+      rgb(204 170 226 / 0.35) 55%,
+      transparent 78%
+    ),
+    radial-gradient(
+      70% 40% at 50% 100%,
+      rgb(255 196 190 / 0.45),
+      transparent 70%
+    );
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+:root[data-site='portfolio'][data-theme='dark'] .sky::before {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-site='portfolio'][data-theme='system'] .sky::before {
+    display: none;
+  }
+}
+
+/* The painted evening. Its edges dissolve into the page: a long fade at
+   the top, where the sky gives way to the words above it, a softer one
+   at each side, and a short one under the hills, so the land settles
+   into the page instead of stopping at a line. */
+[data-site='portfolio'] .sky-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Twilight, the same the canvas paints, so it is never blank while the
+     island wakes. */
+  background: linear-gradient(
+    180deg,
+    #080b1f 0%,
+    #141943 42%,
+    #2b2559 70%,
+    #4d3768 86%,
+    #6b4a6e 100%
+  );
+  -webkit-mask-image: var(--sky-mask);
+  -webkit-mask-composite: source-in;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-image: var(--sky-mask);
+  mask-composite: intersect;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+/* On a light page the evening opens out of the white: one soft, rounded
+   shape (a blurred rounded rectangle, stretched to the sky), so there is no
+   edge, no corner and no band where two fades cross, and the land stays.
+   The rectangle stays 2.5 blur-widths clear of the top and sides, so the
+   fade has reached nothing before the canvas ends, and runs past the
+   bottom: there a short straight fade, ending at nothing, lets the ground
+   settle into the page without washing out the cat on the near hill. */
+[data-site='portfolio'] .sky {
+  --sky-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cfilter id='f' x='-50%25' y='-50%25' width='200%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='4.4 3.4'/%3E%3C/filter%3E%3Crect x='11' y='14' width='78' height='130' rx='12' filter='url(%23f)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #000 92%, transparent 100%);
+}
+
+/* On a dark page the evening is the page's own dark deepening: it runs
+   the whole width and fades at its edges into the same near-black. */
+:root[data-site='portfolio'][data-theme='dark'] .sky-page {
+  --sky-field-top: 0.2;
+  --sky-field-side: 0.1;
+}
+
+:root[data-site='portfolio'][data-theme='dark'] .sky {
+  --sky-mask: var(--sky-mask-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-site='portfolio'][data-theme='system'] .sky-page {
+    --sky-field-top: 0.2;
+    --sky-field-side: 0.1;
+  }
+  :root[data-site='portfolio'][data-theme='system'] .sky {
+    --sky-mask: var(--sky-mask-dark);
+  }
+}
+
+[data-site='portfolio'] .sky-page {
+  --sky-mask-dark:
+    linear-gradient(
+      180deg,
+      transparent 0,
+      rgb(0 0 0 / 0.35) 7%,
+      #000 20%,
+      #000 90%,
+      transparent 100%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--sky-side),
+      #000 calc(100% - var(--sky-side)),
+      transparent 100%
+    );
+}
+
+[data-site='portfolio'] .sky-back,
+[data-site='portfolio'] .sky-front {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .sky-back,
+  [data-site='portfolio'] .sky-front {
+    animation: sky-dusk 1.4s var(--ease-out) both;
+  }
+  [data-site='portfolio'] .sky-front {
+    animation-delay: 0.2s;
+  }
+}
+
+@keyframes sky-dusk {
+  from {
+    opacity: 0;
+  }
+}
+
+[data-site='portfolio'] .sky-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  outline: none;
+  touch-action: manipulation;
+}
+
+[data-site='portfolio'] .sky-surface.is-writable {
+  cursor: crosshair;
+}
+
+[data-site='portfolio'] .sky-surface[data-over='star'] {
+  cursor: pointer;
+}
+
+/* Keyboard focus: the site's ring, drawn round the part of the sky that
+   holds the stars (the edges fade away). With a star chosen, the renderer
+   rings that star too. */
+[data-site='portfolio'] .sky-surface::after {
+  content: '';
+  position: absolute;
+  inset: 16% var(--sky-side) 30%;
+  border-radius: 20px;
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+[data-site='portfolio'] .sky-surface:focus-visible:not([data-active])::after {
+  opacity: 0.8;
+}
+
+/* ---- the land ---------------------------------------------------------
+   Three ridges in dusk violets, a mist between the far and the rest, a
+   cabin with its lights on, pines, and the cat asleep on the near crest.
+   Each layer leans a little away from the pointer (--tilt, -1 to 1), the
+   nearest the most, so the hills have depth. */
+
+[data-site='portfolio'] .sky-land {
+  /* Saturated violets on a light page, so the land fades to lavender. */
+  --land-far: #5a4a97;
+  --land-mid: #3c2f78;
+  --land-near: #2a2160;
+  --land-pine: #1f184b;
+  position: absolute;
+  inset: auto 0 0;
+  height: max(30%, 7rem);
+  pointer-events: none;
+}
+:root[data-site='portfolio'][data-theme='dark'] .sky-land {
+  --land-far: #3b3066;
+  --land-mid: #241e48;
+  --land-near: #141230;
+  --land-pine: #0e0c22;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-site='portfolio'][data-theme='system'] .sky-land {
+    --land-far: #3b3066;
+    --land-mid: #241e48;
+    --land-near: #141230;
+    --land-pine: #0e0c22;
+  }
+}
+
+[data-site='portfolio'] .sky-layer {
+  position: absolute;
+  /* Overhangs both sides by 18px (LAND_BLEED in SkyField) for the lean. */
+  inset: 0 -18px;
+  transition: transform 1.1s var(--ease-out);
+}
+
+[data-site='portfolio'] .sky-layer > svg:first-child {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+[data-site='portfolio'] .sky-layer--far {
+  transform: translateX(calc(var(--tilt, 0) * -4px));
+  fill: var(--land-far);
+}
+
+[data-site='portfolio'] .sky-layer--mid {
+  transform: translateX(calc(var(--tilt, 0) * -8px));
+  fill: var(--land-mid);
+}
+
+[data-site='portfolio'] .sky-layer--near {
+  transform: translateX(calc(var(--tilt, 0) * -14px));
+  fill: var(--land-near);
+}
+
+/* The evening haze that settles in the valleys behind the near hills. */
+[data-site='portfolio'] .sky-mist {
+  position: absolute;
+  inset: 18% 0 0;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgb(176 148 214 / 0.2) 55%,
+    rgb(176 148 214 / 0.05)
+  );
+}
+
+[data-site='portfolio'] .sky-cabin,
+[data-site='portfolio'] .sky-pine,
+[data-site='portfolio'] .sky-nap {
+  position: absolute;
+  translate: -50% -100%;
+  overflow: visible;
+}
+
+[data-site='portfolio'] .sky-cabin {
+  width: clamp(26px, 3.2%, 40px);
+  height: auto;
+  /* Its foot sinks a touch into the slope, as a house does. */
+  margin-top: 3px;
+}
+
+[data-site='portfolio'] .sky-cabin__house,
+[data-site='portfolio'] .sky-cabin__chimney {
+  fill: var(--land-mid);
+  stroke: rgb(214 200 255 / 0.12);
+  stroke-width: 0.6;
+}
+
+[data-site='portfolio'] .sky-cabin__window {
+  fill: #ffd690;
+  filter: drop-shadow(0 0 3px rgb(255 196 110 / 0.95))
+    drop-shadow(0 0 9px rgb(255 170 90 / 0.55));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .sky-cabin__window {
+    animation: sky-hearth 5.5s ease-in-out infinite;
+  }
+  [data-site='portfolio'] .sky-cabin__window + .sky-cabin__window {
+    animation-delay: -2.2s;
+  }
+}
+
+/* A fire inside: the light breathes, never flickers. */
+@keyframes sky-hearth {
+  50% {
+    opacity: 0.82;
+  }
+}
+
+[data-site='portfolio'] .sky-pine {
+  width: auto;
+  margin-top: 2px;
+  fill: var(--land-pine);
+}
+
+[data-site='portfolio'] .sky-nap {
+  opacity: 0;
+  margin-top: 2px;
+  transform-origin: 50% 100%;
+  transition: opacity 1.2s var(--ease-out) 0.4s;
+}
+
+[data-site='portfolio'] .sky-nap.is-painted {
+  opacity: 0.95;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .sky-nap.is-painted {
+    animation: sky-nap-breathe 4.2s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-site='portfolio'] .sky-layer {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ---- the label on a star ---------------------------------------------- */
+
+[data-site='portfolio'] .sky-tip {
+  position: absolute;
+  z-index: 2;
+  width: max-content;
+  max-width: min(16rem, calc(100% - 24px));
+  padding: 9px 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+  text-align: center;
+  transform: translate(-50%, -100%);
+}
+
+[data-site='portfolio'] .sky-tip.is-below {
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .sky-tip {
+    animation: sky-tip-in 200ms var(--ease-out) both;
+  }
+}
+
+@keyframes sky-tip-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+[data-site='portfolio'] .sky-tip__word {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+[data-site='portfolio'] .sky-tip__word.is-quiet {
+  color: var(--ink-2);
+  font-weight: 400;
+}
+
+[data-site='portfolio'] .sky-tip__when {
+  margin-top: 2px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  text-wrap: balance;
+}
+
+[data-site='portfolio'] .sky-tip__mine {
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ---- buttons ----------------------------------------------------------
+   The guestbook's buttons: filled ink for the one that does the thing, a
+   plain label on the hover tint for the rest. */
+
+[data-site='portfolio'] .sky-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 220ms var(--settle);
+}
+
+[data-site='portfolio'] .sky-btn--primary {
+  padding: 0 20px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+[data-site='portfolio'] .sky-btn--primary svg {
+  fill: currentColor;
+}
+
+[data-site='portfolio'] .sky-btn--primary[aria-disabled='true'] {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+[data-site='portfolio'] .sky-btn:disabled {
+  border-color: var(--line-2);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: default;
+}
+
+@media (hover: hover) {
+  [data-site='portfolio'] .sky-btn--primary:hover:not(:disabled) {
+    background: var(--focus);
+  }
+  [data-site='portfolio'] .sky-btn--quiet:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+
+[data-site='portfolio'] .sky-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+[data-site='portfolio'] .sky-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+[data-site='portfolio'] .sky-icon-btn {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -8px -8px 0 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+[data-site='portfolio'] .sky-icon-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+@media (hover: hover) {
+  [data-site='portfolio'] .sky-icon-btn:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+
+[data-site='portfolio'] .sky-icon-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* ---- the composer -----------------------------------------------------
+   The site's panel (the appearance panel's surface), floating beside the
+   ghost on the sky; on a phone it sits under the sky, in the page. */
+
+[data-site='portfolio'] .sky-composer {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  gap: 12px;
+  width: 320px;
+  padding: 16px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--sky-radius);
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+}
+
+[data-site='portfolio'] .sky-composer.is-docked {
+  position: static;
+  width: auto;
+  margin-top: 12px;
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .sky-composer {
+    animation: sky-pop 220ms var(--ease-out) both;
+  }
+  [data-site='portfolio'] .sky-composer.is-shaking {
+    animation: sky-shake 380ms ease both;
+  }
+}
+
+@keyframes sky-pop {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@keyframes sky-shake {
+  20%,
+  60% {
+    translate: -5px 0;
+  }
+  40%,
+  80% {
+    translate: 5px 0;
+  }
+}
+
+[data-site='portfolio'] .sky-composer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+[data-site='portfolio'] .sky-composer__label {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+[data-site='portfolio'] .sky-composer__label span {
+  font-weight: 400;
+}
+
+/* A boxed field, as in the guestbook: the border turns the ink on focus. */
+[data-site='portfolio'] .sky-composer__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 13px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--bg);
+  transition: border-color 150ms ease;
+}
+
+@media (hover: hover) {
+  [data-site='portfolio'] .sky-composer__field:hover {
+    border-color: color-mix(in srgb, var(--ink-2) 55%, var(--line-2));
+  }
+}
+
+[data-site='portfolio'] .sky-composer__field:focus-within {
+  border-color: var(--accent);
+}
+
+[data-site='portfolio'] .sky-composer__input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--sans);
+  /* 16px or more, so iOS does not zoom the page on focus. */
+  font-size: 1rem;
+  outline: none;
+}
+
+[data-site='portfolio'] .sky-composer__input::placeholder {
+  color: var(--ink-2);
+}
+
+[data-site='portfolio'] .sky-composer__count {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-site='portfolio'] .sky-composer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-site='portfolio'] .sky-composer__error {
+  color: var(--bad);
+  font-size: 0.875rem;
+}
+
+[data-site='portfolio'] .sky-composer__hint {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+/* ---- the bar under the sky ------------------------------------------- */
+
+[data-site='portfolio'] .sky-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 16px;
+}
+
+[data-site='portfolio'] .sky-bar__note {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+[data-site='portfolio'] .sky-bar__note.is-notice {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .sky-bar__note.is-notice {
+    animation: sky-tip-in 320ms var(--ease-out) both;
+  }
+}
+
+[data-site='portfolio'] .sky-noscript {
+  margin-top: 24px;
+  color: var(--ink-2);
+}
+
+/* ---- phones ----------------------------------------------------------- */
+
+@media (max-width: 40em) {
+  [data-site='portfolio'] .sky-lede {
+    font-size: 1.0625rem;
+  }
+  [data-site='portfolio'] .sky {
+    height: clamp(22rem, calc(100svh - 19rem), 34rem);
+  }
+  [data-site='portfolio'] .sky-page {
+    --sky-side: 20px;
+  }
+  :root[data-site='portfolio'] .sky-page {
+    --sky-field-side: 0.12;
+  }
+  :root[data-site='portfolio'][data-theme='dark'] .sky-page {
+    --sky-field-side: 0.06;
+  }
+  /* The cat in proportion to the cabin and the pines on a small screen. */
+  [data-site='portfolio'] .sky-nap {
+    scale: 0.62;
+    transform-origin: 50% 100%;
+  }
+}
+
+@media (max-width: 40em) and (prefers-color-scheme: dark) {
+  :root[data-site='portfolio'][data-theme='system'] .sky-page {
+    --sky-field-side: 0.06;
+  }
+}
+
+@keyframes sky-nap-breathe {
+  50% {
+    transform: scaleY(1.025);
+  }
+}

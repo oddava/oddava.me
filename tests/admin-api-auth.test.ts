@@ -212,6 +212,27 @@ const ADMIN_ROUTES: {
     auth: true,
     sameOrigin: true,
   },
+  {
+    file: 'sky.ts',
+    module: '../src/pages/api/admin/sky',
+    method: 'GET',
+    auth: true,
+    sameOrigin: false,
+  },
+  {
+    file: 'sky.ts',
+    module: '../src/pages/api/admin/sky',
+    method: 'PATCH',
+    auth: true,
+    sameOrigin: true,
+  },
+  {
+    file: 'sky.ts',
+    module: '../src/pages/api/admin/sky',
+    method: 'POST',
+    auth: true,
+    sameOrigin: true,
+  },
   // The guestbook moderation API is an admin route that lives outside
   // src/pages/api/admin (its URL is /api/guestbook/admin). It is the most
   // destructive route in the repo — POST {action:'clear', all:true} wipes the

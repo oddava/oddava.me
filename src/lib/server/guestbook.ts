@@ -11,6 +11,7 @@ export { parseGuestbookStatus } from './guestbook/status';
 export {
   appendGuestbookEntry,
   clearUnapprovedGuestbookEntries,
+  guestbookModeration,
   readGuestbookEntries,
   updateGuestbookEntryStatus,
 } from './guestbook/storage';

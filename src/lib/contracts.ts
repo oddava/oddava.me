@@ -108,7 +108,56 @@ export interface OverviewResponse {
     notes: number;
     pendingGuestbook: number;
     approvedGuestbook: number;
+    /** Stars whose word is waiting to be read. */
+    pendingStars?: number;
   };
+}
+
+/**
+ * A star someone left in the sky. Position is a fraction of the sky's width
+ * and height (0–1), so it lands in the same place on every screen. The word
+ * is present only once a moderator has approved it.
+ */
+export interface PublicStar {
+  id: string;
+  x: number;
+  y: number;
+  word?: string;
+  createdAt: string;
+}
+
+export interface StarRecord {
+  id: string;
+  x: number;
+  y: number;
+  /** The visitor's word, kept even while it waits to be read. */
+  word?: string;
+  createdAt: string;
+  status: GuestbookStatus;
+  ipFingerprint?: string;
+  userAgent?: string;
+}
+
+export interface SkyApiResponse {
+  stars?: PublicStar[];
+  writable?: boolean;
+  star?: PublicStar;
+  /** Set on a placed star whose word waits for a moderator. */
+  wordPending?: boolean;
+  message?: string;
+  error?: string;
+  code?: string;
+  retryAfterSeconds?: number;
+}
+
+/** The visitor pulse: who is here now, and how many have ever been. */
+export interface VisitorPulse {
+  /** Distinct visitors seen in the last minute or so, you included. */
+  here: number;
+  /** Distinct visitors ever (approximate, a HyperLogLog). */
+  visitors: number;
+  /** Distinct visitors today, UTC (approximate). */
+  today: number;
 }
 
 export interface ContentCollectionMeta {

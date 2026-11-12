@@ -4,6 +4,7 @@ import { getGardenIndexOrUnavailable } from '../../../lib/garden';
 import { adminJson, requireSecuredAdminApi } from '../../../lib/server/admin';
 import { isStorageUnavailableError } from '../../../lib/server/core';
 import { readGuestbookEntries } from '../../../lib/server/guestbook';
+import { readStars } from '../../../lib/server/sky';
 
 async function readAdminGuestbookEntries() {
   try {
@@ -13,6 +14,17 @@ async function readAdminGuestbookEntries() {
   } catch (error) {
     if (!isStorageUnavailableError(error)) {
       console.error('[admin-overview] Guestbook metrics failed.', error);
+    }
+    return [];
+  }
+}
+
+async function readAdminStars() {
+  try {
+    return await readStars();
+  } catch (error) {
+    if (!isStorageUnavailableError(error)) {
+      console.error('[admin-overview] Sky metrics failed.', error);
     }
     return [];
   }
@@ -43,9 +55,10 @@ export const GET: APIRoute = async ({ cookies }) => {
   const authError = await requireSecuredAdminApi(cookies);
   if (authError) return authError;
 
-  const [noteCount, guestbookEntries] = await Promise.all([
+  const [noteCount, guestbookEntries, stars] = await Promise.all([
     loadNoteCount(),
     readAdminGuestbookEntries(),
+    readAdminStars(),
   ]);
 
   const pending = guestbookEntries.filter(
@@ -60,6 +73,7 @@ export const GET: APIRoute = async ({ cookies }) => {
       notes: noteCount,
       pendingGuestbook: pending,
       approvedGuestbook: approved,
+      pendingStars: stars.filter((star) => star.status === 'pending').length,
     },
   } satisfies OverviewResponse);
 };
