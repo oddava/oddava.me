@@ -305,7 +305,24 @@ test('continuous typing, slash blocks, formatting, undo and Markdown persistence
   await openNote(page);
   const editor = page.getByRole('textbox', { name: 'Note editor' });
   await editor.locator('h1').click();
-  await page.keyboard.press('Control+Home');
+  // A click lands in the editor's state on the next selectionchange, so a
+  // Control+Home pressed before that is undone by it and the caret stays
+  // mid-heading, where Control+ArrowDown drops a line into the paragraph.
+  // Retry the press until the caret is at the very start of the heading.
+  await expect(async () => {
+    await page.keyboard.press('Control+Home');
+    const atStart = await editor.evaluate((node) => {
+      const selection = window.getSelection();
+      const first = node.firstElementChild;
+      if (!selection?.isCollapsed || !first?.contains(selection.anchorNode))
+        return false;
+      const before = document.createRange();
+      before.setStart(first, 0);
+      before.setEnd(selection.anchorNode!, selection.anchorOffset);
+      return before.toString() === '';
+    });
+    expect(atStart).toBe(true);
+  }).toPass({ timeout: 5000 });
   await page.keyboard.press('Control+ArrowDown');
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.type(' today');
@@ -848,10 +865,15 @@ test('local images and captions render and reopen for adjustment', async ({
   await actions
     .getByRole('menuitemradio', { name: 'Center', exact: true })
     .click();
+  // Applying the alignment hands focus back to the editor a frame later
+  // (Tiptap defers `focus()`); a handle focused before that loses it, and
+  // the arrow presses go to the document instead of the resize.
+  await expect(editor).toBeFocused();
   const resize = figure.getByRole('button', {
     name: 'Resize image from right',
   });
   await resize.focus();
+  await expect(resize).toBeFocused();
   for (let step = 0; step < 5; step++) await page.keyboard.press('ArrowLeft');
   await expect(editor.locator('img')).toHaveCount(2);
   await expect(
