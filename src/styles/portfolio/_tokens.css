@@ -67,6 +67,8 @@
   --t-item: 1.3125rem;
 
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Quick to start, long to settle, no overshoot: the curve iOS sheets ride. */
+  --ease-lift: cubic-bezier(0.32, 0.72, 0, 1);
 
   --settle: linear(
     0,

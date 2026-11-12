@@ -41,6 +41,7 @@ const href = projectHref(project);
           fetchpriority={eager ? 'high' : 'auto'}
           decoding="async"
         />
+        {href && <span class="pf-sheen" aria-hidden="true" />}
       </div>
     ) : (
       <div class="pf-shot pf-shot--unavailable">
