@@ -20,7 +20,12 @@
   position: relative;
 }
 
+/* The frame owns every hover change (see "Hover: the picture lifts" below),
+   so it is the one transform; `isolation` keeps the rounded clip intact
+   while it scales. Flat: no shadow at rest or on hover. */
 [data-site='portfolio'] .pf-shot {
+  position: relative;
+  isolation: isolate;
   display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
@@ -28,11 +33,9 @@
   border-radius: 16px;
   background: var(--surface-2);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgb(20 24 30 / 0.04);
   transition:
-    border-color 200ms ease,
-    box-shadow 300ms var(--ease-out),
-    transform 200ms var(--ease-out);
+    border-color 300ms ease,
+    transform 560ms var(--ease-lift);
 }
 
 [data-site='portfolio'] .pf-shot img {
@@ -142,56 +145,85 @@
   color: var(--ink-2);
 }
 
-[data-site='portfolio'] .pf-card:has(.pf-card-title a:focus-visible) .pf-shot {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
-}
+/* --- Hover: the picture lifts ---
 
-[data-site='portfolio'] .pf-card-title a:focus-visible {
-  color: var(--accent);
+   Modelled on the iPadOS pointer lift and the visionOS highlight rather than
+   the usual web card: no ink-tinted border, no colour change on the name, no
+   zoom inside the frame, and no shadow: it stays flat. The whole picture
+   comes forward a touch (a scale, not a slide) and its hairline firms up,
+   while a faint light follows the pointer across it (scripts/shot-sheen.ts).
+   The motion is slow to settle and quick to start, on --ease-lift. The arrow
+   after the name (_shell.css) is the only ink. Keyboard focus gets the same
+   lift, with the ring set further up. */
+[data-site='portfolio'] .pf-card:has(.pf-card-title a:focus-visible) .pf-shot {
+  border-color: var(--line-2);
 }
 
 @media (hover: hover) and (pointer: fine) {
   [data-site='portfolio'] .pf-card--linked:hover .pf-shot {
-    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
-    box-shadow: 0 10px 24px -18px
-      color-mix(in srgb, var(--accent) 40%, rgb(0 0 0 / 0.35));
-  }
-  [data-site='portfolio'] .pf-card--linked:hover .pf-card-title a {
-    color: var(--accent);
+    border-color: var(--line-2);
   }
 }
 
-/* The picture eases in a touch on hover, inside its frame. It composes with
-   the zoom set in the admin rather than replacing it. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio']
+    .pf-card:has(.pf-card-title a:focus-visible)
+    .pf-shot {
+    transform: scale(1.012);
+  }
+}
+
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  [data-site='portfolio'] .pf-shot img {
-    transition: transform 420ms var(--ease-out);
-  }
-  [data-site='portfolio'] .pf-card--linked:hover .pf-shot img {
-    transform: scale(calc(var(--zoom, 1) * 1.025));
-  }
-  /* The frame lifts a little, so hover reads on a white page too. */
   [data-site='portfolio'] .pf-card--linked:hover .pf-shot {
-    transform: translateY(-2px);
+    transform: scale(1.012);
+  }
+  /* A click sinks it back under the pointer, fast, like a pressed key. */
+  [data-site='portfolio'] .pf-card--linked:active .pf-shot {
+    transform: scale(1.004);
+    transition-duration: 300ms, 160ms;
   }
 }
 
-/* Touch screens: no hover, and the tap highlight is off, so a press frames
-   the picture in the ink and presses it in a touch. The card opens in a new
-   tab; without this a tap looked as if it had not landed. */
+/* The light: a wide, soft white falloff over the picture. It is centred on
+   the pointer, so it reads as a surface catching light and not as a glow.
+   It stays hidden at rest and fades in on hover. Without the script it sits
+   at a fixed spot near the top, so the hover still reads. */
+[data-site='portfolio'] .pf-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle 420px at var(--sheen-x, 50%) var(--sheen-y, 20%),
+    rgb(255 255 255 / 0.5),
+    rgb(255 255 255 / 0.14) 45%,
+    transparent 80%
+  );
+  mix-blend-mode: soft-light;
+  transition: opacity 480ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  [data-site='portfolio'] .pf-card--linked:hover .pf-sheen {
+    opacity: 1;
+  }
+}
+
+/* Touch screens: no hover, and the tap highlight is off, so a press sinks
+   the picture a touch and firms up its frame. The card opens in a new tab;
+   without this a tap looked as if it had not landed. */
 @media (hover: none) {
   [data-site='portfolio'] .pf-card--linked:active .pf-shot {
-    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
-  }
-  [data-site='portfolio'] .pf-card--linked:active .pf-card-title a {
-    color: var(--accent);
+    border-color: var(--line-2);
   }
 }
 
 @media (hover: none) and (prefers-reduced-motion: no-preference) {
   [data-site='portfolio'] .pf-card--linked:active .pf-shot {
-    transform: scale(0.99);
-    transition-duration: 200ms, 300ms, 90ms;
+    transform: scale(0.985);
+    transition-duration: 200ms, 120ms;
   }
 }
 
@@ -225,9 +257,7 @@
 }
 
 [data-site='portfolio'] .pf-shot[data-fade] img {
-  transition:
-    opacity 480ms var(--ease-out),
-    transform 420ms var(--ease-out);
+  transition: opacity 480ms var(--ease-out);
 }
 
 /* A picture that failed to load says so, like a project with none. */
