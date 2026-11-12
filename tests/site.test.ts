@@ -18,9 +18,8 @@ describe('site metadata helpers', () => {
       (route) => route.href,
     );
 
-    expect(sitemapPaths).toEqual(
-      expect.arrayContaining([...navigationPaths, '/links']),
-    );
+    expect(sitemapPaths).toEqual(expect.arrayContaining(navigationPaths));
     expect(sitemapPaths).not.toContain('/likes');
+    expect(sitemapPaths).not.toContain('/links');
   });
 });

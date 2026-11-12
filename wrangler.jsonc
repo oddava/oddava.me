@@ -15,7 +15,7 @@
     // tests/notes-host-assets.test.ts fails on one that is missing. `.html`
     // forms need no entry: the asset layer 307s them to the clean path first.
     // Public files stay asset-first, so both hosts share them.
-    "run_worker_first": ["/", "/about", "/links", "/sky", "/sitemap-index.xml"],
+    "run_worker_first": ["/", "/about", "/sky", "/sitemap-index.xml"],
   },
   "observability": {
     "enabled": true,

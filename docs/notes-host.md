@@ -50,7 +50,7 @@ the request:
 | `PUBLIC_NOTES_BASE` | at build / dev start  | `/notes`                           | where the apex links notes, e.g. `https://notes.oddava.me` |
 
 `PUBLIC_NOTES_BASE` is a build-time variable on purpose: prerendered pages
-(the home page's nav, `/links`) and client islands bake it in, so it has to be
+(the home page's nav) and client islands bake it in, so it has to be
 the same value the server uses. To try the cut-over locally, start dev with
 `PUBLIC_NOTES_BASE=http://notes.localhost:4321` and the apex's notes links
 point at the notes host. Production sets it on the CI build step
@@ -141,7 +141,7 @@ they are the notes routes, not apex pages.
 
 With `PUBLIC_NOTES_BASE=https://notes.oddava.me` in the build:
 
-- **Every apex notes link** (nav, home shelves, `/links`, Studio's note links,
+- **Every apex notes link** (nav, home shelves, Studio's note links,
   `/blog` and `/garden`, legacy slug redirects) points at the notes host.
 - **Apex note routes redirect.** The Worker entry answers `/notes` and
   `/notes/…` on the apex with `APEX_NOTES_REDIRECT_STATUS` to the same path on

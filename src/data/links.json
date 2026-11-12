@@ -1,16 +1,7 @@
 {
-  "profile": {
-    "name": "oddava",
-    "bio": "backend developer.",
-    "avatar": "/images/twt-pfp.jpg"
-  },
   "links": [
-    { "title": "Notes", "route": "notes", "icon": "pen" },
     { "title": "GitHub", "url": "https://github.com/oddava", "icon": "github" },
     { "title": "X", "url": "https://x.com/oddava", "icon": "twitter" },
     { "title": "Email", "url": "mailto:hello@oddava.me", "icon": "mail" }
-  ],
-  "theme": {
-    "showIcons": true
-  }
+  ]
 }

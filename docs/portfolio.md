@@ -3,7 +3,7 @@
 Home (`/`), `/about` and `/projects` use `src/layouts/Portfolio.astro`, not
 `Base.astro`. Everything the layout adds is scoped to
 `<html data-site="portfolio">`, which no other page renders. The notes host,
-Studio, the admin, `/links` and the error pages keep `Base.astro` and their
+Studio, the admin and the error pages keep `Base.astro` and their
 own look.
 
 ## Appearance

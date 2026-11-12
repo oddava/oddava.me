@@ -156,7 +156,6 @@ describe('with PUBLIC_NOTES_BASE set', () => {
     expect(await sitemapLocs('https://oddava.me/sitemap.xml', false)).toEqual([
       'https://oddava.me/',
       'https://oddava.me/about',
-      'https://oddava.me/links',
       'https://oddava.me/projects',
       'https://oddava.me/sky',
     ]);
