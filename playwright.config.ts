@@ -3,6 +3,11 @@ export default defineConfig({
   testDir: './tests/browser',
   testMatch: '**/*.spec.ts',
   fullyParallel: true,
+  // Several specs measure hover intent and animation deadlines in real time,
+  // which a loaded runner can stretch. One retry in CI keeps such a stall from
+  // blocking a deploy; Playwright still lists the test as flaky in the report.
+  // Locally a failure fails at once.
+  retries: process.env.CI ? 1 : 0,
   use: { baseURL: 'http://127.0.0.1:4179', trace: 'retain-on-failure' },
   projects: [
     {

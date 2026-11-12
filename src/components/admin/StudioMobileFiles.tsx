@@ -17,6 +17,7 @@ import {
   folderOptions,
   noteDestinations,
   noteContainerPath,
+  itemContainerPath,
   highlightParts,
   itemKey,
   keyToItem,
@@ -642,10 +643,8 @@ export default function StudioMobileFiles({
   }
 
   function moveSheet(items: StudioTreeItemRef[]): ComponentChildren {
-    const excluded = items.map((item) =>
-      item.kind === 'folder'
-        ? item.id
-        : noteContainerPath(entries.find((entry) => entry.id === item.id)!),
+    const excluded = items.flatMap(
+      (item) => itemContainerPath(entries, item) ?? [],
     );
     const only = items.length === 1 ? items[0] : undefined;
     const from =

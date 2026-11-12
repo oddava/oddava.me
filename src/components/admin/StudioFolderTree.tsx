@@ -1,20 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { TargetedDragEvent, TargetedKeyboardEvent } from 'preact';
+import { useMemo, useRef, useState } from 'preact/hooks';
+import type { TargetedKeyboardEvent } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
-// `.sr-only` lives in the public site stylesheet, which AdminLayout does not
-// load — admin-side hidden text has to come from this component.
-import { VisuallyHidden } from '../ui/VisuallyHidden';
-import { FileIcon } from './studioFileIcons';
 import { Icon } from './studioIcons';
 import { shortcut } from './studioHelpers';
-import StudioSelect from './StudioSelect';
-import StudioContextMenu from './StudioContextMenu';
 import { MENU_TRIGGER_PROPS, useStudioMenu } from './useStudioMenu';
-import {
-  readDraggedItem,
-  writeDraggedItem,
-  type StudioTreeItemRef,
-} from './studioDragItems';
+import type { StudioTreeItemRef } from './studioDragItems';
 import type { TabPlacement } from './studioTabStrip';
 import {
   ancestorPaths,
@@ -24,20 +14,20 @@ import {
   folderAndDescendants,
   folderOptions,
   noteDestinations,
-  noteContainerPath,
-  highlightParts,
-  isInsideFolder,
+  itemContainerPath,
   itemKey,
-  keyToItem,
   nodeKey,
-  nodeLabel,
-  nodePath,
-  nodeRef,
   ROOT_KEY,
-  ROOT_OPTION,
-  sameItem,
   type TreeNode,
 } from './studioTree';
+import { onTreeRowKeyDown } from './studioTreeKeyboard';
+import { useStudioTreeSelection } from './useStudioTreeSelection';
+import { useStudioTreeFocus } from './useStudioTreeFocus';
+import { useStudioTreeDrag } from './useStudioTreeDrag';
+import { useStudioTreeInlineEdit } from './useStudioTreeInlineEdit';
+import { StudioTreeChildren, type StudioTreeView } from './StudioTreeNode';
+import { StudioTreeRootMenu } from './StudioTreeMenus';
+import StudioTreeBulkBar from './StudioTreeBulkBar';
 
 export type { StudioTreeItemRef };
 
@@ -89,26 +79,6 @@ interface Props {
   onBulkDelete: (items: StudioTreeItemRef[]) => Promise<boolean>;
 }
 
-type InlineCreate = {
-  parent: string;
-  value: string;
-};
-
-type InlineRename = {
-  item: StudioTreeItemRef;
-  value: string;
-};
-
-type DropPosition = 'before' | 'inside' | 'after';
-
-/** How long a drag has to rest on a closed folder before it opens. */
-const SPRING_DELAY_MS = 550;
-/** How close to an edge a drag scrolls the tree, and by how much per event. */
-const AUTOSCROLL_EDGE = 34;
-const AUTOSCROLL_STEP = 12;
-/** A pause this long starts a new type-ahead word. */
-const TYPEAHEAD_RESET_MS = 900;
-
 export default function StudioFolderTree({
   folders,
   entries,
@@ -142,24 +112,8 @@ export default function StudioFolderTree({
   onBulkDelete,
 }: Props) {
   const menu = useStudioMenu<string>();
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const [anchorKey, setAnchorKey] = useState<string | null>(null);
-  const [rovingKey, setRovingKey] = useState<string>(ROOT_KEY);
-  const [bulkBusy, setBulkBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [creating, setCreating] = useState<InlineCreate | null>(null);
-  const [renaming, setRenaming] = useState<InlineRename | null>(null);
-  const [moving, setMoving] = useState<StudioTreeItemRef | null>(null);
-  const [dragging, setDragging] = useState<StudioTreeItemRef | null>(null);
-  const [dropMarker, setDropMarker] = useState<{
-    key: string;
-    position: DropPosition;
-  } | null>(null);
-  const [inlineBusy, setInlineBusy] = useState(false);
-  const inlineInputRef = useRef<HTMLInputElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
-  const springRef = useRef<{ id: string; timer: number } | null>(null);
-  const typeAheadRef = useRef({ text: '', at: 0 });
 
   // --- The tree on screen ---------------------------------------------------
 
@@ -187,10 +141,6 @@ export default function StudioFolderTree({
   // The root row is walkable too, but it is not a node — it has no ref, no
   // menu of files, and no place in a selection.
   const focusOrder = useMemo(() => [ROOT_KEY, ...rowKeys], [rowKeys]);
-  // Exactly one row is tabbable. Collapsing a branch can take the remembered
-  // one off screen, and a tree with no tab stop is a tree Tab skips over.
-  const tabbableKey =
-    rovingKey === ROOT_KEY || rowByKey.has(rovingKey) ? rovingKey : ROOT_KEY;
 
   /** The row holding the file the editor has open — a folder page counts. */
   const activeKey = useMemo(() => {
@@ -206,204 +156,54 @@ export default function StudioFolderTree({
     return itemKey({ kind: 'entry', id: currentId });
   }, [activeFolder, currentId, folders, tree.rootDocument]);
 
-  // A deleted or renamed item must not linger in the selection.
-  useEffect(() => {
-    setSelectedKeys((current) => {
-      const live = current.filter((key) => {
-        const item = keyToItem(key);
-        return item.kind === 'folder'
-          ? folders.some((folder) => folder.id === item.id)
-          : entries.some((entry) => entry.id === item.id);
-      });
-      return live.length === current.length ? current : live;
-    });
-  }, [entries, folders]);
-
-  // Opening a file from anywhere else — the palette, a wikilink, a restored
-  // session — expands its folders; this is what brings the row into view.
-  useEffect(() => {
-    if (!activeKey || searching) return;
-    findRow(activeKey)?.scrollIntoView({ block: 'nearest' });
-  }, [activeKey, rows, searching]);
-
-  useEffect(() => cancelSpring, []);
-
-  const selectedItems = useMemo(
-    () => selectedKeys.map(keyToItem),
-    [selectedKeys],
-  );
-
-  // --- Selection ------------------------------------------------------------
-
-  function clearSelection() {
-    setSelectedKeys([]);
-    setAnchorKey(null);
-  }
-
-  function toggleSelection(key: string) {
-    setSelectedKeys((current) =>
-      current.includes(key)
-        ? current.filter((candidate) => candidate !== key)
-        : [...current, key],
-    );
-    setAnchorKey(key);
-  }
-
-  function selectRange(from: string, to: string) {
-    const start = rowKeys.indexOf(from);
-    const end = rowKeys.indexOf(to);
-    if (start < 0 || end < 0) {
-      setSelectedKeys([to]);
-      return;
-    }
-    const [low, high] = start <= end ? [start, end] : [end, start];
-    setSelectedKeys(rowKeys.slice(low, high + 1));
-  }
-
-  /**
-   * Returns true when the click was a selection gesture and the row should not
-   * also be opened.
-   */
-  function handleSelectionClick(event: MouseEvent, key: string): boolean {
-    if (event.metaKey || event.ctrlKey) {
-      toggleSelection(key);
-      return true;
-    }
-    if (event.shiftKey && anchorKey) {
-      selectRange(anchorKey, key);
-      return true;
-    }
-    clearSelection();
-    setAnchorKey(key);
-    return false;
-  }
-
-  async function runBulk(action: () => Promise<boolean>) {
-    setBulkBusy(true);
-    const ok = await action();
-    setBulkBusy(false);
-    if (ok) clearSelection();
-  }
+  // The hooks below keep the order their effects always ran in: pruning the
+  // selection, scrolling to the open file, the spring timer's cleanup, then
+  // focusing an inline row.
+  const selection = useStudioTreeSelection(folders, entries, rowKeys);
+  const focus = useStudioTreeFocus({
+    treeRef,
+    focusOrder,
+    rows,
+    rowByKey,
+    activeKey,
+    searching,
+    selection,
+  });
+  const drag = useStudioTreeDrag({
+    folders,
+    entries,
+    treeChildren: tree.children,
+    searching,
+    treeRef,
+    selection,
+    closeMenu: menu.close,
+    onSetFolderExpansion,
+    onMoveEntry,
+    onMoveFolder,
+    onDropItem,
+    onBulkMove,
+  });
+  const inline = useStudioTreeInlineEdit({
+    folders,
+    entries,
+    activeFolder,
+    searching,
+    closeMenu: menu.close,
+    onQueryChange,
+    onSetFolderExpansion,
+    onCreateEntry,
+    onRenameEntry,
+    onRenameFolder,
+  });
+  const { selectedKeys, selectedItems, runBulk } = selection;
+  const { creating, beginCreate } = inline;
 
   /** Folders a bulk move can target — never one that is itself being moved. */
   function bulkDestinations() {
     return folderOptions(
       noteDestinations(folders, entries),
-      selectedItems.map((item) =>
-        item.kind === 'folder'
-          ? item.id
-          : noteContainerPath(entries.find((entry) => entry.id === item.id)!),
-      ),
+      selectedItems.flatMap((item) => itemContainerPath(entries, item) ?? []),
     );
-  }
-
-  // --- Focus ----------------------------------------------------------------
-
-  function findRow(key: string): HTMLElement | null {
-    return (
-      treeRef.current?.querySelector<HTMLElement>(
-        `[data-tree-key="${key.replaceAll('"', '\\"')}"]`,
-      ) ?? null
-    );
-  }
-
-  function focusRow(key: string) {
-    setRovingKey(key);
-    const target = findRow(key);
-    if (target) target.focus();
-    // A row revealed by this very keystroke is not in the DOM yet.
-    else requestAnimationFrame(() => findRow(key)?.focus());
-  }
-
-  function stepFocus(from: string, offset: number, extend: boolean) {
-    const index = focusOrder.indexOf(from);
-    if (index < 0) return;
-    const next =
-      focusOrder[Math.min(Math.max(index + offset, 0), focusOrder.length - 1)];
-    if (!next || next === from) return;
-    focusRow(next);
-    if (!extend) return;
-    const anchor = anchorKey ?? from;
-    setAnchorKey(anchor);
-    selectRange(anchor, next);
-  }
-
-  function jumpToPrefix(character: string, from: string) {
-    const now = Date.now();
-    const buffer =
-      now - typeAheadRef.current.at > TYPEAHEAD_RESET_MS
-        ? character
-        : typeAheadRef.current.text + character;
-    typeAheadRef.current = { text: buffer, at: now };
-
-    // One repeated letter walks the matches; a longer word re-tests this row.
-    const start =
-      Math.max(0, focusOrder.indexOf(from)) + (buffer.length === 1 ? 1 : 0);
-    for (let step = 0; step < focusOrder.length; step += 1) {
-      const key = focusOrder[(start + step) % focusOrder.length];
-      const row = key ? rowByKey.get(key) : undefined;
-      if (row && nodeLabel(row.node).toLowerCase().startsWith(buffer)) {
-        focusRow(row.key);
-        return;
-      }
-    }
-  }
-
-  // --- Inline create and rename --------------------------------------------
-
-  function beginCreate(parent = activeFolder) {
-    const safeParent =
-      parent === '' ||
-      noteDestinations(folders, entries).some((folder) => folder.id === parent)
-        ? parent
-        : '';
-    // The inline row lives inside the tree, so it only appears where the tree
-    // does: a filtered-out or collapsed branch would swallow it silently.
-    if (searching) onQueryChange('');
-    onSetFolderExpansion(ancestorPaths(safeParent), true);
-    setCreating({ parent: safeParent, value: '' });
-    setRenaming(null);
-    setMoving(null);
-    menu.close();
-  }
-
-  function beginRename(node: TreeNode) {
-    setRenaming({ item: nodeRef(node), value: nodeLabel(node) });
-    setCreating(null);
-    menu.close();
-  }
-
-  // Focus follows the inline row rather than a timer, and re-runs only when the
-  // row itself changes — never on every keystroke inside it.
-  useEffect(() => {
-    if (!creating) return;
-    inlineInputRef.current?.focus();
-  }, [creating?.parent]);
-
-  useEffect(() => {
-    if (!renaming) return;
-    const input = inlineInputRef.current;
-    input?.focus();
-    input?.select();
-  }, [renaming?.item.kind, renaming?.item.id]);
-
-  async function submitCreate() {
-    if (!creating || !creating.value.trim() || inlineBusy) return;
-    setInlineBusy(true);
-    const ok = await onCreateEntry(creating.parent, creating.value);
-    setInlineBusy(false);
-    if (ok) setCreating(null);
-  }
-
-  async function submitRename(node: TreeNode) {
-    if (!renaming || !renaming.value.trim() || inlineBusy) return;
-    setInlineBusy(true);
-    const ok =
-      node.kind === 'entry'
-        ? await onRenameEntry(node.entry, renaming.value)
-        : await onRenameFolder(node.folder, renaming.value);
-    setInlineBusy(false);
-    if (ok) setRenaming(null);
   }
 
   // --- Actions --------------------------------------------------------------
@@ -472,748 +272,52 @@ export default function StudioFolderTree({
     node: TreeNode | null,
     parent: string,
   ) {
-    // The ••• button and the inline input live inside the row; their own keys
-    // are theirs.
-    if (event.target !== event.currentTarget) return;
-
-    const folderId =
-      node === null ? '' : node.kind === 'folder' ? node.folder.id : null;
-    const expanded =
-      folderId !== null && (searching || expandedFolders.has(folderId));
-
-    if (
-      event.key === 'ContextMenu' ||
-      (event.shiftKey && event.key === 'F10')
-    ) {
-      event.preventDefault();
-      if (!selectedKeys.includes(key)) clearSelection();
-      menu.openUnder(key, event.currentTarget);
-      return;
-    }
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      stepFocus(key, event.key === 'ArrowDown' ? 1 : -1, event.shiftKey);
-      return;
-    }
-    if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault();
-      const target =
-        event.key === 'Home'
-          ? focusOrder[0]
-          : focusOrder[focusOrder.length - 1];
-      if (target) focusRow(target);
-      return;
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      if (folderId !== null && !expanded) onToggleFolder(folderId);
-      else stepFocus(key, 1, false);
-      return;
-    }
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      // A search forces every folder open; collapsing one would not stick.
-      if (folderId !== null && expanded && !searching) {
-        onToggleFolder(folderId);
-        return;
-      }
-      if (key === ROOT_KEY) return;
-      focusRow(
-        parent === '' ? ROOT_KEY : itemKey({ kind: 'folder', id: parent }),
-      );
-      return;
-    }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      if (node)
-        openNode(node, { placement: event.altKey ? 'permanent' : undefined });
-      else if (tree.rootDocument) {
-        onSelectFolder('');
-        onEditEntry(tree.rootDocument);
-      }
-      return;
-    }
-    if (event.key === ' ') {
-      event.preventDefault();
-      if (node) toggleSelection(key);
-      return;
-    }
-    if (event.key === '*') {
-      event.preventDefault();
-      // APG: expand every sibling at this level.
-      const level = node === null ? [] : (children.get(parent) ?? []);
-      onSetFolderExpansion(
-        level
-          .filter(
-            (sibling): sibling is Extract<TreeNode, { kind: 'folder' }> =>
-              sibling.kind === 'folder',
-          )
-          .map((sibling) => sibling.folder.id),
-        true,
-      );
-      return;
-    }
-    if (event.key === 'F2' && node) {
-      event.preventDefault();
-      beginRename(node);
-      return;
-    }
-    if ((event.key === 'Delete' || event.key === 'Backspace') && node) {
-      event.preventDefault();
-      deleteFromRow(node);
-      return;
-    }
-    if (event.key === 'Escape') {
-      if (selectedKeys.length > 0) {
-        event.preventDefault();
-        clearSelection();
-      }
-      return;
-    }
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
-      event.preventDefault();
-      setSelectedKeys(rowKeys);
-      setAnchorKey(rowKeys[0] ?? null);
-      return;
-    }
-    if (
-      event.key.length === 1 &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
-    ) {
-      event.preventDefault();
-      jumpToPrefix(event.key.toLowerCase(), key);
-    }
-  }
-
-  // --- Drag and drop --------------------------------------------------------
-
-  /**
-   * Rows drag while a search is on — that is how a file reaches the tab strip —
-   * but a drop *between* two rows means nothing when the order on screen came
-   * from the query. Dropping *into* a folder always means the same thing, so
-   * that stays on.
-   */
-  const canReorder = !searching;
-
-  function cancelSpring() {
-    if (!springRef.current) return;
-    window.clearTimeout(springRef.current.timer);
-    springRef.current = null;
-  }
-
-  /** Hovering a closed folder with a drag opens it, the way a shelf does. */
-  function scheduleSpring(folderId: string) {
-    if (springRef.current?.id === folderId) return;
-    cancelSpring();
-    springRef.current = {
-      id: folderId,
-      timer: window.setTimeout(() => {
-        springRef.current = null;
-        onSetFolderExpansion([folderId], true);
-      }, SPRING_DELAY_MS),
-    };
-  }
-
-  /** Only ever set a marker that actually changed — dragover fires constantly. */
-  function showMarker(next: { key: string; position: DropPosition } | null) {
-    setDropMarker((current) => {
-      if (!current && !next) return current;
-      if (
-        current &&
-        next &&
-        current.key === next.key &&
-        current.position === next.position
-      ) {
-        return current;
-      }
-      return next;
+    onTreeRowKeyDown(event, key, node, parent, {
+      searching,
+      expandedFolders,
+      focusOrder,
+      children,
+      rootDocument: tree.rootDocument,
+      selection,
+      focus,
+      openMenuUnder: menu.openUnder,
+      beginRename: inline.beginRename,
+      openNode,
+      deleteFromRow,
+      onToggleFolder,
+      onSetFolderExpansion,
+      onSelectFolder,
+      onEditEntry,
     });
-  }
-
-  function endDrag() {
-    setDragging(null);
-    showMarker(null);
-    cancelSpring();
-  }
-
-  function nodeIsSelected(item: StudioTreeItemRef): boolean {
-    return selectedKeys.includes(itemKey(item));
-  }
-
-  /** The selection to move when a drag started from inside it. */
-  function draggedSelection(
-    item: StudioTreeItemRef,
-  ): StudioTreeItemRef[] | null {
-    if (selectedKeys.length < 2) return null;
-    return nodeIsSelected(item) ? selectedItems : null;
-  }
-
-  function startDrag(
-    event: TargetedDragEvent<HTMLElement>,
-    item: StudioTreeItemRef,
-  ) {
-    if (!event.dataTransfer) return;
-    // Dragging a row that is part of a multi-selection drags the whole
-    // selection; dragging anything else drops the selection first.
-    const batch = draggedSelection(item);
-    if (!nodeIsSelected(item)) clearSelection();
-    setDragging(item);
-    menu.close();
-    writeDraggedItem(event.dataTransfer, item);
-
-    if (batch && batch.length > 1) {
-      // The default drag image is one row, which reads as one file moving.
-      const ghost = document.createElement('div');
-      ghost.className = 'studio-drag-ghost';
-      ghost.textContent = `${batch.length} items`;
-      document.body.append(ghost);
-      event.dataTransfer.setDragImage(ghost, 12, 12);
-      requestAnimationFrame(() => ghost.remove());
-    }
-  }
-
-  function dropPositionFor(
-    event: TargetedDragEvent<HTMLElement>,
-  ): DropPosition | null {
-    if (!canReorder) return 'inside';
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const ratio = (event.clientY - bounds.top) / Math.max(bounds.height, 1);
-    if (ratio >= 0.25 && ratio <= 0.75) return 'inside';
-    return ratio < 0.5 ? 'before' : 'after';
-  }
-
-  function destinationFor(
-    node: TreeNode,
-    position: DropPosition,
-    parent: string,
-  ): string {
-    return position === 'inside'
-      ? node.kind === 'folder'
-        ? node.folder.id
-        : noteContainerPath(node.entry)
-      : parent;
-  }
-
-  function refusesDrop(item: StudioTreeItemRef, destination: string): boolean {
-    const path =
-      item.kind === 'folder'
-        ? item.id
-        : noteContainerPath(entries.find((entry) => entry.id === item.id)!);
-    return isInsideFolder(destination, path);
-  }
-
-  async function moveDraggedItem(
-    item: StudioTreeItemRef,
-    destination: string,
-  ): Promise<boolean> {
-    if (item.kind === 'entry') return onMoveEntry(item.id, destination);
-    const folder = folders.find((candidate) => candidate.id === item.id);
-    return folder ? onMoveFolder(folder, destination) : false;
-  }
-
-  /** The sibling order a drop leaves behind, read off the unfiltered tree. */
-  function orderAfterDrop(
-    destination: string,
-    dragged: StudioTreeItemRef,
-    target: TreeNode | null,
-    position: DropPosition,
-  ): StudioTreeItemRef[] {
-    const siblings = (tree.children.get(destination) ?? [])
-      .map(nodeRef)
-      .filter((item) => !sameItem(item, dragged));
-    let index = siblings.length;
-    if (target && position !== 'inside') {
-      const targetIndex = siblings.findIndex((item) =>
-        sameItem(item, nodeRef(target)),
-      );
-      index = Math.max(0, targetIndex + (position === 'after' ? 1 : 0));
-    }
-    siblings.splice(index, 0, dragged);
-    return siblings;
-  }
-
-  async function dropOnNode(
-    event: TargetedDragEvent<HTMLElement>,
-    target: TreeNode,
-    parent: string,
-  ) {
-    const dragged = readDraggedItem(event.dataTransfer) ?? dragging;
-    if (!dragged || sameItem(dragged, nodeRef(target))) return;
-    const position = dropPositionFor(event);
-    if (!position) return;
-    event.preventDefault();
-
-    const destination = destinationFor(target, position, parent);
-    endDrag();
-    if (refusesDrop(dragged, destination)) return;
-
-    const batch = draggedSelection(dragged);
-    if (batch) {
-      await runBulk(() => onBulkMove(batch, destination));
-      return;
-    }
-    if (!canReorder) {
-      await moveDraggedItem(dragged, destination);
-      return;
-    }
-    await onDropItem(
-      dragged,
-      destination,
-      orderAfterDrop(destination, dragged, target, position),
-    );
-  }
-
-  async function dropIntoRoot(event: TargetedDragEvent<HTMLElement>) {
-    const dragged = readDraggedItem(event.dataTransfer) ?? dragging;
-    if (!dragged) return;
-    event.preventDefault();
-    endDrag();
-
-    const batch = draggedSelection(dragged);
-    if (batch) {
-      await runBulk(() => onBulkMove(batch, ''));
-      return;
-    }
-    if (!canReorder) {
-      await moveDraggedItem(dragged, '');
-      return;
-    }
-    await onDropItem(dragged, '', orderAfterDrop('', dragged, null, 'inside'));
-  }
-
-  function autoScroll(event: TargetedDragEvent<HTMLElement>) {
-    const box = treeRef.current;
-    if (!box) return;
-    const bounds = box.getBoundingClientRect();
-    if (event.clientY < bounds.top + AUTOSCROLL_EDGE) {
-      box.scrollTop -= AUTOSCROLL_STEP;
-    } else if (event.clientY > bounds.bottom - AUTOSCROLL_EDGE) {
-      box.scrollTop += AUTOSCROLL_STEP;
-    }
   }
 
   // --- Rendering ------------------------------------------------------------
 
-  function renderMenu(node: TreeNode) {
-    const key = nodeKey(node);
-    // Only a row with a page of its own has a link to copy.
-    const page = node.kind === 'entry' ? node.entry : node.document;
-    const folderForNew =
-      node.kind === 'folder' ? node.folder.id : noteContainerPath(node.entry);
-    return (
-      <StudioContextMenu
-        open={menu.key === key}
-        label={`Actions for ${nodeLabel(node)}`}
-        menuRef={menu.ref}
-        position={menu.position}
-      >
-        <button type="button" onClick={() => beginCreate(folderForNew)}>
-          Add subnote
-        </button>
-        <button type="button" onClick={() => beginRename(node)}>
-          Rename
-          <span className="studio-menu__hint">F2</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMoving(nodeRef(node));
-            menu.close();
-          }}
-        >
-          Move to…
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            menu.close();
-            void (node.kind === 'entry'
-              ? onDuplicateEntry(node.entry)
-              : onDuplicateFolder(node.folder));
-          }}
-        >
-          Duplicate
-        </button>
-        <span />
-        {page && (
-          <button
-            type="button"
-            onClick={() => {
-              menu.close();
-              void copyToClipboard(
-                new URL(page.href, window.location.origin).toString(),
-                'Link',
-              );
-            }}
-          >
-            Copy link
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            menu.close();
-            void copyToClipboard(nodePath(node), 'Path');
-          }}
-        >
-          Copy path
-        </button>
-        <span />
-        <button
-          type="button"
-          className="is-danger"
-          onClick={() => {
-            menu.close();
-            deleteNode(node);
-          }}
-        >
-          Delete
-          <span className="studio-menu__hint">Del</span>
-        </button>
-      </StudioContextMenu>
-    );
-  }
-
-  function renderMove(node: TreeNode) {
-    if (!moving || !sameItem(moving, nodeRef(node))) return null;
-    const currentParent =
-      node.kind === 'folder' ? (node.folder.parentId ?? '') : node.entry.folder;
-    return (
-      <div className="studio-tree-inline-move">
-        <StudioSelect
-          className="studio-tree-inline-move__select"
-          label={`Move ${nodeLabel(node)} to`}
-          align="start"
-          value={currentParent === '' ? ROOT_OPTION : currentParent}
-          options={folderOptions(noteDestinations(folders, entries), [
-            node.kind === 'folder'
-              ? node.folder.id
-              : noteContainerPath(node.entry),
-          ])}
-          onChange={(value) => {
-            const parent = value === ROOT_OPTION ? '' : value;
-            void (
-              node.kind === 'entry'
-                ? onMoveEntry(node.entry.id, parent)
-                : onMoveFolder(node.folder, parent)
-            ).then((ok) => {
-              if (ok) setMoving(null);
-            });
-          }}
-        />
-        <button type="button" onClick={() => setMoving(null)}>
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
-  function renderLabel(node: TreeNode) {
-    return highlightParts(nodeLabel(node), query).map((part, index) =>
-      part.match ? <mark key={index}>{part.text}</mark> : part.text,
-    );
-  }
-
-  function renderNode(
-    node: TreeNode,
-    parent: string,
-    depth: number,
-    position: number,
-    siblings: number,
-  ) {
-    const key = nodeKey(node);
-    const isFolder = node.kind === 'folder';
-    const folderId = isFolder ? node.folder.id : '';
-    const id = isFolder ? node.folder.id : node.entry.id;
-    const expanded = isFolder && (expandedFolders.has(folderId) || searching);
-    const active = activeKey === key;
-    const renameActive = Boolean(
-      renaming && sameItem(renaming.item, nodeRef(node)),
-    );
-    const marker = dropMarker?.key === key ? dropMarker.position : null;
-    const picked = selectedKeys.includes(key);
-    const rowBusy = busyKey !== null && busyKey.endsWith(`-${id}`);
-
-    return (
-      <li key={key} className="studio-tree-item" role="none">
-        <div
-          className={[
-            'studio-tree-row',
-            active ? 'is-active' : '',
-            picked ? 'is-selected' : '',
-            menu.key === key ? 'is-menu-open' : '',
-            rowBusy ? 'is-busy' : '',
-            dragging && sameItem(dragging, nodeRef(node)) ? 'is-dragged' : '',
-            marker ? `is-drop-${marker}` : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          role="treeitem"
-          style={{ paddingLeft: `${4 + Math.min(depth - 1, 4) * 12}px` }}
-          title={nodePath(node)}
-          data-tree-key={key}
-          tabIndex={tabbableKey === key ? 0 : -1}
-          aria-label={nodeLabel(node)}
-          aria-owns={
-            expanded
-              ? `studio-tree-group-${encodeURIComponent(key)}`
-              : undefined
-          }
-          aria-level={depth}
-          aria-posinset={position}
-          aria-setsize={siblings}
-          aria-selected={picked}
-          aria-current={active ? 'true' : undefined}
-          aria-expanded={isFolder ? expanded : undefined}
-          aria-busy={rowBusy || undefined}
-          draggable={!renameActive && !busyKey}
-          onFocus={() => setRovingKey(key)}
-          onKeyDown={(event) => onRowKeyDown(event, key, node, parent)}
-          onClick={(event) => {
-            if (renameActive || rowBusy) return;
-            if (handleSelectionClick(event, key)) return;
-            openNode(node);
-          }}
-          // A folder wraps and unwraps, the way it does in a file manager.
-          // A file has nothing to unwrap, so the same gesture means what it
-          // means in an editor: you are staying, and the tab stops being the
-          // one browsing hands round.
-          onDblClick={() => {
-            if (renameActive) return;
-            if (isFolder) onToggleFolder(folderId);
-            else openNode(node, { placement: 'permanent' });
-          }}
-          onContextMenu={(event) => {
-            if (renameActive) return;
-            event.preventDefault();
-            // Right-clicking outside the selection acts on that row alone, the
-            // way a file manager does.
-            if (!picked) clearSelection();
-            menu.openAtEvent(key, event);
-          }}
-          onDragStart={(event) => startDrag(event, nodeRef(node))}
-          onDragEnd={endDrag}
-          onDragOver={(event) => {
-            if (!dragging || sameItem(dragging, nodeRef(node))) return;
-            const dropAt = dropPositionFor(event);
-            if (!dropAt) {
-              showMarker(null);
-              return;
-            }
-            const destination = destinationFor(node, dropAt, parent);
-            if (refusesDrop(dragging, destination)) {
-              showMarker(null);
-              return;
-            }
-            event.preventDefault();
-            if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-            showMarker({ key, position: dropAt });
-            if (dropAt === 'inside' && isFolder && !expanded) {
-              scheduleSpring(folderId);
-            } else {
-              cancelSpring();
-            }
-          }}
-          onDragLeave={(event) => {
-            if (event.currentTarget.contains(event.relatedTarget as Node)) {
-              return;
-            }
-            showMarker(null);
-            cancelSpring();
-          }}
-          onDrop={(event) => void dropOnNode(event, node, parent)}
-        >
-          {isFolder ? (
-            <span
-              className="studio-tree-row__toggle"
-              aria-hidden="true"
-              onClick={(event) => {
-                event.stopPropagation();
-                // Alt takes the whole branch, the way a file manager does.
-                if (event.altKey) toggleBranch(folderId, !expanded);
-                else onToggleFolder(folderId);
-              }}
-              onDblClick={(event) => event.stopPropagation()}
-            >
-              <span
-                className={`studio-tree-row__chevron ${expanded ? 'is-open' : ''}`}
-              >
-                <Icon name="chevron-right" />
-              </span>
-            </span>
-          ) : (
-            <span className="studio-tree-row__spacer" />
-          )}
-
-          {renameActive && renaming ? (
-            <form
-              className="studio-tree-row__rename"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitRename(node);
-              }}
-            >
-              <span className="studio-tree-row__icon">
-                <FileIcon
-                  icon={
-                    (node.kind === 'entry' ? node.entry : node.document)?.icon
-                  }
-                />
-              </span>
-              <input
-                ref={inlineInputRef}
-                value={renaming.value}
-                disabled={inlineBusy}
-                aria-label={`Rename ${nodeLabel(node)}`}
-                onClick={(event) => event.stopPropagation()}
-                onInput={(event) =>
-                  setRenaming({ ...renaming, value: event.currentTarget.value })
-                }
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') setRenaming(null);
-                }}
-              />
-              <button
-                type="submit"
-                className="studio-inline-confirm"
-                disabled={inlineBusy}
-                aria-label="Save name"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <Icon name="check" />
-              </button>
-              <button
-                type="button"
-                className="studio-inline-confirm"
-                aria-label="Cancel rename"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setRenaming(null);
-                }}
-              >
-                <Icon name="close" />
-              </button>
-            </form>
-          ) : (
-            <span className="studio-tree-row__label">
-              <span className="studio-tree-row__icon">
-                <FileIcon
-                  icon={
-                    (node.kind === 'entry' ? node.entry : node.document)?.icon
-                  }
-                />
-              </span>
-              <span className="studio-tree-row__text">
-                <span>{renderLabel(node)}</span>
-                {searching && <small>{nodePath(node)}</small>}
-              </span>
-            </span>
-          )}
-
-          <button
-            type="button"
-            className="studio-tree-row__actions"
-            tabIndex={-1}
-            aria-label={`Actions for ${nodeLabel(node)}`}
-            aria-haspopup="menu"
-            aria-expanded={menu.key === key}
-            {...MENU_TRIGGER_PROPS}
-            onClick={(event) => {
-              event.stopPropagation();
-              menu.toggleUnder(key, event.currentTarget);
-            }}
-          >
-            <Icon name="more" />
-          </button>
-          {renderMenu(node)}
-        </div>
-
-        {renderMove(node)}
-
-        {((isFolder && expanded) ||
-          creating?.parent ===
-            (isFolder ? folderId : noteContainerPath(node.entry))) && (
-          <ul
-            className="studio-tree-children"
-            role="group"
-            id={`studio-tree-group-${encodeURIComponent(key)}`}
-          >
-            {renderChildren(
-              isFolder ? folderId : noteContainerPath(node.entry),
-              depth + 1,
-            )}
-          </ul>
-        )}
-      </li>
-    );
-  }
-
-  function renderCreate(parent: string) {
-    if (!creating || creating.parent !== parent) return null;
-    return (
-      <li className="studio-tree-item studio-tree-item--creating" role="none">
-        <form
-          className="studio-tree-row studio-tree-row--inline"
-          style={{
-            paddingLeft: `${4 + Math.min(parent.split('/').filter(Boolean).length + 1, 4) * 12}px`,
-          }}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitCreate();
-          }}
-        >
-          <span className="studio-tree-row__spacer" />
-          <span className="studio-tree-row__rename">
-            <span className="studio-tree-row__icon">
-              <FileIcon />
-            </span>
-            <input
-              ref={inlineInputRef}
-              value={creating.value}
-              disabled={inlineBusy}
-              placeholder="new note"
-              aria-label="New note name"
-              onInput={(event) =>
-                setCreating({ ...creating, value: event.currentTarget.value })
-              }
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') setCreating(null);
-              }}
-            />
-          </span>
-          <button
-            type="submit"
-            className="studio-inline-confirm"
-            disabled={inlineBusy}
-            aria-label="Create"
-          >
-            ↵
-          </button>
-          <button
-            type="button"
-            className="studio-inline-confirm"
-            aria-label="Cancel creation"
-            onClick={() => setCreating(null)}
-          >
-            <Icon name="close" />
-          </button>
-        </form>
-      </li>
-    );
-  }
-
-  function renderChildren(parent: string, depth: number) {
-    return (
-      <>
-        {(children.get(parent) ?? []).map((node, index, all) =>
-          renderNode(node, parent, depth, index + 1, all.length),
-        )}
-        {renderCreate(parent)}
-      </>
-    );
-  }
+  const view: StudioTreeView = {
+    query,
+    searching,
+    children,
+    expandedFolders,
+    activeKey,
+    busyKey,
+    folders,
+    entries,
+    menu,
+    selection,
+    focus,
+    drag,
+    inline,
+    onRowKeyDown,
+    openNode,
+    toggleBranch,
+    deleteNode,
+    copyToClipboard,
+    onToggleFolder,
+    onMoveEntry,
+    onMoveFolder,
+    onDuplicateEntry,
+    onDuplicateFolder,
+  };
 
   const rootExpanded = expandedFolders.has('') || searching;
   const rootActive = activeKey === ROOT_KEY;
@@ -1267,17 +371,10 @@ export default function StudioFolderTree({
         role="tree"
         aria-label="Notes"
         aria-multiselectable="true"
-        onDragOver={(event) => {
-          if (!dragging) return;
-          autoScroll(event);
-          // Empty space below the last row still belongs to Notes.
-          if (event.target !== event.currentTarget) return;
-          event.preventDefault();
-          if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-          showMarker({ key: ROOT_KEY, position: 'inside' });
-        }}
+        onDragOver={drag.dragOverTree}
         onDrop={(event) => {
-          if (event.target === event.currentTarget) void dropIntoRoot(event);
+          if (event.target === event.currentTarget)
+            void drag.dropIntoRoot(event);
         }}
       >
         <div
@@ -1286,13 +383,13 @@ export default function StudioFolderTree({
             'studio-tree-row--root',
             rootActive ? 'is-active' : '',
             menu.key === ROOT_KEY ? 'is-menu-open' : '',
-            dropMarker?.key === ROOT_KEY ? 'is-drop-inside' : '',
+            drag.dropMarker?.key === ROOT_KEY ? 'is-drop-inside' : '',
           ]
             .filter(Boolean)
             .join(' ')}
           role="treeitem"
           data-tree-key={ROOT_KEY}
-          tabIndex={tabbableKey === ROOT_KEY ? 0 : -1}
+          tabIndex={focus.tabbableKey === ROOT_KEY ? 0 : -1}
           aria-label="Home"
           title="The notes landing page, and the top level of the tree"
           aria-owns={rootExpanded ? 'studio-tree-root-children' : undefined}
@@ -1302,7 +399,7 @@ export default function StudioFolderTree({
           aria-selected={false}
           aria-current={rootActive ? 'true' : undefined}
           aria-expanded={rootExpanded}
-          onFocus={() => setRovingKey(ROOT_KEY)}
+          onFocus={() => focus.setRovingKey(ROOT_KEY)}
           onKeyDown={(event) => onRowKeyDown(event, ROOT_KEY, null, '')}
           onClick={() => {
             onSelectFolder('');
@@ -1313,21 +410,9 @@ export default function StudioFolderTree({
             event.preventDefault();
             menu.openAtEvent(ROOT_KEY, event);
           }}
-          onDragOver={(event) => {
-            if (!dragging) return;
-            event.preventDefault();
-            if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-            showMarker({ key: ROOT_KEY, position: 'inside' });
-            if (!rootExpanded) scheduleSpring('');
-          }}
-          onDragLeave={(event) => {
-            if (event.currentTarget.contains(event.relatedTarget as Node)) {
-              return;
-            }
-            showMarker(null);
-            cancelSpring();
-          }}
-          onDrop={(event) => void dropIntoRoot(event)}
+          onDragOver={(event) => drag.dragOverRoot(event, rootExpanded)}
+          onDragLeave={drag.leaveRow}
+          onDrop={(event) => void drag.dropIntoRoot(event)}
         >
           <span
             className="studio-tree-row__toggle"
@@ -1367,48 +452,19 @@ export default function StudioFolderTree({
           >
             <Icon name="more" />
           </button>
-          <StudioContextMenu
-            open={menu.key === ROOT_KEY}
-            label="Actions for Home"
-            menuRef={menu.ref}
-            position={menu.position}
-          >
-            <button type="button" onClick={() => beginCreate('')}>
-              New note
-            </button>
-            <span />
-            <button
-              type="button"
-              onClick={() => {
-                menu.close();
-                onSetFolderExpansion(
-                  ['', ...folders.map((folder) => folder.id)],
-                  true,
-                );
-              }}
-            >
-              Expand all
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                menu.close();
-                onCollapseAll();
-              }}
-            >
-              Collapse all
-            </button>
-            <button
-              type="button"
-              disabled={refreshing}
-              onClick={() => {
-                menu.close();
-                void refresh();
-              }}
-            >
-              Refresh notes
-            </button>
-          </StudioContextMenu>
+          <StudioTreeRootMenu
+            menu={menu}
+            refreshing={refreshing}
+            onNewNote={() => beginCreate('')}
+            onExpandAll={() =>
+              onSetFolderExpansion(
+                ['', ...folders.map((folder) => folder.id)],
+                true,
+              )
+            }
+            onCollapseAll={onCollapseAll}
+            onRefresh={() => void refresh()}
+          />
         </div>
 
         {rootExpanded && (
@@ -1417,7 +473,7 @@ export default function StudioFolderTree({
             className="studio-tree-children studio-tree-children--root"
             role="group"
           >
-            {renderChildren('', 2)}
+            <StudioTreeChildren view={view} parent="" depth={2} />
           </ul>
         )}
 
@@ -1440,43 +496,12 @@ export default function StudioFolderTree({
       </div>
 
       {selectedItems.length > 0 && (
-        <div className="studio-bulk-bar" role="group" aria-label="Selection">
-          <strong>
-            {selectedItems.length} selected
-            <VisuallyHidden>
-              . Ctrl-click to add, shift-click for a range.
-            </VisuallyHidden>
-          </strong>
-          <StudioSelect
-            className="studio-bulk-bar__move"
-            label="Move selection to"
-            placeholder="Move to…"
-            value=""
-            disabled={bulkBusy}
-            align="start"
-            placement="up"
-            options={bulkDestinations()}
-            onChange={(destination) =>
-              void runBulk(() =>
-                onBulkMove(
-                  selectedItems,
-                  destination === ROOT_OPTION ? '' : destination,
-                ),
-              )
-            }
-          />
-          <button
-            type="button"
-            className="is-danger"
-            disabled={bulkBusy}
-            onClick={() => void runBulk(() => onBulkDelete(selectedItems))}
-          >
-            Delete
-          </button>
-          <button type="button" disabled={bulkBusy} onClick={clearSelection}>
-            Clear
-          </button>
-        </div>
+        <StudioTreeBulkBar
+          selection={selection}
+          destinations={bulkDestinations()}
+          onBulkMove={onBulkMove}
+          onBulkDelete={onBulkDelete}
+        />
       )}
     </>
   );

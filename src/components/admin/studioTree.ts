@@ -298,6 +298,20 @@ export function noteContainerPath(entry: ContentEntryListItem): string {
   return [entry.folder, entry.id].filter(Boolean).join('/');
 }
 
+/**
+ * The path an item occupies in the tree: a folder's id, or the container a
+ * note's subnotes live in. Null when the note is no longer listed — a refresh
+ * can drop it mid-drag or while a menu is open.
+ */
+export function itemContainerPath(
+  entries: ContentEntryListItem[],
+  item: StudioTreeItemRef,
+): string | null {
+  if (item.kind === 'folder') return item.id;
+  const entry = entries.find((candidate) => candidate.id === item.id);
+  return entry ? noteContainerPath(entry) : null;
+}
+
 /** Existing leaf notes are also valid parents; storage is created on first use. */
 export function noteDestinations(
   folders: ContentFolder[],

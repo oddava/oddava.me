@@ -24,13 +24,18 @@ test('approving takes the entry off the inbox, and undo puts it back', async ({
     0,
   );
   await expect(pendingTab).toContainText('2');
-  expect(state.guestbook.find((e) => e.id === 'g1')?.status).toBe('approved');
+  // The inbox updates before the request lands, so wait for the mock to see it.
+  await expect
+    .poll(() => state.guestbook.find((e) => e.id === 'g1')?.status)
+    .toBe('approved');
 
   await page.getByRole('button', { name: 'undo' }).click();
   await expect(
     page.getByRole('button', { name: 'Approve mira' }),
   ).toBeVisible();
-  expect(state.guestbook.find((e) => e.id === 'g1')?.status).toBe('pending');
+  await expect
+    .poll(() => state.guestbook.find((e) => e.id === 'g1')?.status)
+    .toBe('pending');
 });
 
 test('a project moves with the arrow keys and saves once per move', async ({
@@ -54,11 +59,15 @@ test('hiding a project is immediate and undoable', async ({ page }) => {
   const eye = page.getByRole('button', { name: 'Hide Ishbay from the page' });
   await eye.click();
   await expect(eye).toHaveAttribute('aria-pressed', 'true');
-  expect(state.projects.find((p) => p.id === 'p2')?.hidden).toBe(true);
+  await expect
+    .poll(() => state.projects.find((p) => p.id === 'p2')?.hidden)
+    .toBe(true);
 
   await page.getByRole('button', { name: 'undo' }).click();
   await expect(eye).toHaveAttribute('aria-pressed', 'false');
-  expect(state.projects.find((p) => p.id === 'p2')?.hidden).toBe(false);
+  await expect
+    .poll(() => state.projects.find((p) => p.id === 'p2')?.hidden)
+    .toBe(false);
 });
 
 test('focus moves on to the next entry after a decision', async ({ page }) => {
@@ -99,9 +108,9 @@ test('the editor asks before discarding edits, and saves through the sheet', asy
 
   await sheet.getByRole('button', { name: 'save' }).click();
   await expect(sheet).toBeHidden();
-  expect(state.projects.find((p) => p.id === 'p3')?.description).toBe(
-    'this site, rebuilt',
-  );
+  await expect
+    .poll(() => state.projects.find((p) => p.id === 'p3')?.description)
+    .toBe('this site, rebuilt');
 });
 
 test('an integration switch acts at once, without a dialog', async ({
@@ -112,8 +121,8 @@ test('an integration switch acts at once, without a dialog', async ({
   await expect(spotify).toBeChecked();
   await spotify.click();
   await expect(spotify).not.toBeChecked();
-  expect(state.integrations.find((i) => i.id === 'spotify')?.enabled).toBe(
-    false,
-  );
+  await expect
+    .poll(() => state.integrations.find((i) => i.id === 'spotify')?.enabled)
+    .toBe(false);
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
 });

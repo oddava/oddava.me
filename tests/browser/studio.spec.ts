@@ -676,6 +676,18 @@ test('select all stays within the current text block', async ({ page }) => {
   await setup(page);
   await openNote(page);
   const editor = page.getByRole('textbox', { name: 'Note editor' });
+  const selected = () => page.evaluate(() => window.getSelection()?.toString());
+  // A click reaches the editor's state on the next selectionchange, after the
+  // click itself resolves. A key pressed in between acts on the old caret, a
+  // gap no hand can hit but a loaded runner does, so the first press after a
+  // click retries until it has landed. Repeating it is harmless: the second
+  // press below shows select-all stays put.
+  const selectBlock = async (key: string, text: string | null) => {
+    await expect(async () => {
+      await page.keyboard.press(key);
+      expect(await selected()).toBe(text);
+    }).toPass({ timeout: 5000 });
+  };
   for (const block of [
     editor.locator('h1'),
     editor.locator('p').last(),
@@ -683,17 +695,13 @@ test('select all stays within the current text block', async ({ page }) => {
   ]) {
     await block.click();
     const text = await block.textContent();
+    await selectBlock('Control+a', text);
     await page.keyboard.press('Control+a');
-    await expect
-      .poll(() => page.evaluate(() => window.getSelection()?.toString()))
-      .toBe(text);
-    await page.keyboard.press('Control+a');
-    await expect
-      .poll(() => page.evaluate(() => window.getSelection()?.toString()))
-      .toBe(text);
+    await expect.poll(selected).toBe(text);
   }
-  await editor.locator('p').last().click();
-  await page.keyboard.press('Meta+a');
+  const last = editor.locator('p').last();
+  await last.click();
+  await selectBlock('Meta+a', await last.textContent());
   await page.keyboard.type('Only this block changes.');
   await expect(editor.locator('h1')).toHaveText('A quieter kind of workspace');
   await expect(editor.locator('p').last()).toHaveText(

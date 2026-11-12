@@ -13,6 +13,7 @@ constraints that are easy to violate.
 | -------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `pnpm run dev`                                                                   | Astro dev server                                  |
 | `pnpm run check`                                                                 | Astro + TypeScript diagnostics                    |
+| `pnpm run test:browser`                                                          | Playwright browser suite                          |
 | `pnpm test`                                                                      | Vitest, single pass                               |
 | `pnpm exec vitest run tests/garden.test.ts`                                      | One test file                                     |
 | `pnpm exec vitest run -t 'name'`                                                 | One test by name                                  |
@@ -21,15 +22,18 @@ constraints that are easy to violate.
 | `pnpm run verify`                                                                | format:check → check → test → build               |
 
 CI runs `format:check`, `check`, the full suite with `RUN_REDIS_INTEGRATION=1`,
-`build`, and an osv-scanner dependency audit; a push to `main` deploys via
-Wrangler only after all pass. There is no `pnpm run audit`: npm retired the
+the Playwright browser suite, `build`, and an osv-scanner dependency audit; a
+push to `main` deploys via Wrangler only after all pass. The browser suite
+retries a failed test once in CI (timing-sensitive hover and animation specs);
+a test that needed the retry shows as flaky in the report — fix it rather than
+raising the count. There is no `pnpm run audit`: npm retired the
 endpoint `pnpm audit` calls, so it 410s on every pnpm version — CI scans
 `pnpm-lock.yaml` with osv-scanner instead. Do not "fix" a failing audit with
 `--ignore-registry-errors`; it passes by ignoring the 410 and checks nothing.
 
 `pnpm run verify` is a local subset of that pipeline: it omits the real-Redis
-integration suite (`describe.skipIf`-gated on `RUN_REDIS_INTEGRATION`) and the
-osv-scanner audit. To exercise the content Lua scripts the way CI does, run
+integration suite (`describe.skipIf`-gated on `RUN_REDIS_INTEGRATION`), the
+browser suite (`pnpm run test:browser`), and the osv-scanner audit. To exercise the content Lua scripts the way CI does, run
 `RUN_REDIS_INTEGRATION=1 pnpm exec vitest run tests/storage-integration.test.ts`
 against a local Redis before pushing.
 
