@@ -16,7 +16,9 @@ test('approving takes the entry off the inbox, and undo puts it back', async ({
   page,
 }) => {
   const state = await open(page);
-  const pendingTab = page.getByRole('button', { name: /^pending/ });
+  const pendingTab = page
+    .locator('#guestbook')
+    .getByRole('button', { name: /^pending/ });
   await expect(pendingTab).toContainText('3');
 
   await page.getByRole('button', { name: 'Approve mira' }).click();
@@ -146,16 +148,25 @@ test('switching guestbook tabs shows that tab at once, with no loading flash', a
     });
   });
 
-  await page.getByRole('button', { name: 'approved', exact: true }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: 'approved', exact: true })
+    .click();
   await expect(
     guestbook.getByText('the notes graph is beautiful.'),
   ).toBeVisible();
   await expect(guestbook.getByText('hello from kraków')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'rejected', exact: true }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: 'rejected', exact: true })
+    .click();
   await expect(guestbook.getByText('no rejected entries.')).toBeVisible();
 
-  await page.getByRole('button', { name: /^pending/ }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: /^pending/ })
+    .click();
   await expect(guestbook.getByText(/hello from kraków/)).toBeVisible();
 
   expect(
@@ -207,8 +218,14 @@ test('a slow refresh does not bring back an entry decided meanwhile', async ({
   const { held, release } = await holdNextRead(page, state, 'pending');
 
   // Coming back to the tab starts a refresh, which the server sits on.
-  await page.getByRole('button', { name: 'approved', exact: true }).click();
-  await page.getByRole('button', { name: /^pending/ }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: 'approved', exact: true })
+    .click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: /^pending/ })
+    .click();
   await expect.poll(() => held.taken).toBe(true);
 
   await page.getByRole('button', { name: 'Approve mira' }).click();
@@ -232,8 +249,14 @@ test('a slow refresh does not bring back entries just cleared', async ({
   const state = await open(page);
   const { held, release } = await holdNextRead(page, state, 'pending');
 
-  await page.getByRole('button', { name: 'approved', exact: true }).click();
-  await page.getByRole('button', { name: /^pending/ }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: 'approved', exact: true })
+    .click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: /^pending/ })
+    .click();
   await expect.poll(() => held.taken).toBe(true);
 
   await page.getByRole('button', { name: 'clear unapproved' }).click();
@@ -284,7 +307,10 @@ test('a failed prefetch does not flash an error when the tab is opened', async (
     });
   });
 
-  await page.getByRole('button', { name: 'approved', exact: true }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: 'approved', exact: true })
+    .click();
   await expect(
     page.locator('#guestbook').getByText('the notes graph is beautiful.'),
   ).toBeVisible();
@@ -306,7 +332,10 @@ test('an approved entry is on the approved tab at once', async ({ page }) => {
   // The server never answers the read the tab makes; the moved entry is
   // already there.
   await holdNextRead(page, state, 'approved');
-  await page.getByRole('button', { name: 'approved', exact: true }).click();
+  await page
+    .locator('#guestbook')
+    .getByRole('button', { name: 'approved', exact: true })
+    .click();
   await expect(
     page.locator('#guestbook').getByText(/no-guessing rule/),
   ).toBeVisible();
