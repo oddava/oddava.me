@@ -23,7 +23,9 @@ constraints that are easy to violate.
 
 CI runs `format:check`, `check`, the full suite with `RUN_REDIS_INTEGRATION=1`,
 the Playwright browser suite, `build`, and an osv-scanner dependency audit; a
-push to `main` deploys via Wrangler only after all pass. The browser suite
+push to `main` deploys via Wrangler only after all pass. The jobs run in
+parallel: static checks + vitest + build in one, the browser suite sharded
+three ways, and a deploy job (main only) that waits on both. The browser suite
 retries a failed test once in CI (timing-sensitive hover and animation specs);
 a test that needed the retry shows as flaky in the report — fix it rather than
 raising the count. There is no `pnpm run audit`: npm retired the
