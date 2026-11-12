@@ -7,6 +7,7 @@ import type {
   OverviewResponse,
   Project,
   ProjectsResponse,
+  StarRecord,
 } from '../../../lib/contracts';
 import { readJson, jsonBody } from './transport';
 
@@ -45,6 +46,56 @@ export function updateGuestbookEntryStatus(
 export function clearUnapprovedGuestbookEntries(): Promise<GuestbookResponse> {
   return readJson<GuestbookResponse>(
     '/api/guestbook/admin',
+    jsonBody('POST', { action: 'clear', all: true }),
+  );
+}
+
+const SKY_ADMIN_PATH = '/api/admin/sky';
+
+export async function fetchStarEntries(
+  status: GuestbookStatus,
+): Promise<StarRecord[]> {
+  const data = await readJson<{ entries: StarRecord[] }>(
+    `${SKY_ADMIN_PATH}?status=${status}`,
+    { cache: 'no-store' },
+  );
+  return data.entries;
+}
+
+export function updateStarStatus(
+  id: string,
+  status: GuestbookStatus,
+): Promise<{ entries: StarRecord[] }> {
+  return readJson(SKY_ADMIN_PATH, jsonBody('PATCH', { id, status }));
+}
+
+/** Sets `status` on every star the visitor behind `id` left. */
+export async function updateVisitorStarStatus(
+  id: string,
+  status: GuestbookStatus,
+): Promise<number> {
+  const data = await readJson<{ updated: number }>(
+    SKY_ADMIN_PATH,
+    jsonBody('POST', { action: 'visitor', id, status }),
+  );
+  return data.updated;
+}
+
+/** Sets `status` on every star placed in the last `minutes`. */
+export async function updateRecentStarStatus(
+  minutes: number,
+  status: GuestbookStatus,
+): Promise<number> {
+  const data = await readJson<{ updated: number }>(
+    SKY_ADMIN_PATH,
+    jsonBody('POST', { action: 'since', minutes, status }),
+  );
+  return data.updated;
+}
+
+export function clearUnapprovedStars(): Promise<{ entries: StarRecord[] }> {
+  return readJson(
+    SKY_ADMIN_PATH,
     jsonBody('POST', { action: 'clear', all: true }),
   );
 }

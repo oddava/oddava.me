@@ -473,7 +473,9 @@
 
 .adm-foot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
@@ -564,6 +566,41 @@
   overflow-wrap: anywhere;
 }
 
+/* A star's row: a little night with the star where it sits, then what
+   approving or rejecting will do to it. */
+.adm-star {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.adm-star__map {
+  position: relative;
+  flex: none;
+  width: 72px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #080b1f, #2b2559);
+}
+
+.adm-star__dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: #eef3ff;
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.adm-star__state {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
 .adm-entry__meta {
   margin-top: 8px;
   overflow: hidden;
@@ -577,6 +614,8 @@
 
 .adm-entry__actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 

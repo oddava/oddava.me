@@ -1,0 +1,26 @@
+---
+// Prerendered: the page, its title and the evening are the same for
+// everyone. The stars and the counts are live, fetched by the island.
+export const prerender = true;
+import Portfolio from '@layouts/Portfolio.astro';
+import SkyField from '../components/sky/SkyField';
+import { registerPortfolioCsp } from '../lib/portfolio/csp';
+import '../styles/components/_sky.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
+---
+
+<Portfolio
+  title="Sky"
+  description="Leave a star in oddava's sky, maybe with a word attached. Every visitor's star stays."
+>
+  <div class="pf-sky">
+    <h1 class="pf-title">sky</h1>
+    <SkyField client:load />
+    <noscript>
+      <p class="sky-noscript">
+        the sky needs javascript to show its stars and to let you leave one.
+      </p>
+    </noscript>
+  </div>
+</Portfolio>

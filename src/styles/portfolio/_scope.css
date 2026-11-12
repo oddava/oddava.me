@@ -70,3 +70,37 @@
     width: auto;
   }
 }
+
+/* On a phone the row holds, as on the portfolio pages' own bar: the same
+   tighter links and smaller wordmark, so the 404 and the sky keep their
+   header on one line beside the wordmark. */
+@media (max-width: 40em) {
+  .pf-scope[data-site='portfolio'] .pf-header {
+    flex-wrap: nowrap;
+  }
+  .pf-scope[data-site='portfolio'] .pf-mark {
+    font-size: 1.125rem;
+  }
+  .pf-scope[data-site='portfolio'] .pf-end {
+    gap: 0;
+  }
+  .pf-scope[data-site='portfolio'] .pf-nav {
+    flex-wrap: nowrap;
+  }
+  .pf-scope[data-site='portfolio'] .pf-nav a {
+    padding: 0 9px;
+    font-size: 0.96875rem;
+  }
+}
+
+/* The narrowest phones (320px): four links, the wordmark and the 44px
+   appearance button still share one row. */
+@media (max-width: 22.5em) {
+  .pf-scope[data-site='portfolio'] .pf-nav a {
+    padding: 0 3px;
+    font-size: 0.875rem;
+  }
+  .pf-scope[data-site='portfolio'] .pf-mark {
+    font-size: 1rem;
+  }
+}

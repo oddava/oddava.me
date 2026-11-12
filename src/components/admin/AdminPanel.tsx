@@ -4,6 +4,7 @@ import { AppsPanel } from './AppsPanel';
 import { GuestbookModeration } from './GuestbookModeration';
 import { IntegrationsPanel } from './IntegrationsPanel';
 import { ProjectsPanel } from './ProjectsPanel';
+import { SkyModeration } from './SkyModeration';
 import { ToastProvider } from './toast';
 import type { OverviewResponse } from '../../lib/contracts';
 import './AdminPanel.css';
@@ -16,7 +17,13 @@ export default function AdminPanel() {
   );
 }
 
-const SECTION_IDS = ['apps', 'guestbook', 'projects', 'integrations'] as const;
+const SECTION_IDS = [
+  'apps',
+  'guestbook',
+  'sky',
+  'projects',
+  'integrations',
+] as const;
 type SectionId = (typeof SECTION_IDS)[number];
 
 const plural = (count: number, one: string, many: string) =>
@@ -29,6 +36,7 @@ const plural = (count: number, one: string, many: string) =>
  */
 function summaryOf(
   pending: number | undefined,
+  pendingStars: number | undefined,
   attention: boolean,
 ): string | null {
   if (pending === undefined) return null;
@@ -36,7 +44,12 @@ function summaryOf(
     pending > 0
       ? `${plural(pending, 'entry', 'entries')} waiting in the guestbook.`
       : 'nothing waiting in the guestbook.';
-  return attention ? `${inbox} an integration needs a look.` : inbox;
+  const sky = pendingStars
+    ? ` ${plural(pendingStars, 'word', 'words')} waiting in the sky.`
+    : '';
+  return attention
+    ? `${inbox}${sky} an integration needs a look.`
+    : `${inbox}${sky}`;
 }
 
 /**
@@ -78,7 +91,8 @@ function Dashboard() {
   }, [refreshOverview]);
 
   const pending = overview?.metrics.pendingGuestbook;
-  const summary = summaryOf(pending, attention);
+  const pendingStars = overview?.metrics.pendingStars;
+  const summary = summaryOf(pending, pendingStars, attention);
   const sections: {
     id: SectionId;
     label: string;
@@ -86,9 +100,12 @@ function Dashboard() {
     attention?: boolean;
   }[] = [
     // Rail only: on a phone the apps sit right under the row, and a fourth
-    // link would push integrations (and its dot) off the row's end.
+    // link would push integrations (and its dot) off the row's end. The
+    // sky is rail-only for the same reason; the summary above still says
+    // what waits there.
     { id: 'apps', label: 'apps' },
     { id: 'guestbook', label: 'guestbook', count: pending || undefined },
+    { id: 'sky', label: 'sky', count: pendingStars || undefined },
     { id: 'projects', label: 'projects', count: projectCount },
     { id: 'integrations', label: 'integrations', attention },
   ];
@@ -104,7 +121,9 @@ function Dashboard() {
               <li
                 key={section.id}
                 className={
-                  section.id === 'apps' ? 'cab-sections__desk' : undefined
+                  section.id === 'apps' || section.id === 'sky'
+                    ? 'cab-sections__desk'
+                    : undefined
                 }
               >
                 <a
@@ -115,11 +134,13 @@ function Dashboard() {
                   {section.count !== undefined && (
                     <span
                       className={`cab-sections__count ${
-                        section.id === 'guestbook' ? 'is-waiting' : ''
+                        section.id === 'guestbook' || section.id === 'sky'
+                          ? 'is-waiting'
+                          : ''
                       }`}
                     >
                       {section.count}
-                      {section.id === 'guestbook' && (
+                      {(section.id === 'guestbook' || section.id === 'sky') && (
                         <span className="sr-only"> waiting</span>
                       )}
                     </span>
@@ -141,6 +162,7 @@ function Dashboard() {
       <div className="cab-work">
         <AppsPanel />
         <GuestbookModeration pending={pending} onChanged={refreshOverview} />
+        <SkyModeration pending={pendingStars} onChanged={refreshOverview} />
         <ProjectsPanel onCount={setProjectCount} />
         {/* Owns its own data: health checks reach upstream APIs and must
             not slow down or fail the rest of the dashboard. */}

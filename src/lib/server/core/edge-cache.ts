@@ -43,3 +43,43 @@ export async function withEdgeCache(
   }
   return response;
 }
+
+/**
+ * Serves a live public read from this data center's cache for up to
+ * `seconds`, for reads that every visitor shares and that may be a little
+ * stale: one Redis read per colo per window instead of one per visitor.
+ *
+ * The key carries the time window, so an entry is never served past it
+ * whatever the cache does with headers. The stored copy says `max-age` so
+ * the cache lets it go; what the browser gets keeps the producer's headers.
+ */
+export async function withBriefEdgeCache(
+  key: string,
+  seconds: number,
+  waitUntil: WaitUntil | undefined,
+  produce: () => Promise<Response>,
+): Promise<Response> {
+  const cache = defaultCache();
+  const slot = Math.floor(Date.now() / (seconds * 1000));
+  const windowKey = `${key}${key.includes('?') ? '&' : '?'}__window=${slot}`;
+  if (cache) {
+    const hit = await cache.match(windowKey).catch(() => undefined);
+    if (hit) {
+      const headers = new Headers(hit.headers);
+      headers.set('Cache-Control', 'no-store');
+      return new Response(hit.body, { status: hit.status, headers });
+    }
+  }
+
+  const response = await produce();
+  if (cache && waitUntil && response.status === 200) {
+    const stored = new Response(response.clone().body, response);
+    stored.headers.set('Cache-Control', `public, max-age=${seconds}`);
+    waitUntil(
+      cache.put(windowKey, stored).catch((error: unknown) => {
+        console.warn('[edge-cache] put failed', error);
+      }),
+    );
+  }
+  return response;
+}

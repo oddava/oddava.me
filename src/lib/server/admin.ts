@@ -12,3 +12,7 @@ export {
   adminRedirect,
   withAdminSecurityHeaders,
 } from './admin/response';
+export {
+  createModerationRoutes,
+  type ModerationStore,
+} from './admin/moderation';

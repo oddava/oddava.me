@@ -1,0 +1,81 @@
+---
+/**
+ * The footer's live line: a breathing dot, who is here now, and how many
+ * have ever visited, linking to the sky. It stays invisible (but holds its
+ * place) until the first pulse answers, and stays that way if counting is
+ * off, so a page without storage simply has no line.
+ */
+---
+
+<a
+  class="pf-pulse"
+  href="/sky"
+  data-visitor-pulse
+  data-page-preview-ignore
+  aria-hidden="true"
+  tabindex="-1"
+>
+  <span class="pf-pulse-dot" aria-hidden="true"></span>
+  <span class="pf-pulse-line" aria-hidden="true">
+    <span class="pf-pulse-here" data-pulse-here></span>
+    <span class="pf-pulse-sep">·</span>
+    <span class="pf-pulse-count" data-pulse-visitors></span>
+    <span class="pf-pulse-more">
+      <span class="pf-pulse-sep">·</span>
+      <span data-pulse-today></span>
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+        <path
+          d="M8 1.5c.4 3.4 1.6 4.8 5 5.5-3.4.7-4.6 2.1-5 5.5-.4-3.4-1.6-4.8-5-5.5 3.4-.7 4.6-2.1 5-5.5Z"
+        ></path>
+      </svg>
+    </span>
+  </span>
+  <span class="sr-only" data-pulse-sentence></span>
+</a>
+
+<script>
+  import {
+    formatCount,
+    hereLabel,
+    onPulse,
+    pulseSentence,
+    visitorsLabel,
+  } from '../visitors/pulse';
+
+  const root = document.querySelector<HTMLAnchorElement>(
+    '[data-visitor-pulse]',
+  );
+  if (root) {
+    const here = root.querySelector<HTMLElement>('[data-pulse-here]')!;
+    const visitors = root.querySelector<HTMLElement>('[data-pulse-visitors]')!;
+    const today = root.querySelector<HTMLElement>('[data-pulse-today]')!;
+    const sentence = root.querySelector<HTMLElement>('[data-pulse-sentence]')!;
+    const set = (node: HTMLElement, text: string) => {
+      if (node.textContent === text) return;
+      node.textContent = text;
+      // Restart the small settle on the number that changed.
+      node.classList.remove('is-new');
+      void node.offsetWidth;
+      node.classList.add('is-new');
+    };
+    onPulse((pulse) => {
+      if (!pulse) {
+        // Gone stale: no line beats a number that is no longer true.
+        root.classList.remove('is-live');
+        root.setAttribute('aria-hidden', 'true');
+        root.setAttribute('tabindex', '-1');
+        return;
+      }
+      set(here, hereLabel(pulse.here));
+      set(visitors, visitorsLabel(pulse.visitors));
+      today.textContent = `${formatCount(pulse.today)} today`;
+      sentence.textContent = `${pulseSentence(pulse)} Look at the sky.`;
+      root.classList.toggle('is-crowded', pulse.here > 1);
+      if (!root.classList.contains('is-live')) {
+        root.classList.add('is-live');
+        root.removeAttribute('aria-hidden');
+        root.removeAttribute('tabindex');
+      }
+    });
+  }
+</script>

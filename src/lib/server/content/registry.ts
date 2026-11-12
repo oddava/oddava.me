@@ -47,12 +47,14 @@ export const RESERVED_NOTE_ROOT_NAMES: ReadonlySet<string> = new Set([
   'graph',
   'notes',
   'tag',
-  // Apex pages: prerendered (`about`, `links`) or legacy 301s (`blog`,
-  // `garden`). Kept off the notes root so the two hosts never disagree on them.
+  // Apex pages: prerendered (`about`, `links`, `sky`) or legacy 301s
+  // (`blog`, `garden`). Kept off the notes root so the two hosts never
+  // disagree on them.
   'about',
   'blog',
   'garden',
   'links',
+  'sky',
 ]);
 
 function rootSegment(folder: string, slug?: string): string {
