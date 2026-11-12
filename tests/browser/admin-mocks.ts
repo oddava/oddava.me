@@ -184,6 +184,12 @@ export async function mockAdmin(page: Page): Promise<AdminMockState> {
         return route.fulfill({ json: { entries: state.guestbook } });
       }
 
+      // The sky's inbox sits under the guestbook's; these tests are about
+      // the guestbook, so the sky answers with an empty, quiet inbox.
+      if (path === '/api/admin/sky') {
+        return route.fulfill({ json: { entries: [], updated: 0 } });
+      }
+
       if (path === '/api/admin/projects') {
         if (method === 'PUT') {
           const body = request.postDataJSON();

@@ -566,8 +566,7 @@ export function ModerationInbox<T extends ModeratedEntry>({
               </button>
             </div>
           )}
-          {(status !== 'approved' ||
-            (rejectLastHour && status !== 'rejected')) && (
+          {(status !== 'approved' || rejectLastHour) && (
             <div className="adm-foot">
               {rejectLastHour && status !== 'rejected' && (
                 <button
