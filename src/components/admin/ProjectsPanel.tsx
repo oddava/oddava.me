@@ -50,7 +50,12 @@ function Thumb({ project }: { project: Project }) {
   );
 }
 
-export function ProjectsPanel() {
+interface ProjectsPanelProps {
+  /** Told how many projects there are, once they load and after changes. */
+  onCount?: (count: number | undefined) => void;
+}
+
+export function ProjectsPanel({ onCount }: ProjectsPanelProps = {}) {
   const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +111,13 @@ export function ProjectsPanel() {
   useEffect(() => {
     void load();
   }, []);
+
+  // A count only for a list that loaded: after a failed load the rail
+  // leaves it out rather than claim "0".
+  useEffect(() => {
+    if (loadError !== null) onCount?.(undefined);
+    else if (!loading || projects.length > 0) onCount?.(projects.length);
+  }, [projects.length, loading, loadError, onCount]);
 
   useEffect(() => {
     if (!refocus.current) return;
@@ -328,17 +340,20 @@ export function ProjectsPanel() {
         </h2>
         <div className="adm-head__tools">
           <a
-            className="hair-control adm-tab"
+            className="adm-button adm-button--small adm-button--quiet"
             href="/projects"
             target="_blank"
             rel="noopener"
           >
             view page
+            <span className="adm-out" aria-hidden="true">
+              ↗
+            </span>
             <VisuallyHidden> (opens in a new tab)</VisuallyHidden>
           </a>
           <button
             type="button"
-            className="hair-control adm-tab adm-tab--go"
+            className="adm-button adm-button--small adm-button--solid"
             disabled={loading && projects.length === 0}
             onClick={() => setEditing({ project: null })}
           >
@@ -362,14 +377,14 @@ export function ProjectsPanel() {
           </p>
           <button
             type="button"
-            className="hair-control adm-act"
+            className="adm-button adm-button--small"
             onClick={() => void load()}
           >
             retry
           </button>
         </div>
       ) : loading && projects.length === 0 ? (
-        <div className="adm-skeletons" role="status" aria-label="Loading">
+        <div className="adm-skeletons" role="status" aria-label="loading">
           <SkeletonRow />
           <SkeletonRow />
           <SkeletonRow />
@@ -420,7 +435,10 @@ export function ProjectsPanel() {
                     <span className="adm-project__name">{project.name}</span>
                     <span className="adm-project__year">{project.year}</span>
                     {project.featured && (
-                      <span className="adm-project__flag">featured</span>
+                      <span className="adm-badge">featured</span>
+                    )}
+                    {project.hidden && (
+                      <span className="adm-badge adm-badge--muted">hidden</span>
                     )}
                   </span>
                   <span className="adm-project__description">

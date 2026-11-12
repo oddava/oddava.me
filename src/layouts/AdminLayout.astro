@@ -1,6 +1,5 @@
 ---
 import DocumentTheme from '../components/DocumentTheme.astro';
-import QuietSky from '../components/QuietSky.astro';
 import '../styles/_fonts.css';
 import '../styles/_variables.css';
 import '../styles/admin.css';
@@ -9,25 +8,15 @@ export interface Props {
   title?: string;
   description?: string;
   fullWidth?: boolean;
-  /** The dashboard lays out its own frame: no centred column, no padding. */
-  bare?: boolean;
-  /** The site's quiet sky behind the page: the dashboard and sign-in. */
-  sky?: boolean;
 }
 
 const {
   title = 'admin',
   description = 'Site administration for oddava.me.',
   fullWidth = false,
-  bare = false,
-  sky = false,
 } = Astro.props;
 const pageTitle = `${title} | oddava admin`;
-const shellClass = fullWidth
-  ? 'admin-shell admin-shell--full'
-  : bare
-    ? 'admin-shell admin-shell--bare'
-    : 'admin-shell';
+const shellClass = fullWidth ? 'admin-shell admin-shell--full' : 'admin-shell';
 
 // `viewport-fit=cover` hands the notch and home-indicator insets to CSS
 // (`env(safe-area-inset-*)`); `interactive-widget=resizes-content` makes the
@@ -73,7 +62,6 @@ const viewport =
     />
   </head>
   <body class="admin-page__body">
-    {sky && <QuietSky />}
     <div class={shellClass}>
       <slot />
     </div>

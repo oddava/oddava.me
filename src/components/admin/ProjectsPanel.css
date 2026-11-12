@@ -1,36 +1,50 @@
-/* --- Projects list ----------------------------------------------------- */
+/* ---- Projects list ------------------------------------------------------
+   Read like home's project list: rows you open, a soft tint under the
+   pointer, the text lined up with the section title. The thumbnail is the
+   public card's own 16:10 frame, so the framing chosen is the one shown. */
 
-/* The grip hangs in the gutter, so thumbnails share the left edge with the
-   section title and every other row on the page. */
+.adm-projects {
+  margin: 0 -10px;
+}
+
+.adm-list.adm-projects > li + li {
+  margin-top: 2px;
+  border-top: 0;
+}
+
 .adm-project {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 0;
+  gap: 2px;
+  padding: 6px 4px 6px 0;
+  border-radius: 14px;
+  transition: background-color 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .adm-project:hover {
+    background-color: var(--hover);
+  }
 }
 
 .adm-project__grip {
-  position: absolute;
-  top: 50%;
-  left: calc(var(--adm-hang) - 0.875rem);
   display: inline-grid;
   place-items: center;
-  width: 1.75rem;
-  height: 2.75rem;
+  width: 26px;
+  height: 44px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   background: none;
-  color: var(--color-text-disabled);
+  color: var(--ink-2);
   cursor: grab;
-  opacity: 0;
+  opacity: 0.7;
   touch-action: none;
-  transform: translateY(-50%);
   transition:
     opacity 150ms ease,
-    color 150ms ease;
+    color 120ms ease;
 }
 
 .adm-project:hover .adm-project__grip,
@@ -39,57 +53,54 @@
   opacity: 1;
 }
 
-@media (hover: none) {
-  .adm-project__grip {
-    opacity: 0.6;
-  }
+.adm-project__grip:focus-visible {
+  outline-offset: 0;
 }
 
-.adm-project__grip:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (pointer: fine) {
+  .adm-project__grip:hover {
+    color: var(--ink);
+  }
 }
 
 .adm-project__open {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
+  grid-template-columns: 5.5rem minmax(0, 1fr);
   align-items: center;
-  gap: 1.125rem;
+  gap: 14px;
   min-width: 0;
-  padding: 0;
+  padding: 4px;
   border: 0;
+  border-radius: 10px;
   background: none;
-  font: inherit;
-  color: inherit;
   text-align: left;
   cursor: pointer;
 }
 
+.adm-project__open:focus-visible {
+  outline-offset: 0;
+  border-radius: 10px;
+}
+
 .adm-project__thumb {
   display: block;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
-  border: 1px solid var(--adm-rule);
-  border-radius: var(--radius-sm-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
 }
 
-/* With no image the frame stays an outline, not a grey tile that reads as
-   a picture that failed to load. */
-.adm-project__thumb:has(img) {
-  background: var(--color-surface-raised);
-}
-
-/* No image: the site's horizon, low in the frame — an empty sky, not a
-   picture that failed to load. */
+/* No picture: the public card's dot grid, in miniature. */
 .adm-project__thumb:not(:has(img)) {
-  position: relative;
-}
-
-.adm-project__thumb:not(:has(img))::after {
-  content: '';
-  position: absolute;
-  inset: 62% 0 auto;
-  height: 1px;
-  background: var(--hairline);
+  background-color: color-mix(in srgb, var(--ink) 3%, var(--surface-2));
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--ink-2) 22%, transparent) 1px,
+    transparent 1.2px
+  );
+  background-size: 8px 8px;
+  background-position: 3px 3px;
 }
 
 .adm-project__thumb img {
@@ -101,91 +112,78 @@
 
 .adm-project__text {
   display: grid;
-  gap: 0.3125rem;
+  gap: 2px;
   min-width: 0;
 }
 
 .adm-project__title {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: 8px;
   min-width: 0;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .adm-project__name {
   overflow: hidden;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-weight: 600;
+  letter-spacing: -0.006em;
   white-space: nowrap;
   text-overflow: ellipsis;
-  transition: color 150ms ease;
+  transition: color 120ms ease;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .adm-project__open:hover .adm-project__name {
-    color: var(--color-text-interactive-hover);
+    color: var(--accent);
   }
 }
 
-.adm-project__flag {
-  flex: none;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-text-disabled);
-}
-
-.adm-project__description {
-  overflow: hidden;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.adm-project__title .adm-badge {
+  align-self: center;
 }
 
 .adm-project__year {
   flex: none;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--color-text-disabled);
+  order: 3;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Hidden reads once: the row dims and its eye is crossed out. */
-.adm-project--hidden .adm-project__open {
+.adm-project__description {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Hidden reads once: the picture dims, the name greys, the badge says so
+   and the eye is crossed out. The words keep their contrast. */
+.adm-project--hidden .adm-project__thumb {
   opacity: 0.45;
 }
 
-.admin-page .adm-project__visibility[aria-pressed='true'] {
-  color: var(--color-text-disabled);
+.adm-project--hidden .adm-project__name {
+  color: var(--ink-2);
 }
 
-.adm-project__open:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 4px;
-  border-radius: var(--radius-sm);
-}
-
-/* While dragging, the other rows slide aside; the held one follows the
-   pointer on the raised surface, its edge lit — no lift, no shadow. */
+/* While dragging, the other rows slide aside; the held one lifts onto the
+   panel surface and follows the pointer. */
 .adm-projects.is-dragging .adm-project {
-  transition: transform 200ms var(--ease-draw);
+  transition: transform 200ms var(--ease-out);
   user-select: none;
 }
 
 .adm-projects.is-dragging .adm-project.is-held {
   z-index: 2;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
   transition: none;
-  background: var(--color-surface-raised);
-}
-
-.adm-project.is-held::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 -0.75rem;
-  width: 1px;
-  background: var(--color-brand);
 }
 
 .adm-projects.is-dragging,
@@ -193,31 +191,61 @@
   cursor: grabbing;
 }
 
-/* --- Sheet ------------------------------------------------------------- */
+@media (max-width: 40em) {
+  .adm-project__open {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+    gap: 12px;
+  }
+  /* The name gets the line: it may wrap to two, and the badges give way
+     (the crossed-out eye and the dimmed picture still say hidden). */
+  /* Scoped like the shared badge rule it overrides (cabinet.css). */
+  [data-cabinet] .adm-project__title .adm-badge {
+    display: none;
+  }
+  .adm-project__name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  [data-cabinet] .adm-project__visibility {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ---- Sheet --------------------------------------------------------------
+   The editor slides in from the right edge so the list stays in view
+   behind it, on the appearance panel's surface. */
 
 .adm-sheet {
   position: fixed;
   inset: 0 0 0 auto;
-  width: min(32rem, 100vw);
+  width: min(34rem, 100vw);
   max-width: 100vw;
   height: 100dvh;
   max-height: 100dvh;
-  margin: 0;
+  margin: 0 0 0 auto;
   padding: 0;
   border: 0;
-  border-left: 1px solid var(--color-rule);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: var(--lh);
 }
 
 .adm-sheet[open] {
-  animation: adm-sheet-in 320ms var(--ease-draw);
+  animation: adm-sheet-in 280ms var(--ease-out);
 }
 
 .adm-sheet::backdrop {
-  background: color-mix(in srgb, #000 70%, transparent);
-  animation: adm-fade-in 200ms ease;
+  background: var(--scrim);
+  animation: adm-fade-in 180ms ease;
 }
 
 .adm-sheet__form {
@@ -227,30 +255,21 @@
 }
 
 .adm-sheet__head {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: calc(1.5rem + env(safe-area-inset-top)) 1.25rem 1.125rem 2rem;
-}
-
-.adm-sheet__head::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  background: var(--hairline);
+  gap: 12px;
+  padding: calc(18px + env(safe-area-inset-top)) 16px 14px 28px;
+  border-bottom: 1px solid var(--line);
 }
 
 .adm-sheet__head h2 {
   min-width: 0;
-  margin: 0;
   overflow: hidden;
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  font-size: var(--t-item);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -261,37 +280,26 @@
   display: grid;
   flex: 0 1 auto;
   align-content: start;
-  gap: 1.75rem;
+  gap: 22px;
   overflow-y: auto;
-  padding: 2rem;
+  padding: 24px 28px 28px;
   overscroll-behavior: contain;
 }
 
 .adm-sheet__foot {
-  position: relative;
   display: grid;
-  gap: 0.75rem;
-  padding: 1.125rem 2rem calc(1.125rem + env(safe-area-inset-bottom));
-}
-
-.adm-sheet__foot::before {
-  content: '';
-  position: absolute;
-  inset: 0 2rem auto;
-  height: 1px;
-  background: var(--hairline);
+  gap: 10px;
+  padding: 14px 28px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
 }
 
 .adm-sheet__bar {
   display: flex;
-  min-height: 2.375rem;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 1.75rem;
-}
-
-.adm-sheet__act {
-  font-size: 0.8125rem;
+  gap: 8px;
+  min-height: 40px;
 }
 
 .adm-sheet__delete,
@@ -299,21 +307,24 @@
   margin-right: auto;
 }
 
+.adm-sheet__delete {
+  margin-left: -12px;
+}
+
 .adm-sheet__ask {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
 }
 
 .adm-sheet__error {
-  margin: 0;
-  font-size: 0.8125rem;
+  color: var(--bad);
+  font-size: 0.875rem;
   line-height: 1.5;
-  color: var(--color-text-error);
 }
 
 @keyframes adm-sheet-in {
   from {
-    transform: translateX(2.5rem);
+    transform: translateX(2rem);
     opacity: 0;
   }
 }
@@ -327,31 +338,29 @@
 .adm-field-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
+  gap: 16px;
 }
 
 .adm-field-row:has(.adm-field--narrow) {
-  grid-template-columns: minmax(0, 1fr) 7rem;
+  grid-template-columns: minmax(0, 1fr) 8rem;
 }
 
-/* --- Image ------------------------------------------------------------- */
+/* ---- Image ------------------------------------------------------------- */
 
 .adm-image {
   display: grid;
   justify-items: start;
-  gap: 0.875rem;
+  gap: 10px;
 }
 
-/* 4:3, the card's own shape, so the framing chosen is the one shown. */
 .adm-image__frame {
   display: block;
-  width: 15rem;
-  max-width: 100%;
-  aspect-ratio: 4 / 3;
+  width: 100%;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
 }
 
 .adm-image__frame img {
@@ -361,137 +370,91 @@
   object-fit: cover;
 }
 
-/* Nothing chosen yet: a full-width drop target, solid hairline, short — it
-   is a place to put an image, not a picture of one. */
+/* Nothing chosen yet: a short dashed drop target, a place to put an image
+   rather than a picture of one. */
 .adm-image__frame--empty {
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 0.625rem;
-  width: 100%;
+  gap: 8px;
   aspect-ratio: 16 / 6;
   padding: 0;
-  border-color: var(--color-rule-strong);
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  border: 1px dashed var(--line-2);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
   cursor: pointer;
   transition:
     border-color 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
 .adm-image__frame--empty .studio-glyph {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.375rem;
+  height: 1.375rem;
 }
 
-.adm-image__frame--empty:hover:not(:disabled) {
-  border-color: var(--color-brand);
-  color: var(--color-text-interactive-hover);
+@media (hover: hover) and (pointer: fine) {
+  .adm-image__frame--empty:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+}
+
+.adm-image__frame--empty:focus-visible {
+  outline-offset: 2px;
+  border-radius: 14px;
 }
 
 .adm-image__tools {
   display: flex;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-/* --- Switch rows ------------------------------------------------------- */
+/* ---- Switch rows ------------------------------------------------------- */
 
 .adm-switches {
   display: grid;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .adm-switch-field {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 0;
-  border-bottom: 1px solid var(--adm-rule);
-  font-size: 0.9375rem;
-  color: var(--color-text-secondary);
+  gap: 16px;
+  min-height: 52px;
+  padding: 0 16px;
   cursor: pointer;
 }
 
-.adm-switch-field:first-child {
-  border-top: 1px solid var(--adm-rule);
+.adm-switch-field + .adm-switch-field {
+  border-top: 1px solid var(--line);
 }
 
-/* --- Narrow ------------------------------------------------------------ */
-
-@media (max-width: 860px) {
-  /* No gutter to hang in on a phone: the grip moves to the right end, by
-     the eye, so thumbnails keep the page's left edge. */
-  .adm-project {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 0.25rem;
-  }
-
-  .adm-project__grip {
-    position: static;
-    order: 3;
-    width: 2.25rem;
-    height: 2.75rem;
-    margin-right: -0.625rem;
-    opacity: 0.6;
-    transform: none;
-  }
-}
-
-@media (max-width: 560px) {
-  .adm-project__open {
-    grid-template-columns: 3.5rem minmax(0, 1fr);
-    gap: 0.875rem;
-  }
-
-  .adm-project__flag {
-    display: none;
-  }
-
-  .adm-project__visibility {
-    width: 2.75rem;
-    height: 2.75rem;
-  }
-
-  /* The grip steps back so the description keeps a few more words. */
-  .adm-project__grip {
-    width: 1.75rem;
-    margin-right: -0.5rem;
-    opacity: 0.4;
-  }
-
+@media (max-width: 40em) {
   .adm-sheet {
     border-left: 0;
   }
-
+  .adm-sheet__head {
+    padding-left: 20px;
+    padding-right: 10px;
+  }
   .adm-sheet__body {
-    padding: 1.5rem 1.25rem;
+    padding: 20px;
   }
-
-  .adm-sheet__head,
   .adm-sheet__foot {
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
+    padding-left: 20px;
+    padding-right: 20px;
   }
-
-  .adm-sheet__foot::before {
-    inset-inline: 1.25rem;
-  }
-
   .adm-field-row:not(:has(.adm-field--narrow)) {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .adm-sheet[open],
-  .adm-sheet::backdrop {
-    animation: none;
-  }
-
-  .adm-projects.is-dragging .adm-project {
-    transition: none;
+  .adm-field-row:has(.adm-field--narrow) {
+    grid-template-columns: minmax(0, 1fr) 6.5rem;
   }
 }

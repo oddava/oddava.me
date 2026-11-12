@@ -343,11 +343,11 @@ export function ProjectImageDialog({
       }}
     >
       <div className="pid__head">
-        <h2 id="pid-title">{file ? 'Upload image' : 'Adjust image'}</h2>
+        <h2 id="pid-title">{file ? 'upload image' : 'adjust image'}</h2>
         <p>
           {cover
-            ? 'Drag a preview, or focus it and use the arrow keys, to choose what stays in frame.'
-            : 'The whole image shows, over a blurred copy of itself.'}
+            ? 'drag the preview, or focus it and use the arrow keys, to choose what stays in frame.'
+            : 'the whole image shows, over a blurred copy of itself.'}
         </p>
       </div>
 
@@ -356,7 +356,7 @@ export function ProjectImageDialog({
       <div className="pid__controls">
         <div className="pid__row">
           <span className="pid__label" id="pid-fit-label">
-            Display
+            display
           </span>
           <div
             className="pid__segments"
@@ -368,21 +368,21 @@ export function ProjectImageDialog({
               aria-pressed={cover}
               onClick={() => patch({ fit: 'cover' })}
             >
-              Fill the card
+              fill the card
             </button>
             <button
               type="button"
               aria-pressed={!cover}
               onClick={() => patch({ fit: 'contain' })}
             >
-              Whole image
+              whole image
             </button>
           </div>
         </div>
 
         <div className={`pid__row ${cover ? '' : 'is-off'}`}>
           <label className="pid__label" for="pid-zoom">
-            Zoom
+            zoom
           </label>
           <input
             id="pid-zoom"
@@ -401,18 +401,18 @@ export function ProjectImageDialog({
           </output>
           <button
             type="button"
-            className="admin-button ghost pid__reset"
+            className="adm-button adm-button--small adm-button--quiet pid__reset"
             disabled={!cover}
             onClick={() => patch({ ...DEFAULT_DISPLAY, fit: 'cover' })}
           >
-            Reset
+            reset
           </button>
         </div>
 
         {file && (
           <div className="pid__row pid__row--size">
             <span className="pid__label" id="pid-size-label">
-              Size
+              size
             </span>
             <div
               className="pid__segments"
@@ -424,7 +424,7 @@ export function ProjectImageDialog({
                 aria-pressed={size === 'original'}
                 onClick={() => setSize('original')}
               >
-                Original
+                original
               </button>
               {SIZES.filter(
                 (edge) =>
@@ -448,12 +448,12 @@ export function ProjectImageDialog({
             )}
             {animated && (
               <p className="pid__note">
-                A GIF uploads as it is; resizing would freeze it.
+                a gif uploads as it is; resizing would freeze it.
               </p>
             )}
             {tooLarge && (
               <p className="pid__note pid__note--error" role="alert">
-                Over 5 MB — pick a smaller size.
+                over 5 MB — pick a smaller size.
               </p>
             )}
           </div>
@@ -461,7 +461,7 @@ export function ProjectImageDialog({
       </div>
 
       {error && (
-        <p className="admin-error" role="alert">
+        <p className="adm-error" role="alert">
           {error}
         </p>
       )}
@@ -469,19 +469,19 @@ export function ProjectImageDialog({
       <div className="pid__actions">
         <button
           type="button"
-          className="admin-button ghost"
+          className="adm-button"
           disabled={busy}
           onClick={onCancel}
         >
-          Cancel
+          cancel
         </button>
         <button
           type="button"
-          className="admin-button primary"
+          className="adm-button adm-button--solid"
           disabled={!ready}
           onClick={apply}
         >
-          {busy ? 'Uploading…' : file ? 'Upload' : 'Apply'}
+          {busy ? 'uploading…' : file ? 'upload' : 'apply'}
         </button>
       </div>
     </dialog>

@@ -2,8 +2,9 @@
    PORTFOLIO — tokens (home, about, projects only)
 
    Everything here is scoped to <html data-site="portfolio">, which only the
-   Portfolio layout renders. The notes host, Studio and the admin never carry
-   the attribute, so none of this can reach them.
+   Portfolio layout and the admin cabinet (Cabinet.astro: dashboard and
+   sign-in) render. The notes host and Studio never carry the attribute, so
+   none of this can reach them.
    =================================================== */
 
 @font-face {
@@ -39,6 +40,9 @@
   --panel-shadow:
     0 1px 2px rgb(32 36 42 / 0.06), 0 18px 40px -16px rgb(32 36 42 / 0.24);
   --on-accent: #ffffff;
+  /* Segmented controls: the recessed track and the raised choice. */
+  --seg-track: #eef1f4;
+  --seg-on: #ffffff;
   --ok: #1d6b3c;
   --bad: #b3261e;
 
@@ -121,6 +125,8 @@
   --panel-shadow:
     0 1px 2px rgb(0 0 0 / 0.3), 0 20px 44px -18px rgb(0 0 0 / 0.7);
   --on-accent: #10141a;
+  --seg-track: #12151a;
+  --seg-on: #2f3640;
   --ok: #91e3bf;
   --bad: #ffa3ad;
   --accent: var(--acc-d);
@@ -142,6 +148,8 @@
     --panel-shadow:
       0 1px 2px rgb(0 0 0 / 0.3), 0 20px 44px -18px rgb(0 0 0 / 0.7);
     --on-accent: #10141a;
+    --seg-track: #12151a;
+    --seg-on: #2f3640;
     --ok: #91e3bf;
     --bad: #ffa3ad;
     --accent: var(--acc-d);

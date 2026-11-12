@@ -7,8 +7,9 @@
  * controller, so the three cannot disagree on keys, values or defaults.
  *
  * Saved as JSON under `localStorage.appearance`; applied as `data-*`
- * attributes on `<html>`. Nothing here runs on the notes host, in Studio or
- * in the admin.
+ * attributes on `<html>`. The admin dashboard and sign-in share it (they
+ * are built on the portfolio shell); nothing here runs on the notes host or
+ * in Studio.
  */
 export const APPEARANCE_STORAGE_KEY = 'appearance';
 

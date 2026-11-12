@@ -10,7 +10,6 @@ import { VisuallyHidden } from '../ui/VisuallyHidden';
 import type { GuestbookEntry, GuestbookStatus } from '../../lib/contracts';
 import { errorMessage, useToast } from './toast';
 import { useDialogConfirm } from './useDialogConfirm';
-import { paintNap } from '../../lib/awake/quiet';
 
 /** How long a decided entry takes to fold shut before it leaves the list. */
 const FOLD_MS = 260;
@@ -33,6 +32,11 @@ interface GuestbookModerationProps {
 
 const FILTERS: GuestbookStatus[] = ['pending', 'approved', 'rejected'];
 
+type Lists = Partial<Record<GuestbookStatus, GuestbookEntry[]>>;
+
+const newestFirst = (a: GuestbookEntry, b: GuestbookEntry) =>
+  b.createdAt.localeCompare(a.createdAt);
+
 const VERB: Record<GuestbookStatus, string> = {
   pending: 'moved back to pending',
   approved: 'approved',
@@ -51,45 +55,133 @@ export function GuestbookModeration({
   const toast = useToast();
   const { confirm, dialog } = useDialogConfirm();
   const [status, setStatus] = useState<GuestbookStatus>('pending');
-  const [entries, setEntries] = useState<GuestbookEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  /**
+   * Every tab's list, kept once loaded, so switching tabs shows the right
+   * entries at once (then refreshes them quietly) instead of the old tab's
+   * rows, or a flash of loading, while the new list is fetched.
+   */
+  const [lists, setLists] = useState<Lists>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<GuestbookStatus, string>>
+  >({});
+  const entries = lists[status];
+  /** Nothing to show yet: the error takes the list's place. */
+  const loadError = entries === undefined ? errors[status] : undefined;
+  /** A refresh failed over a kept list: the rows stay, a note says so. */
+  const refreshError = entries === undefined ? undefined : errors[status];
   /** Entries with a decision in flight; '*' while everything is cleared. */
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Entries decided and folding shut, about to leave the list. */
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
-  const request = useRef(0);
+  /** The latest request per tab; an older answer never overwrites it. */
+  const requests = useRef<Partial<Record<GuestbookStatus, number>>>({});
+  /** Tabs with a read in flight, so a change made meanwhile can retire it. */
+  const reading = useRef(new Set<GuestbookStatus>());
+  const mounted = useRef(true);
   const statusRef = useRef(status);
   statusRef.current = status;
   const listRef = useRef<HTMLUListElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   /** Where focus goes after a decision removes the focused entry. */
   const focusAfter = useRef<number | null>(null);
+  /**
+   * Where focus goes once a control that held it has gone: the undo in a
+   * dismissed message, or "clear unapproved" once the list is empty.
+   */
+  const focusNext = useRef<{ entry: string } | 'tabs' | null>(null);
 
   const load = useCallback((filter: GuestbookStatus) => {
-    const requestId = ++request.current;
-    setLoading(true);
+    const requestId = (requests.current[filter] ?? 0) + 1;
+    requests.current[filter] = requestId;
+    const current = () =>
+      mounted.current && requests.current[filter] === requestId;
+    reading.current.add(filter);
+    // A retry starts clean: the old error does not flash (or announce)
+    // while the new read is on its way.
+    setErrors(({ [filter]: _, ...rest }) => rest);
     return fetchGuestbookEntries(filter)
       .then((next) => {
-        if (requestId !== request.current) return;
-        setEntries(next);
-        setLoadError(null);
+        if (!current()) return;
+        setLists((all) => ({ ...all, [filter]: next }));
       })
       .catch((error) => {
-        if (requestId !== request.current) return;
-        setLoadError(errorMessage(error, 'could not load guestbook entries.'));
+        if (!current()) return;
+        setErrors((all) => ({
+          ...all,
+          [filter]: errorMessage(error, 'could not load guestbook entries.'),
+        }));
       })
       .finally(() => {
-        if (requestId === request.current) setLoading(false);
+        if (requests.current[filter] === requestId) {
+          reading.current.delete(filter);
+        }
       });
   }, []);
 
+  /**
+   * A read that set out before a change landed would answer with the store
+   * as it was, and undo the change on screen. Each one still in flight is
+   * read again: the newer request retires the older answer.
+   */
+  const retireReads = () => {
+    for (const filter of FILTERS) {
+      if (reading.current.has(filter)) void load(filter);
+    }
+  };
+
   useEffect(() => {
-    void load(status);
+    mounted.current = true;
+    // The inbox first; the other two tabs load behind it, so the first
+    // switch to them is instant too.
+    void load('pending').finally(() => {
+      void load('approved');
+      void load('rejected');
+    });
     return () => {
-      request.current += 1;
+      mounted.current = false;
     };
-  }, [status, load]);
+  }, [load]);
+
+  /** A tab switch shows the kept list at once and refreshes it quietly. */
+  const choose = (filter: GuestbookStatus) => {
+    if (filter === statusRef.current) return;
+    setStatus(filter);
+    void load(filter);
+  };
+
+  /** Moves an entry between the kept lists, as the store just did. */
+  const move = (entry: GuestbookEntry, to: GuestbookStatus) =>
+    setLists((all) => {
+      const next: Lists = { ...all };
+      for (const filter of FILTERS) {
+        const list = next[filter];
+        if (!list) continue;
+        const without = list.filter((item) => item.id !== entry.id);
+        next[filter] =
+          filter === to
+            ? [...without, { ...entry, status: to }].sort(newestFirst)
+            : without;
+      }
+      return next;
+    });
+
+  useEffect(() => {
+    const next = focusNext.current;
+    if (next === null) return;
+    focusNext.current = null;
+    // Only when focus was left with nowhere to be; a reader who has moved
+    // on is not pulled back.
+    if (document.activeElement && document.activeElement !== document.body) {
+      return;
+    }
+    const target =
+      (next !== 'tabs' &&
+        listRef.current?.querySelector<HTMLElement>(
+          `[data-entry="${CSS.escape(next.entry)}"] button`,
+        )) ||
+      tabsRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    target?.focus();
+  });
 
   useEffect(() => {
     const index = focusAfter.current;
@@ -140,7 +232,8 @@ export function GuestbookModeration({
         );
         focusAfter.current = rows.indexOf(row);
       }
-      setEntries((current) => current.filter((item) => item.id !== entry.id));
+      move(entry, next);
+      retireReads();
       setLeaving((current) => {
         const next = new Set(current);
         next.delete(entry.id);
@@ -154,6 +247,9 @@ export function GuestbookModeration({
               await moderate({ ...entry, status: next }, entry.status, {
                 offerUndo: false,
               });
+              // The undo button left with its message: focus goes to the
+              // entry if it is back on the open tab, else to the tabs.
+              focusNext.current = { entry: entry.id };
               // Back on whichever tab is open now, not the one acted from.
               void load(statusRef.current);
             }
@@ -180,11 +276,14 @@ export function GuestbookModeration({
       cancelLabel: 'keep them',
       danger: true,
     });
-    if (!ok) return;
+    if (!ok || inFlight.current.size > 0) return;
     mark('*', true);
     try {
       await clearUnapprovedGuestbookEntries();
-      setEntries([]);
+      setLists((all) => ({ ...all, pending: [], rejected: [] }));
+      retireReads();
+      // The button goes with the list it cleared; the tabs keep focus.
+      focusNext.current = 'tabs';
       onChanged();
       toast.show({ message: 'pending and rejected entries deleted.' });
     } catch (error) {
@@ -207,30 +306,40 @@ export function GuestbookModeration({
         <h2 id="guestbook-title" className="adm-head__title">
           guestbook
         </h2>
-        <div
-          ref={tabsRef}
-          className="adm-head__tools"
-          role="group"
-          aria-label="Show"
-        >
+        <div ref={tabsRef} className="adm-seg" role="group" aria-label="show">
           {FILTERS.map((filter) => (
             <button
               key={filter}
               type="button"
-              className={`hair-control adm-tab ${
-                status === filter ? 'is-chosen' : ''
-              }`}
               aria-pressed={status === filter}
-              onClick={() => setStatus(filter)}
+              onClick={() => choose(filter)}
             >
               {filter}
               {filter === 'pending' && pending ? (
-                <span className="adm-tab__count">{pending}</span>
+                <span className="adm-seg__count">{pending}</span>
               ) : null}
             </button>
           ))}
         </div>
       </header>
+
+      {refreshError && (
+        <div className="adm-stale" role="status">
+          <p>could not refresh; showing the last list.</p>
+          <button
+            type="button"
+            className="adm-button adm-button--small adm-button--quiet"
+            onClick={() => {
+              // The note and its button go as the read starts; the tabs
+              // keep focus.
+              focusNext.current = 'tabs';
+              void load(status);
+            }}
+          >
+            retry
+          </button>
+        </div>
+      )}
 
       {loadError ? (
         <div className="adm-empty">
@@ -239,14 +348,19 @@ export function GuestbookModeration({
           </p>
           <button
             type="button"
-            className="hair-control adm-act"
-            onClick={() => void load(status)}
+            className="adm-button adm-button--small"
+            onClick={() => {
+              // The note and its button go as the read starts; the tabs
+              // keep focus.
+              focusNext.current = 'tabs';
+              void load(status);
+            }}
           >
             retry
           </button>
         </div>
-      ) : loading && entries.length === 0 ? (
-        <div className="adm-skeletons" role="status" aria-label="Loading">
+      ) : entries === undefined ? (
+        <div className="adm-skeletons" role="status" aria-label="loading">
           <SkeletonRow />
           <SkeletonRow />
         </div>
@@ -260,7 +374,7 @@ export function GuestbookModeration({
         )
       ) : (
         <>
-          <ul ref={listRef} className="adm-list adm-log">
+          <ul ref={listRef} className="adm-list">
             {entries.map((entry) => {
               // aria-disabled, not disabled: a disabled button drops focus to
               // the page while its request is in flight.
@@ -277,17 +391,16 @@ export function GuestbookModeration({
                   }`}
                   data-entry={entry.id}
                 >
-                  {/* The logbook's margin: when, before who. */}
-                  <time
-                    className="adm-entry__when"
-                    dateTime={entry.createdAt}
-                    title={formatDate(entry.createdAt)}
-                  >
-                    {formatRelative(entry.createdAt)}
-                  </time>
                   <div className="adm-entry__body">
                     <p className="adm-entry__by">
                       <strong>{entry.name}</strong>
+                      <time
+                        className="adm-entry__when"
+                        dateTime={entry.createdAt}
+                        title={formatDate(entry.createdAt)}
+                      >
+                        {formatRelative(entry.createdAt)}
+                      </time>
                     </p>
                     <p className="adm-entry__message">{entry.message}</p>
                     {meta.length > 0 && (
@@ -304,7 +417,7 @@ export function GuestbookModeration({
                     {entry.status !== 'approved' && (
                       <button
                         type="button"
-                        className="hair-control adm-act adm-act--go"
+                        className="adm-button adm-button--small adm-button--tonal"
                         aria-disabled={pending}
                         aria-label={`Approve ${entry.name}`}
                         onClick={() => void moderate(entry, 'approved')}
@@ -315,7 +428,7 @@ export function GuestbookModeration({
                     {entry.status !== 'rejected' && (
                       <button
                         type="button"
-                        className="hair-control adm-act"
+                        className="adm-button adm-button--small adm-button--quiet"
                         aria-disabled={pending}
                         aria-label={`Reject ${entry.name}`}
                         onClick={() => void moderate(entry, 'rejected')}
@@ -332,9 +445,11 @@ export function GuestbookModeration({
             <div className="adm-foot">
               <button
                 type="button"
-                className="hair-control adm-act adm-act--quiet-danger"
-                disabled={busy.size > 0}
-                onClick={() => void clearUnapproved()}
+                className="adm-button adm-button--small adm-button--quiet adm-button--danger"
+                aria-disabled={busy.size > 0}
+                onClick={() => {
+                  if (busy.size === 0) void clearUnapproved();
+                }}
               >
                 clear unapproved
               </button>
@@ -348,22 +463,16 @@ export function GuestbookModeration({
 }
 
 /**
- * Nothing waiting: the site's cat, asleep on the inbox line. It is painted
- * once, like the one on the footer floor, and breathes in CSS.
+ * Nothing waiting: an empty slot in the shape of the projects page's
+ * picture-less card — a faint dot grid, the words in the middle, the site's
+ * small face asleep beside them.
  */
 function QuietInbox() {
-  const nap = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (nap.current) paintNap(nap.current);
-  }, []);
-
   return (
-    <div className="adm-empty adm-empty--asleep">
-      <p className="adm-empty__line">nothing waiting.</p>
-      <div className="adm-nap" aria-hidden="true">
-        <canvas ref={nap} className="adm-nap__cat" />
-      </div>
+    <div className="adm-quiet">
+      <p>
+        nothing waiting <span aria-hidden="true">( ˘ω˘ )</span>
+      </p>
     </div>
   );
 }

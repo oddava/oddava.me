@@ -107,7 +107,7 @@ function ToastItem({
       {toast.undo && (
         <button
           type="button"
-          className="hair-control adm-toast__undo"
+          className="adm-toast__undo"
           onClick={() => {
             onDismiss(id);
             void toast.undo?.();

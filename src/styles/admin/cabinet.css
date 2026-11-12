@@ -1,0 +1,805 @@
+/* ===================================================
+   ADMIN CABINET — the dashboard, sign-in and admin-off pages.
+
+   These pages are portfolio pages (Cabinet.astro renders
+   <html data-site="portfolio" data-cabinet>), so the portfolio's tokens,
+   frame, header and appearance panel already apply. This sheet adds what
+   only the back office needs: a few extra roles, the header's admin
+   pieces, and the controls (buttons, fields, segments) every panel and
+   dialog here shares. Studio keeps admin.css and never carries
+   data-cabinet.
+   =================================================== */
+
+/* ---- Tokens ------------------------------------------------------------ */
+
+[data-cabinet] {
+  --warn: #8a5300;
+  /* Boundaries of things you type in or toggle: 3:1 against every surface
+     they sit on (WCAG 1.4.11), where --line-2 is only a separator. */
+  --field-line: #868e98;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --accent-soft: color-mix(in srgb, var(--accent) 11%, transparent);
+  --accent-ink: var(--focus);
+  --ok-soft: color-mix(in srgb, var(--ok) 12%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 13%, transparent);
+  --bad-soft: color-mix(in srgb, var(--bad) 11%, transparent);
+  --tint: color-mix(in srgb, var(--ink) 6%, transparent);
+  /* The shared islands' disabled and warning roles. */
+  --color-text-disabled: color-mix(in srgb, var(--ink-2) 70%, var(--bg));
+  --color-text-warning: var(--warn);
+  --color-text-on-accent: var(--on-accent);
+}
+
+[data-cabinet][data-theme='dark'] {
+  --warn: #f0c36a;
+  --field-line: #6b7480;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-cabinet][data-theme='system'] {
+    --warn: #f0c36a;
+    --field-line: #6b7480;
+  }
+}
+
+/* In-page jumps from the section links glide, unless motion is unwelcome. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-cabinet] {
+    scroll-behavior: smooth;
+  }
+}
+
+/* A reset, so zero specificity: any control's own class sets its type. */
+:where([data-cabinet]) :where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+}
+
+[data-cabinet] code {
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  background: var(--tint);
+  font-family: var(--mono);
+  font-size: 0.875em;
+}
+
+/* Glyphs come from the Studio icon set: one 20px grid, one stroke. Dots are
+   filled by attribute, so only the stroked ones lose their fill here. */
+[data-cabinet] .studio-glyph {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+[data-cabinet] .studio-glyph:not([fill]) {
+  fill: none;
+}
+
+/* ---- Header ------------------------------------------------------------ */
+
+/* "admin" beside the wordmark: a small quiet tag, so the two read as one
+   name and the site's own wordmark stays the loud part. */
+[data-cabinet] .cab-mark__tag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+[data-cabinet] .cab-out {
+  margin-left: 0.2em;
+  font-size: 0.875em;
+}
+
+[data-cabinet] .cab-signout {
+  display: contents;
+}
+
+/* Sign out is a form button drawn exactly like the nav links beside it. */
+[data-cabinet] .cab-signout button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+[data-cabinet] .cab-signout button:focus-visible {
+  outline-offset: 0;
+}
+
+@media (min-width: 30em) {
+  [data-cabinet] .cab-signout button {
+    padding: 0 10px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet] .cab-signout button:hover {
+    color: var(--ink);
+    background-color: var(--hover);
+  }
+}
+
+@media (max-width: 40em) {
+  [data-cabinet] .cab-signout button {
+    padding: 0 9px;
+    font-size: 0.96875rem;
+  }
+  /* The bar has one row on a phone; signed in, the tag gives way first. */
+  [data-cabinet] .pf-header:has(.cab-signout) .cab-mark__tag {
+    display: none;
+  }
+}
+
+/* The portfolio's phone bar keeps one row. Signed in, the admin's has a
+   third link, and with a large text size one row would run off the
+   screen: here it may wrap, and the sticky row under it follows its real
+   height (AdminPanel measures it). */
+@media (max-width: 40em) {
+  [data-cabinet] .pf-page > .pf-header,
+  [data-cabinet] .pf-nav {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 22.5em) {
+  [data-cabinet] .cab-signout button {
+    padding: 0 6px;
+  }
+}
+
+/* ---- Frame ------------------------------------------------------------- */
+
+/* The viewport runs under the notch (viewport-fit=cover), so the gutters
+   never shrink below the safe area in landscape. */
+[data-cabinet] .pf-page {
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 55em) {
+  [data-cabinet] .pf-page {
+    padding-left: max(40px, env(safe-area-inset-left));
+    padding-right: max(40px, env(safe-area-inset-right));
+  }
+}
+
+/* ---- Main -------------------------------------------------------------- */
+
+/* A work page, not a landing page: the dashboard starts closer to the
+   header than the portfolio's pages do. */
+@media (min-width: 55em) {
+  [data-cabinet] .cab-main {
+    margin-top: 56px;
+  }
+  [data-cabinet] .cab-main--narrow {
+    margin-top: 112px;
+  }
+}
+
+/* ---- Gate: sign in, and admin off -------------------------------------- */
+
+[data-cabinet] .cab-gate {
+  width: 100%;
+  max-width: 25rem;
+  margin-inline: auto;
+}
+
+[data-cabinet] .cab-gate__lede {
+  margin-top: 10px;
+  color: var(--ink-2);
+}
+
+[data-cabinet] .cab-gate__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+[data-cabinet] .cab-gate__note::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+[data-cabinet] .cab-gate__form {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+[data-cabinet] .cab-gate__form .adm-button {
+  width: 100%;
+  min-height: 44px;
+}
+
+[data-cabinet] .cab-gate__form .adm-error {
+  margin-top: -6px;
+}
+
+@media (max-width: 40em) {
+  [data-cabinet] .cab-gate__form {
+    padding: 18px;
+  }
+}
+
+/* ---- Buttons ----------------------------------------------------------- */
+
+/* One family: an outline at rest, the ink filled for the step that commits,
+   a tint for the row action you take most, and a bare one for everything
+   quieter. `.admin-button` is the shared confirm dialog's name for the same
+   buttons. */
+[data-cabinet] :is(.adm-button, .admin-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+[data-cabinet] :is(.adm-button, .admin-button):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    :is(.adm-button, .admin-button):hover:not(
+      :disabled,
+      [aria-disabled='true']
+    ) {
+    border-color: color-mix(in srgb, var(--ink-2) 55%, var(--line-2));
+    background-color: var(--hover);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-cabinet] :is(.adm-button, .admin-button) {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 220ms var(--settle);
+  }
+  [data-cabinet]
+    :is(.adm-button, .admin-button):active:not(
+      :disabled,
+      [aria-disabled='true']
+    ) {
+    transform: translateY(1px);
+    transition-duration: 150ms, 150ms, 150ms, 60ms;
+  }
+}
+
+[data-cabinet] .adm-button--small {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 0.875rem;
+}
+
+[data-cabinet] :is(.adm-button--solid, .admin-button.primary) {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    :is(.adm-button--solid, .admin-button.primary):hover:not(
+      :disabled,
+      [aria-disabled='true']
+    ) {
+    border-color: transparent;
+    background: var(--focus);
+  }
+}
+
+[data-cabinet] .adm-button--tonal {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    .adm-button--tonal:hover:not(:disabled, [aria-disabled='true']) {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+}
+
+[data-cabinet] .adm-button--quiet {
+  border-color: transparent;
+  color: var(--ink-2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    .adm-button--quiet:hover:not(:disabled, [aria-disabled='true']) {
+    border-color: transparent;
+    color: var(--ink);
+  }
+}
+
+[data-cabinet] .adm-button--danger {
+  color: var(--bad);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    .adm-button--danger:hover:not(:disabled, [aria-disabled='true']) {
+    background: var(--bad-soft);
+    color: var(--bad);
+  }
+}
+
+/* The last word on something that cannot be undone. */
+[data-cabinet] :is(.adm-button--danger-solid, .admin-button.danger) {
+  border-color: transparent;
+  background: var(--bad);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    :is(.adm-button--danger-solid, .admin-button.danger):hover:not(
+      :disabled,
+      [aria-disabled='true']
+    ) {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--bad) 85%, var(--ink));
+  }
+}
+
+[data-cabinet] :is(.adm-button, .admin-button):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Nothing to commit yet: the fill steps back to an outline, not a
+   washed-out version of itself. */
+[data-cabinet] .adm-button--solid:disabled {
+  border-color: var(--line-2);
+  background: transparent;
+  color: var(--ink-2);
+  opacity: 1;
+}
+
+/* In flight: still focusable (focus must not fall to the page), but quiet. */
+[data-cabinet] .adm-button[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+[data-cabinet] .adm-button.is-passed {
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  color: var(--ok);
+}
+
+[data-cabinet] .adm-out {
+  color: var(--ink-2);
+  font-size: 0.875em;
+}
+
+[data-cabinet] .adm-icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet] .adm-icon-button:hover:not(:disabled, [aria-disabled='true']) {
+    color: var(--ink);
+    background: var(--tint);
+  }
+}
+
+[data-cabinet] .adm-icon-button:focus-visible {
+  outline-offset: 0;
+  border-radius: 10px;
+}
+
+[data-cabinet] .adm-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Segments ---------------------------------------------------------- */
+
+/* The appearance panel's control, with buttons: a recessed track, the
+   chosen option raised on it. */
+[data-cabinet] :is(.adm-seg, .pid__segments) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--seg-track);
+}
+
+[data-cabinet] :is(.adm-seg, .pid__segments) button[aria-pressed='true'] {
+  --seg-shadow:
+    0 1px 2px rgb(0 0 0 / 0.1),
+    0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+[data-cabinet][data-theme='dark']
+  :is(.adm-seg, .pid__segments)
+  button[aria-pressed='true'] {
+  --seg-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-cabinet][data-theme='system']
+    :is(.adm-seg, .pid__segments)
+    button[aria-pressed='true'] {
+    --seg-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.4);
+  }
+}
+
+[data-cabinet] :is(.adm-seg, .pid__segments) button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet]
+    :is(.adm-seg, .pid__segments)
+    button:hover:not(:disabled, [aria-disabled='true']) {
+    color: var(--ink);
+  }
+}
+
+[data-cabinet] :is(.adm-seg, .pid__segments) button[aria-pressed='true'] {
+  background: var(--seg-on);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: var(--seg-shadow);
+}
+
+@media (forced-colors: active) {
+  [data-cabinet] :is(.adm-seg, .pid__segments) button[aria-pressed='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
+[data-cabinet] :is(.adm-seg, .pid__segments) button:focus-visible {
+  outline-offset: 1px;
+  border-radius: 8px;
+}
+
+[data-cabinet] :is(.adm-seg, .pid__segments) button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+[data-cabinet] .adm-seg__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* ---- Fields ------------------------------------------------------------ */
+
+[data-cabinet] .adm-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-cabinet] .adm-field__label {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+/* The about page's boxed field: focus turns the border the ink colour. */
+[data-cabinet] .adm-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1px solid var(--field-line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.45;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+[data-cabinet] .adm-input::placeholder {
+  color: var(--ink-2);
+  opacity: 0.8;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-cabinet] .adm-input:hover:not(:disabled, :focus) {
+    border-color: var(--ink-2);
+  }
+}
+
+[data-cabinet] .adm-input:focus,
+[data-cabinet] .adm-input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+[data-cabinet] .adm-input[aria-invalid='true'] {
+  border-color: var(--bad);
+}
+
+[data-cabinet] .adm-input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 3px var(--bad-soft);
+}
+
+[data-cabinet] .adm-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Grows with its text instead of showing a resize grip. */
+[data-cabinet] textarea.adm-input {
+  min-height: calc(2lh + 22px);
+  resize: none;
+  field-sizing: content;
+}
+
+[data-cabinet] .adm-input--small {
+  min-height: 38px;
+  padding: 7px 12px;
+  font-size: 0.875rem;
+}
+
+[data-cabinet] .adm-error {
+  color: var(--bad);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+@media (forced-colors: active) {
+  [data-cabinet] .adm-input:focus {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* ---- Switch ------------------------------------------------------------ */
+
+[data-cabinet] .adm-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line-2);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+[data-cabinet] .adm-switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 220ms var(--ease-out);
+}
+
+[data-cabinet] .adm-switch:is([aria-checked='true'], :checked) {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+[data-cabinet] .adm-switch:is([aria-checked='true'], :checked)::before {
+  transform: translateX(16px);
+}
+
+[data-cabinet] .adm-switch:focus-visible {
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+[data-cabinet] .adm-switch:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* High contrast would flatten both the track and the knob to the same
+   colour; draw them in system colours instead, so the position still reads. */
+@media (forced-colors: active) {
+  [data-cabinet] .adm-switch,
+  [data-cabinet] .adm-switch::before {
+    forced-color-adjust: none;
+  }
+  [data-cabinet] .adm-switch {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    box-shadow: none;
+  }
+  [data-cabinet] .adm-switch::before {
+    top: 2px;
+    left: 2px;
+    background: ButtonText;
+    box-shadow: none;
+  }
+  [data-cabinet] .adm-switch:is([aria-checked='true'], :checked) {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  [data-cabinet] .adm-switch:is([aria-checked='true'], :checked)::before {
+    background: HighlightText;
+  }
+}
+
+/* ---- Badges ------------------------------------------------------------ */
+
+[data-cabinet] .adm-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+[data-cabinet] .adm-badge--muted {
+  background: var(--tint);
+  color: var(--ink-2);
+}
+
+/* ---- Confirm dialog -----------------------------------------------------
+   Shared with Studio, which keeps its own look (ConfirmDialog.css); in the
+   cabinet it is the appearance panel's surface. */
+
+[data-cabinet] .confirm-dialog-overlay {
+  background: var(--scrim);
+}
+
+/* A large text size can make it taller than a small screen: it stops at
+   the screen and scrolls, so the actions stay reachable. */
+[data-cabinet] .confirm-dialog {
+  width: min(26rem, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+[data-cabinet] .confirm-dialog__title {
+  margin-bottom: 8px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+[data-cabinet] .confirm-dialog__message {
+  margin-bottom: 22px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+/* The labels may wrap: at a large text size two nowrap buttons side by
+   side are wider than the dialog, and the first is pushed off its edge. */
+[data-cabinet] .confirm-dialog__actions {
+  flex-wrap: wrap;
+}
+
+[data-cabinet] .confirm-dialog .admin-button {
+  min-height: 40px;
+  padding: 8px 16px;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: center;
+}

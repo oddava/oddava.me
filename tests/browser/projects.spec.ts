@@ -111,12 +111,12 @@ test('a new image is sized, framed, and uploaded from the dialog', async ({
   );
   await expect(dialog.getByText(/3000×2000 · .* → 1600×1067 · /)).toBeVisible();
 
-  // One 4:3 preview, the card's own frame, is the focus control.
+  // One 16:10 preview, the public card's own frame, is the focus control.
   await expect(dialog.getByRole('figure')).toHaveCount(1);
   const frame = dialog.getByRole('slider', { name: 'Focus point' });
   await expect(frame).toHaveAttribute('aria-valuetext', '50% across, 50% down');
   const box = (await frame.boundingBox())!;
-  expect(box.width / box.height).toBeCloseTo(4 / 3, 1);
+  expect(box.width / box.height).toBeCloseTo(16 / 10, 1);
 
   // Drag the preview left by a quarter: the focus moves right.
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -132,7 +132,7 @@ test('a new image is sized, framed, and uploaded from the dialog', async ({
   await expect(frame).toHaveAttribute('aria-valuetext', '75% across, 55% down');
 
   await dialog.getByLabel('Zoom').fill('1.5');
-  await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
+  await dialog.getByRole('button', { name: 'upload', exact: true }).click();
   await expect(dialog).toBeHidden();
 
   expect(uploads).toHaveLength(1);
