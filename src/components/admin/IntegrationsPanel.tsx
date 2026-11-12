@@ -3,7 +3,6 @@ import { fetchIntegrations, testIntegration, toggleIntegration } from './api';
 import { SkeletonRow } from '../ui/Skeleton';
 import type { IntegrationState, IntegrationStatus } from '../../lib/contracts';
 import { errorMessage, useToast } from './toast';
-import '../ui/VisuallyHidden.css';
 
 const STATE_LABEL: Record<IntegrationState, string> = {
   ok: 'ok',
@@ -171,7 +170,7 @@ export function IntegrationsPanel({ onAttention }: IntegrationsPanelProps) {
         <div className="adm-head__tools">
           <button
             type="button"
-            className="hair-control adm-tab"
+            className="adm-button adm-button--small adm-button--quiet"
             onClick={() => void load()}
             disabled={loading}
           >
@@ -187,14 +186,14 @@ export function IntegrationsPanel({ onAttention }: IntegrationsPanelProps) {
           </p>
           <button
             type="button"
-            className="hair-control adm-act"
+            className="adm-button adm-button--small"
             onClick={() => void load()}
           >
             retry
           </button>
         </div>
       ) : loading && integrations.length === 0 ? (
-        <div className="adm-skeletons" role="status" aria-label="Loading">
+        <div className="adm-skeletons" role="status" aria-label="loading">
           <SkeletonRow />
           <SkeletonRow />
         </div>
@@ -206,33 +205,24 @@ export function IntegrationsPanel({ onAttention }: IntegrationsPanelProps) {
             const tone = STATE_TONE[integration.state];
             return (
               <li className="adm-int" key={integration.id}>
-                <span
-                  className={`adm-int__dot adm-int__dot--${tone}`}
-                  title={checkedAt ?? undefined}
-                  aria-hidden="true"
-                />
                 <div className="adm-int__body">
                   <p className="adm-int__heading">
                     <strong>{integration.name}</strong>
-                    {/* The dot already says "fine"; words are for the
-                        states that ask for something. */}
-                    <span
-                      className={`adm-int__state adm-int__state--${tone} ${
-                        tone === 'good' ? 'visually-hidden' : ''
-                      }`}
-                      title={checkedAt ?? undefined}
-                    >
+                    <span className={`adm-int__state adm-int__state--${tone}`}>
                       {STATE_LABEL[integration.state]}
                     </span>
                   </p>
                   <p className="adm-int__detail" aria-live="polite">
                     {integration.detail}
                   </p>
+                  {checkedAt && <p className="adm-int__checked">{checkedAt}</p>}
                 </div>
                 <div className="adm-int__actions">
                   <button
                     type="button"
-                    className="hair-control adm-act"
+                    className={`adm-button adm-button--small ${
+                      passed === integration.id ? 'is-passed' : ''
+                    }`}
                     disabled={rowBusy || !integration.enabled}
                     title={
                       integration.enabled

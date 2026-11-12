@@ -1,53 +1,57 @@
-/* Project image dialog: the card's image as it will show, live, with the
-   controls under it. Flat like the rest of the admin — a dim backdrop, a
-   lighter surface, hairlines. */
+/* Project image dialog: the public card's picture as it will show, live,
+   with the controls under it, on the appearance panel's surface. The
+   segments, buttons and range take the cabinet's shared controls. */
 
 .pid {
-  width: min(52rem, calc(100vw - 32px));
+  width: min(42rem, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
-  padding: 20px;
+  padding: 22px;
   overflow: auto;
-  border: 1px solid var(--admin-line-strong, var(--color-rule-strong));
-  border-radius: var(--radius-lg);
-  background: #151515;
-  color: var(--admin-text-primary, var(--color-text-primary));
-  font-family: var(--font-body);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: var(--lh);
 }
 
 .pid::backdrop {
-  background: color-mix(in srgb, #000 60%, transparent);
+  background: var(--scrim);
 }
 
 .pid__head h2 {
-  margin: 0 0 4px;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .pid__head p {
-  margin: 0 0 16px;
-  font-size: 0.8125rem;
+  margin: 4px 0 16px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
   line-height: 1.5;
-  color: var(--admin-text-secondary);
 }
 
-/* --- Previews --- */
+/* --- Preview --- */
 
-/* The card's media is 4:3 at every width, so one preview is the card. */
+/* The public card is 16:10 at every width, so one preview is the card. */
 .pid__previews {
-  max-width: 30rem;
+  max-width: 34rem;
 }
 
 .pid-preview {
-  margin: 0;
   min-width: 0;
 }
 
 .pid-preview figcaption {
-  margin-top: 10px;
+  margin-top: 12px;
   overflow: hidden;
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-size: var(--t-item);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -55,9 +59,10 @@
 .pid-frame {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-raised);
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
   touch-action: none;
   user-select: none;
 }
@@ -71,8 +76,9 @@
 }
 
 .pid-frame:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 16px;
 }
 
 .pid-frame__image,
@@ -86,18 +92,18 @@
 
 .pid-frame__backdrop {
   object-fit: cover;
-  filter: blur(18px) brightness(0.45) saturate(1.2);
+  filter: blur(18px) brightness(0.55) saturate(1.2);
   transform: scale(1.15);
 }
 
 .pid-frame__focus {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
-  border: 1.5px solid #fff;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #fff;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
   pointer-events: none;
 }
 
@@ -105,8 +111,8 @@
 
 .pid__controls {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 20px;
 }
 
 .pid__row {
@@ -121,112 +127,66 @@
 }
 
 .pid__label {
-  width: 4.5rem;
   flex: none;
-  font-size: 0.75rem;
-  color: var(--admin-text-secondary);
+  width: 4.5rem;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .pid__row input[type='range'] {
   flex: 1;
   min-width: 8rem;
-  accent-color: var(--color-brand);
+  accent-color: var(--accent);
 }
 
 .pid__row input[type='range']:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid var(--focus);
   outline-offset: 4px;
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
 }
 
 .pid__value {
   width: 3rem;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  color: var(--ink-2);
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
-  color: var(--admin-text-muted);
-}
-
-.pid__segments {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* `.pid` outranks the admin's generic `.admin-page button { font: inherit }`. */
-.pid .pid__segments button {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--admin-line);
-  border-radius: var(--radius-pill);
-  background: none;
-  color: var(--admin-text-secondary);
-  font: inherit;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.pid__segments button:hover:not(:disabled) {
-  color: var(--admin-text-primary);
-  border-color: var(--admin-line-strong);
-}
-
-.pid__segments button[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--color-brand) 70%, transparent);
-  background: color-mix(in srgb, var(--color-brand) 14%, transparent);
-  color: var(--admin-text-primary);
-}
-
-.pid__segments button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.pid__segments button:focus-visible,
-.pid__actions .admin-button:focus-visible,
-.pid__reset:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
 }
 
 .pid__note {
   flex-basis: 100%;
-  margin: 0 0 0 calc(4.5rem + 12px);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--admin-text-muted);
+  margin-left: calc(4.5rem + 12px);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .pid__note--error {
-  color: var(--admin-danger);
+  color: var(--bad);
+}
+
+.pid > .adm-error {
+  margin-top: 14px;
 }
 
 .pid__actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
-.pid__actions .admin-button {
-  min-height: 36px;
-  padding: 0 14px;
-}
-
-@media (max-width: 560px) {
+@media (max-width: 40em) {
   .pid {
     padding: 16px;
   }
-
   .pid__label {
     width: 100%;
   }
-
   .pid__note {
     margin-left: 0;
   }
-
-  .pid__actions .admin-button {
+  [data-cabinet] .pid__actions .adm-button {
     flex: 1;
     min-height: 44px;
   }

@@ -304,7 +304,7 @@ export function ProjectSheet({
                 <div className="adm-image__tools">
                   <button
                     type="button"
-                    className="hair-control adm-act"
+                    className="adm-button adm-button--small"
                     onClick={() => fileInput.current?.click()}
                     disabled={uploading}
                   >
@@ -312,7 +312,7 @@ export function ProjectSheet({
                   </button>
                   <button
                     type="button"
-                    className="hair-control adm-act"
+                    className="adm-button adm-button--small"
                     onClick={() => setAdjusting({ kind: 'src', src })}
                     disabled={uploading}
                   >
@@ -320,7 +320,7 @@ export function ProjectSheet({
                   </button>
                   <button
                     type="button"
-                    className="hair-control adm-act"
+                    className="adm-button adm-button--small"
                     onClick={() =>
                       patch({
                         imageSrc: '',
@@ -477,14 +477,14 @@ export function ProjectSheet({
               <span className="adm-sheet__ask">discard your changes?</span>
               <button
                 type="button"
-                className="hair-control adm-act adm-sheet__act"
+                className="adm-button"
                 onClick={() => setConfirmingDiscard(false)}
               >
                 keep editing
               </button>
               <button
                 type="button"
-                className="hair-control adm-act adm-act--danger adm-sheet__act"
+                className="adm-button adm-button--danger-solid"
                 onClick={onClose}
               >
                 discard
@@ -495,7 +495,7 @@ export function ProjectSheet({
               {!isNew && project && (
                 <button
                   type="button"
-                  className="hair-control adm-act adm-act--quiet-danger adm-sheet__act adm-sheet__delete"
+                  className="adm-button adm-button--quiet adm-button--danger adm-sheet__delete"
                   disabled={saving}
                   onClick={() => onDelete(project)}
                 >
@@ -503,26 +503,20 @@ export function ProjectSheet({
                 </button>
               )}
               {/* Closing is the ×, Escape or the backdrop; the footer only
-                  commits. With nothing to save, save is a quiet label —
-                  it turns solid the moment there is something to commit. */}
-              {isNew || dirty ? (
-                <button
-                  type="submit"
-                  className="adm-button adm-button--solid"
-                  disabled={saving || uploading}
-                  title="Save (Ctrl+Enter)"
-                >
-                  {saving ? 'saving…' : isNew ? 'add project' : 'save'}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="hair-control adm-act adm-sheet__act"
-                  disabled
-                >
-                  save
-                </button>
-              )}
+                  commits. With nothing to save, save waits as an outline
+                  and fills the moment there is something to commit. */}
+              {/* In flight it stays filled, only quiet: aria-disabled, so
+                  it neither drops to the outline mid-save nor loses focus.
+                  `submit` already ignores a second press. */}
+              <button
+                type="submit"
+                className="adm-button adm-button--solid"
+                disabled={!saving && (uploading || !(isNew || dirty))}
+                aria-disabled={saving || undefined}
+                title="save (ctrl+enter)"
+              >
+                {saving ? 'saving…' : isNew ? 'add project' : 'save'}
+              </button>
             </div>
           )}
         </footer>

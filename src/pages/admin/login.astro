@@ -1,11 +1,15 @@
 ---
-import AdminLayout from '../../layouts/AdminLayout.astro';
+import Cabinet from '../../layouts/Cabinet.astro';
+import CabinetOff from '../../components/admin/CabinetOff.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
 import { safeRedirectPath } from '../../lib/server/core';
+import { registerPortfolioCsp } from '../../lib/portfolio/csp';
 
 if (await isAdminRequest(Astro.cookies)) {
   return Astro.redirect('/admin');
 }
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 const configured = isAdminConfigured();
 const requestedNext = Astro.url.searchParams.get('next') ?? '/admin';
@@ -14,66 +18,58 @@ const invalid = Astro.url.searchParams.get('error') === 'invalid';
 const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
 ---
 
-<AdminLayout
-  title="Sign in"
-  description="Authenticate to manage oddava.me."
-  sky
->
-  <section class="admin-gate">
-    <h1 class="admin-gate__brand">
-      <span class="admin-gate__wordmark">oddava</span>
-      <span class="admin-gate__tag">admin</span>
-    </h1>
-    {
-      !configured && (
-        <p class="admin-gate__message">
-          admin is off. set <code>ADMIN_PANEL_TOKEN</code> or{' '}
-          <code>GUESTBOOK_ADMIN_TOKEN</code> to turn it on.
-        </p>
-      )
-    }
-    {
-      loggedOut && (
-        <p class="admin-gate__message admin-gate__message--done">signed out.</p>
-      )
-    }
-    <form id="admin-login-form" method="post" action="/api/admin/session">
-      <input type="hidden" name="next" value={next} />
-      <label class="adm-field">
-        <span class="adm-field__label">admin token</span>
-        <input
-          class="adm-input"
-          type="password"
-          name="token"
-          required
-          autocomplete="current-password"
-          disabled={!configured}
-          autofocus={configured}
-          aria-invalid={invalid ? 'true' : undefined}
-          aria-describedby="admin-login-error"
-        />
-      </label>
-      {
-        /* The one place a sign-in error shows, whether the server redirected
-          here with ?error=invalid or the script caught it. */
-      }
-      <p
-        id="admin-login-error"
-        class="admin-error"
-        role="alert"
-        hidden={!invalid}
-      >
-        {invalid ? 'that token was rejected.' : ''}
-      </p>
-      <button
-        class="adm-button adm-button--solid"
-        type="submit"
-        disabled={!configured}
-      >
-        sign in
-      </button>
-    </form>
-  </section>
+<Cabinet title="sign in" description="Authenticate to manage oddava.me." narrow>
+  {
+    configured ? (
+      <section class="cab-gate" aria-labelledby="cab-gate-title">
+        <h1 class="pf-title" id="cab-gate-title">
+          sign in
+        </h1>
+        <p class="cab-gate__lede">the admin token opens the dashboard.</p>
+        {loggedOut && (
+          <p class="cab-gate__note" role="status">
+            signed out. see you soon <span aria-hidden="true">( ˘ω˘ )</span>
+          </p>
+        )}
+        <form
+          id="admin-login-form"
+          class="cab-gate__form"
+          method="post"
+          action="/api/admin/session"
+        >
+          <input type="hidden" name="next" value={next} />
+          <label class="adm-field">
+            <span class="adm-field__label">admin token</span>
+            <input
+              class="adm-input"
+              type="password"
+              name="token"
+              required
+              autocomplete="current-password"
+              autofocus
+              aria-invalid={invalid ? 'true' : undefined}
+              aria-describedby="admin-login-error"
+            />
+          </label>
+          {/* The one place a sign-in error shows, whether the server
+              redirected here with ?error=invalid or the script caught it. */}
+          <p
+            id="admin-login-error"
+            class="adm-error"
+            role="alert"
+            hidden={!invalid}
+          >
+            {invalid ? 'that token was rejected.' : ''}
+          </p>
+          <button class="adm-button adm-button--solid" type="submit">
+            sign in
+          </button>
+        </form>
+      </section>
+    ) : (
+      <CabinetOff />
+    )
+  }
   <script>
     const form = document.querySelector<HTMLFormElement>('#admin-login-form');
     const errorElement =
@@ -96,10 +92,18 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (!errorElement || submitButton?.disabled) return;
+      if (
+        !errorElement ||
+        submitButton?.getAttribute('aria-disabled') === 'true'
+      ) {
+        return;
+      }
       clearError();
+      // aria-disabled, not disabled: the button keeps focus and its fill
+      // while the request is out (disabled would drop focus to the page and
+      // turn the button into the "nothing to do" outline).
       if (submitButton) {
-        submitButton.disabled = true;
+        submitButton.setAttribute('aria-disabled', 'true');
         submitButton.textContent = 'signing in…';
       }
 
@@ -136,10 +140,13 @@ const loggedOut = Astro.url.searchParams.get('logged_out') === '1';
         errorElement.hidden = false;
         tokenInput?.setAttribute('aria-invalid', 'true');
         if (submitButton) {
-          submitButton.disabled = false;
+          submitButton.removeAttribute('aria-disabled');
           submitButton.textContent = 'sign in';
         }
+        // Back to the field, so the token can be corrected at once.
+        tokenInput?.focus();
+        tokenInput?.select();
       }
     });
   </script>
-</AdminLayout>
+</Cabinet>

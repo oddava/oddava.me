@@ -1,8 +1,9 @@
 ---
-import AdminLayout from '../../layouts/AdminLayout.astro';
+import Cabinet from '../../layouts/Cabinet.astro';
 import AdminPanel from '../../components/admin/AdminPanel';
-import AdminUnavailable from '../../components/admin/AdminUnavailable.astro';
+import CabinetOff from '../../components/admin/CabinetOff.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
+import { registerPortfolioCsp } from '../../lib/portfolio/csp';
 
 const configured = isAdminConfigured();
 
@@ -11,13 +12,15 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
     `/admin/login?next=${encodeURIComponent(Astro.url.pathname)}`,
   );
 }
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 ---
 
-<AdminLayout
-  title="Dashboard"
+<Cabinet
+  title="dashboard"
   description="Unified admin panel for oddava.me."
-  bare={configured}
-  sky
+  signedIn={configured}
+  narrow={!configured}
 >
-  {configured ? <AdminPanel client:load /> : <AdminUnavailable />}
-</AdminLayout>
+  {configured ? <AdminPanel client:load /> : <CabinetOff />}
+</Cabinet>

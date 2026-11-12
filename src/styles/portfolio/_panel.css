@@ -79,14 +79,12 @@
 /* A segmented control: a recessed track, the chosen option raised on it.
    Options share the width evenly; five inks sit three over two. */
 [data-site='portfolio'] .pf-seg {
-  --track: #eef1f4;
-  --on: #ffffff;
   display: grid;
   grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
   gap: 2px;
   padding: 3px;
   border-radius: 11px;
-  background: var(--track);
+  background: var(--seg-track);
 }
 
 [data-site='portfolio'] .pf-seg--2 {
@@ -94,19 +92,6 @@
 }
 [data-site='portfolio'] .pf-seg--3 {
   --n: 3;
-}
-
-[data-site='portfolio'][data-theme='dark'] .pf-seg,
-.pf-scope[data-site='portfolio'] .pf-seg {
-  --track: #12151a;
-  --on: #2f3640;
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-site='portfolio'][data-theme='system'] .pf-seg {
-    --track: #12151a;
-    --on: #2f3640;
-  }
 }
 
 [data-site='portfolio'] .pf-seg label {
@@ -168,7 +153,7 @@
 
 [data-site='portfolio'] .pf-seg label:has(input:checked) {
   color: var(--ink);
-  background: var(--on);
+  background: var(--seg-on);
   box-shadow:
     0 1px 2px rgb(0 0 0 / 0.1),
     0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);

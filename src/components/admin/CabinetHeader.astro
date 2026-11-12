@@ -1,0 +1,46 @@
+---
+/**
+ * The portfolio header, in the admin: the wordmark with a quiet "admin"
+ * beside it, then the places an editor goes, then the same appearance icon
+ * and panel the site has. Signed out, only the site link stays.
+ */
+import LoadingIndicator from '../LoadingIndicator.astro';
+import AppearanceControl from '../portfolio/AppearanceControl.astro';
+
+interface Props {
+  signedIn: boolean;
+}
+
+const { signedIn } = Astro.props;
+const onDashboard = /^\/admin\/?$/.test(Astro.url.pathname);
+---
+
+<header class="pf-header">
+  <a
+    class="pf-mark cab-mark"
+    href="/admin"
+    aria-current={onDashboard ? 'page' : undefined}
+    >oddava<span class="cab-mark__tag">admin</span></a
+  >
+  <div class="pf-end">
+    <nav class="pf-nav" aria-label="admin">
+      {signedIn && <a href="/admin/files">notes</a>}
+      <a href="/" target="_blank" rel="noopener"
+        >site<span class="cab-out" aria-hidden="true">↗</span><span
+          class="sr-only"
+        >
+          (opens in new tab)</span
+        ></a
+      >
+      {
+        signedIn && (
+          <form class="cab-signout" method="post" action="/api/admin/logout">
+            <button type="submit">sign out</button>
+          </form>
+        )
+      }
+    </nav>
+    <AppearanceControl />
+  </div>
+  <LoadingIndicator />
+</header>

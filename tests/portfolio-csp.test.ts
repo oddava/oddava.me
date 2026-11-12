@@ -51,16 +51,19 @@ describe('portfolio CSP registration', () => {
   // A streamed server-rendered page builds its CSP header after the page's
   // own frontmatter and before the layout renders, so a hash registered from
   // the layout or Prepaint would miss the header and the pre-paint would be
-  // blocked. Every Portfolio page registers in its frontmatter instead.
-  it('is called from the frontmatter of every page on the Portfolio layout', () => {
+  // blocked. Every page on a layout that renders Prepaint — Portfolio, and
+  // the admin's Cabinet — registers in its frontmatter instead.
+  it('is called from the frontmatter of every page on a pre-painted layout', () => {
     const portfolioPages = pageFiles('src/pages').filter((file) =>
-      /from '@layouts\/Portfolio\.astro'/.test(read(file)),
+      /from '[^']*layouts\/(?:Portfolio|Cabinet)\.astro'/.test(read(file)),
     );
     expect(portfolioPages).toEqual(
       expect.arrayContaining([
         path.join('src', 'pages', 'about.astro'),
         path.join('src', 'pages', 'index.astro'),
         path.join('src', 'pages', 'projects', 'index.astro'),
+        path.join('src', 'pages', 'admin', 'index.astro'),
+        path.join('src', 'pages', 'admin', 'login.astro'),
       ]),
     );
     for (const file of portfolioPages) {
@@ -74,6 +77,7 @@ describe('portfolio CSP registration', () => {
   it('is not also registered by the layout or Prepaint, which would duplicate it', () => {
     for (const file of [
       'src/layouts/Portfolio.astro',
+      'src/layouts/Cabinet.astro',
       'src/components/portfolio/Prepaint.astro',
     ]) {
       expect(read(file), file).not.toMatch(

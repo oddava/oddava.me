@@ -1,0 +1,72 @@
+---
+/**
+ * The admin cabinet: the dashboard, sign-in, and the page shown while admin
+ * is off. It is a portfolio page in everything but its header — the same
+ * frame, face, theme and ink, read from the visitor's saved appearance — so
+ * the site and its back office look like one place. Studio (/admin/files)
+ * keeps AdminLayout and its own tokens.
+ *
+ * The pre-paint is inline and hashed, and the hashes are registered from
+ * each page's own frontmatter, never from here (see lib/portfolio/csp.ts).
+ */
+import '../styles/_variables.css';
+import '../styles/portfolio/portfolio.css';
+import '../styles/admin/cabinet.css';
+import Prepaint from '../components/portfolio/Prepaint.astro';
+import CabinetHeader from '../components/admin/CabinetHeader.astro';
+import { APPEARANCE_DEFAULTS } from '../lib/portfolio/appearance';
+
+export interface Props {
+  title: string;
+  description?: string;
+  /** Signed in: the header offers notes, the site and sign out. */
+  signedIn?: boolean;
+  /** A narrow centred column (sign-in, admin off) instead of the desk. */
+  narrow?: boolean;
+}
+
+const {
+  title,
+  description = 'Site administration for oddava.me.',
+  signedIn = false,
+  narrow = false,
+} = Astro.props;
+const defaults = APPEARANCE_DEFAULTS;
+
+// `viewport-fit=cover` hands the notch and home-indicator insets to CSS
+// (the sheet and toasts pad by `env(safe-area-inset-*)`);
+// `interactive-widget=resizes-content` makes the on-screen keyboard shrink
+// the layout, so the project sheet keeps save above the keys.
+const viewport =
+  'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content';
+---
+
+<!doctype html>
+<html
+  lang="en"
+  data-site="portfolio"
+  data-cabinet
+  data-theme={defaults.theme}
+  data-ink={defaults.ink}
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content={viewport} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content={description} />
+    <title>{`${title} | oddava admin`}</title>
+    <Prepaint />
+  </head>
+  <body>
+    <a href="#main" class="skip-link link">skip to content</a>
+    <div class="pf-page">
+      <CabinetHeader signedIn={signedIn} />
+      <main
+        id="main"
+        class:list={['pf-main', 'cab-main', narrow && 'cab-main--narrow']}
+      >
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>
