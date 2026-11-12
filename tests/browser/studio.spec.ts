@@ -1954,9 +1954,23 @@ test('legacy modes restore into one editor and all heading levels save as Markdo
   await expect(page.locator('.studio-preview')).toHaveCount(0);
   await replaceContent(page, '');
   const editor = page.getByRole('textbox', { name: 'Note editor' });
-  for (const level of [1, 2, 3, 4, 5, 6]) {
-    await editor.click();
+  // One click puts the caret in the note, and each Enter below leaves it on
+  // the new last line, so the loop never clicks again. A click lands in the
+  // editor's state on the next selectionchange: a Control+End pressed before
+  // that is undone by it, so the press retries until the caret is at the end.
+  await editor.click();
+  await expect(async () => {
     await page.keyboard.press('Control+End');
+    const atEnd = await editor.evaluate((node) => {
+      const selection = window.getSelection();
+      const last = node.lastElementChild;
+      return Boolean(
+        selection?.isCollapsed && last?.contains(selection.anchorNode),
+      );
+    });
+    expect(atEnd).toBe(true);
+  }).toPass({ timeout: 5000 });
+  for (const level of [1, 2, 3, 4, 5, 6]) {
     await page.keyboard.type(`/h${level}`);
     await page
       .getByRole('option', { name: new RegExp(`Heading ${level}`) })
