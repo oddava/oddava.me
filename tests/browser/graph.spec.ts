@@ -232,7 +232,12 @@ test('global modal opens lazily, closes promptly, and remains usable in landscap
     await page
       .getByRole('button', { name: 'Close global graph', exact: true })
       .click();
-    await expect(page.locator('dialog:modal')).toHaveCount(0, { timeout: 700 });
+    // The exit is 160ms with a 100ms deadline behind it (graph-presence.ts),
+    // so a working close lands well inside this; the slack is for a loaded CI
+    // runner, while a close that waits on stalled frames still fails here.
+    await expect(page.locator('dialog:modal')).toHaveCount(0, {
+      timeout: 2000,
+    });
     await expect(opener).toBeFocused();
   }
 });

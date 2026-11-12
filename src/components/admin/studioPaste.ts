@@ -40,6 +40,19 @@ export function looksLikeMarkdown(text: string): boolean {
   return MARKDOWN_SIGNS.some((sign) => sign.test(text));
 }
 
+/**
+ * Whether a plain-text paste into the rich editor is parsed as Markdown rather
+ * than typed as text: anything multi-line, anything with Markdown structure,
+ * and anything that opens with a wikilink, tag, code span, or emphasis mark.
+ */
+export function pastesAsMarkdown(markdown: string): boolean {
+  return (
+    markdown.includes('\n') ||
+    looksLikeMarkdown(markdown) ||
+    /^(\[\[|<|`|[_*~])/.test(markdown)
+  );
+}
+
 export interface PastePlan {
   /** Text to write in place of the selection. */
   text: string;

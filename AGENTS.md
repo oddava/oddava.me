@@ -23,21 +23,24 @@ Server code is organized by domain under `src/lib/server/`: `admin/`, `content/`
 
 ## Build, Test, and Development
 
-| Command                  | Description                                        |
-| ------------------------ | -------------------------------------------------- |
-| `pnpm run dev`           | Start Astro dev server                             |
-| `pnpm run build`         | Production build plus output and CSP verification  |
-| `pnpm run build:dev`     | Development-mode build                             |
-| `pnpm run preview`       | Preview production build locally                   |
-| `pnpm run deploy`        | Deploy to Cloudflare Workers                       |
-| `pnpm test`              | Run Vitest (single pass)                           |
-| `pnpm run test:watch`    | Run Vitest in watch mode                           |
-| `pnpm run check`         | TypeScript + Astro diagnostics                     |
-| `pnpm run format`        | Format with Prettier                               |
-| `pnpm run format:check`  | Check formatting (CI gate)                         |
-| `pnpm run notes:migrate` | Import repository notes/media into Redis           |
-| `pnpm run notes:export`  | Export Redis notes/media into the repository       |
-| `pnpm run verify`        | Full pipeline: format:check → check → test → build |
+| Command                  | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `pnpm run dev`           | Start Astro dev server                              |
+| `pnpm run build`         | Production build plus output and CSP verification   |
+| `pnpm run build:dev`     | Development-mode build                              |
+| `pnpm run preview`       | Preview production build locally                    |
+| `pnpm run deploy`        | Deploy to Cloudflare Workers                        |
+| `pnpm run test:browser`  | Run Playwright browser suite                        |
+| `pnpm test`              | Run Vitest (single pass)                            |
+| `pnpm run test:watch`    | Run Vitest in watch mode                            |
+| `pnpm run check`         | TypeScript + Astro diagnostics                      |
+| `pnpm run format`        | Format with Prettier                                |
+| `pnpm run format:check`  | Check formatting (CI gate)                          |
+| `pnpm run notes:migrate` | Import repository notes/media into Redis            |
+| `pnpm run notes:export`  | Export Redis notes/media into the repository        |
+| `pnpm run verify`        | Local pipeline: format:check → check → test → build |
+
+CI also runs the Playwright browser suite; `pnpm run verify` does not include it.
 
 ## Coding Style & Naming Conventions
 

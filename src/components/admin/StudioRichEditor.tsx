@@ -1,62 +1,60 @@
-import {
-  BlockSelection,
-  BlockSelectionExtension,
-  duplicateSelectedBlocks,
-} from './studioBlockSelection';
-import { useStudioBlockMarquee } from './useStudioBlockMarquee';
-import {
-  findSideDrop,
-  moveBeside,
-  moveBlocksTo,
-  removeBlock,
-  type SideDrop,
-} from './studioSideDrop';
-import { Columns, Column, makeColumns, activeColumns } from './studioColumns';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import { Editor } from '@tiptap/core';
-import { Slice, Fragment } from '@tiptap/pm/model';
-import StarterKit from '@tiptap/starter-kit';
-import { Markdown } from '@tiptap/markdown';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import { RichImage } from './studioRichImage';
-import { YoutubeVideo } from './studioYoutube';
-import { youtubeEmbedUrl } from '../../lib/garden/youtube';
-import StudioEditorPopover from './StudioEditorPopover';
-import type { ImageEditRequest } from './StudioImageDialog';
-import type { ImageMarkupOptions } from './studioEditorCommands';
-import { TableKit } from '@tiptap/extension-table';
-import Placeholder from '@tiptap/extension-placeholder';
+import type { Node as PMNode } from '@tiptap/pm/model';
+import { EditorState, TextSelection } from '@tiptap/pm/state';
+import { BlockSelection } from './studioBlockSelection';
+import { useStudioBlockMarquee } from './useStudioBlockMarquee';
+import { useStudioBlockHandle } from './useStudioBlockHandle';
 import {
-  EditorState,
-  Selection,
-  NodeSelection,
-  TextSelection,
-} from '@tiptap/pm/state';
-import StudioSlashMenu, {
-  SLASH_MENU_ID,
-  slashOptionId,
-} from './StudioSlashMenu';
+  useStudioRichSuggestions,
+  useSuggestionAria,
+} from './useStudioRichSuggestions';
+import type { ImageEditRequest } from './StudioImageDialog';
+import StudioSlashMenu from './StudioSlashMenu';
 import StudioInlineToolbar from './StudioInlineToolbar';
-import StudioBlockMenu from './StudioBlockMenu';
-import StudioContextMenu from './StudioContextMenu';
+import StudioBlockHandle from './StudioBlockHandle';
+import StudioRichBlockMenu from './StudioRichBlockMenu';
+import StudioImageMenu from './StudioImageMenu';
+import StudioTableTools from './StudioTableTools';
+import {
+  StudioImageDetailPopover,
+  StudioLinkPopover,
+  StudioRawEditPopover,
+  StudioYoutubePopover,
+  type ImageDetailDraft,
+  type LinkDraft,
+  type RawEditDraft,
+  type YoutubeDraft,
+} from './StudioRichPopovers';
 import WikiLinkAutocomplete from './WikiLinkAutocomplete';
 import { useStudioMenu } from './useStudioMenu';
-import {
-  matchSlashCommands,
-  parseBlocks,
-  type SlashCommand,
-  type TurnTarget,
-} from './studioBlocks';
-import { RichDocument, SourceBlock, WikiLink } from './studioRichDocument';
-import { fuzzyScore } from './studioSearch';
+import type { TurnTarget } from './studioBlocks';
+import { RichDocument } from './studioRichDocument';
 import type { EditorCommands } from './studioEditorCommands';
 import type { WikiSuggestion } from './WikiLinkAutocomplete';
 import { emissionsFrom, isOurs, remember } from './studioEmissions';
-import { looksLikeMarkdown, markdownFromClipboard } from './studioPaste';
+import { studioRichExtensions } from './studioRichExtensions';
+import { richKeyDown, type RichKeymapContext } from './studioRichKeymap';
+import { richClickOn, richFileDrop, richPaste } from './studioRichInput';
+import {
+  changeImageNode,
+  createEditorCommands,
+  insertMarkdownInto,
+  moveSelectedBlocks,
+  moveTopBlock,
+  requestImageEdit,
+  slashActions,
+  uploadImageAtSelection,
+} from './studioRichCommands';
+import {
+  pointAt,
+  sideDropStyle,
+  toolbarPoint,
+  type Point,
+} from './studioRichGeometry';
+import { wikiTarget } from './studioRichSuggestions';
 import NotePageIcon from '../NotePageIcon';
-import { Icon } from './studioIcons';
 
 interface Props {
   icon?: string;
@@ -75,45 +73,6 @@ interface Props {
   onNotice: (message: string) => void;
 }
 
-type Point = { top: number; left: number };
-type Suggestion = {
-  from: number;
-  to: number;
-  query: string;
-  point: Point;
-  index: number;
-  items: SlashCommand[];
-};
-type WikiState = Omit<Suggestion, 'items'> & { items: WikiSuggestion[] };
-
-function pointAt(editor: Editor, position: number, height = 310): Point {
-  const rect = editor.view.coordsAtPos(position);
-  const viewport = window.visualViewport;
-  const bottom =
-    (viewport?.height ?? window.innerHeight) + (viewport?.offsetTop ?? 0);
-  return {
-    top: Math.max(
-      8,
-      rect.bottom + height + 8 > bottom
-        ? rect.top - height - 8
-        : rect.bottom + 8,
-    ),
-    left: Math.max(8, Math.min(rect.left, window.innerWidth - 300)),
-  };
-}
-
-function topBlock(editor: Editor, position = editor.state.selection.from) {
-  const $pos = editor.state.doc.resolve(
-    Math.min(position, editor.state.doc.content.size),
-  );
-  let depth = 1;
-  for (let d = 1; d <= $pos.depth; d++)
-    if ($pos.node(d).type.name === 'column') depth = d + 1;
-  const from = $pos.depth >= depth ? $pos.before(depth) : $pos.pos;
-  const node = editor.state.doc.nodeAt(from);
-  return node ? { from, node } : null;
-}
-
 /** One continuous editing surface: the DOM and its selection belong to ProseMirror. */
 export default function StudioRichEditor(props: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -125,194 +84,40 @@ export default function StudioRichEditor(props: Props) {
   const source = useRef(new RichDocument());
   const emitted = useRef(props.body);
   const emissions = useRef(emissionsFrom(props.body));
-  const [slash, setSlash] = useState<Suggestion | null>(null);
-  const [wiki, setWiki] = useState<WikiState | null>(null);
-  const slashRef = useRef(slash);
-  const wikiRef = useRef(wiki);
-  slashRef.current = slash;
-  wikiRef.current = wiki;
-  const dismissed = useRef<number | null>(null);
+  const suggestions = useStudioRichSuggestions();
+  const { slash, setSlash, wiki, setWiki, slashRef, wikiRef } = suggestions;
   const [selectionPoint, setSelectionPoint] = useState<Point | null>(null);
-  const [handle, setHandle] = useState<{
-    from: number;
-    top: number;
-    left: number;
-    column: boolean;
-  } | null>(null);
-  const handleRef = useRef(handle);
-  handleRef.current = handle;
-  const hoveredBlock = useRef<HTMLElement | null>(null);
-  const dragFrom = useRef<number | null>(null);
-  const nativeDragFrom = useRef<number | null>(null);
-  const nativeDragSources = useRef<number[]>([]);
-  const [sideDrop, setSideDrop] = useState<SideDrop | null>(null);
-  const pointerDrag = useRef<{
-    from: number;
-    sources: number[];
-    y: number;
-    x: number;
-    moved: boolean;
-  } | null>(null);
-  const suppressHandleClick = useRef(false);
-  const [dropLine, setDropLine] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
   const menu = useStudioMenu<number>();
-  const imageMenu = useStudioMenu<import('@tiptap/pm/model').Node>();
+  const imageMenu = useStudioMenu<PMNode>();
   const imageMenuRef = useRef(imageMenu);
   imageMenuRef.current = imageMenu;
-  const [imageDetail, setImageDetail] = useState<{
-    node: import('@tiptap/pm/model').Node;
-    field: 'caption' | 'alt';
-    value: string;
-  } | null>(null);
-  const [link, setLink] = useState<{
-    from: number;
-    to: number;
-    url: string;
-    point: Point;
-  } | null>(null);
+  // Called after both menus, where its Escape listener effect always sat.
+  const blocks = useStudioBlockHandle(scroller, live);
+  const { handle, setHandle, sideDrop, dropLine, updateHandle, deleteBlockAt } =
+    blocks;
+  const [imageDetail, setImageDetail] = useState<ImageDetailDraft | null>(null);
+  const [link, setLink] = useState<LinkDraft | null>(null);
   const [linkError, setLinkError] = useState('');
-  const [youtube, setYoutube] = useState<{ url: string; from: number } | null>(
-    null,
-  );
+  const [youtube, setYoutube] = useState<YoutubeDraft | null>(null);
   const [youtubeError, setYoutubeError] = useState('');
-  const youtubeInput = useRef<HTMLInputElement>(null);
-  const [rawEdit, setRawEdit] = useState<{ from: number; raw: string } | null>(
-    null,
-  );
+  const [rawEdit, setRawEdit] = useState<RawEditDraft | null>(null);
   const commandsRef = useRef<EditorCommands | null>(null);
   const refreshRef = useRef<() => void>(() => {});
   const chooseRef = useRef<(index: number) => void>(() => {});
   const chooseWikiRef = useRef<(index: number) => void>(() => {});
   const moveRef = useRef<(direction: -1 | 1) => void>(() => {});
 
-  useEffect(() => {
-    const cancelDrag = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !pointerDrag.current) return;
-      pointerDrag.current = null;
-      dragFrom.current = null;
-      setSideDrop(null);
-      setDropLine(null);
-      suppressHandleClick.current = true;
-    };
-    window.addEventListener('keydown', cancelDrag);
-    return () => window.removeEventListener('keydown', cancelDrag);
-  }, []);
-
-  function updateHandle(editor: Editor, from: number) {
-    const dom = editor.view.nodeDOM(from) as HTMLElement | null;
-    const pane = scroller.current;
-    if (!dom || !pane) {
-      setHandle(null);
-      return;
-    }
-    hoveredBlock.current = dom;
-    const column = dom.parentElement?.matches('[data-note-column]') ?? false;
-    setHandle({
-      from,
-      column,
-      left:
-        dom.getBoundingClientRect().left -
-        pane.getBoundingClientRect().left +
-        pane.scrollLeft -
-        // The handle's width plus a 12px gap: one grip in a column or on a
-        // phone, add and grip side by side otherwise.
-        (live.current.compact || column ? 36 : 62),
-      top:
-        dom.getBoundingClientRect().top -
-        pane.getBoundingClientRect().top +
-        pane.scrollTop,
-    });
-  }
-
   function refresh() {
     const editor = editorRef.current;
     if (!editor || editor.isDestroyed || !live.current.visible) return;
     const { selection } = editor.state;
-    const { $from, from, to, empty } = selection;
-    if (live.current.compact) {
-      const block = topBlock(editor);
-      if (block) updateHandle(editor, block.from);
-    } else if (hoveredBlock.current) {
-      const dom = hoveredBlock.current;
-      if (editor.view.dom.contains(dom)) {
-        const block = topBlock(editor, editor.view.posAtDOM(dom, 0));
-        if (block) updateHandle(editor, block.from);
-        else setHandle(null);
-      } else {
-        hoveredBlock.current = null;
-        setHandle(null);
-      }
-    }
-    const before = $from.parent.textBetween(
-      0,
-      $from.parentOffset,
-      undefined,
-      '\ufffc',
-    );
-    const slashMatch =
-      empty && !editor.isActive('codeBlock') && /^\/([^\n/]*)$/.exec(before);
-    if (slashMatch && dismissed.current !== $from.start()) {
-      const query = slashMatch[1]!;
-      const items = matchSlashCommands(query);
-      setSlash((prev) => ({
-        from: $from.start(),
-        to: from,
-        query,
-        items,
-        point: pointAt(editor, from),
-        index:
-          prev?.query === query
-            ? Math.min(prev.index, Math.max(0, items.length - 1))
-            : 0,
-      }));
-    } else {
-      setSlash(null);
-      if (!slashMatch) dismissed.current = null;
-    }
-    const wikiMatch =
-      empty && !editor.isActive('codeBlock') && /\[\[([^\]\n|]*)$/.exec(before);
-    if (wikiMatch && dismissed.current !== from - wikiMatch[0].length) {
-      const query = wikiMatch[1]!;
-      const items = live.current.suggestions
-        .map((item) => ({
-          item,
-          score: fuzzyScore(query, `${item.title} ${item.folder} ${item.id}`),
-        }))
-        .filter((row) => row.score !== null)
-        .sort((a, b) => b.score! - a.score!)
-        .slice(0, 8)
-        .map((row) => row.item);
-      setWiki((prev) => ({
-        from: from - wikiMatch[0].length,
-        to: from,
-        query,
-        items,
-        point: pointAt(editor, from),
-        index:
-          prev?.query === query
-            ? Math.min(prev.index, Math.max(0, items.length - 1))
-            : 0,
-      }));
-    } else setWiki(null);
-    if (!empty && selection instanceof TextSelection && editor.isFocused) {
-      const a = editor.view.coordsAtPos(from);
-      const b = editor.view.coordsAtPos(to);
-      setSelectionPoint({
-        top: Math.max(8, a.top - 46),
-        left: Math.max(
-          8,
-          Math.min((a.left + b.left) / 2 - 110, window.innerWidth - 248),
-        ),
-      });
-    } else setSelectionPoint(null);
-    editor.view.dom.setAttribute(
-      'aria-expanded',
-      String(Boolean(slashMatch || wikiMatch)),
-    );
+    const { from, to, empty } = selection;
+    blocks.syncHandle(editor);
+    const matched = suggestions.update(editor, live.current.suggestions);
+    if (!empty && selection instanceof TextSelection && editor.isFocused)
+      setSelectionPoint(toolbarPoint(editor, from, to));
+    else setSelectionPoint(null);
+    editor.view.dom.setAttribute('aria-expanded', String(matched));
   }
   refreshRef.current = refresh;
 
@@ -328,78 +133,23 @@ export default function StudioRichEditor(props: Props) {
   function insertMarkdown(markdown: string) {
     const editor = editorRef.current;
     if (!editor || editor.isDestroyed) return;
-    const content = source.current.parse(editor, markdown).content ?? [];
-    if (editor.state.selection instanceof BlockSelection) {
-      editor.view.dispatch(
-        editor.state.tr
-          .replaceSelection(
-            new Slice(
-              Fragment.from(
-                content.map((node) => editor.schema.nodeFromJSON(node)),
-              ),
-              0,
-              0,
-            ),
-          )
-          .scrollIntoView(),
-      );
-      editor.view.focus();
-    } else editor.chain().focus().insertContent(content).run();
+    insertMarkdownInto(editor, source.current, markdown);
   }
 
   const imageTap = useRef({ pos: -1, time: 0 });
-  function changeImage(
-    node: import('@tiptap/pm/model').Node,
-    attrs: Record<string, unknown> | null,
-  ) {
+  function changeImage(node: PMNode, attrs: Record<string, unknown> | null) {
     const editor = editorRef.current;
     if (!editor || editor.isDestroyed) return;
-    let position: number | null = null;
-    editor.state.doc.descendants((candidate, pos) => {
-      if (candidate === node) position = pos;
-    });
-    if (position === null) {
-      live.current.onNotice('This image is no longer in the document.');
-      return;
-    }
-    if (attrs)
-      editor.view.dispatch(
-        editor.state.tr.setNodeMarkup(position, undefined, {
-          ...node.attrs,
-          ...attrs,
-        }),
-      );
-    else
-      editor.commands.deleteRange({
-        from: position,
-        to: position + node.nodeSize,
-      });
-    editor.commands.focus();
+    changeImageNode(editor, node, attrs, (message) =>
+      live.current.onNotice(message),
+    );
   }
-  function editImage(node: import('@tiptap/pm/model').Node) {
+  function editImage(node: PMNode) {
     const editor = editorRef.current;
     if (!editor) return;
-    live.current.onRequestImage({
-      image: node.attrs as ImageMarkupOptions,
-      onSubmit: (markup) => {
-        if (editor.isDestroyed) return;
-        let position: number | null = null;
-        editor.state.doc.descendants((candidate, pos) => {
-          if (candidate === node) position = pos;
-        });
-        if (position === null) {
-          live.current.onNotice('This image is no longer in the document.');
-          return;
-        }
-        editor
-          .chain()
-          .focus()
-          .insertContentAt(
-            { from: position, to: position + node.nodeSize },
-            source.current.parse(editor, markup).content ?? [],
-          )
-          .run();
-      },
+    requestImageEdit(editor, node, source, {
+      onRequestImage: (request) => live.current.onRequestImage(request),
+      onNotice: (message) => live.current.onNotice(message),
     });
   }
 
@@ -429,38 +179,14 @@ export default function StudioRichEditor(props: Props) {
       .deleteRange({ from: current.from, to: current.to })
       .run();
     setSlash(null);
-    const commands = commandsRef.current!;
-    const actions: Record<string, () => void> = {
-      text: () => editor.commands.setParagraph(),
-      h1: () => commands.heading(1),
-      h2: () => commands.heading(2),
-      h3: () => commands.heading(3),
-      h4: () => commands.heading(4),
-      h5: () => commands.heading(5),
-      h6: () => commands.heading(6),
-      bullet: commands.bulletList,
-      ordered: commands.orderedList,
-      task: commands.taskList,
-      quote: commands.quote,
-      code: commands.codeBlock,
-      table: commands.table,
-      divider: commands.divider,
-      image: () => live.current.onRequestImage(),
-      youtube: () => {
+    const actions = slashActions(editor, commandsRef.current!, {
+      requestImage: () => live.current.onRequestImage(),
+      embedYoutube: () => {
         setYoutubeError('');
         setYoutube({ url: '', from: editor.state.selection.from });
       },
-      link: showLink,
-      wikilink: () => editor.commands.insertContent('[['),
-      date: () =>
-        editor.commands.insertContent(
-          new Date().toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          }),
-        ),
-    };
+      showLink,
+    });
     actions[item.id]?.();
   }
   chooseRef.current = choose;
@@ -470,7 +196,7 @@ export default function StudioRichEditor(props: Props) {
     const current = wikiRef.current;
     const item = current?.items[index];
     if (!editor || !current || !item) return;
-    const target = /^\[\[([^|\]]+)/.exec(item.insert)?.[1] ?? item.id;
+    const target = wikiTarget(item);
     editor
       .chain()
       .focus()
@@ -490,38 +216,15 @@ export default function StudioRichEditor(props: Props) {
     const editor = editorRef.current;
     if (!editor) return;
     if (editor.state.selection instanceof BlockSelection) {
-      const positions = editor.state.selection.positions;
-      const first = positions[0]!;
-      const last = positions.at(-1)!;
-      const end = last + editor.state.doc.nodeAt(last)!.nodeSize;
-      const neighbor =
-        direction < 0
-          ? editor.state.doc.resolve(first).nodeBefore
-          : editor.state.doc.nodeAt(end);
-      if (neighbor)
-        moveBlocksTo(
-          editor,
-          positions,
-          direction < 0 ? first - neighbor.nodeSize : end + neighbor.nodeSize,
-        );
+      moveSelectedBlocks(editor, editor.state.selection, direction);
       return;
     }
-    const block = topBlock(editor, menu.key ?? editor.state.selection.from);
-    if (!block) return;
-    const { from, node } = block;
-    const neighbor =
-      direction < 0
-        ? editor.state.doc.resolve(from).nodeBefore
-        : editor.state.doc.nodeAt(from + node.nodeSize);
-    if (!neighbor) return;
-    const target =
-      direction < 0 ? from - neighbor.nodeSize : from + neighbor.nodeSize;
-    const tr = editor.state.tr
-      .delete(from, from + node.nodeSize)
-      .insert(target, node);
-    tr.setSelection(NodeSelection.create(tr.doc, target));
-    editor.view.dispatch(tr.scrollIntoView());
-    editor.view.focus();
+    const target = moveTopBlock(
+      editor,
+      menu.key ?? editor.state.selection.from,
+      direction,
+    );
+    if (target === null) return;
     updateHandle(editor, target);
     live.current.onNotice(
       direction < 0 ? 'Block moved up.' : 'Block moved down.',
@@ -529,68 +232,42 @@ export default function StudioRichEditor(props: Props) {
   }
   moveRef.current = moveBlock;
 
+  // Asynchronous uploads track their insertion bookmark through every edit.
+  async function uploadAtSelection(file: File) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    await uploadImageAtSelection(editor, source, file, (image) =>
+      live.current.uploadImage(image),
+    );
+  }
+
   useEffect(() => {
     if (!host.current) return;
+    // The editor is built once. Everything its handlers reach is a ref, a
+    // state setter, or a function from this first render that only reads refs.
+    const keymap: RichKeymapContext = {
+      slashRef,
+      wikiRef,
+      dismissed: suggestions.dismissed,
+      setSlash,
+      setWiki,
+      chooseRef,
+      chooseWikiRef,
+      moveRef,
+      cancelBlockDrag: blocks.cancelEditorDrag,
+      clearHandle: () => setHandle(null),
+      deleteBlockAt,
+      showLink,
+      save: () => live.current.onSave(),
+    };
+    const upload = (file: File) => void uploadAtSelection(file);
     const editor: Editor = new Editor({
       element: host.current,
-      extensions: [
-        StarterKit.configure({
-          underline: false,
-          trailingNode: false,
-          link: { openOnClick: false },
-        }),
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        RichImage.configure({
-          onActions: (node, trigger) =>
-            imageMenuRef.current.toggleUnder(node, trigger),
-        }),
-        YoutubeVideo,
-        BlockSelectionExtension,
-        Columns,
-        Column,
-        TableKit,
-        Markdown,
-        SourceBlock.extend({
-          addNodeView() {
-            return ({ node }) => {
-              const dom = document.createElement('div');
-              dom.className = 'studio-custom-block';
-              const content = document.createElement('div');
-              content.contentEditable = 'false';
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.dataset.editSource = '';
-              button.contentEditable = 'false';
-              button.textContent = 'Edit custom block';
-              dom.append(content, button);
-              const render = (raw: string) => {
-                content.innerHTML = live.current.renderMarkdown(raw);
-                if (
-                  !content.textContent?.trim() &&
-                  !content.querySelector('img, iframe, video, audio, hr')
-                )
-                  content.textContent = 'Custom block';
-              };
-              render(node.attrs.raw);
-              return {
-                dom,
-                update(next) {
-                  if (next.type !== node.type) return false;
-                  node = next;
-                  render(next.attrs.raw);
-                  return true;
-                },
-              };
-            };
-          },
-        }),
-        WikiLink,
-        Placeholder.configure({
-          placeholder: ({ node }) =>
-            node.type.name === 'heading' ? 'Heading' : 'Type / for blocks…',
-        }),
-      ],
+      extensions: studioRichExtensions({
+        renderMarkdown: (raw) => live.current.renderMarkdown(raw),
+        onImageActions: (node, trigger) =>
+          imageMenuRef.current.toggleUnder(node, trigger),
+      }),
       content: '',
       injectCSS: false,
       editorProps: {
@@ -601,361 +278,28 @@ export default function StudioRichEditor(props: Props) {
           'aria-multiline': 'true',
           spellcheck: 'true',
         },
-        handleKeyDown: (_view, event) => {
-          if (event.isComposing || editor.view.composing) return false;
-          if (
-            event.key === 'Escape' &&
-            (pointerDrag.current || nativeDragFrom.current !== null)
-          ) {
-            pointerDrag.current = null;
-            dragFrom.current = null;
-            nativeDragFrom.current = null;
-            setSideDrop(null);
-            setDropLine(null);
-            suppressHandleClick.current = true;
-            return true;
-          }
-          if (editor.state.selection instanceof BlockSelection) {
-            if (
-              (event.ctrlKey || event.metaKey) &&
-              event.shiftKey &&
-              event.key.toLowerCase() === 'd'
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-              duplicateSelectedBlocks(editor);
-              return true;
-            }
-            if (event.key === 'Escape') {
-              editor.view.dispatch(
-                editor.state.tr.setSelection(
-                  Selection.near(
-                    editor.state.doc.resolve(editor.state.selection.from),
-                  ),
-                ),
-              );
-              return true;
-            }
-            if (event.key === 'Backspace' || event.key === 'Delete') {
-              event.preventDefault();
-              editor.view.dispatch(
-                editor.state.tr.deleteSelection().scrollIntoView(),
-              );
-              setHandle(null);
-              return true;
-            }
-          }
-          const current = slashRef.current ?? wikiRef.current;
-          if (current) {
-            if (
-              ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(
-                event.key,
-              )
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-              if (event.key === 'Escape') {
-                dismissed.current = current.from;
-                setSlash(null);
-                setWiki(null);
-              } else if (event.key === 'Enter' || event.key === 'Tab') {
-                if (current.items.length)
-                  (slashRef.current ? chooseRef : chooseWikiRef).current(
-                    current.index,
-                  );
-                else {
-                  setSlash(null);
-                  setWiki(null);
-                }
-              } else {
-                const index =
-                  (current.index +
-                    (event.key === 'ArrowDown' ? 1 : -1) +
-                    current.items.length) %
-                  Math.max(1, current.items.length);
-                if (slashRef.current) setSlash({ ...slashRef.current, index });
-                else if (wikiRef.current)
-                  setWiki({ ...wikiRef.current, index });
-              }
-              return true;
-            }
-          }
-          if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
-            event.preventDefault();
-            moveRef.current(event.key === 'ArrowUp' ? -1 : 1);
-            return true;
-          }
-          const mod = event.metaKey || event.ctrlKey;
-          if (mod && ['Home', 'End'].includes(event.key)) {
-            event.preventDefault();
-            const { doc, selection } = editor.state;
-            const boundary =
-              event.key === 'Home'
-                ? Selection.atStart(doc).from
-                : Selection.atEnd(doc).to;
-            return editor.commands.setTextSelection({
-              from: event.shiftKey ? selection.anchor : boundary,
-              to: boundary,
-            });
-          }
-          if (
-            mod &&
-            !event.altKey &&
-            !event.shiftKey &&
-            event.key.toLowerCase() === 'a'
-          ) {
-            event.preventDefault();
-            event.stopPropagation();
-            const { $from } = editor.state.selection;
-            if ($from.parent.isTextblock) {
-              editor.commands.setTextSelection({
-                from: $from.start(),
-                to: $from.end(),
-              });
-            } else {
-              const block = topBlock(editor);
-              if (block) editor.commands.setNodeSelection(block.from);
-            }
-            return true;
-          }
-          if (
-            !mod &&
-            ['Backspace', 'Delete'].includes(event.key) &&
-            editor.state.selection instanceof TextSelection &&
-            !editor.state.selection.empty
-          ) {
-            event.preventDefault();
-            return editor.commands.deleteSelection();
-          }
-          if (
-            !mod &&
-            (event.key === 'Backspace' || event.key === 'Delete') &&
-            editor.state.selection instanceof NodeSelection
-          ) {
-            event.preventDefault();
-            deleteBlockAt(editor, editor.state.selection.from);
-            return true;
-          }
-          if (
-            mod &&
-            event.shiftKey &&
-            ['d', 'Backspace'].includes(
-              event.key === 'Backspace' ? event.key : event.key.toLowerCase(),
-            )
-          ) {
-            const block = topBlock(editor);
-            if (!block) return false;
-            event.preventDefault();
-            event.stopPropagation();
-            if (event.key === 'Backspace') deleteBlockAt(editor, block.from);
-            else
-              editor
-                .chain()
-                .insertContentAt(
-                  block.from + block.node.nodeSize,
-                  block.node.toJSON(),
-                )
-                .run();
-            return true;
-          }
-
-          if (mod && event.key.toLowerCase() === 'k' && !event.shiftKey) {
-            event.preventDefault();
-            event.stopPropagation();
-            showLink();
-            return true;
-          }
-          if (mod && event.key.toLowerCase() === 's') {
-            event.preventDefault();
-            event.stopPropagation();
-            live.current.onSave();
-            return true;
-          }
-          if (mod && event.shiftKey && event.key.toLowerCase() === 'c') {
-            event.preventDefault();
-            editor.commands.toggleCode();
-            return true;
-          }
-          if (event.key === 'Tab' && editor.isActive('taskItem')) {
-            return event.shiftKey
-              ? editor.commands.liftListItem('taskItem')
-              : editor.commands.sinkListItem('taskItem');
-          }
-          if (event.key === 'Tab' && editor.isActive('listItem')) {
-            return event.shiftKey
-              ? editor.commands.liftListItem('listItem')
-              : editor.commands.sinkListItem('listItem');
-          }
-          return false;
-        },
-        handlePaste: (_view, event) => {
-          const image = Array.from(event.clipboardData?.files ?? []).find(
-            (file) => file.type.startsWith('image/'),
-          );
-          if (image) {
-            void uploadAtSelection(image);
-            return true;
-          }
-          const text = event.clipboardData?.getData('text/plain') ?? '';
-          if (
-            /^(https?:\/\/|mailto:)[^\s<>]+$/i.test(text.trim()) &&
-            !editor.state.selection.empty
-          ) {
-            editor.commands.setLink({ href: text.trim() });
-            return true;
-          }
-          // The schema's HTML parser handles normal rich clipboard contents.
-          // Plain Markdown is imported directly into the writing surface.
-          if (!event.clipboardData?.getData('text/html')) {
-            const markdown = markdownFromClipboard(event.clipboardData);
-            if (
-              markdown.includes('\n') ||
-              looksLikeMarkdown(markdown) ||
-              /^(\[\[|<|`|[_*~])/.test(markdown)
-            ) {
-              insertMarkdown(markdown);
-              return true;
-            }
-          }
-          return false;
-        },
+        handleKeyDown: (_view, event) => richKeyDown(editor, event, keymap),
+        handlePaste: (_view, event) =>
+          richPaste(editor, event, { upload, insertMarkdown }),
         handleDOMEvents: {
-          dragend: () => {
-            nativeDragFrom.current = null;
-            setSideDrop(null);
-            setDropLine(null);
-            return false;
-          },
-          dragstart: (view, event) => {
-            const figure = (event.target as HTMLElement).closest(
-              '[data-rich-image]',
-            );
-            if (figure) {
-              const pos = view.posAtDOM(figure, 0);
-              const $pos = view.state.doc.resolve(pos);
-              const from =
-                view.state.doc.nodeAt(pos)?.type.name === 'image'
-                  ? pos
-                  : $pos.before();
-              if (!(
-                view.state.selection instanceof BlockSelection &&
-                view.state.selection.positions.includes(from)
-              ))
-                view.dispatch(
-                  view.state.tr.setSelection(
-                    NodeSelection.create(view.state.doc, from),
-                  ),
-                );
-            }
-            nativeDragSources.current =
-              view.state.selection instanceof BlockSelection
-                ? view.state.selection.positions
-                : view.state.selection instanceof NodeSelection
-                  ? [view.state.selection.from]
-                  : [];
-            nativeDragFrom.current = nativeDragSources.current[0] ?? null;
-            return false;
-          },
+          dragend: () => blocks.endNativeDrag(),
+          dragstart: (view, event) => blocks.beginNativeDrag(view, event),
         },
-        handleDrop: (_view, event) => {
-          const nativeFrom = nativeDragFrom.current;
-          nativeDragFrom.current = null;
-          setSideDrop(null);
-          setDropLine(null);
-          if (nativeFrom !== null && !event.altKey && !event.ctrlKey) {
-            event.preventDefault();
-            applyBlockDrop(
-              editor,
-              nativeFrom,
-              event.clientX,
-              event.clientY,
-              nativeDragSources.current,
-            );
-            return true;
-          }
-          // Preserve native text-selection drags and explicit copy modifiers.
-          if (_view.dragging) return false;
-          const hit = editor.view.posAtCoords({
-            left: event.clientX,
-            top: event.clientY,
-          });
-          const image = Array.from(event.dataTransfer?.files ?? []).find(
-            (file) => file.type.startsWith('image/'),
-          );
-          if (image) {
-            if (hit) editor.commands.setTextSelection(hit.pos);
-            void uploadAtSelection(image);
-            return true;
-          }
-          return false;
-        },
+        handleDrop: (_view, event) =>
+          blocks.dropNativeBlock(editor, event) ||
+          richFileDrop(editor, _view, event, upload),
         handleDoubleClickOn: (_view, _pos, node) => {
           if (node.type.name !== 'image') return false;
           editImage(node);
           return true;
         },
-        handleClickOn: (_view, _pos, node, nodePos, event) => {
-          if (event.metaKey || event.ctrlKey) {
-            const suggestion =
-              node.type.name === 'wikiLink'
-                ? live.current.suggestions.find(
-                    (item) =>
-                      [item.folder, item.id].filter(Boolean).join('/') ===
-                        node.attrs.target || item.id === node.attrs.target,
-                  )
-                : null;
-            const href =
-              suggestion?.href ??
-              (event.target as HTMLElement).closest('a')?.getAttribute('href');
-            if (href) {
-              const url = URL.parse(href, window.location.href);
-              if (
-                url &&
-                ['http:', 'https:', 'mailto:'].includes(url.protocol)
-              ) {
-                event.preventDefault();
-                window.open(url.href, '_blank', 'noopener,noreferrer');
-                return true;
-              }
-            }
-          }
-          if (node.type.name === 'image') {
-            if (
-              (event.target as HTMLElement).closest('[data-write-below-image]')
-            ) {
-              const after = nodePos + node.nodeSize;
-              const next = editor.state.doc.nodeAt(after);
-              const chain = editor.chain();
-              if (!next?.isTextblock)
-                chain.insertContentAt(after, { type: 'paragraph' });
-              chain
-                .setTextSelection(after + 1)
-                .focus()
-                .run();
-              imageTap.current = { pos: -1, time: 0 };
-              return true;
-            }
-            const now = Date.now();
-            if (
-              imageTap.current.pos === nodePos &&
-              now - imageTap.current.time < 350
-            ) {
-              imageTap.current = { pos: -1, time: 0 };
-              editImage(node);
-              return true;
-            }
-            imageTap.current = { pos: nodePos, time: now };
-            return false;
-          }
-          if (
-            node.type.name !== 'sourceBlock' ||
-            (event.detail !== 2 &&
-              !(event.target as HTMLElement).closest('[data-edit-source]'))
-          )
-            return false;
-          setRawEdit({ from: nodePos, raw: node.attrs.raw });
-          return true;
-        },
+        handleClickOn: (_view, _pos, node, nodePos, event) =>
+          richClickOn(editor, node, nodePos, event, {
+            suggestions: () => live.current.suggestions,
+            editImage,
+            imageTap,
+            editSource: (from, raw) => setRawEdit({ from, raw }),
+          }),
       },
       onUpdate: () => {
         const next = source.current.serialize(editor);
@@ -982,71 +326,7 @@ export default function StudioRichEditor(props: Props) {
     source.current.remember(editor, live.current.body);
     emitted.current = live.current.body;
 
-    const commands: EditorCommands = {
-      bold: () => {
-        editor.chain().focus().toggleBold().run();
-      },
-      italic: () => {
-        editor.chain().focus().toggleItalic().run();
-      },
-      strike: () => {
-        editor.chain().focus().toggleStrike().run();
-      },
-      inlineCode: () => {
-        editor.chain().focus().toggleCode().run();
-      },
-      heading: (level) => {
-        editor.chain().focus().toggleHeading({ level }).run();
-      },
-      bulletList: () => {
-        editor.chain().focus().toggleBulletList().run();
-      },
-      orderedList: () => {
-        editor.chain().focus().toggleOrderedList().run();
-      },
-      taskList: () => {
-        editor.chain().focus().toggleTaskList().run();
-      },
-      quote: () => {
-        editor.chain().focus().toggleBlockquote().run();
-      },
-      codeBlock: () => {
-        editor.chain().focus().toggleCodeBlock().run();
-      },
-      divider: () => {
-        editor.chain().focus().setHorizontalRule().run();
-      },
-      table: () => {
-        editor
-          .chain()
-          .focus()
-          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-          .run();
-      },
-      link: showLink,
-      align: (direction) => {
-        const block = topBlock(editor);
-        if (!block) return;
-        const raw = editor.markdown!.serialize({
-          type: 'doc',
-          content: [block.node.toJSON()],
-        });
-        editor.commands.insertContentAt(
-          { from: block.from, to: block.from + block.node.nodeSize },
-          {
-            type: 'sourceBlock',
-            attrs: {
-              raw: `<div style="text-align:${direction}">\n\n${raw}\n\n</div>`,
-            },
-          },
-        );
-      },
-      insertBlock: insertMarkdown,
-      insertInline: (snippet) => {
-        if (snippet === '[[') editor.chain().focus().insertContent('[[').run();
-        else insertMarkdown(snippet);
-      },
-    };
+    const commands = createEditorCommands(editor, { showLink, insertMarkdown });
     commandsRef.current = commands;
     if (live.current.visible) {
       live.current.commandsRef.current = commands;
@@ -1059,33 +339,6 @@ export default function StudioRichEditor(props: Props) {
       editorRef.current = null;
     };
   }, []);
-
-  // Asynchronous uploads track their insertion bookmark through every edit.
-  async function uploadAtSelection(file: File) {
-    const editor = editorRef.current;
-    if (!editor) return;
-    let position = editor.state.selection.from;
-    const original = source.current;
-    const map = ({
-      transaction,
-    }: {
-      transaction: import('@tiptap/pm/state').Transaction;
-    }) => {
-      position = transaction.mapping.map(position);
-    };
-    editor.on('transaction', map);
-    try {
-      const url = await live.current.uploadImage(file);
-      if (url && !editor.isDestroyed && source.current === original) {
-        editor.commands.insertContentAt(position, {
-          type: 'image',
-          attrs: { src: url, alt: file.name.replace(/\.[^.]+$/, '') },
-        });
-      }
-    } finally {
-      editor.off('transaction', map);
-    }
-  }
 
   useLayoutEffect(() => {
     const editor = editorRef.current;
@@ -1111,8 +364,7 @@ export default function StudioRichEditor(props: Props) {
     emissions.current = emissionsFrom(props.body);
     setSlash(null);
     setWiki(null);
-    hoveredBlock.current = null;
-    setHandle(null);
+    blocks.hideHandle();
     setRawEdit(null);
     setYoutube(null);
     setLink(null);
@@ -1129,8 +381,7 @@ export default function StudioRichEditor(props: Props) {
       setSlash(null);
       setWiki(null);
       setSelectionPoint(null);
-      hoveredBlock.current = null;
-      setHandle(null);
+      blocks.hideHandle();
       setLink(null);
       setRawEdit(null);
       setYoutube(null);
@@ -1138,108 +389,7 @@ export default function StudioRichEditor(props: Props) {
     }
   }, [props.visible]);
 
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const current = slash ?? wiki;
-    if (current?.items.length) {
-      editor.view.dom.setAttribute(
-        'aria-controls',
-        slash ? SLASH_MENU_ID : 'studio-wikimenu',
-      );
-      editor.view.dom.setAttribute(
-        'aria-activedescendant',
-        slash
-          ? slashOptionId(current.index)
-          : `studio-wiki-option-${current.index}`,
-      );
-    } else {
-      editor.view.dom.removeAttribute('aria-controls');
-      editor.view.dom.removeAttribute('aria-activedescendant');
-    }
-  }, [slash, wiki]);
-
-  function dropDestination(editor: Editor, y: number, x?: number) {
-    const column =
-      x === undefined
-        ? null
-        : document.elementFromPoint(x, y)?.closest('[data-note-column]');
-    let parent = editor.state.doc;
-    let start = 0;
-    const rowRect = column?.parentElement?.getBoundingClientRect();
-    if (column && rowRect && y > rowRect.top + 12 && y < rowRect.bottom - 12) {
-      editor.state.doc.descendants((node, pos) => {
-        if (
-          node.type.name === 'column' &&
-          editor.view.nodeDOM(pos) === column
-        ) {
-          parent = node;
-          start = pos + 1;
-        }
-      });
-    }
-    let destination = start + parent.content.size;
-    parent.forEach((_node, offset) => {
-      const pos = start + offset;
-      const dom = editor.view.nodeDOM(pos) as HTMLElement | null;
-      if (!dom) return;
-      const rect = dom.getBoundingClientRect();
-      if (
-        y < rect.top + rect.height / 2 &&
-        destination === start + parent.content.size
-      )
-        destination = pos;
-    });
-    return destination;
-  }
-
-  function dropMarker(editor: Editor, position: number) {
-    const pane = scroller.current!;
-    const $pos = editor.state.doc.resolve(position);
-    const parent =
-      $pos.parent.type.name === 'column'
-        ? (editor.view.nodeDOM($pos.before()) as HTMLElement)
-        : editor.view.dom;
-    const rect = parent.getBoundingClientRect();
-    const next = editor.view.nodeDOM(position) as HTMLElement | null;
-    const bounds = pane.getBoundingClientRect();
-    return {
-      top:
-        (next?.getBoundingClientRect().top ?? rect.bottom) -
-        bounds.top +
-        pane.scrollTop,
-      left: rect.left - bounds.left + pane.scrollLeft,
-      width: rect.width,
-    };
-  }
-
-  function applyBlockDrop(
-    editor: Editor,
-    from: number,
-    x: number,
-    y: number,
-    sources = [from],
-  ) {
-    const bounds = scroller.current!.getBoundingClientRect();
-    setDropLine(null);
-    setSideDrop(null);
-    if (
-      x < bounds.left ||
-      x > bounds.right ||
-      y < bounds.top ||
-      y > bounds.bottom
-    )
-      return;
-    const snap = findSideDrop(editor, from, x, y, sources);
-    if (snap) moveBeside(editor, from, snap.from, snap.side, sources);
-    else moveBlocksTo(editor, sources, dropDestination(editor, y, x));
-    setHandle(null);
-  }
-
-  function deleteBlockAt(editor: Editor, from: number) {
-    removeBlock(editor, from);
-    setHandle(null);
-  }
+  useSuggestionAria(editorRef, slash, wiki);
 
   function turnInto(target: TurnTarget) {
     const editor = editorRef.current;
@@ -1257,83 +407,18 @@ export default function StudioRichEditor(props: Props) {
   }
 
   const editor = editorRef.current;
-  const menuNode =
-    editor && menu.key !== null ? editor.state.doc.nodeAt(menu.key) : null;
-  const menuMarkdown = menuNode
-    ? editor!.markdown!.serialize({ type: 'doc', content: [menuNode.toJSON()] })
-    : '';
-  const menuBlock = parseBlocks(menuMarkdown)[0] ?? null;
   const activeCommands = commandsRef.current;
 
   return (
     <div className="studio-rich-shell">
       {youtube && (
-        <StudioEditorPopover
-          title="Embed YouTube video"
-          onClose={() => {
-            setYoutube(null);
-            editor?.commands.focus();
-          }}
-        >
-          <form
-            className="studio-youtube-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!youtube || !editor) return;
-              const src = youtubeEmbedUrl(youtube.url);
-              if (!src) {
-                setYoutubeError(
-                  'Enter a valid YouTube video link (watch, share, Shorts, or live).',
-                );
-                return;
-              }
-              editor
-                .chain()
-                .focus()
-                .setTextSelection(youtube.from)
-                .insertContent([
-                  { type: 'youtubeVideo', attrs: { src } },
-                  { type: 'paragraph' },
-                ])
-                .run();
-              setYoutube(null);
-            }}
-          >
-            <label for="studio-youtube-url">YouTube link</label>
-            <input
-              ref={youtubeInput}
-              id="studio-youtube-url"
-              className="admin-input"
-              type="url"
-              required
-              placeholder="https://www.youtube.com/watch?v=…"
-              value={youtube?.url ?? ''}
-              aria-invalid={Boolean(youtubeError)}
-              aria-describedby={
-                youtubeError ? 'studio-youtube-error' : undefined
-              }
-              onInput={(event) => {
-                if (youtube)
-                  setYoutube({ ...youtube, url: event.currentTarget.value });
-                setYoutubeError('');
-              }}
-            />
-            {youtubeError && (
-              <p
-                id="studio-youtube-error"
-                className="studio-field-error"
-                role="alert"
-              >
-                {youtubeError}
-              </p>
-            )}
-            <div className="studio-form-actions">
-              <button type="submit" className="studio-btn studio-btn--primary">
-                Embed video
-              </button>
-            </div>
-          </form>
-        </StudioEditorPopover>
+        <StudioYoutubePopover
+          youtube={youtube}
+          error={youtubeError}
+          editor={editor}
+          setYoutube={setYoutube}
+          setError={setYoutubeError}
+        />
       )}
       <div
         className="studio-rich-scroll"
@@ -1342,50 +427,16 @@ export default function StudioRichEditor(props: Props) {
         onPointerMove={marquee.move}
         onPointerUp={marquee.up}
         onPointerCancel={marquee.cancel}
-        onMouseLeave={() => {
-          if (props.compact || menu.key !== null || pointerDrag.current) return;
-          hoveredBlock.current = null;
-          setHandle(null);
-        }}
-        onMouseMove={(event) => {
-          if (
-            props.compact ||
-            menu.key !== null ||
-            pointerDrag.current ||
-            !editor
+        onMouseLeave={() =>
+          blocks.paneMouseLeave(props.compact || menu.key !== null)
+        }
+        onMouseMove={(event) =>
+          blocks.paneMouseMove(
+            event,
+            editor,
+            props.compact || menu.key !== null,
           )
-            return;
-          const target = event.target as HTMLElement;
-          if (target.closest('.studio-rich-handle')) return;
-          let element = target;
-          const root = editor.view.dom;
-          if (root.contains(element) && element !== root) {
-            while (
-              element.parentElement &&
-              element.parentElement !== root &&
-              !element.parentElement.matches('[data-note-column]')
-            )
-              element = element.parentElement;
-            const block = topBlock(editor, editor.view.posAtDOM(element, 0));
-            if (block) {
-              updateHandle(editor, block.from);
-              return;
-            }
-          }
-          // Keep the gutter reachable while moving from text to its buttons.
-          const rect = hoveredBlock.current?.getBoundingClientRect();
-          if (
-            rect &&
-            handle &&
-            event.clientY >= rect.top &&
-            event.clientY <= rect.bottom &&
-            event.clientX >= rect.left - 76 &&
-            event.clientX <= rect.right
-          )
-            return;
-          hoveredBlock.current = null;
-          setHandle(null);
-        }}
+        }
         onScroll={(event) => {
           // The bar above draws its rule only once the page has slid under it.
           event.currentTarget
@@ -1394,57 +445,11 @@ export default function StudioRichEditor(props: Props) {
               'is-scrolled',
               event.currentTarget.scrollTop > 0,
             );
-          if (!props.compact && menu.key === null && !pointerDrag.current) {
-            hoveredBlock.current = null;
-            setHandle(null);
-          }
+          blocks.paneScroll(props.compact || menu.key !== null);
           refreshRef.current();
         }}
-        onDragOver={(event) => {
-          const from = dragFrom.current ?? nativeDragFrom.current;
-          if (from === null || !editor) return;
-          event.preventDefault();
-          const snap =
-            !event.altKey && !event.ctrlKey
-              ? findSideDrop(
-                  editor,
-                  from,
-                  event.clientX,
-                  event.clientY,
-                  nativeDragSources.current.length
-                    ? nativeDragSources.current
-                    : [from],
-                )
-              : null;
-          setSideDrop(snap);
-          if (snap) {
-            setDropLine(null);
-            return;
-          }
-          const position = dropDestination(
-            editor,
-            event.clientY,
-            event.clientX,
-          );
-          const pane = scroller.current!;
-          setDropLine(dropMarker(editor, position));
-          const rect = pane.getBoundingClientRect();
-          if (event.clientY < rect.top + 60) pane.scrollTop -= 14;
-          if (event.clientY > rect.bottom - 60) pane.scrollTop += 14;
-        }}
-        onDrop={(event) => {
-          const from = nativeDragFrom.current;
-          if (from === null || !editor) return;
-          event.preventDefault();
-          nativeDragFrom.current = null;
-          applyBlockDrop(
-            editor,
-            from,
-            event.clientX,
-            event.clientY,
-            nativeDragSources.current,
-          );
-        }}
+        onDragOver={(event) => blocks.paneDragOver(event, editor)}
+        onDrop={(event) => blocks.paneDrop(event, editor)}
       >
         <div className="studio-rich-page">
           <NotePageIcon icon={props.icon} />
@@ -1457,151 +462,18 @@ export default function StudioRichEditor(props: Props) {
             />
           )}
           {handle && (
-            <div
-              className={`studio-rich-handle${handle.column ? ' is-column' : ''}`}
-              style={{ top: `${handle.top}px`, left: `${handle.left}px` }}
-            >
-              <button
-                type="button"
-                aria-label="Add a block below"
-                title="Add a block below"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  if (!editor) return;
-                  const node = editor.state.doc.nodeAt(handle.from);
-                  if (!node) return;
-                  const pos = handle.from + node.nodeSize;
-                  editor
-                    .chain()
-                    .focus()
-                    .insertContentAt(pos, {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: '/' }],
-                    })
-                    .setTextSelection(pos + 2)
-                    .run();
-                }}
-              >
-                <Icon name="plus" />
-              </button>
-              <button
-                type="button"
-                draggable
-                aria-label="Block actions"
-                aria-haspopup="menu"
-                title="Drag to move or place beside a block · click for actions"
-                onClick={(event) => {
-                  if (suppressHandleClick.current) {
-                    suppressHandleClick.current = false;
-                    return;
-                  }
-                  if (!editor) return;
-                  if (!(
-                    editor.state.selection instanceof BlockSelection &&
-                    editor.state.selection.positions.includes(handle.from)
-                  ))
-                    editor.commands.setNodeSelection(handle.from);
-                  menu.toggleUnder(handle.from, event.currentTarget);
-                }}
-                onDragStart={(event) => event.preventDefault()}
-                onPointerDown={(event) => {
-                  if (event.button !== 0) return;
-                  event.preventDefault();
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  pointerDrag.current = {
-                    from: handle.from,
-                    sources:
-                      editor?.state.selection instanceof BlockSelection &&
-                      editor.state.selection.positions.includes(handle.from)
-                        ? editor.state.selection.positions
-                        : [handle.from],
-                    y: event.clientY,
-                    x: event.clientX,
-                    moved: false,
-                  };
-                  suppressHandleClick.current = false;
-                }}
-                onPointerMove={(event) => {
-                  const drag = pointerDrag.current;
-                  if (!drag || !editor) return;
-                  if (
-                    !drag.moved &&
-                    Math.hypot(event.clientY - drag.y, event.clientX - drag.x) <
-                      5
-                  )
-                    return;
-                  drag.moved = true;
-                  dragFrom.current = drag.from;
-                  const snap = findSideDrop(
-                    editor,
-                    drag.from,
-                    event.clientX,
-                    event.clientY,
-                    drag.sources,
-                  );
-                  setSideDrop(snap);
-                  if (snap) {
-                    setDropLine(null);
-                    return;
-                  }
-                  const position = dropDestination(
-                    editor,
-                    event.clientY,
-                    event.clientX,
-                  );
-                  const pane = scroller.current!;
-                  setDropLine(dropMarker(editor, position));
-                  const bounds = pane.getBoundingClientRect();
-                  if (event.clientY < bounds.top + 60) pane.scrollTop -= 18;
-                  if (event.clientY > bounds.bottom - 60) pane.scrollTop += 18;
-                }}
-                onPointerUp={(event) => {
-                  const drag = pointerDrag.current;
-                  pointerDrag.current = null;
-                  dragFrom.current = null;
-                  setDropLine(null);
-                  setSideDrop(null);
-                  if (event.currentTarget.hasPointerCapture(event.pointerId))
-                    event.currentTarget.releasePointerCapture(event.pointerId);
-                  if (!drag?.moved || !editor) return;
-                  suppressHandleClick.current = true;
-                  applyBlockDrop(
-                    editor,
-                    drag.from,
-                    event.clientX,
-                    event.clientY,
-                    drag.sources,
-                  );
-                }}
-                onPointerCancel={() => {
-                  pointerDrag.current = null;
-                  dragFrom.current = null;
-                  setDropLine(null);
-                  setSideDrop(null);
-                }}
-              >
-                <Icon name="grip" />
-              </button>
-            </div>
+            <StudioBlockHandle
+              handle={handle}
+              editor={editor}
+              menu={menu}
+              controls={blocks}
+            />
           )}
           {sideDrop && scroller.current && (
             <div
               className="studio-rich-side-drop"
               aria-hidden="true"
-              style={{
-                top:
-                  sideDrop.rect.top -
-                  scroller.current.getBoundingClientRect().top +
-                  scroller.current.scrollTop,
-                left:
-                  (sideDrop.side === 'left'
-                    ? sideDrop.rect.left
-                    : sideDrop.rect.right) -
-                  scroller.current.getBoundingClientRect().left +
-                  scroller.current.scrollLeft -
-                  2,
-                height: sideDrop.rect.height,
-              }}
+              style={sideDropStyle(sideDrop, scroller.current)}
             />
           )}
           {dropLine !== null && (
@@ -1654,397 +526,45 @@ export default function StudioRichEditor(props: Props) {
           }
         />
       )}
-      <StudioBlockMenu
-        block={menuBlock}
-        menuRef={menu.ref}
-        position={menu.position}
-        onClose={menu.close}
+      <StudioRichBlockMenu
+        editor={editor}
+        menu={menu}
         onTurnInto={turnInto}
-        columnLayout={
-          editor ? activeColumns(editor)?.node.attrs.layout : undefined
-        }
-        onColumnLayout={
-          editor && activeColumns(editor)?.node.childCount === 2
-            ? (layout) => {
-                const row = activeColumns(editor)!;
-                editor.view.dispatch(
-                  editor.state.tr.setNodeMarkup(row.from, undefined, {
-                    layout,
-                  }),
-                );
-                editor.view.focus();
-              }
-            : undefined
-        }
-        onStack={
-          editor && activeColumns(editor)
-            ? () => {
-                const row = activeColumns(editor)!;
-                const blocks: import('@tiptap/pm/model').Node[] = [];
-                row.node.forEach((column) =>
-                  column.forEach((block) => {
-                    blocks.push(block);
-                  }),
-                );
-                editor.view.dispatch(
-                  editor.state.tr.replaceWith(
-                    row.from,
-                    row.from + row.node.nodeSize,
-                    blocks,
-                  ),
-                );
-                editor.view.focus();
-              }
-            : undefined
-        }
-        onColumns={
-          editor && !activeColumns(editor)
-            ? (count) => {
-                if (menu.key !== null) makeColumns(editor, menu.key, count);
-              }
-            : undefined
-        }
-        onAddColumn={
-          editor && activeColumns(editor)?.node.childCount === 2
-            ? () => {
-                const row = activeColumns(editor)!;
-                const position = row.from + row.node.nodeSize - 1;
-                const tr = editor.state.tr
-                  .insert(
-                    position,
-                    editor.schema.nodes.column!.createAndFill()!,
-                  )
-                  .setNodeMarkup(row.from, undefined, { layout: 'three' });
-                tr.setSelection(
-                  TextSelection.near(tr.doc.resolve(position + 2)),
-                );
-                editor.view.dispatch(tr.scrollIntoView());
-                editor.view.focus();
-              }
-            : undefined
-        }
         onMove={moveBlock}
-        onDuplicate={() => {
-          if (editor?.state.selection instanceof BlockSelection) {
-            duplicateSelectedBlocks(editor);
-            return;
-          }
-          if (editor && menuNode && menu.key !== null)
-            editor
-              .chain()
-              .focus()
-              .insertContentAt(menu.key + menuNode.nodeSize, menuNode.toJSON())
-              .run();
-        }}
-        onCopy={() => {
-          const selection = editor?.state.selection;
-          const markdown =
-            selection instanceof BlockSelection
-              ? editor!.markdown!.serialize({
-                  type: 'doc',
-                  content: selection.positions.map((pos) =>
-                    editor!.state.doc.nodeAt(pos)!.toJSON(),
-                  ),
-                })
-              : menuMarkdown;
-          void navigator.clipboard.writeText(markdown).then(
-            () => props.onNotice('Block copied.'),
-            () => props.onNotice('Could not access the clipboard.'),
-          );
-        }}
-        onDelete={() => {
-          if (editor?.state.selection instanceof BlockSelection)
-            editor.view.dispatch(
-              editor.state.tr.deleteSelection().scrollIntoView(),
-            );
-          else if (editor && menuNode && menu.key !== null)
-            deleteBlockAt(editor, menu.key);
-        }}
+        deleteBlockAt={deleteBlockAt}
+        onNotice={props.onNotice}
       />
       {editor?.isActive('table') && props.visible && (
-        <div
-          className="studio-table-tools"
-          role="toolbar"
-          aria-label="Table actions"
-        >
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-          >
-            Add row
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-          >
-            Add column
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => editor.chain().focus().deleteRow().run()}
-          >
-            Delete row
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => editor.chain().focus().deleteColumn().run()}
-          >
-            Delete column
-          </button>
-        </div>
+        <StudioTableTools editor={editor} />
       )}
-      <StudioContextMenu
-        open={imageMenu.key !== null}
-        label="Image actions"
-        menuRef={imageMenu.ref}
-        position={imageMenu.position}
-      >
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            const node = imageMenu.key;
-            imageMenu.close();
-            if (node) editImage(node);
-          }}
-        >
-          Replace image
-        </button>
-        {(['caption', 'alt'] as const).map((field) => (
-          <button
-            type="button"
-            role="menuitem"
-            key={field}
-            onClick={() => {
-              const node = imageMenu.key;
-              imageMenu.close();
-              if (node)
-                setImageDetail({ node, field, value: node.attrs[field] ?? '' });
-            }}
-          >
-            {field === 'caption' ? 'Caption' : 'Alt text'}
-          </button>
-        ))}
-        <div
-          className="studio-image-align"
-          role="group"
-          aria-label="Image alignment"
-        >
-          {(['left', 'center', 'right'] as const).map((align) => (
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked={
-                (imageMenu.key?.attrs.align === 'inline'
-                  ? 'left'
-                  : imageMenu.key?.attrs.align) === align
-              }
-              onClick={() => {
-                const node = imageMenu.key;
-                imageMenu.close();
-                if (node) changeImage(node, { align });
-              }}
-            >
-              {align.charAt(0).toUpperCase() + align.slice(1)}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            const node = imageMenu.key;
-            imageMenu.close();
-            if (node) changeImage(node, { widthPercent: 100 });
-          }}
-        >
-          Full width
-        </button>
-        <div className="studio-menu-separator" role="separator" />
-        <button
-          type="button"
-          role="menuitem"
-          className="is-danger"
-          onClick={() => {
-            const node = imageMenu.key;
-            imageMenu.close();
-            if (node) changeImage(node, null);
-          }}
-        >
-          Delete image
-        </button>
-      </StudioContextMenu>
+      <StudioImageMenu
+        menu={imageMenu}
+        onReplace={editImage}
+        onDetail={setImageDetail}
+        onChange={changeImage}
+      />
       {imageDetail && (
-        <StudioEditorPopover
-          title={
-            imageDetail.field === 'caption' ? 'Image caption' : 'Image alt text'
-          }
-          onClose={() => setImageDetail(null)}
-        >
-          <form
-            className="studio-editor-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              changeImage(imageDetail.node, {
-                [imageDetail.field]: imageDetail.value,
-              });
-              setImageDetail(null);
-            }}
-          >
-            <label for="studio-image-detail">
-              {imageDetail.field === 'caption' ? 'Caption' : 'Alt text'}
-            </label>
-            <input
-              id="studio-image-detail"
-              autoFocus
-              value={imageDetail.value}
-              placeholder={
-                imageDetail.field === 'caption'
-                  ? 'Add a caption…'
-                  : 'Describe the image for screen readers…'
-              }
-              onInput={(event) =>
-                setImageDetail({
-                  ...imageDetail,
-                  value: event.currentTarget.value,
-                })
-              }
-            />
-            <div className="studio-form-actions">
-              <button type="submit" className="studio-btn studio-btn--primary">
-                Save
-              </button>
-            </div>
-          </form>
-        </StudioEditorPopover>
+        <StudioImageDetailPopover
+          detail={imageDetail}
+          setDetail={setImageDetail}
+          onApply={changeImage}
+        />
       )}
       {link && (
-        <StudioEditorPopover
-          title="Edit link"
-          onClose={() => {
-            setLink(null);
-            editor?.commands.focus();
-          }}
-        >
-          <form
-            className="studio-editor-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const url = link.url.trim();
-              if (url && !/^(https?:\/\/|mailto:|\/|#)/i.test(url)) {
-                setLinkError('Use an https:// URL, email link, or local path.');
-                return;
-              }
-              if (!editor) return;
-              const chain = editor
-                .chain()
-                .focus()
-                .setTextSelection({ from: link.from, to: link.to });
-              if (!url) chain.extendMarkRange('link').unsetLink().run();
-              else if (link.from === link.to)
-                chain
-                  .insertContent({
-                    type: 'text',
-                    text: url,
-                    marks: [{ type: 'link', attrs: { href: url } }],
-                  })
-                  .run();
-              else chain.setLink({ href: url }).run();
-              setLink(null);
-            }}
-          >
-            <label for="studio-link-url">Link destination</label>
-            <input
-              id="studio-link-url"
-              autoFocus
-              placeholder="https://example.com"
-              value={link.url}
-              onInput={(event) =>
-                setLink({ ...link, url: event.currentTarget.value })
-              }
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  setLink(null);
-                  editor?.commands.focus();
-                }
-              }}
-            />
-            {linkError && (
-              <p className="studio-field-error" role="alert">
-                {linkError}
-              </p>
-            )}
-            <div className="studio-form-actions">
-              <button
-                type="button"
-                className="studio-btn"
-                onClick={() => {
-                  setLink(null);
-                  editor?.commands.focus();
-                }}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="studio-btn studio-btn--primary">
-                Apply link
-              </button>
-            </div>
-          </form>
-        </StudioEditorPopover>
+        <StudioLinkPopover
+          link={link}
+          error={linkError}
+          editor={editor}
+          setLink={setLink}
+          setError={setLinkError}
+        />
       )}
       {rawEdit && (
-        <StudioEditorPopover
-          title="Edit custom Markdown"
-          onClose={() => {
-            setRawEdit(null);
-            editor?.commands.focus();
-          }}
-        >
-          <div className="studio-editor-form">
-            <p className="studio-field-help">
-              This block is kept as written. Edit its Markdown directly.
-            </p>
-            <textarea
-              aria-label="Custom Markdown source"
-              autoFocus
-              value={rawEdit.raw}
-              onInput={(event) =>
-                setRawEdit({ ...rawEdit, raw: event.currentTarget.value })
-              }
-            />
-            <div className="studio-form-actions">
-              <button
-                type="button"
-                className="studio-btn"
-                onClick={() => {
-                  setRawEdit(null);
-                  editor?.commands.focus();
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="studio-btn studio-btn--primary"
-                onClick={() => {
-                  editor
-                    ?.chain()
-                    .focus()
-                    .setNodeSelection(rawEdit.from)
-                    .updateAttributes('sourceBlock', { raw: rawEdit.raw })
-                    .run();
-                  setRawEdit(null);
-                }}
-              >
-                Apply changes
-              </button>
-            </div>
-          </div>
-        </StudioEditorPopover>
+        <StudioRawEditPopover
+          rawEdit={rawEdit}
+          editor={editor}
+          setRawEdit={setRawEdit}
+        />
       )}
     </div>
   );

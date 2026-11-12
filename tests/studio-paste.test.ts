@@ -3,8 +3,27 @@ import {
   bareUrl,
   looksLikeMarkdown,
   markdownForSelection,
+  pastesAsMarkdown,
   planPaste,
 } from '../src/components/admin/studioPaste';
+
+describe('pastesAsMarkdown', () => {
+  it('parses multi-line, structured, and markup-led text', () => {
+    for (const text of [
+      'one\ntwo',
+      '# Title',
+      '[[note]]',
+      '<b>x</b>',
+      '`code`',
+      '_soft_',
+    ])
+      expect(pastesAsMarkdown(text)).toBe(true);
+  });
+
+  it('types a plain phrase as text', () => {
+    expect(pastesAsMarkdown('just some words')).toBe(false);
+  });
+});
 
 describe('bareUrl', () => {
   it('recognises a clipboard holding one address and nothing else', () => {
