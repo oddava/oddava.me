@@ -117,6 +117,7 @@ export default function StudioSlashMenu({
       ref={listRef}
       id={SLASH_MENU_ID}
       className={`studio-slashmenu ${docked ? 'is-docked' : ''}`}
+      data-studio-layer="menu"
       role="listbox"
       aria-label="Insert a block"
       style={

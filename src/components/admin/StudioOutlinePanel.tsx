@@ -237,6 +237,7 @@ export default function StudioOutline({
     <div
       ref={panel}
       className={`studio-outline${compact ? ' is-compact' : ''}`}
+      data-studio-layer="panel"
       role="dialog"
       aria-label="Outline"
       onKeyDown={onKeyDown}

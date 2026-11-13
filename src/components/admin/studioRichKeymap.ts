@@ -5,8 +5,11 @@ import {
   BlockSelection,
   duplicateSelectedBlocks,
 } from './studioBlockSelection';
+import { returnFromFootnote } from './studioFootnotes';
+import { isMod } from './studioHelpers';
 import { topBlock } from './studioRichGeometry';
 import {
+  acceptsTagOnEnter,
   cycleIndex,
   type Suggestion,
   type WikiState,
@@ -52,19 +55,23 @@ export function richKeyDown(
     deleteBlockAt,
   } = context;
   if (event.isComposing || editor.view.composing) return false;
-  if (event.key === 'Escape' && context.cancelBlockDrag()) return true;
+  const mod = isMod(event);
+  // Every Escape this keymap consumes stops here: the page's own Escape
+  // (find, focus mode) is the next layer out and must not also take it.
+  if (event.key === 'Escape' && context.cancelBlockDrag()) {
+    event.stopPropagation();
+    return true;
+  }
   if (editor.state.selection instanceof BlockSelection) {
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.shiftKey &&
-      event.key.toLowerCase() === 'd'
-    ) {
+    if (mod && event.shiftKey && event.key.toLowerCase() === 'd') {
       event.preventDefault();
       event.stopPropagation();
       duplicateSelectedBlocks(editor);
       return true;
     }
     if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
       editor.view.dispatch(
         editor.state.tr.setSelection(
           Selection.near(editor.state.doc.resolve(editor.state.selection.from)),
@@ -81,6 +88,13 @@ export function richKeyDown(
   }
   const current = slashRef.current ?? wikiRef.current;
   if (current) {
+    // A #tag menu offers, it never insists: Enter is the writer's newline
+    // until they have picked a row with the arrows. Tab takes the top row.
+    const tags = !slashRef.current && wikiRef.current?.kind === 'tag';
+    if (tags && event.key === 'Enter' && !acceptsTagOnEnter(wikiRef.current!)) {
+      setWiki(null);
+      return false;
+    }
     if (
       ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(event.key)
     ) {
@@ -104,17 +118,25 @@ export function richKeyDown(
           current.items.length,
         );
         if (slashRef.current) setSlash({ ...slashRef.current, index });
-        else if (wikiRef.current) setWiki({ ...wikiRef.current, index });
+        else if (wikiRef.current)
+          setWiki({ ...wikiRef.current, index, moved: true });
       }
       return true;
     }
   }
-  if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
+  // Before Mod+Enter's hard break: in a footnote's text it goes back.
+  if (returnFromFootnote(editor, event)) return true;
+  if (
+    event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.shiftKey &&
+    ['ArrowUp', 'ArrowDown'].includes(event.key)
+  ) {
     event.preventDefault();
     moveRef.current(event.key === 'ArrowUp' ? -1 : 1);
     return true;
   }
-  const mod = event.metaKey || event.ctrlKey;
   if (mod && ['Home', 'End'].includes(event.key)) {
     event.preventDefault();
     const { doc, selection } = editor.state;
@@ -185,19 +207,50 @@ export function richKeyDown(
     return true;
   }
 
-  if (mod && event.key.toLowerCase() === 'k' && !event.shiftKey) {
+  if (
+    mod &&
+    event.key.toLowerCase() === 'k' &&
+    !event.shiftKey &&
+    !event.altKey
+  ) {
     event.preventDefault();
     event.stopPropagation();
     context.showLink();
     return true;
   }
-  if (mod && event.key.toLowerCase() === 's') {
+  // Save is the plain chord only: Shift+S belongs to no one here, and must
+  // not save while meaning something else.
+  if (
+    mod &&
+    !event.shiftKey &&
+    !event.altKey &&
+    event.key.toLowerCase() === 's'
+  ) {
     event.preventDefault();
     event.stopPropagation();
     context.save();
     return true;
   }
-  if (mod && event.shiftKey && event.key.toLowerCase() === 'c') {
+  // Strikethrough. Firefox flips the field's text direction on Ctrl+Shift+X,
+  // so the default is always stopped.
+  if (
+    mod &&
+    event.shiftKey &&
+    !event.altKey &&
+    event.key.toLowerCase() === 'x'
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    editor.chain().focus().toggleStrike().run();
+    return true;
+  }
+  // Inline code is Mod+E (TipTap's own binding); Mod+Shift+C stays an alias.
+  if (
+    mod &&
+    event.shiftKey &&
+    !event.altKey &&
+    event.key.toLowerCase() === 'c'
+  ) {
     event.preventDefault();
     editor.commands.toggleCode();
     return true;

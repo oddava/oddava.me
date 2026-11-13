@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
-import { OVERLAYS, focusAttributes, inRevealZone } from './studioFocusPrefs';
+import { focusAttributes, inRevealZone } from './studioFocusPrefs';
+import { isMod } from './studioHelpers';
+import { modalOpen, registerEscape } from './studioLayers';
 import { studioFocus, type FocusState } from './studioFocusStore';
 
 /** The shared state, re-rendering the caller when it changes. */
@@ -73,28 +75,38 @@ export function useStudioFocusRoot({ enabled, compact }: RootOptions) {
     if (!enabled) studioFocus.setFocusMode(false);
   }, [enabled]);
 
+  // The shortcut works wherever focus is — the bar, the sidebar, the page
+  // body after a dialog closed — as long as a note is on screen and no dialog
+  // holds the page.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      const mod = event.metaKey || event.ctrlKey;
-      if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
-        if (!enabled) return;
-        event.preventDefault();
-        studioFocus.setFocusMode(!studioFocus.getState().focusMode);
-        return;
-      }
       if (
-        event.key === 'Escape' &&
-        studioFocus.getState().focusMode &&
-        !event.defaultPrevented &&
-        !document.querySelector(OVERLAYS)
-      ) {
-        event.preventDefault();
-        studioFocus.setFocusMode(false);
-      }
+        !enabled ||
+        event.isComposing ||
+        !isMod(event) ||
+        !event.shiftKey ||
+        event.altKey ||
+        event.key.toLowerCase() !== 'f' ||
+        modalOpen()
+      )
+        return;
+      event.preventDefault();
+      studioFocus.setFocusMode(!studioFocus.getState().focusMode);
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [enabled]);
+
+  // Leaving is one step in the page's Escape order: anything open on top —
+  // a menu, find, the outline — closes first, one press at a time.
+  useEffect(
+    () =>
+      registerEscape('focus', {
+        isOpen: () => studioFocus.getState().focusMode,
+        close: () => studioFocus.setFocusMode(false),
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!state.focusMode) return;

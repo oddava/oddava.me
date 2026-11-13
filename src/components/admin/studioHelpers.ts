@@ -9,22 +9,65 @@ export function titleFromBody(body: string, fallback: string): string {
   return heading || fallback.replaceAll('-', ' ') || 'Untitled';
 }
 
+// The same test ProseMirror's keymap makes for "Mod", so a Studio shortcut
+// and an editor binding never disagree about which key is the command key.
 const APPLE =
   typeof navigator !== 'undefined' &&
-  /Macintosh|iPhone|iPad/.test(navigator.userAgent);
+  /Mac|iP(hone|[oa]d)/.test(navigator.platform);
+
+type ModifierKeys = Pick<
+  KeyboardEvent,
+  'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'
+>;
+
+/**
+ * The platform's command key, and only it: ⌘ on a Mac, Ctrl everywhere else.
+ * A Mac's Ctrl belongs to text editing (Ctrl+F is "forward a character",
+ * Ctrl+P "previous line"), and Windows' Meta belongs to the OS, so neither is
+ * ever read as the other.
+ */
+export function isMod(event: ModifierKeys, apple = APPLE): boolean {
+  return apple
+    ? event.metaKey && !event.ctrlKey
+    : event.ctrlKey && !event.metaKey;
+}
+
+/**
+ * Back (-1) or forward (1) through the notes visited, or 0. Alt+← / Alt+→
+ * off a Mac; ⌘[ / ⌘] on one, where ⌥← / ⌥→ move the caret by a word.
+ */
+export function historyStep(
+  event: ModifierKeys & Pick<KeyboardEvent, 'key'>,
+  apple = APPLE,
+): -1 | 0 | 1 {
+  if (apple) {
+    if (!isMod(event, true) || event.altKey || event.shiftKey) return 0;
+    return event.key === '[' ? -1 : event.key === ']' ? 1 : 0;
+  }
+  if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+    return 0;
+  return event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+}
 
 /**
  * A shortcut the way this keyboard labels it: `shortcut('K')` is ⌘K on a Mac
  * and Ctrl+K everywhere else.
  */
-export function shortcut(key: string, shift = false): string {
-  if (APPLE) return `⌘${shift ? '⇧' : ''}${key === 'Backspace' ? '⌫' : key}`;
+export function shortcut(key: string, shift = false, apple = APPLE): string {
+  if (apple) return `⌘${shift ? '⇧' : ''}${key === 'Backspace' ? '⌫' : key}`;
   return `Ctrl+${shift ? 'Shift+' : ''}${key}`;
 }
 
 /** The same for Alt: ⌥↑ on a Mac, Alt+↑ elsewhere. */
-export function altShortcut(key: string): string {
-  return APPLE ? `⌥${key}` : `Alt+${key}`;
+export function altShortcut(key: string, apple = APPLE): string {
+  return apple ? `⌥${key}` : `Alt+${key}`;
+}
+
+/** Back / forward as this keyboard presses them (see `historyStep`). */
+export function historyShortcuts(
+  apple = APPLE,
+): [back: string, forward: string] {
+  return apple ? ['⌘[', '⌘]'] : ['Alt+←', 'Alt+→'];
 }
 
 export function noteHref(entries: ContentEntryListItem[], id: string): string {

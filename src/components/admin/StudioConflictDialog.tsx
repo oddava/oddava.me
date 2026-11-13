@@ -78,6 +78,7 @@ export default function StudioConflictDialog({
       <div
         ref={dialogRef}
         className="studio-palette studio-conflict-dialog"
+        data-studio-layer="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="studio-conflict-dialog-title"

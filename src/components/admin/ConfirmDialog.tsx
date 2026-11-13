@@ -112,6 +112,8 @@ export function ConfirmDialog({
   ) => {
     if (event.key === 'Escape') {
       event.preventDefault();
+      // Consumed: nothing underneath (find, focus mode) closes with it.
+      event.stopPropagation();
       onCancel();
     }
   };
@@ -123,6 +125,7 @@ export function ConfirmDialog({
     >
       <div
         ref={dialogRef}
+        data-studio-layer="modal"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={TITLE_ID}

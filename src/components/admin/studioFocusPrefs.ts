@@ -111,13 +111,6 @@ export function focusAttributes(
   };
 }
 
-/**
- * What Escape means to something else that is already open. Whatever matches
- * gets the key first; focus mode leaves only on an Escape nothing wanted.
- */
-export const OVERLAYS =
-  '[role="alertdialog"], .studio-sheet-layer.is-open [role="dialog"], .studio-palette-overlay [role="dialog"], .studio-editor-popover, .studio-menu[role="menu"]';
-
 /** Where the pointer wakes the chrome: a strip along the top, a sliver at the left. */
 export const REVEAL_ZONE = { top: 56, left: 24 } as const;
 

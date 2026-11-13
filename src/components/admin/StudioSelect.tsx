@@ -115,6 +115,7 @@ export default function StudioSelect({
           className={`studio-select__menu ${align === 'start' ? 'is-start' : ''} ${
             placement === 'up' ? 'is-up' : ''
           }`}
+          data-studio-layer="menu"
           role="listbox"
           aria-label={label}
           ref={listRef}
@@ -150,6 +151,7 @@ export default function StudioSelect({
                   focusOption(options.length - 1);
                 } else if (event.key === 'Escape') {
                   event.preventDefault();
+                  event.stopPropagation();
                   close();
                 } else if (event.key === 'Tab') {
                   close(false);

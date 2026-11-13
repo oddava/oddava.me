@@ -213,6 +213,7 @@ export default function StudioInlineToolbar({
       {turnOpen && (
         <div
           className={`studio-menu studio-turnmenu ${turnUp ? 'is-up' : ''}`}
+          data-studio-layer="menu"
           role="menu"
           aria-label="Turn into"
         >
@@ -307,7 +308,7 @@ export default function StudioInlineToolbar({
       <Action
         label="Inline code"
         active={activeMarks?.has('code')}
-        hint={shortcut('C', true)}
+        hint={shortcut('E')}
         onClick={commands.inlineCode}
       >
         <Icon name="code" />
