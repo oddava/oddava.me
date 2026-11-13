@@ -1,8 +1,19 @@
-/* Notes: a quiet reading surface with just enough structure to explore. */
+/* ===================================================
+   Notes — the landing, note pages, folders, tags and the graph page
+
+   Drawn in the portfolio's language: DM Sans, hairlines between rows, ink
+   and one accent, generous space, no cards and no shadows. Colours come
+   from the site's colour roles, which the portfolio tokens point at the
+   chosen theme and ink (see portfolio/_tokens.css and _notes.css), so every
+   rule here follows light, dark and the ink choice without a second copy.
+
+   The rendered body's own styles live in `_note-prose.css`, shared with
+   Studio; the few published-page adjustments to it are at the end of the
+   "reading" section below, scoped to the page so Studio is untouched.
+   =================================================== */
 
 .garden-page {
   width: 100%;
-  padding: 0 0 var(--space-md);
 }
 
 .garden-visually-hidden {
@@ -11,214 +22,630 @@
   height: 1px;
   padding: 0;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
 
-/* Document paths */
+/* ---- Small shared pieces ----------------------------------------------- */
 
-.garden-topic-header h1 {
-  margin: 0;
-  font-size: clamp(3rem, 8vw, 5.5rem);
-  font-weight: 700;
-  line-height: 0.98;
-  letter-spacing: -0.065em;
-}
-
-.garden-list {
+/* A section's name inside a page: the portfolio's item size, with a count. */
+.notes-label {
   display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--color-rule-strong);
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 12px;
+  color: var(--color-text-primary);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
-.note-card {
+.notes-label__count {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* A note's icon at list size. */
+.note-list-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  color: var(--color-text-secondary);
+}
+
+.note-list-icon :is(img, span) {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+  border-radius: 4px;
+  font-size: 1.125rem;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.note-list-icon__glyph {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+/* ---- Note lists: rows between hairlines --------------------------------
+   The title's link stretches over the whole row, so the row is one target
+   (well over 44px tall); nothing else in a row is a link. */
+
+.note-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.375rem minmax(0, 1fr) auto;
+  column-gap: 14px;
+  align-items: start;
+  padding: 16px 0 17px;
   border-bottom: 1px solid var(--color-rule);
 }
 
-.note-card__link {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1.35rem 0.4rem;
-  border-radius: var(--radius-md);
-  color: inherit;
-  text-decoration: none;
-  transition: background-color 260ms ease;
+.note-row > .note-list-icon {
+  margin-top: 1px;
 }
 
-.note-card__link:hover,
-.note-card__link:focus-visible {
-  color: inherit;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--color-overlay-soft) 62%, transparent),
-    transparent 72%
-  );
-}
-
-.note-card__copy {
+.note-row__body {
   min-width: 0;
 }
 
-.note-card__title {
+.note-row__title {
   margin: 0;
-  color: var(--color-text-primary);
-  font-size: clamp(1.05rem, 2vw, 1.2rem);
-  font-weight: 500;
-  line-height: 1.35;
-  letter-spacing: -0.025em;
-  transition: color 260ms ease;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
 }
 
-.note-card__summary {
-  max-width: 58ch;
-  margin: 0.35rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.86rem;
+.note-row__link {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.note-row__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+}
+
+.note-row__link:focus-visible {
+  outline: none;
+}
+
+.note-row__link:focus-visible::after {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.note-row__excerpt {
+  display: -webkit-box;
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
   line-height: 1.55;
-  transition: color 260ms ease;
-}
-
-.note-card__meta {
-  display: block;
-  margin-top: 0.5rem;
-  color: var(--color-text-muted);
-  font: 0.6rem var(--font-mono);
-}
-
-.note-card__date {
-  color: var(--color-text-muted);
-  font: 0.65rem var(--font-mono);
-  white-space: nowrap;
-}
-
-.note-card__arrow {
-  color: var(--color-text-muted);
-  font-size: 1.1rem;
-  opacity: 0.2;
-  transition:
-    color 180ms ease,
-    opacity 260ms ease;
-}
-
-.note-card__link:hover .note-card__arrow,
-.note-card__link:focus-visible .note-card__arrow {
-  color: var(--color-text-interactive-hover);
-  opacity: 0.72;
-}
-
-/* Topic index */
-
-.garden-index--topic {
-  width: min(100%, 46rem);
-  margin: 0 auto;
-}
-
-.garden-topic-header {
-  padding: 0 0 clamp(3rem, 7vw, 5rem);
-}
-
-.garden-topic-header__back {
-  display: inline-block;
-  margin-bottom: 1.5rem;
-  color: var(--color-text-muted);
-  font: 0.7rem var(--font-mono);
-}
-
-.garden-topic-header__back:hover,
-.garden-topic-header__back:focus-visible {
-  color: var(--color-text-primary);
-}
-
-.garden-topic-header h1 {
-  font-size: clamp(2.6rem, 7vw, 4.8rem);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow-wrap: anywhere;
 }
 
-.garden-topic-header p {
-  margin: 1rem 0 0;
-  color: var(--color-text-muted);
+.note-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
-/* Document reader */
+.note-row__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  color: var(--color-text-accent);
+}
 
-/* Opens the reading column in its top-right corner, where the old header put
-   it. It used to sit opposite a breadcrumb trail; the trail is gone — the
-   rail's bearings map says where you are, and says it as a drawing rather than
-   twice in words — so the date keeps the corner and the title starts clean. */
-.garden-document__tended {
-  margin: 0 0 1.15rem;
-  color: var(--color-text-muted);
-  font: 0.72rem / 1.4 var(--font-mono);
-  letter-spacing: 0.02em;
-  text-align: right;
+.note-row__date {
+  padding-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.garden-document__tended time {
-  color: var(--color-text-muted);
-}
-
-@media (min-width: 78rem) {
-  .garden-document {
-    display: flex;
-    flex-direction: column;
+@media (hover: hover) and (pointer: fine) {
+  .note-row:hover .note-row__link {
+    color: var(--color-text-accent);
   }
-
-  .garden-document__tended {
-    order: -1;
+  .note-row:hover .pf-arrow {
+    opacity: 1;
+    transform: none;
   }
 }
 
-/* The reading column stays centred; the rail sits in the left gutter. Named
-   areas keep that true regardless of source order — on narrow screens the
-   article stacks above the rail; from 78rem the rail is left of the prose. */
+/* On a phone the date drops under the words, so the title keeps the row. */
+@media (max-width: 30em) {
+  .note-row {
+    grid-template-columns: 1.375rem minmax(0, 1fr);
+  }
+  .note-row__date {
+    grid-column: 2;
+    padding-top: 3px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ---- The landing --------------------------------------------------------- */
+
+.notes-home__head .note-page-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0 0 18px;
+  font-size: 2.75rem;
+}
+
+.notes-home__intro {
+  margin-top: 20px;
+}
+
+/* The ways in: search, the graph and the feed, as quiet outlined pills. */
+.notes-ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.notes-way {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px 0 13px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.notes-way svg {
+  flex: none;
+  width: 1.0625rem;
+  height: 1.0625rem;
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notes-way svg circle {
+  fill: var(--color-surface);
+}
+
+.notes-way:focus-visible {
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.notes-way__key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--color-rule);
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .notes-way:hover {
+    border-color: var(--color-rule-strong);
+    background-color: var(--color-overlay-soft);
+  }
+}
+
+/* No keyboard, no shortcut to advertise. */
+@media (pointer: coarse) {
+  .notes-way__key {
+    display: none;
+  }
+}
+
+.notes-section {
+  margin-top: 64px;
+}
+
+@media (min-width: 55em) {
+  .notes-section {
+    margin-top: 80px;
+  }
+}
+
+.notes-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 14px;
+}
+
+.notes-section__head h2 {
+  font-size: var(--t-item, 1.3125rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.notes-section__aside {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Folders: one row each, the whole row a link. */
+.note-folders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-rule);
+}
+
+.note-folder {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.375rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 14px;
+  min-height: 56px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.note-folder__link {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+
+.note-folder__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+}
+
+.note-folder__link:focus-visible {
+  outline: none;
+}
+
+.note-folder__link:focus-visible::after {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.note-folder__count,
+.note-folder__date {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-folder:hover .note-folder__link {
+    color: var(--color-text-accent);
+  }
+  .note-folder:hover .pf-arrow {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 30em) {
+  .note-folder {
+    grid-template-columns: 1.375rem minmax(0, 1fr) auto;
+  }
+  .note-folder__date {
+    display: none;
+  }
+}
+
+/* Tags: plain words that light up like the nav, each a 44px target. */
+.note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin: 0 0 0 -10px;
+  padding: 0;
+  list-style: none;
+}
+
+.note-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.note-tag-chip__count {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.note-tag-chip:focus-visible {
+  outline-offset: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-tag-chip:hover {
+    color: var(--color-text-accent);
+    background-color: var(--color-overlay-soft);
+  }
+}
+
+/* ---- Tag pages ----------------------------------------------------------- */
+
+.notes-topic__head .pf-title {
+  overflow-wrap: anywhere;
+}
+
+.notes-topic__lede,
+.notes-graph__lede {
+  margin-top: 10px;
+  color: var(--color-text-secondary);
+}
+
+.notes-topic__head {
+  margin-bottom: 40px;
+}
+
+/* ---- The graph page ------------------------------------------------------ */
+
+.notes-graph__head {
+  max-width: 44rem;
+  margin-bottom: 28px;
+}
+
+/* The garden in a frame the width of the page, like a project's shot. The
+   island's own full-page mode fills the viewport; here it fills the frame,
+   and the page's header and "← notes" are the way back. */
+.notes-graph .interactive-graph.interactive-graph--page {
+  height: clamp(26rem, 70dvh, 46rem);
+  padding: 0;
+}
+
+.notes-graph .interactive-graph--page .interactive-graph__panel {
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+}
+
+.notes-graph .interactive-graph--page .interactive-graph__viewport {
+  border: 0;
+}
+
+.notes-graph .interactive-graph--page .interactive-graph__actions {
+  display: none;
+}
+
+@media (max-width: 40em) {
+  .notes-graph .interactive-graph.interactive-graph--page {
+    height: clamp(24rem, 64dvh, 36rem);
+    padding: 0;
+  }
+}
+
+/* ---- A removed note (410) ----------------------------------------------- */
+
+.notes-gone__copy {
+  margin-top: 14px;
+  color: var(--color-text-secondary);
+}
+
+.notes-gone__links {
+  display: flex;
+  gap: 4px;
+  margin: 20px 0 0 -10px;
+  padding: 0;
+  list-style: none;
+}
+
+.notes-gone__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--color-text-accent);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .notes-gone__links a:hover {
+    background-color: var(--color-overlay-soft);
+  }
+}
+
+/* ---- Reading: the article and its rail ----------------------------------
+   One column on a phone: the note, then what connects to it, then the card
+   that holds the contents and the folder browser. From 64rem the rail
+   moves to a narrow left column, like home's name beside its work, and
+   follows the reader down the page. */
+
 .garden-document-layout {
   display: grid;
-  grid-template-columns: minmax(0, 44rem);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     'article'
     'rail';
-  justify-content: center;
   align-items: start;
-  column-gap: 2.5rem;
 }
 
 .garden-document {
   grid-area: article;
+  width: 100%;
+  max-width: 40rem;
   min-width: 0;
+  margin-inline: auto;
 }
 
 .note-context {
   grid-area: rail;
+  width: 100%;
+  max-width: 40rem;
+  min-width: 0;
+  margin: 56px auto 0;
 }
 
-/* Fallback title when the body doesn't open with its own h1 — sized like the
-   prose h1 so both kinds of notes read the same. */
-.garden-document__title {
-  margin: 0 0 0.6em;
+.note-context:not(:has(.note-context__section)) {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .garden-document-layout {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    grid-template-areas: 'rail article';
+    column-gap: clamp(48px, 7vw, 112px);
+  }
+
+  .garden-document {
+    margin-inline: 0;
+  }
+
+  /* Sticky on the grid item itself, not a nested wrapper: a sticky child can
+     only travel inside its parent. The rail never scrolls the page itself;
+     when it is taller than the window, its own column scrolls, quietly. */
+  .note-context {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+    max-height: calc(100dvh - 64px);
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .note-context::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* The title: the portfolio's page title, whether the note writes its own
+   `# title` or the page supplies it. */
+.garden-document__title,
+.garden-document .prose h1 {
+  margin: 0;
   color: var(--color-text-primary);
-  font-family: var(--font-prose);
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 700;
-  line-height: 1.12;
-  letter-spacing: -0.02em;
+  font-family: var(--font-body);
+  font-size: var(--t-title, 2.25rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
   text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.garden-document .prose h1:not(:first-child) {
+  margin-top: 1.6em;
+  font-size: 1.75rem;
+}
+
+.garden-document .note-page-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 0 18px;
+  font-size: 3rem;
+}
+
+/* Where the note lives and when it was last touched, under the title. */
+.garden-document__tended {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  margin: 12px 0 32px;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.garden-document__tended > span + span::before {
+  content: '·';
+  margin: 0 0.6em;
+  opacity: 0.7;
+}
+
+.garden-document__tended a.link {
+  color: var(--color-text-primary);
+}
+
+.garden-document__authored-title + .garden-document__body,
+.garden-document__title + .garden-document__body {
+  margin-top: 28px;
 }
 
 .garden-document__stub {
   margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
+  color: var(--color-text-secondary);
 }
 
 /* The authored h1 is rendered apart from the rest of the body, which makes
    the body's first heading a :first-child — and `.prose > :first-child`
-   would zero its margin. Give back exactly the spacing it has in one
-   unbroken prose flow, so the split is invisible. */
+   would zero its margin. Give back the spacing it has in one unbroken
+   prose flow, so the split is invisible. */
 .garden-document__body--continuation > :is(h2, h3):first-child {
   margin-top: 1.6em;
 }
@@ -227,93 +654,224 @@
   margin-top: 1.75em;
 }
 
-/* The rendered body's own styles live in `_note-prose.css` — shared with the
-   Studio preview so the two can't drift. */
-
-/* Connections: backlinks and tag affinity ("Related"). Both
-   sit below the body/contents, set apart by a hairline rule, and share one
-   quiet card language. */
-
-.note-links {
-  margin-top: clamp(2.5rem, 7vw, 4rem);
-  padding-top: clamp(1.5rem, 4vw, 2rem);
-  border-top: 1px solid var(--color-rule);
+/* What is inside a folder, and what links here: after the words, set apart
+   by space rather than another rule. */
+.garden-document__pages,
+.garden-document__backlinks {
+  margin-top: 56px;
 }
 
-.note-links + .note-links {
-  margin-top: clamp(1.5rem, 4vw, 2.25rem);
-  padding-top: clamp(1.25rem, 3vw, 1.75rem);
-}
-
-.note-links__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+.note-backlinks {
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--color-rule);
 }
 
-.note-link__anchor {
-  display: block;
-  margin: 0 -0.55rem;
-  padding: 0.6rem 0.55rem;
-  border-radius: var(--radius-md);
-  color: inherit;
-  text-decoration: none;
-  transition: background-color 180ms ease;
+.note-backlinks li {
+  border-bottom: 1px solid var(--color-rule);
 }
 
-.note-link__anchor:hover,
-.note-link__anchor:focus-visible {
-  color: inherit;
-  background: color-mix(in srgb, var(--color-overlay-soft) 62%, transparent);
-}
-
-.note-link__title {
-  display: block;
+.note-backlink {
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 12px 0;
   color: var(--color-text-primary);
-  font-size: 0.96rem;
-  font-weight: 500;
-  line-height: 1.4;
+  text-decoration: none;
+  transition: color 120ms ease;
 }
 
-.note-link__summary {
-  display: block;
-  max-width: 58ch;
-  margin-top: 0.2rem;
+.note-backlink__title {
+  font-weight: 500;
+}
+
+.note-backlink__summary {
   overflow: hidden;
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
-  line-height: 1.5;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Per-note context trails the article on narrow screens, and becomes the
-   left-hand rail wherever two calm columns fit. On mobile it stays flush
-   with the page (no raised card chrome) — section rules do the dividing.
-   Order is by usefulness while reading: this page → this folder → what
-   connects here → the map that summarises those connections. */
-
-.note-context:not(:has(.note-context__section)) {
-  display: none;
+.note-backlink:focus-visible {
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
-.note-context {
-  min-width: 0;
-  margin-top: clamp(2.25rem, 7vw, 3rem);
-  padding: 0;
-  border: 0;
-  border-radius: 0;
+@media (hover: hover) and (pointer: fine) {
+  .note-backlink:hover .note-backlink__title {
+    color: var(--color-text-accent);
+  }
+}
+
+/* -- The published body: the portfolio's reading type over the shared
+      prose. Studio loads _note-prose.css without this file, so these stay
+      on the page. */
+
+.garden-document .prose,
+.notes-home__intro.prose {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+.notes-home__intro.prose {
+  font-size: 1.0625rem;
+  line-height: var(--lh, 1.6);
+}
+
+@media (max-width: 40em) {
+  .garden-document .prose {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+}
+
+.garden-document .prose :is(h2, h3, h4, h5, h6) {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.garden-document .prose h2 {
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  font-size: 1.5rem;
+  letter-spacing: -0.018em;
+}
+
+.garden-document .prose h3 {
+  margin-top: 1.75em;
+  margin-bottom: 0.45em;
+  font-size: 1.1875rem;
+  letter-spacing: -0.012em;
+}
+
+/* Links read as the portfolio's: ink words, an underline in the ink colour
+   that thickens and takes the colour on hover. */
+:is(.garden-document, .notes-home__intro) .prose a,
+.notes-home__intro.prose a {
+  color: var(--color-text-primary);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-accent) 70%,
+    transparent
+  );
+  transition:
+    color 120ms ease,
+    text-decoration-color 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.garden-document, .notes-home__intro) .prose a:hover,
+  .notes-home__intro.prose a:hover {
+    color: var(--color-text-accent);
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* The portfolio shell clears list markers for its own lists; running text
+   keeps them. */
+:is(.garden-document, .notes-home__intro) .prose ul,
+.notes-home__intro.prose ul {
+  list-style: disc;
+}
+
+:is(.garden-document, .notes-home__intro) .prose ol,
+.notes-home__intro.prose ol,
+.garden-document .prose .footnotes ol {
+  list-style: decimal;
+}
+
+.garden-document .prose li::marker,
+.notes-home__intro.prose li::marker {
+  color: var(--color-text-secondary);
+}
+
+/* A wished-for note stays a dashed grey promise, not a link. */
+.garden-document .prose .wiki-link--broken {
+  color: var(--color-text-secondary);
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
+}
+
+/* Inline #tags: the accent, in the reading face. */
+.garden-document .prose .note-tag {
+  color: var(--color-text-accent);
+  font-family: inherit;
+  font-size: 0.9em;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .garden-document .prose .note-tag:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+  }
+}
+
+/* Footnote markers are pills, not underlined words. */
+.garden-document .prose .footnote-ref a {
+  color: var(--color-text-accent);
+  text-decoration: none;
+}
+
+.garden-document .prose .footnote-backref {
+  text-decoration: none;
+}
+
+.garden-document .prose blockquote:not(.callout) {
+  border-left-color: var(--color-rule-strong);
+  color: var(--color-text-secondary);
+}
+
+/* Code sits on the page's quiet second surface, both themes. */
+.garden-document .prose :is(code, pre) {
+  background: var(--note-code-bg, var(--color-surface-raised));
+}
+
+.garden-document .prose pre {
+  margin: 1.75em 0;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+}
+
+.garden-document .prose pre[data-language] {
+  padding-top: 2.4rem;
+}
+
+.garden-document .prose pre[data-language]::before {
+  top: 0.8rem;
+  left: 1.15rem;
+}
+
+.garden-document .prose pre code {
   background: none;
 }
+
+.garden-document .prose img {
+  border-radius: 10px;
+}
+
+.garden-document .prose .footnotes {
+  margin-top: 3rem;
+}
+
+/* ---- The rail ------------------------------------------------------------ */
 
 .note-context__inner {
   display: flex;
   flex-direction: column;
 }
 
+/* Rail sections are divided by space and a hairline; the first carries
+   neither, whichever section that is. */
 .note-context__section,
 .note-context .note-links {
   margin: 0;
@@ -321,132 +879,152 @@
   border: 0;
 }
 
-.note-context .interactive-graph.note-context__section {
-  margin-bottom: 0.9rem;
-}
-
 .note-context__section + .note-context__section {
-  margin-top: clamp(1.25rem, 3vw, 1.6rem);
-  padding-top: clamp(1.25rem, 3vw, 1.6rem);
+  margin-top: 22px;
+  padding-top: 20px;
   border-top: 1px solid var(--color-rule);
 }
 
-/* One label voice for every rail section. */
-.note-context__label {
-  margin: 0 0 0.7rem;
-  color: var(--color-text-secondary);
-  font: 500 0.7rem var(--font-mono);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.note-toc__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.note-toc__item--depth-3 {
-  padding-left: 1rem;
-}
-
-.note-toc__item--depth-4 {
-  padding-left: 2rem;
-}
-
-.note-toc__link {
-  display: block;
-  padding: 0.25rem 0;
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-  text-decoration: none;
-  transition: color 180ms ease;
-}
-
-.note-toc__link:hover,
-.note-toc__link:focus-visible,
-.note-toc__link[aria-current='location'] {
-  color: var(--color-text-primary);
-}
-
-.note-toc__link[aria-current='location'] {
-  font-weight: 500;
-}
-
-.note-toc--rail {
-  display: none;
-}
-
-@media (min-width: 78rem) {
-  .note-toc--rail {
-    margin-bottom: 1.4rem;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--color-rule);
-  }
-
-  .note-toc--rail + .note-context__section {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
-  }
-}
-
-/* Dividers separate sections, so the first one must not carry a leading rule.
-   Which section comes first varies — the TOC when a note has headings, the
-   backlinks or the bearings map otherwise — so this guards whatever lands
-   there rather than any one section. */
 .note-context__inner > :first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
 }
 
-/* Bearings is a picture of the links listed above it, so it reads as their
-   summary rather than as a seventh list. Its own styles live in
-   `_local-map.css`, imported by the component. */
+/* One heading voice for every rail section: small, ink, the UI face. */
+.note-context__label {
+  margin: 0 0 8px;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.4;
+}
 
-/* Two calm columns. A centred 44rem column with a rail beside it needs
-   44 + 2 × (gap + rail) of room, because the right gutter has to mirror the
-   left one for the prose to stay centred — so 78rem is the honest gate. */
-@media (min-width: 78rem) {
-  /* Break out of the 70rem page shell: inside it the gutters are only ~13rem
-     and the rail ends up pinned against the viewport edge. Scoped to pages
-     that actually have a rail — tag and listing pages keep the shell width.
-     Wider mirrored gutters give the explorer room on the left while the
-     article keeps the same centred 44rem column and 2.5rem gap. */
-  .garden-page:has(.garden-document-layout) {
-    width: min(100vw - 2 * var(--page-padding), 90rem);
-    margin-left: calc(50% - min(50vw - var(--page-padding), 45rem));
+/* Contents. */
+.note-toc__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-toc__item--depth-3 {
+  padding-left: 12px;
+}
+
+.note-toc__item--depth-4 {
+  padding-left: 24px;
+}
+
+.note-toc__link {
+  position: relative;
+  display: block;
+  padding: 5px 0 5px 12px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+/* The section being read: ink, and a short accent mark at the left. */
+.note-toc__link::before {
+  content: '';
+  position: absolute;
+  top: 0.5em;
+  bottom: 0.5em;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  transform: scaleY(0);
+  transition: transform 180ms var(--ease-out, ease);
+}
+
+.note-toc__link[aria-current='location'] {
+  color: var(--color-text-primary);
+}
+
+.note-toc__link[aria-current='location']::before {
+  transform: none;
+}
+
+.note-toc__link:focus-visible {
+  outline-offset: 0;
+  border-radius: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-toc__link:hover {
+    color: var(--color-text-primary);
   }
+}
 
-  .garden-document-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 44rem) minmax(0, 1fr);
-    grid-template-areas: 'rail article .';
+.note-toc--rail {
+  display: none;
+}
+
+/* Related notes. */
+.note-links__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-link__anchor {
+  display: block;
+  padding: 8px 0;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.note-link__title {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.note-link__summary {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-link__anchor:focus-visible {
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-link__anchor:hover .note-link__title {
+    color: var(--color-text-accent);
   }
+}
 
-  /* Sticky on the grid item itself — not a nested wrapper. A sticky child can
-     only travel inside its parent; when the parent is only as tall as the rail
-     content, sticky never activates and the rail scrolls away with the page.
-     End-aligned in the left track so it sits against the prose, not the
-     viewport edge. */
-  .note-context {
-    position: sticky;
-    top: 1.5rem;
-    align-self: start;
-    justify-self: end;
-    width: min(100%, 21rem);
-    max-height: calc(100dvh - 3rem);
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    overflow: hidden;
+/* Narrow: Related leads the footer as a plain section above the card. */
+@media (width < 64rem) {
+  .note-context .note-links {
+    margin-bottom: 32px;
   }
+  .note-context .note-links .note-link__anchor {
+    min-height: 44px;
+  }
+}
 
+/* Wide: the rail's own column. */
+@media (min-width: 64rem) {
   .note-toc--mobile {
     display: none;
   }
@@ -455,157 +1033,74 @@
     display: block;
   }
 
-  /* Cap the rail to the viewport. The rail itself never scrolls — a second
-     scrollbar beside the article is noise. When the column is tight, list
-     sections (contents, related) shrink and scroll their lists; the nearby
-     map stays full height so the drawing is never clipped mid-diagram. */
-  .note-context__inner {
-    display: flex;
-    flex-direction: column;
-    max-height: inherit;
-    padding: 0.2rem 0.15rem 0.2rem 0.45rem;
-    overflow: hidden;
-  }
-
-  .note-context__section + .note-context__section {
-    margin-top: 1.4rem;
-    padding-top: 1.25rem;
-  }
-
-  /* List sections may shrink to fit the cap; their lists become the
-     scroll surface. Labels and the map never shrink. */
-  .note-context__section:not(.local-map):not(.interactive-graph) {
-    display: flex;
-    flex-direction: column;
-    flex: 0 1 auto;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .note-context__label {
-    flex-shrink: 0;
-  }
-
-  .note-context .note-toc__list,
-  .note-context .note-links__list {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .note-context .note-toc__list::-webkit-scrollbar,
-  .note-context .note-links__list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .note-context .local-map {
-    flex: 0 0 auto;
-  }
-
-  /* Rail type steps down one notch from the article, no further: the previous
-     0.54–0.74rem range put four different sizes below 12px in one column. */
   .note-context .note-link__title {
     font-size: 0.875rem;
-    line-height: 1.4;
+    color: var(--color-text-secondary);
   }
 
   .note-context .note-link__anchor {
-    margin: 0 -0.4rem;
-    padding: 0.45rem 0.4rem;
+    padding: 5px 0;
   }
 
-  /* Summaries would wrap to four lines at 16rem and bury the titles. */
+  /* Summaries would wrap to four lines in a 15rem column. */
   .note-context .note-link__summary {
     display: none;
   }
 
-  .note-toc__link {
-    font-size: 0.8125rem;
+  @media (hover: hover) and (pointer: fine) {
+    .note-context .note-link__anchor:hover .note-link__title {
+      color: var(--color-text-primary);
+    }
   }
 }
 
-@media (max-width: 640px) {
-  .note-card__link {
-    gap: 1rem;
-    padding-top: 1.15rem;
-    padding-bottom: 1.15rem;
-  }
-
-  .note-card__arrow {
-    opacity: 0.6;
-    transform: none;
-  }
+/* The live graph: wide screens only, framed like a small project shot. */
+.note-context__graph {
+  margin-bottom: 24px;
 }
 
-@media (max-width: 420px) {
-  .garden-topic-header h1 {
-    font-size: clamp(2.8rem, 14.5vw, 3.65rem);
-  }
-}
-
-/* Islands render through display:contents; give the graph/outline boundary an
-   explicit divider rather than relying on element-sibling adjacency. */
-/* The graph rules itself off along its bottom edge; a second rule on the
-   contents below it would double the line with a gap between. */
-.note-context__inner:has(.interactive-graph) > .note-toc--rail {
-  margin-top: 0.5rem;
-  padding-top: 0;
-  border-top: 0;
-}
-@media (min-width: 78rem) {
-  .note-context:has(.interactive-graph) {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
-  }
-  .note-context__inner:has(.interactive-graph) {
-    max-height: none;
-    overflow: visible;
-  }
-}
-
-@media (width < 78rem) {
+@media (width < 64rem) {
   .note-context__graph {
     display: none;
   }
 }
-@media (width >= 78rem) {
-  .note-context__graph {
-    flex: 0 0 auto;
-  }
+
+.note-context .interactive-graph__slot {
+  width: 100%;
 }
 
-/* The optional folder browser is a quiet rail footer, not another section. */
-.note-context .note-explorer {
-  margin-top: 0.75rem;
+.note-context .interactive-graph__panel:not(:modal),
+.note-context .interactive-graph__snapshot {
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+}
+
+.note-context
+  .interactive-graph__panel:not(:modal)
+  .interactive-graph__viewport {
+  border: 0;
+}
+
+/* The graph's frame already closes it off; whatever follows needs no rule. */
+.note-context__graph + :is(*, .note-wayfinder:has(.note-explorer)) {
+  margin-top: 0;
   padding-top: 0;
   border-top: 0;
-  flex-shrink: 0;
 }
 
 /* ---------------------------------------------------------------------------
-   Wayfinder cards.
+   Wayfinder: the contents and the folder browser.
 
-   One card language for getting around a note: the contents at its top on
-   narrow screens, the footer at its end (connections, and the path down to
-   the note), and the folder browser in the wide rail. They share the music
-   player's material (16px radius, hairline, translucent raised ground), and
-   their icons are drawn exactly like the header's search icon — 20-unit
-   grid, 1.35 stroke, muted ink — so nothing in them is a one-off.
-
-   Every row is one grid — icon, words, affordance — so icons, text, the inset
-   rule between rows, and the rows that open inside a card all share the same
-   two vertical lines.
+   On a phone they close the note as one outlined box with two rows, each a
+   44px+ disclosure: the contents, then the path to this note with the whole
+   tree inside. On the wide rail only the folder browser remains (the rail
+   has its own contents), drawn as a plain rail section.
    --------------------------------------------------------------------------- */
 
 .note-wayfinder {
-  --wayfinder-pad: 1rem;
+  --wayfinder-pad: 16px;
   --wayfinder-icon: 1.25rem;
-  --wayfinder-gap: 0.875rem;
+  --wayfinder-gap: 14px;
   /* Where the words start; opened lists and the inset rule align to it. */
   --wayfinder-text: calc(
     var(--wayfinder-pad) + var(--wayfinder-icon) + var(--wayfinder-gap)
@@ -614,39 +1109,37 @@
 
 .note-wayfinder__row,
 .note-explorer__summary.note-wayfinder__row {
+  position: relative;
   display: grid;
   grid-template-columns: var(--wayfinder-icon) minmax(0, 1fr) 1rem;
   align-items: center;
   column-gap: var(--wayfinder-gap);
   width: 100%;
-  min-height: 3.875rem;
+  min-height: 60px;
   margin: 0;
-  position: relative;
-  padding: 0.75rem var(--wayfinder-pad);
+  padding: 10px var(--wayfinder-pad);
   border-radius: 0;
   background: none;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font: inherit;
   text-decoration: none;
   list-style: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition:
-    background-color 160ms ease,
-    color 160ms ease;
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 summary.note-wayfinder__row::-webkit-details-marker {
   display: none;
 }
 
-/* Hover tints only where hover is real; a tapped row on a phone would
-   otherwise keep its tint after the finger lifts. */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .note-wayfinder__row:hover,
   .note-explorer__summary.note-wayfinder__row:hover {
-    color: var(--color-text-secondary);
-    background: color-mix(in srgb, var(--color-overlay-soft) 60%, transparent);
+    color: var(--color-text-primary);
+    background: var(--color-overlay-soft);
   }
 }
 
@@ -659,15 +1152,13 @@ summary.note-wayfinder__row::-webkit-details-marker {
 .note-explorer__summary.note-wayfinder__row:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
+  border-radius: 14px;
 }
 
-/* Open, the row stays a row: what opened below it is the change. */
 details[open] > summary.note-wayfinder__row {
   background: none;
 }
 
-/* Icons and affordances take the row's colour, so a hover lifts the whole
-   row at once instead of each part on its own schedule. */
 .note-wayfinder__icon,
 .note-wayfinder__affordance {
   display: block;
@@ -680,26 +1171,24 @@ details[open] > summary.note-wayfinder__row {
 .note-wayfinder__icon {
   width: var(--wayfinder-icon);
   height: var(--wayfinder-icon);
-  stroke-width: 1.35;
+  stroke-width: 1.4;
 }
 
 .note-wayfinder__affordance {
   width: 1rem;
   height: 1rem;
-  stroke-width: 1.35;
-  opacity: 0.7;
-  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  stroke-width: 1.5;
+  opacity: 0.75;
+  transition: transform 220ms var(--ease-out, ease);
 }
 
 details[open] > summary > .note-wayfinder__chevron {
   transform: rotate(90deg);
 }
 
-/* --- Text --- */
-
 .note-wayfinder__text {
   display: grid;
-  gap: 0.125rem;
+  gap: 1px;
   min-width: 0;
 }
 
@@ -707,23 +1196,21 @@ details[open] > summary > .note-wayfinder__chevron {
   color: var(--color-text-primary);
   font-family: var(--font-body);
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.35;
-  letter-spacing: -0.01em;
 }
 
 .note-wayfinder__meta {
   overflow: hidden;
-  color: var(--color-text-muted);
-  font: 0.6875rem / 1.45 var(--font-mono);
-  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The path reads as a breadcrumb: quiet folders, the page itself in ink.
-   A flex row, so markup whitespace never widens it and only the page's own
-   title gives way when the line runs out. */
+/* The path reads as a breadcrumb: quiet folders, the page itself in ink. */
 .note-wayfinder__trail {
   display: flex;
   min-width: 0;
@@ -735,22 +1222,21 @@ details[open] > summary > .note-wayfinder__chevron {
 
 .note-wayfinder__crumb + .note-wayfinder__crumb::before {
   content: '/';
-  margin-inline: 0.45em;
+  margin-inline: 0.4em;
+  opacity: 0.6;
 }
 
 .note-wayfinder__here {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   text-overflow: ellipsis;
 }
 
-/* --- Contents: the list opens inside the card, aligned to the words --- */
-
+/* Contents open inside the box, aligned to the words. */
 .note-wayfinder .note-toc__list {
-  gap: 0;
-  padding: 0.35rem 0 0.5rem;
+  padding: 4px 0 8px;
   border-top: 1px solid var(--color-rule);
 }
 
@@ -760,58 +1246,35 @@ details[open] > summary > .note-wayfinder__chevron {
 }
 
 .note-wayfinder .note-toc__link {
-  position: relative;
   display: flex;
   align-items: center;
-  min-height: 2.75rem;
-  padding: 0.5rem var(--wayfinder-pad) 0.5rem var(--wayfinder-text);
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
+  min-height: 44px;
+  padding: 8px var(--wayfinder-pad) 8px var(--wayfinder-text);
+  font-size: 0.9375rem;
   -webkit-tap-highlight-color: transparent;
 }
 
 .note-wayfinder .note-toc__item--depth-3 .note-toc__link {
-  padding-left: calc(var(--wayfinder-text) + 0.9rem);
-  font-size: 0.85rem;
+  padding-left: calc(var(--wayfinder-text) + 14px);
 }
 
 .note-wayfinder .note-toc__item--depth-4 .note-toc__link {
-  padding-left: calc(var(--wayfinder-text) + 1.8rem);
-  font-size: 0.85rem;
+  padding-left: calc(var(--wayfinder-text) + 28px);
 }
 
-@media (hover: hover) {
-  .note-wayfinder .note-toc__link:hover {
-    color: var(--color-text-primary);
-    background: color-mix(in srgb, var(--color-overlay-soft) 60%, transparent);
-  }
-}
-
-.note-wayfinder .note-toc__link:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
-}
-
-/* The section being read gets a short mark in the icon column. */
-.note-wayfinder .note-toc__link[aria-current='location'] {
-  color: var(--color-text-primary);
-}
-
-.note-wayfinder .note-toc__link[aria-current='location']::before {
-  content: '';
-  position: absolute;
+.note-wayfinder .note-toc__link::before {
   top: 50%;
+  bottom: auto;
   left: calc(var(--wayfinder-pad) + var(--wayfinder-icon) / 2 - 1px);
-  width: 2px;
   height: 1.1em;
-  border-radius: 1px;
-  background: var(--color-brand);
   translate: 0 -50%;
 }
 
-/* --- Folders: the tree opens inside the card --- */
+.note-wayfinder .note-toc__link:focus-visible {
+  outline-offset: -2px;
+}
 
+/* Folders: the tree opens inside the box. */
 .note-context .note-wayfinder .note-explorer {
   position: relative;
   margin: 0;
@@ -821,38 +1284,23 @@ details[open] > summary > .note-wayfinder__chevron {
 
 .note-wayfinder .note-explorer__scroll {
   margin: 0;
-  padding: 0.4rem 0.55rem 0.7rem;
+  padding: 6px 8px 10px;
   border-top: 1px solid var(--color-rule);
 }
 
 .note-wayfinder .note-explorer__references {
-  margin: 0.5rem 0.4rem 0;
+  margin: 8px 6px 0;
 }
 
-/* --- Placement --- */
-
-@media (width < 78rem) {
+@media (width < 64rem) {
   .note-wayfinder {
     overflow: hidden;
-    border: 1px solid
-      color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+    border: 1px solid var(--color-rule);
     border-radius: 16px;
-    background: color-mix(
-      in srgb,
-      var(--color-surface-raised) 52%,
-      transparent
-    );
-  }
-
-  /* Only Related can sit above the footer card here: the graph and the
-     rail's contents are hidden at this width, so they must not space it. */
-  .note-links + .note-wayfinder {
-    margin-top: 2.25rem;
   }
 
   /* Rows after the first share one inset hairline, starting where the
-     words start. Sibling-of-a-row rather than :first-child, because the
-     contents brings a <script> along that may sit first. */
+     words start. */
   .note-wayfinder > .note-toc ~ .note-wayfinder__row::before,
   .note-wayfinder
     > :is(.note-toc, .note-wayfinder__row)
@@ -866,50 +1314,43 @@ details[open] > summary > .note-wayfinder__chevron {
     height: 1px;
     background: var(--color-rule);
   }
+
+  .note-wayfinder:not(:has(> *)) {
+    display: none;
+  }
 }
 
-/* The wide rail already has its own contents and the live graph; what is
-   left is the folder browser, and there it is a rail section like the
-   others — a mono label, the path beneath in rail type, a chevron — not a
-   card set into a column of plain sections. */
-@media (width >= 78rem) {
+/* The wide rail: the folder browser as a rail section — its name, the path
+   beneath it, a chevron — not a box set into a column of plain sections. */
+@media (min-width: 64rem) {
   .note-context .note-wayfinder {
     flex-shrink: 0;
   }
 
-  /* Ruled off like any rail section; the graph and the contents already
-     draw a rule along their own bottom edges. */
-  .note-links + .note-wayfinder {
-    margin-top: 1.4rem;
-    padding-top: 1.25rem;
+  .note-context__inner > * + .note-wayfinder:has(.note-explorer) {
+    margin-top: 22px;
+    padding-top: 20px;
     border-top: 1px solid var(--color-rule);
   }
 
-  /* Hover lifts the words, as the rail's other links do — no tinted box,
-     which the rail's clipped edge would cut short anyway. */
   .note-explorer__summary.note-wayfinder__row,
   .note-explorer__summary.note-wayfinder__row:is(:hover, :active) {
     grid-template-columns: minmax(0, 1fr) 1rem;
     align-items: start;
     min-height: 0;
-    padding: 0.25rem 0;
+    padding: 2px 0;
     background: none;
   }
 
   .note-explorer__summary.note-wayfinder__row:is(:hover, :focus-visible)
-    :is(.note-wayfinder__title, .note-wayfinder__affordance) {
+    .note-wayfinder__affordance {
     color: var(--color-text-primary);
     opacity: 1;
   }
 
-  .note-explorer__summary.note-wayfinder__row:is(:hover, :focus-visible)
-    .note-wayfinder__meta {
-    color: var(--color-text-secondary);
-  }
-
   .note-explorer__summary.note-wayfinder__row:focus-visible {
     outline-offset: 3px;
-    border-radius: var(--radius-sm);
+    border-radius: 6px;
   }
 
   .note-explorer__summary .note-wayfinder__icon {
@@ -917,39 +1358,35 @@ details[open] > summary > .note-wayfinder__chevron {
   }
 
   .note-explorer__summary .note-wayfinder__text {
-    gap: 0.55rem;
+    gap: 4px;
   }
 
   .note-explorer__summary .note-wayfinder__title {
-    color: var(--color-text-secondary);
-    font: 500 0.7rem var(--font-mono);
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font-size: 0.875rem;
   }
 
   .note-explorer__summary .note-wayfinder__meta {
-    color: var(--color-text-muted);
-    font: 0.8125rem / 1.45 var(--font-body);
-    letter-spacing: 0;
+    font-size: 0.8125rem;
   }
 
   .note-explorer__summary .note-wayfinder__affordance {
-    margin-top: -0.1rem;
+    margin-top: 1px;
   }
 
   .note-wayfinder .note-explorer__scroll {
-    margin-top: 0.35rem;
+    margin: 8px 0 0 -6px;
     padding: 0;
     border-top: 0;
   }
 
   .note-wayfinder .note-explorer__references {
-    margin: 0.8rem 0 0;
+    margin: 12px 0 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .note-wayfinder__affordance {
+  .note-wayfinder__affordance,
+  .note-toc__link::before {
     transition: none;
   }
 }
@@ -960,18 +1397,18 @@ details[open] > summary > .note-wayfinder__chevron {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.625rem;
-  margin: 0 0 var(--space-md);
-  padding: 0.625rem 0.875rem;
+  gap: 4px 10px;
+  margin: 0 0 32px;
+  padding: 10px 14px;
   border: 1px dashed color-mix(in srgb, var(--color-brand) 55%, transparent);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--color-brand) 9%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-brand) 8%, transparent);
   color: var(--color-text-secondary);
-  font-size: var(--text-sm);
+  font-size: 0.9375rem;
   line-height: 1.5;
 }
 
 .draft-banner strong {
   color: var(--color-brand-strong);
-  font-weight: 700;
+  font-weight: 600;
 }

@@ -3,7 +3,7 @@
 .note-explorer {
   min-width: 0;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.4;
 }
 
@@ -42,7 +42,7 @@
   padding: 0.25rem 0.375rem;
   margin-block: 1px;
   padding-left: calc(0.375rem + var(--note-indent, 0px));
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   color: var(--color-text-secondary);
   text-decoration: none;
   transition:
@@ -66,14 +66,29 @@ summary.note-explorer__row::-webkit-details-marker {
   display: none;
 }
 
-.note-explorer__row:hover {
-  background: var(--color-overlay-soft);
-  color: var(--color-text-primary);
+@media (hover: hover) and (pointer: fine) {
+  .note-explorer__row:hover {
+    background: var(--color-overlay-soft);
+    color: var(--color-text-primary);
+  }
 }
 
+/* The page you are on: ink, with the accent mark the contents use. */
 .note-explorer__row.is-current {
-  background: var(--color-overlay-soft);
-  color: var(--color-text-interactive);
+  position: relative;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.note-explorer__row.is-current::before {
+  content: '';
+  position: absolute;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
 }
 
 .note-explorer__row a,
@@ -172,7 +187,7 @@ summary.note-explorer__row::-webkit-details-marker {
 }
 
 /* The page owns scrolling on narrow screens: no nested swipe trap. */
-@media (width < 78rem) {
+@media (width < 64rem) {
   .note-explorer__scroll {
     max-height: none;
     overflow: visible;

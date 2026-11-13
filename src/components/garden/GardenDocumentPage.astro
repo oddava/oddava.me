@@ -14,6 +14,7 @@ import InteractiveGraph from './InteractiveGraph';
 import { deriveNoteGraph } from '@lib/garden/graph';
 import '../../styles/components/_note-prose.css';
 import NotePageIcon from '../NotePageIcon';
+import NoteCard from './NoteCard.astro';
 import { notesIndexUrl } from '@lib/notes-url';
 
 interface Props {
@@ -42,6 +43,31 @@ if (bodyProvidesTitleHeading(document.body)) {
   }
 }
 const isStub = !rendered.html && document.childIds.length === 0;
+
+// Where the note lives: the folder it sits in, linked, unless that is the
+// root (every note is in the notes).
+const parent = document.parentId
+  ? index.byId.get(document.parentId)
+  : undefined;
+const folder = parent && parent.id !== index.root.id ? parent : undefined;
+
+// A folder's note is its folder page: what is inside follows its own words.
+// The root's pages are the landing's business, so it never lists them here.
+const pages = isRoot
+  ? []
+  : document.childIds.flatMap((id) => {
+      const child = index.byId.get(id);
+      return child ? [child] : [];
+    });
+
+// Notes that link here, newest first; read from the public index, so a draft
+// that links here never shows.
+const backlinks = document.backlinks
+  .flatMap((id) => {
+    const source = index.byId.get(id);
+    return source && source.id !== document.id ? [source] : [];
+  })
+  .toSorted((left, right) => right.updated.localeCompare(left.updated));
 ---
 
 <div class="garden-document-layout">
@@ -95,6 +121,26 @@ const isStub = !rendered.html && document.childIds.length === 0;
       )
     }
     {
+      !isRoot && (
+        <p class="garden-document__tended">
+          {folder && (
+            <span>
+              in{' '}
+              <a class="link" href={folder.href}>
+                {folder.title}
+              </a>
+            </span>
+          )}
+          <span>
+            edited{' '}
+            <time datetime={document.updated}>
+              {formatNoteDate(document.updated)}
+            </time>
+          </span>
+        </p>
+      )
+    }
+    {
       bodyHtml && (
         <div
           class:list={[
@@ -114,13 +160,50 @@ const isStub = !rendered.html && document.childIds.length === 0;
       )
     }
     {
-      !isRoot && (
-        <p class="garden-document__tended">
-          edited{' '}
-          <time datetime={document.updated}>
-            {formatNoteDate(document.updated)}
-          </time>
-        </p>
+      pages.length > 0 && (
+        <section
+          class="garden-document__pages"
+          aria-labelledby="note-pages-heading"
+        >
+          <h2 class="notes-label" id="note-pages-heading">
+            in this folder
+            <span class="notes-label__count">{pages.length}</span>
+          </h2>
+          <ol class="note-list" role="list">
+            {pages.map((note) => (
+              <NoteCard {note} {index} showFolder={false} />
+            ))}
+          </ol>
+        </section>
+      )
+    }
+    {
+      backlinks.length > 0 && (
+        <section
+          class="garden-document__backlinks"
+          aria-labelledby="note-backlinks-heading"
+        >
+          <h2 class="notes-label" id="note-backlinks-heading">
+            linked from
+            <span class="notes-label__count">{backlinks.length}</span>
+          </h2>
+          <ul class="note-backlinks" role="list">
+            {backlinks.map((source) => (
+              <li>
+                <a class="note-backlink" href={source.href}>
+                  <span class="note-backlink__title">{source.title}</span>
+                  {source.summary &&
+                    source.summary.trim().toLowerCase() !==
+                      source.title.trim().toLowerCase() && (
+                      <span class="note-backlink__summary">
+                        {source.summary}
+                      </span>
+                    )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
       )
     }
   </article>

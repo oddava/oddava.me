@@ -1,0 +1,34 @@
+---
+/**
+ * A note's icon at list size: its own image or emoji when it has one, else a
+ * quiet line glyph (a page, or a folder for a note with pages inside) drawn
+ * like the header's icons. Always the same box, so titles line up.
+ */
+import { isEmojiIcon, isImageIcon } from '@lib/content/noteIcon';
+import SamsungEmoji from '../SamsungEmoji';
+
+interface Props {
+  icon?: string;
+  folder?: boolean;
+}
+
+const { icon = '', folder = false } = Astro.props;
+---
+
+<span class="note-list-icon" aria-hidden="true">
+  {
+    isImageIcon(icon) ? (
+      <img src={icon} alt="" width="20" height="20" loading="lazy" />
+    ) : isEmojiIcon(icon) ? (
+      <SamsungEmoji emoji={icon} />
+    ) : folder ? (
+      <svg viewBox="0 0 20 20" class="note-list-icon__glyph">
+        <path d="M3 6.25C3 5.28 3.78 4.5 4.75 4.5h3.1l1.9 2h5.5c.97 0 1.75.78 1.75 1.75v6c0 .97-.78 1.75-1.75 1.75H4.75C3.78 16 3 15.22 3 14.25Z" />
+      </svg>
+    ) : (
+      <svg viewBox="0 0 20 20" class="note-list-icon__glyph">
+        <path d="M5.5 3h6l3.5 3.5V17h-9.5Z M11.5 3v3.5H15 M8 10.5h4.5 M8 13.5h4.5" />
+      </svg>
+    )
+  }
+</span>

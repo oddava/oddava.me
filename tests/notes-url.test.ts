@@ -8,6 +8,7 @@ import {
   NOTES_DEFAULT_BASE,
   NOTES_ROUTE_PREFIX,
   notesFolderUrl,
+  notesGraphUrl,
   notesIndexUrl,
   notesTagUrl,
   noteUrl,
@@ -49,6 +50,14 @@ describe('notes URL helper (default base)', () => {
     expect(notesFolderUrl('reading')).toBe('/notes/folder/reading');
     expect(notesFolderUrl('reading/my books')).toBe(
       '/notes/folder/reading/my%20books',
+    );
+  });
+
+  it('builds the graph page URL', () => {
+    expect(notesGraphUrl()).toBe('/notes/graph');
+    expect(createNotesUrls('').graph()).toBe('/graph');
+    expect(createNotesUrls('https://notes.oddava.me').graph()).toBe(
+      'https://notes.oddava.me/graph',
     );
   });
 

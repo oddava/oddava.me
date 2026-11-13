@@ -1,8 +1,9 @@
 /* ===================================================
-   PORTFOLIO — the shell shared by home, about and projects, and by the
-   admin cabinet (dashboard, sign-in), which is built on it. Imported by
-   src/layouts/Portfolio.astro, src/layouts/Cabinet.astro and the 404's
-   scoped header. Every rule is scoped to data-site="portfolio".
+   PORTFOLIO — the shell shared by home, about and projects, by the notes
+   pages, and by the admin cabinet (dashboard, sign-in), which are built on
+   it. Imported by src/layouts/Portfolio.astro, src/layouts/NotesLayout.astro
+   (with _notes.css on top), src/layouts/Cabinet.astro and the 404's scoped
+   header. Every rule is scoped to data-site="portfolio".
    =================================================== */
 
 @import './_tokens.css';

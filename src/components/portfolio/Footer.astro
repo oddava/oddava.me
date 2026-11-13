@@ -3,6 +3,10 @@
  * Portfolio footer: a hairline, then the off-site contacts and the feed,
  * each with a small glyph so a one-letter label like "x" reads as a link,
  * not a separator. The glyphs are decorative; the label is the name.
+ *
+ * The notes pages share it without the visitor line (`pulse={false}`): the
+ * pulse counts visits to the personal site, and on the notes host its API
+ * is not served at all.
  */
 import linksData from '../../data/links.json';
 import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
@@ -13,6 +17,12 @@ type Glyph = 'github' | 'twitter' | 'mail' | 'rss';
 const contacts = linksData.links.flatMap(({ url, title, icon }) =>
   url && !url.startsWith('/') ? [{ url, title, icon: icon as Glyph }] : [],
 );
+interface Props {
+  pulse?: boolean;
+}
+
+const { pulse = true } = Astro.props;
+
 const links = [
   ...contacts,
   { url: '/rss.xml', title: 'rss', icon: 'rss' as Glyph },
@@ -62,6 +72,6 @@ const links = [
         })
       }
     </nav>
-    <VisitorPulse />
+    {pulse && <VisitorPulse />}
   </div>
 </footer>

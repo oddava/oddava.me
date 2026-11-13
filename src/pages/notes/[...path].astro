@@ -1,5 +1,5 @@
 ---
-import NotesShell from '../../components/garden/NotesShell.astro';
+import NotesLayout from '../../layouts/NotesLayout.astro';
 import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
 import {
   decidePublicNote,
@@ -8,12 +8,14 @@ import {
   readPublicNoteRetirement,
 } from '@lib/garden';
 import { isAdminRequest } from '@lib/server/admin';
+import { registerPortfolioCsp } from '@lib/portfolio/csp';
 import { noteSocialCardImage } from '@lib/garden/og-card';
 import { resolveNoteSocialImage } from '@lib/garden/utils';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
 import { notesIndexUrl } from '@lib/notes-url';
 import '../../styles/components/_garden.css';
-import '../../styles/components/_status-page.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 const requestedPath = Astro.params.path ?? '';
 
@@ -83,26 +85,23 @@ const description = document
 
 {
   removed || !document ? (
-    <NotesShell title="Note removed" {description}>
+    <NotesLayout title="Note removed" {description}>
       <meta slot="head" name="robots" content="noindex" />
-      <section class="status-page">
-        <h1>410</h1>
-        <p class="status-page__copy">
+      <section class="pf-column">
+        <h1 class="pf-title">410</h1>
+        <p class="notes-gone__copy">
           this note was removed. the link was real — the page is gone on
           purpose, not a typo.
         </p>
-        <ul class="status-page__links">
-          <li>
-            <a href="/">home</a>
-          </li>
+        <ul class="notes-gone__links">
           <li>
             <a href={notesIndexUrl()}>notes</a>
           </li>
         </ul>
       </section>
-    </NotesShell>
+    </NotesLayout>
   ) : (
-    <NotesShell
+    <NotesLayout
       title={document.title}
       {description}
       image={socialImage?.src}
@@ -121,6 +120,6 @@ const description = document
         )}
         <GardenDocumentPage document={document} index={index} />
       </div>
-    </NotesShell>
+    </NotesLayout>
   )
 }

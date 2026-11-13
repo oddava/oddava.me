@@ -75,6 +75,9 @@ export default function NoteSearch() {
     'idle',
   );
   const restoreFocus = useRef(false);
+  // What opened the dialog, so closing hands focus back to it: the header
+  // trigger, or a page's own search button (`data-note-search-open`).
+  const opener = useRef<HTMLElement | null>(null);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -134,7 +137,11 @@ export default function NoteSearch() {
       inputRef.current?.focus({ preventScroll: true });
       restoreFocus.current = true;
     } else if (!open && restoreFocus.current) {
-      triggerRef.current?.focus({ preventScroll: true });
+      const target = opener.current?.isConnected
+        ? opener.current
+        : triggerRef.current;
+      target?.focus({ preventScroll: true });
+      opener.current = null;
       restoreFocus.current = false;
     }
   }, [open, closing]);
@@ -224,6 +231,23 @@ export default function NoteSearch() {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // A page may offer its own way in (the notes landing's search button): any
+  // `[data-note-search-open]` element opens this one dialog.
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      if (openRef.current || !(event.target instanceof Element)) return;
+      const button = event.target.closest<HTMLElement>(
+        '[data-note-search-open]',
+      );
+      if (!button) return;
+      event.preventDefault();
+      opener.current = button;
+      openSearch();
+    }
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
   }, []);
 
   // Dismiss on outside pointer / Escape handled in the input covers Escape

@@ -1,29 +1,190 @@
 ---
-import NotesShell from '../../components/garden/NotesShell.astro';
-import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro';
-import { getGardenIndexOrUnavailable } from '@lib/garden';
+/**
+ * The notes landing: the root note's own words, then ways in. Recent notes as
+ * a hairline list, the folders, the tags, and the doors to search and the
+ * graph. Everything here is read from the public index, so drafts never
+ * appear.
+ */
+import NotesLayout from '../../layouts/NotesLayout.astro';
+import NoteCard from '../../components/garden/NoteCard.astro';
+import NoteListIcon from '../../components/garden/NoteListIcon.astro';
+import NotePageIcon from '../../components/NotePageIcon';
+import { registerPortfolioCsp } from '@lib/portfolio/csp';
+import { getGardenIndexOrUnavailable, type GardenDocument } from '@lib/garden';
 import { noteSocialCardImage } from '@lib/garden/og-card';
-import { deriveNoteSocialImage } from '@lib/garden/utils';
+import { renderNote } from '@lib/garden/render';
+import {
+  bodyProvidesTitleHeading,
+  deriveNoteSocialImage,
+  formatNoteDate,
+} from '@lib/garden/utils';
+import { notesGraphUrl, notesTagUrl } from '@lib/notes-url';
 import { NOTES_DESCRIPTION } from '@lib/site';
+import '../../styles/components/_note-prose.css';
 import '../../styles/components/_garden.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
+const root = index.root;
 const socialImage =
-  deriveNoteSocialImage(index.root.body) ?? noteSocialCardImage(index.root);
+  deriveNoteSocialImage(root.body) ?? noteSocialCardImage(root);
+
+// The root note's body is the introduction. Its own `# title`, when it opens
+// with one, becomes the page title, as on every note page.
+let intro = root.body.trim()
+  ? renderNote(root.body, { wikiLinkHrefs: index.wikiLinkHrefs }).html
+  : '';
+if (bodyProvidesTitleHeading(root.body)) {
+  const titleEnd = intro.indexOf('</h1>');
+  if (titleEnd >= 0) intro = intro.slice(titleEnd + '</h1>'.length).trim();
+}
+
+const notes = index.documents.filter((note) => note.id !== root.id);
+const RECENT = 8;
+const recent = notes
+  .toSorted((left, right) => right.updated.localeCompare(left.updated))
+  .slice(0, RECENT);
+
+// A folder is a top-level note with pages inside. Its count is everything
+// beneath it, at any depth.
+function descendants(note: GardenDocument): number {
+  return note.childIds.reduce((total, id) => {
+    const child = index.byId.get(id);
+    return child ? total + 1 + descendants(child) : total;
+  }, 0);
+}
+const folders = root.childIds.flatMap((id) => {
+  const note = index.byId.get(id);
+  return note && note.childIds.length > 0
+    ? [{ note, count: descendants(note) }]
+    : [];
+});
+
+const tagCounts = new Map<string, number>();
+for (const note of notes) {
+  for (const tag of note.tags)
+    tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+}
+const tags = [...tagCounts].toSorted(
+  ([leftTag, left], [rightTag, right]) =>
+    right - left || leftTag.localeCompare(rightTag),
+);
 ---
 
-<NotesShell
+<NotesLayout
   title="Notes"
   description={NOTES_DESCRIPTION}
   image={socialImage.src}
   imageAlt={socialImage.alt}
   type="article"
-  modifiedTime={index.root.updated}
-  wide
+  modifiedTime={root.updated}
 >
-  <div class="garden-page">
-    <GardenDocumentPage document={index.root} index={index} />
+  <div class="pf-column notes-home">
+    <header class="notes-home__head">
+      <NotePageIcon icon={root.data.icon} />
+      <h1 class="pf-title">{root.title}</h1>
+      {intro && <div class="prose notes-home__intro" set:html={intro} />}
+      <nav class="notes-ways" aria-label="ways into the notes">
+        <button
+          class="notes-way press"
+          type="button"
+          data-note-search-open
+          aria-haspopup="dialog"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="4.75"></circle>
+            <path d="m12.1 12.1 4.15 4.15"></path>
+          </svg>
+          search
+          <kbd class="notes-way__key" aria-hidden="true">/</kbd>
+        </button>
+        <a class="notes-way press" href={notesGraphUrl()}>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="5" cy="6" r="1.75"></circle>
+            <circle cx="14.5" cy="5" r="1.75"></circle>
+            <circle cx="10" cy="14.5" r="1.75"></circle>
+            <path d="M6.6 6.9 8.9 13M12.9 5.6 6.75 6M13.6 6.6 10.9 12.9"></path>
+          </svg>
+          graph
+        </a>
+        <a class="notes-way press" href="/rss.xml">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M4.5 9.5a6 6 0 0 1 6 6M4.5 4.5a11 11 0 0 1 11 11"></path>
+            <circle cx="5.25" cy="14.75" r="1.1"></circle>
+          </svg>
+          rss
+        </a>
+      </nav>
+    </header>
+
+    {
+      recent.length > 0 && (
+        <section class="notes-section" aria-labelledby="notes-recent">
+          <div class="notes-section__head">
+            <h2 id="notes-recent">recently tended</h2>
+            <p class="notes-section__aside">
+              {notes.length} {notes.length === 1 ? 'note' : 'notes'}
+            </p>
+          </div>
+          <ol class="note-list" role="list">
+            {recent.map((note) => (
+              <NoteCard {note} {index} />
+            ))}
+          </ol>
+        </section>
+      )
+    }
+
+    {
+      folders.length > 0 && (
+        <section class="notes-section" aria-labelledby="notes-folders">
+          <div class="notes-section__head">
+            <h2 id="notes-folders">folders</h2>
+          </div>
+          <ul class="note-folders" role="list">
+            {folders.map(({ note, count }) => (
+              <li class="note-folder">
+                <NoteListIcon icon={note.data.icon} folder />
+                <a class="note-folder__link" href={note.href}>
+                  {note.title}
+                  <span class="pf-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </a>
+                <span class="note-folder__count">
+                  {count} {count === 1 ? 'note' : 'notes'}
+                </span>
+                <time class="note-folder__date" datetime={note.updated}>
+                  {formatNoteDate(note.updated, 'short')}
+                </time>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      tags.length > 0 && (
+        <section class="notes-section" aria-labelledby="notes-tags">
+          <div class="notes-section__head">
+            <h2 id="notes-tags">tags</h2>
+          </div>
+          <ul class="note-tags" role="list">
+            {tags.map(([tag, count]) => (
+              <li>
+                <a class="note-tag-chip" href={notesTagUrl(tag)}>
+                  #{tag}
+                  <span class="note-tag-chip__count">{count}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
   </div>
-</NotesShell>
+</NotesLayout>

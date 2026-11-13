@@ -1,0 +1,167 @@
+/* ===================================================
+   PORTFOLIO — the notes pages' additions to the shell
+
+   The notes pages (NotesLayout: the landing, every note, tags, the graph,
+   on the apex and on the notes host) are portfolio pages carrying one more
+   attribute: <html data-site="portfolio" data-notes>. Everything here is
+   scoped to that attribute, so home, about, projects and the admin cabinet
+   never see it. The notes' own components keep their stylesheets
+   (components/_garden.css and friends), written against the site's colour
+   roles, which the portfolio tokens already point at the theme and ink.
+   =================================================== */
+
+/* ---- Colour roles the portfolio tokens do not define -------------------
+   The rendered note (callouts, code, the graph) reads a few roles the
+   portfolio pages never needed. Without these they fall back to the old
+   dark site's values, which are unreadable on the light theme. */
+
+:root[data-notes] {
+  --color-text-warning: #855400;
+  --color-text-disabled: #6b737e;
+  --color-text-on-accent: var(--on-accent);
+  --note-code-bg: var(--surface-2);
+}
+
+:root[data-notes][data-theme='dark'] {
+  --color-text-warning: #f5d08c;
+  --color-text-disabled: #8a929d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-notes][data-theme='system'] {
+    --color-text-warning: #f5d08c;
+    --color-text-disabled: #8a929d;
+  }
+}
+
+/* ---- What the old site reset did for these pages ----------------------- */
+
+[data-notes] :where(h4, h5, h6, blockquote, dl, dd, pre, details, summary) {
+  margin: 0;
+}
+
+[data-notes] :where(button, input) {
+  font: inherit;
+  color: inherit;
+}
+
+[data-notes] :where(summary) {
+  list-style: none;
+}
+
+[data-notes] :where(summary)::-webkit-details-marker {
+  display: none;
+}
+
+[data-notes] :where(img) {
+  max-width: 100%;
+}
+
+/* ---- Header: notes is where you are, search beside the appearance ----- */
+
+/* Inside the notes, the notes link wears the current page's wave on every
+   page, not only on the landing. */
+[data-notes] .pf-nav a[aria-current='true'] {
+  color: var(--ink);
+  text-decoration: underline wavy var(--accent) 1.5px;
+  text-underline-offset: 0.3em;
+}
+
+/* The search trigger is drawn like the appearance icon beside it: the nav's
+   grey, one line weight, no box; the 44px button is only the hit area. */
+[data-notes] .pf-header .note-search__trigger {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: max(44px, 2.75rem);
+  height: max(44px, 2.75rem);
+  margin: 0;
+  border-radius: 8px;
+  color: var(--ink-2);
+  transition: color 120ms ease;
+}
+
+[data-notes] .pf-header .note-search__trigger svg {
+  width: 1.1875rem;
+  height: 1.1875rem;
+  stroke-width: 1.5;
+}
+
+[data-notes] .pf-header .note-search__trigger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-notes] .pf-header .note-search__trigger:hover {
+    color: var(--ink);
+  }
+}
+
+/* A phone row holds the wordmark, three links and two icons; the links give
+   up a little padding so both 44px icons stay whole on screen. */
+@media (max-width: 40em) {
+  [data-notes] .pf-nav a {
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 22.5em) {
+  [data-notes] .pf-nav a {
+    padding: 0 3px;
+  }
+  [data-notes] .pf-header .note-search__trigger {
+    width: 36px;
+  }
+}
+
+/* ---- Page frame ---------------------------------------------------------- */
+
+/* The notes sit a little closer under the header than the portfolio's big
+   opening, and land on a phone's sticky bar without hiding headings under
+   it. */
+@media (min-width: 55em) {
+  [data-notes] .notes-main {
+    margin-top: calc(80px * var(--d));
+  }
+}
+
+[data-notes] .prose :is(h2, h3, h4),
+[data-notes] .prose .footnotes li {
+  scroll-margin-top: 1.5rem;
+}
+
+@media (max-width: 40em) {
+  [data-notes] .prose :is(h2, h3, h4),
+  [data-notes] .prose .footnotes li {
+    scroll-margin-top: 4.75rem;
+  }
+}
+
+/* "← notes": the way back from a tag or the graph. */
+[data-notes] .notes-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 4px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+[data-notes] a.notes-back {
+  margin: 0 0 4px -0.2em;
+  padding: 0 0.2em;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-notes] .notes-back:hover {
+    color: var(--accent);
+  }
+}
+
+/* The search field shows focus with its own accent underline; the shell's
+   ring around the bare input inside it would draw a second, inner box. */
+[data-notes] .note-search__field input:focus-visible {
+  outline: none;
+}

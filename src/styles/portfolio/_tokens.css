@@ -1,10 +1,11 @@
 /* ===================================================
-   PORTFOLIO — tokens (home, about, projects only)
+   PORTFOLIO — tokens
 
-   Everything here is scoped to <html data-site="portfolio">, which only the
-   Portfolio layout and the admin cabinet (Cabinet.astro: dashboard and
-   sign-in) render. The notes host and Studio never carry the attribute, so
-   none of this can reach them.
+   Everything here is scoped to <html data-site="portfolio">, which the
+   Portfolio layout (home, about, projects), the notes pages (NotesLayout, on
+   the apex and the notes host) and the admin cabinet (Cabinet.astro:
+   dashboard and sign-in) render. Studio and the remaining Base pages never
+   carry the attribute, so none of this can reach them.
    =================================================== */
 
 @font-face {

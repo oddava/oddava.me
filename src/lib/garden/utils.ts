@@ -139,15 +139,27 @@ const NOTE_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
+// The same day in a list row, where the long month would crowd the title.
+const NOTE_DATE_SHORT = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
 // Machine-readable timestamps stay in the `datetime` attribute; this is only
 // the visible label. Unparseable input falls back to the raw ISO day rather
 // than rendering "Invalid Date".
-export function formatNoteDate(value: string): string {
+export function formatNoteDate(
+  value: string,
+  style: 'long' | 'short' = 'long',
+): string {
   const isoDay = value.slice(0, 10);
   const parsed = new Date(`${isoDay}T00:00:00Z`);
-  return Number.isNaN(parsed.getTime())
-    ? isoDay
-    : NOTE_DATE_FORMAT.format(parsed);
+  if (Number.isNaN(parsed.getTime())) return isoDay;
+  return (style === 'short' ? NOTE_DATE_SHORT : NOTE_DATE_FORMAT).format(
+    parsed,
+  );
 }
 
 function extractInlineTags(body: string): string[] {

@@ -1,15 +1,30 @@
 ---
 /**
  * Portfolio header: the wordmark home, then projects, about and notes, then
- * the appearance icon. Notes is the separate notes site, so it is a plain
- * outbound link (a new tab when it is on another origin) and never the
- * current page here. The sky is left out on purpose: it is an easter egg,
+ * the appearance icon. The sky is left out on purpose: it is an easter egg,
  * reached through the footer's visitor line.
+ *
+ * On the portfolio pages notes is the separate notes site, so it is a plain
+ * outbound link (a new tab when it is on another origin) and never the
+ * current page. The notes pages wear this same header (NotesLayout): there
+ * `section="notes"` marks notes as where you are, `origin` points the other
+ * links back at the personal site when the page is served on the notes host,
+ * and the `tools` slot holds note search beside the appearance icon.
  */
 import LoadingIndicator from '../LoadingIndicator.astro';
 import AppearanceControl from './AppearanceControl.astro';
-import { notesIndexUrl } from '../../lib/notes-url';
+import { NOTES_ROUTE_PREFIX, notesIndexUrl } from '../../lib/notes-url';
 import { externalLinkAttrs } from '../../lib/portfolio/links';
+
+interface Props {
+  /** Prefix for the personal site's own pages: '' on the apex. */
+  origin?: string;
+  /** The notes pages set this; the portfolio pages leave it unset. */
+  section?: 'notes';
+}
+
+const { origin = '', section } = Astro.props;
+const inNotes = section === 'notes';
 
 const pathname =
   Astro.url.pathname.replace(/(?:\/index)?\.html$|\/$/, '') || '/';
@@ -20,13 +35,26 @@ const pages = [
 ] as const;
 
 const current = (href: string) =>
-  pathname === href ? ('page' as const) : undefined;
+  !inNotes && pathname === href ? ('page' as const) : undefined;
+
+const notesHref = notesIndexUrl();
+// On a notes page the link is where you are: the index itself, or a page
+// inside the notes (`true`, styled the same). The pathname is the app's route
+// on either host (`/notes`), whatever URL the visitor sees.
+const notesCurrent = inNotes
+  ? pathname === NOTES_ROUTE_PREFIX
+    ? ('page' as const)
+    : ('true' as const)
+  : undefined;
+const notesAttrs: ReturnType<typeof externalLinkAttrs> = inNotes
+  ? {}
+  : externalLinkAttrs(notesHref);
 ---
 
 <header class="pf-header">
   <a
     class="pf-mark"
-    href="/"
+    href={`${origin}/`}
     aria-current={current('/')}
     data-page-preview-ignore>oddava</a
   >
@@ -35,7 +63,7 @@ const current = (href: string) =>
       {
         pages.map((page) => (
           <a
-            href={page.href}
+            href={`${origin}${page.href}`}
             aria-current={current(page.href)}
             data-page-preview-ignore
           >
@@ -44,17 +72,17 @@ const current = (href: string) =>
         ))
       }
       <a
-        href={notesIndexUrl()}
-        {...externalLinkAttrs(notesIndexUrl())}
+        href={notesHref}
+        {...notesAttrs}
+        aria-current={notesCurrent}
         data-page-preview-ignore
       >
         notes{
-          externalLinkAttrs(notesIndexUrl()).target && (
-            <span class="sr-only"> (opens in new tab)</span>
-          )
+          notesAttrs.target && <span class="sr-only"> (opens in new tab)</span>
         }
       </a>
     </nav>
+    <slot name="tools" />
     <AppearanceControl />
   </div>
   <LoadingIndicator />

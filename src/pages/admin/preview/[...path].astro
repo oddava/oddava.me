@@ -8,12 +8,15 @@
  * session, and Studio's "Preview draft" links point at it (see
  * src/lib/note-preview-url.ts).
  */
-import NotesShell from '../../../components/garden/NotesShell.astro';
+import NotesLayout from '../../../layouts/NotesLayout.astro';
 import GardenDocumentPage from '../../../components/garden/GardenDocumentPage.astro';
+import { registerPortfolioCsp } from '@lib/portfolio/csp';
 import { getGardenIndexOrUnavailable, isDraftNote } from '@lib/garden';
 import { requireAdminPage } from '@lib/server/admin';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
 import '../../../styles/components/_garden.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 const denied = await requireAdminPage(Astro.cookies, Astro.url);
 if (denied) return denied;
@@ -33,7 +36,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 ---
 
-<NotesShell
+<NotesLayout
   title={document.title}
   description={document.summary || NOTE_FALLBACK_DESCRIPTION}
   type="article"
@@ -52,4 +55,4 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     }
     <GardenDocumentPage document={document} index={owner.index} />
   </div>
-</NotesShell>
+</NotesLayout>

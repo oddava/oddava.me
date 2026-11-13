@@ -1,7 +1,8 @@
 /* ===================================================
    PORTFOLIO — moving between pages
 
-   Home, about and projects cross-fade into each other (a cross-document
+   Home, about, projects and the notes pages cross-fade into each other (a
+   cross-document
    view transition) instead of blanking between loads. The fade is the
    browser's own, synchronised, so whatever is identical on both pages — the
    header, the footer, the canvas — stays perfectly still and only what
@@ -10,10 +11,12 @@
    appearance panel under the page and stop the phone header's glass from
    blurring.
 
-   Both documents must opt in. This file reaches the portfolio pages and,
-   through ScopedHeader's import, the 404; the notes site, Studio and the
-   admin never load it, so jumps there stay plain page loads. Off entirely
-   under reduced motion.
+   Both documents must opt in, and a view transition never crosses origins:
+   on the notes host the notes fade among themselves, and a jump to the
+   apex is a plain load. This file reaches the portfolio pages, the notes
+   pages (NotesLayout) and, through ScopedHeader's import, the 404; Studio
+   never loads it, so jumps there stay plain page loads. Off entirely under
+   reduced motion.
    =================================================== */
 
 @media (prefers-reduced-motion: no-preference) {

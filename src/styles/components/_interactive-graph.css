@@ -222,7 +222,7 @@ body:has(.interactive-graph__panel:modal) {
   inset: 45% 0 auto;
   text-align: center;
   color: var(--color-text-muted);
-  font: 1rem var(--font-mono);
+  font: 1rem var(--font-body);
   letter-spacing: 0.2em;
   pointer-events: none;
 }

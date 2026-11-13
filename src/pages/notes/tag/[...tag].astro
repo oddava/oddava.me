@@ -1,39 +1,44 @@
 ---
-import NotesShell from '../../../components/garden/NotesShell.astro';
+import NotesLayout from '../../../layouts/NotesLayout.astro';
 import NoteCard from '../../../components/garden/NoteCard.astro';
+import { registerPortfolioCsp } from '@lib/portfolio/csp';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { notesIndexUrl } from '@lib/notes-url';
 import '../../../styles/components/_garden.css';
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
 const index = garden.index;
 
 const tag = Astro.params.tag ?? '';
-const notes = index.documents.filter((note) => note.tags.includes(tag));
+const notes = index.documents
+  .filter((note) => note.tags.includes(tag))
+  .toSorted((left, right) => right.updated.localeCompare(left.updated));
 
 // A tag nothing carries is not a page — it is a 404, not an empty list.
 if (notes.length === 0) return Astro.rewrite('/404');
 ---
 
-<NotesShell
+<NotesLayout
   title={`Notes tagged #${tag}`}
   description={`Every note by oddava tagged #${tag}.`}
-  wide
 >
-  <div class="garden-page">
-    <div class="garden-index garden-index--topic">
-      <header class="garden-topic-header">
-        <a href={notesIndexUrl()} class="garden-topic-header__back">← notes</a>
-        <h1>#{tag}</h1>
-        <p>a few pages i’ve kept under this word.</p>
-      </header>
+  <div class="pf-column notes-topic">
+    <header class="notes-topic__head">
+      <a class="notes-back" href={notesIndexUrl()}>← notes</a>
+      <h1 class="pf-title">#{tag}</h1>
+      <p class="notes-topic__lede">
+        {notes.length}
+        {notes.length === 1 ? 'note' : 'notes'} kept under this word.
+      </p>
+    </header>
 
-      <section aria-label={`Notes about ${tag}`}>
-        <div class="garden-list">
-          {notes.map((note) => <NoteCard note={note} />)}
-        </div>
-      </section>
-    </div>
+    <section aria-label={`Notes tagged ${tag}`}>
+      <ol class="note-list" role="list">
+        {notes.map((note) => <NoteCard {note} {index} omitTag={tag} />)}
+      </ol>
+    </section>
   </div>
-</NotesShell>
+</NotesLayout>

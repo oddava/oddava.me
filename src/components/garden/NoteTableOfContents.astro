@@ -17,7 +17,7 @@ const { headings, variant } = Astro.props;
       aria-label="In this note"
       data-toc-spy
     >
-      <h2 class="note-context__label">In this note</h2>
+      <h2 class="note-context__label">in this note</h2>
       <ol class="note-toc__list">
         {headings.map((heading) => (
           <li class={`note-toc__item note-toc__item--depth-${heading.depth}`}>
@@ -48,7 +48,7 @@ const { headings, variant } = Astro.props;
           <path d="M8 14.5h5.5" />
         </svg>
         <span class="note-wayfinder__text">
-          <span class="note-wayfinder__title">In this note</span>
+          <span class="note-wayfinder__title">in this note</span>
           <span class="note-wayfinder__meta">{headings.length} sections</span>
         </span>
         <svg

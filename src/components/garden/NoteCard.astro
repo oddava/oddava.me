@@ -1,30 +1,71 @@
 ---
-import type { GardenDocument } from '@lib/garden';
+/**
+ * One note in a list: its icon, title, a line of its opening text, where it
+ * lives and its tags, and when it was last edited. Rows sit between hairlines
+ * (`.note-list`), the way the portfolio lists its projects: no card, no
+ * shadow. The title's link covers the whole row, so the row is the one
+ * target; its tags are words here, and links on the note and the landing.
+ *
+ * Used by the notes landing (recent notes), folder pages (what is inside)
+ * and tag pages (what carries the tag).
+ */
+import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { formatNoteDate } from '@lib/garden/utils';
+import NoteListIcon from './NoteListIcon.astro';
 
 interface Props {
   note: GardenDocument;
+  index: GardenIndex;
+  /** Leave out the folder line where every row shares it (a folder page). */
+  showFolder?: boolean;
+  /** The tag the list is about, left out of each row's own tags. */
+  omitTag?: string;
 }
 
-const { note } = Astro.props;
+const { note, index, showFolder = true, omitTag } = Astro.props;
+
+// A note's summary is its first paragraph; one that only repeats the title
+// says nothing more, so it is left out.
+const excerpt =
+  note.summary.trim().toLowerCase() === note.title.trim().toLowerCase()
+    ? ''
+    : note.summary;
+const parent = note.parentId ? index.byId.get(note.parentId) : undefined;
+const folder = showFolder && parent && parent.id !== index.root.id && parent;
+const tags = note.tags.filter((tag) => tag !== omitTag);
+const pages = note.childIds.length;
 ---
 
-<article class="note-card">
-  <a href={note.href} class="note-card__link">
-    <div class="note-card__copy">
-      <h2 class="note-card__title">{note.title}</h2>
-      {
-        note.childIds.length > 0 && (
-          <small class="note-card__meta">
-            {note.childIds.length}{' '}
-            {note.childIds.length === 1 ? 'page' : 'pages'} within
-          </small>
-        )
-      }
-    </div>
-    <time class="note-card__date" datetime={note.updated}>
-      {formatNoteDate(note.updated)}
-    </time>
-    <span class="note-card__arrow" aria-hidden="true">→</span>
-  </a>
-</article>
+<li class="note-row">
+  <NoteListIcon icon={note.data.icon} folder={pages > 0} />
+  <div class="note-row__body">
+    <h3 class="note-row__title">
+      <a class="note-row__link" href={note.href}>
+        {note.title}<span class="pf-arrow" aria-hidden="true">→</span>
+      </a>
+    </h3>
+    {excerpt && <p class="note-row__excerpt">{excerpt}</p>}
+    {
+      (folder || pages > 0 || tags.length > 0) && (
+        <p class="note-row__meta">
+          {folder && <span>in {folder.title}</span>}
+          {pages > 0 && (
+            <span>
+              {pages} {pages === 1 ? 'page' : 'pages'} inside
+            </span>
+          )}
+          {tags.length > 0 && (
+            <span class="note-row__tags">
+              {tags.map((tag) => (
+                <span>#{tag}</span>
+              ))}
+            </span>
+          )}
+        </p>
+      )
+    }
+  </div>
+  <time class="note-row__date" datetime={note.updated}>
+    {formatNoteDate(note.updated, 'short')}
+  </time>
+</li>

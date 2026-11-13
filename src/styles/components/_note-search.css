@@ -1,6 +1,10 @@
-/* Site-wide note search trigger, placed in the site header on /notes/* pages,
-   and its command-palette overlay. The header (`_site-nav.css`) is a flex row;
-   the trigger sits at the right edge of the 44rem header column. */
+/* Note search: the trigger in the notes pages' header, and its
+   command-palette dialog. On the notes pages (portfolio shell) the dialog is
+   the appearance panel's material: the theme's panel colour, a hairline and
+   the panel shadow, in DM Sans, following light, dark and the ink. Each
+   portfolio token carries the old dark value as its fallback, for any page
+   that shows search without the portfolio tokens. The header trigger's own
+   look on the notes pages is in portfolio/_notes.css. */
 
 .note-search__trigger {
   display: inline-flex;
@@ -48,9 +52,9 @@
   justify-content: center;
   align-items: flex-start;
   padding: clamp(1rem, 8vh, 4rem) var(--page-padding);
-  background: rgb(0 0 0 / 66%);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: var(--scrim, rgb(0 0 0 / 66%));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   overscroll-behavior: contain;
   animation: note-search-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -63,20 +67,17 @@
   display: flex;
   width: min(38rem, 100%);
   max-height: min(72dvh, 36rem);
-  color-scheme: dark;
-  color: #f2f2f2;
+  color: var(--ink, #f2f2f2);
   flex-direction: column;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 20px;
-  background:
-    linear-gradient(145deg, rgb(255 255 255 / 3%), transparent 45%),
-    rgb(5 5 5 / 94%);
-  -webkit-backdrop-filter: blur(28px);
-  backdrop-filter: blur(28px);
-  box-shadow:
+  border: 1px solid var(--line, rgb(255 255 255 / 12%));
+  border-radius: 16px;
+  background: var(--panel, rgb(5 5 5 / 94%));
+  box-shadow: var(
+    --panel-shadow,
     0 32px 100px rgb(0 0 0 / 65%),
-    0 8px 24px rgb(0 0 0 / 40%),
-    inset 0 1px 0 rgb(255 255 255 / 5%);
+    0 8px 24px rgb(0 0 0 / 40%)
+  );
+  font-family: var(--font-body);
   overflow: hidden;
   animation: note-search-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transform-origin: top center;
@@ -132,10 +133,10 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.75rem;
-  min-height: 4.5rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgb(255 255 255 / 7%);
-  color: #929292;
+  min-height: 4rem;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--line, rgb(255 255 255 / 7%));
+  color: var(--ink-2, #929292);
   transition: border-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -164,14 +165,14 @@
   outline: 0;
   width: 100%;
   padding: 0;
-  color: #f2f2f2;
+  color: var(--ink, #f2f2f2);
   background: transparent;
-  font: 1rem / 1.5 var(--font-mono);
+  font: 1.0625rem / 1.5 var(--font-body);
   caret-color: var(--color-brand-strong);
 }
 
 .note-search__field input::placeholder {
-  color: #858585;
+  color: var(--ink-2, #858585);
   opacity: 1;
 }
 
@@ -179,7 +180,7 @@
   margin: 0;
   padding: 0 0.5rem 0.5rem;
   scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+  scrollbar-color: var(--line-2, #333) transparent;
   overscroll-behavior: contain;
   min-height: 0;
   list-style: none;
@@ -204,7 +205,7 @@
 .note-search__result {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  padding: 0.9rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   border-radius: 10px;
   border: 1px solid transparent;
   color: inherit;
@@ -218,8 +219,8 @@
 
 .note-search__result:hover,
 .note-search__result.is-active {
-  background: var(--color-overlay-soft);
-  border-color: color-mix(in srgb, var(--color-brand) 18%, transparent);
+  background: var(--hover, var(--color-overlay-soft));
+  border-color: transparent;
 }
 
 .note-search__result.is-active {
@@ -229,8 +230,8 @@
 .note-search__result-title {
   grid-column: 1;
   overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -239,15 +240,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 0.3rem;
-  color: #999;
-  font-size: var(--text-xs);
+  margin-top: 0.2rem;
+  color: var(--ink-2, #999);
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 
 .note-search__result mark {
-  color: var(--color-brand-strong);
-  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  color: inherit;
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
   border-radius: 2px;
 }
 
@@ -257,10 +258,9 @@ body.note-search-open {
 
 .note-search__status {
   margin: 0;
-  padding: 1rem 1.25rem;
-  color: #999;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  padding: 0.875rem 1.25rem;
+  color: var(--ink-2, #999);
+  font-size: 0.8125rem;
 }
 
 /* Search owns its feedback: animate the input underline inside the dialog. */

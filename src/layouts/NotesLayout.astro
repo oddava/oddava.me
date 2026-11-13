@@ -1,23 +1,46 @@
 ---
 /**
- * The notes garden's own shell, used when a page is served on the notes
- * hostname. Compared with Base: its own header (the `oddava` wordmark, a link
- * back to the personal site, and search), no music widget, no sky, and one
- * font preload. See docs/notes-host.md.
+ * The notes pages' layout, on the apex (`/notes/…`) and on the notes host
+ * alike: a portfolio page in everything but its content. The same frame,
+ * DM Sans, theme and ink (read from the visitor's saved appearance), header,
+ * footer and page cross-fade as home, about and projects, so the notes read
+ * as part of one site. See docs/notes-host.md and docs/portfolio.md.
+ *
+ * `<html data-site="portfolio" data-notes>`: the first attribute brings the
+ * whole portfolio shell; the second scopes the notes' own additions
+ * (portfolio/_notes.css), so nothing here reaches the portfolio pages.
+ *
+ * Per host:
+ * - apex: the header's links are this site's own, and the now-playing widget
+ *   shows when enabled, as it always did on the apex notes;
+ * - notes host: the wordmark, projects and about point back at the apex
+ *   origin, and there is no music widget (its API is apex-only).
+ *
+ * The pre-paint is inline and hashed. Every page on this layout registers the
+ * hashes from its own frontmatter, never from here (see lib/portfolio/csp.ts).
  */
-import '../styles/global.css';
-import '../styles/components/_site-nav.css';
-import '../styles/components/_note-search.css';
-import '../styles/components/_notes-shell.css';
-import LoadingIndicator from '../components/LoadingIndicator.astro';
-import PagePreview from '../components/PagePreview.astro';
+import '../styles/_fonts.css';
+import '../styles/_variables.css';
+import '../styles/portfolio/portfolio.css';
+import '../styles/portfolio/_notes.css';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
+import Prepaint from '../components/portfolio/Prepaint.astro';
+import Header from '../components/portfolio/Header.astro';
+import Footer from '../components/portfolio/Footer.astro';
+import PagePreview from '../components/PagePreview.astro';
 import NoteSearch from '../components/garden/NoteSearch.tsx';
+import { APPEARANCE_DEFAULTS } from '../lib/portfolio/appearance';
 import { apexOriginFor } from '../lib/notes-host';
+import { isNotesHostRequest } from '../lib/server/core';
+import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
-export interface Props extends SiteHeadProps {
+export interface Props extends Omit<
+  SiteHeadProps,
+  'documentTheme' | 'fontPreloads'
+> {
+  /** A reading page with a rail: the full frame instead of one column. */
   wide?: boolean;
 }
 
@@ -30,10 +53,21 @@ const {
   modifiedTime,
   wide = false,
 } = Astro.props;
+
+const onNotesHost = isNotesHostRequest(Astro.url);
+const origin = onNotesHost ? apexOriginFor(Astro.url) : '';
+const defaults = APPEARANCE_DEFAULTS;
+const SpotifyWidgetLoader = onNotesHost ? null : await loadSpotifyWidgetSlot();
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html
+  lang="en"
+  data-site="portfolio"
+  data-notes
+  data-theme={defaults.theme}
+  data-ink={defaults.ink}
+>
   <head>
     <SiteHead
       {title}
@@ -42,29 +76,32 @@ const {
       {imageAlt}
       {type}
       {modifiedTime}
-      fontPreloads="body"
+      documentTheme={false}
+      fontPreloads="none"
     >
+      <Prepaint />
       <slot name="head" />
     </SiteHead>
   </head>
   <body>
-    <div class:list={['page', wide && 'page--wide']}>
-      <a href="#main" class="skip-link">Skip to content</a>
-
-      <header class="site-nav notes-shell__nav">
-        <a
-          class="site-nav__wordmark notes-shell__mark"
-          href={apexOriginFor(Astro.url)}
-          data-page-preview-ignore>oddava</a
-        >
-        <NoteSearch client:load />
-        <LoadingIndicator />
-      </header>
-
-      <main id="main">
+    <a href="#main" class="skip-link link">skip to content</a>
+    <div class="pf-page">
+      <Header {origin} section="notes">
+        <NoteSearch slot="tools" client:load />
+      </Header>
+      <main
+        id="main"
+        class:list={['pf-main', 'notes-main', wide && 'notes-main--wide']}
+      >
         <slot />
       </main>
+      <Footer pulse={false} />
     </div>
     <PagePreview />
+    {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
   </body>
 </html>
+
+<script>
+  import '../scripts/press';
+</script>

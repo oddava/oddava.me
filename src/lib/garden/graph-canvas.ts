@@ -811,11 +811,19 @@ export function mountGraph(
     },
     { signal: abort.signal },
   );
+  // The palette is the page's colour roles: re-read them when the visitor
+  // picks a theme or ink (attributes on <html>), and when the system flips
+  // between light and dark under the `system` theme.
   const theme = new MutationObserver(readPalette);
   theme.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-theme', 'class', 'style'],
+    attributeFilter: ['data-theme', 'data-ink', 'class', 'style'],
   });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener(
+    'change',
+    readPalette,
+    { signal: abort.signal },
+  );
   // Nothing animates to rest under reduced motion, so it may spend longer
   // settling up front; otherwise any remaining cooling runs live.
   if (reduced) warmUp(simulation, 160);
