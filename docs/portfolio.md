@@ -2,9 +2,34 @@
 
 Home (`/`), `/about` and `/projects` use `src/layouts/Portfolio.astro`, not
 `Base.astro`. Everything the layout adds is scoped to
-`<html data-site="portfolio">`, which no other page renders. The notes host,
-Studio, the admin and the error pages keep `Base.astro` and their
-own look.
+`<html data-site="portfolio">`. Studio and the error pages keep their own
+look (`Base.astro`, Studio's AdminLayout); the admin cabinet is built on this
+shell (`Cabinet.astro`).
+
+## Notes pages
+
+The notes (`/notes`, every note, folder and tag page, `/notes/graph`, and the
+owner's draft preview) are portfolio pages too, through
+`src/layouts/NotesLayout.astro`, on the apex and on the notes host alike
+(`docs/notes-host.md`).
+
+- `<html data-site="portfolio" data-notes>`: the first attribute brings the
+  whole shell (tokens, header, footer, appearance panel, cross-fade); the
+  second scopes `src/styles/portfolio/_notes.css`, the notes' additions:
+  the colour roles the rendered note needs that the portfolio never defined
+  (warning, disabled, code ground), search in the header, and the resets the
+  old site stylesheet used to provide. Nothing in it reaches home, about,
+  projects or the cabinet.
+- The header is the portfolio's own (`Header.astro` with `section="notes"`
+  and, on the notes host, `origin` set to the apex), with note search in its
+  `tools` slot. The footer is the portfolio's, without the visitor line.
+- The notes' component stylesheets (`components/_garden.css`, the explorer,
+  search and graph) are written against the site's colour roles, which the
+  portfolio tokens point at the theme and ink, so one set of rules serves
+  light and dark. `_note-prose.css` is shared with Studio and stays as it
+  is; the published page's typography over it lives in `_garden.css`.
+- Each notes page registers the pre-paint hashes from its own frontmatter,
+  like every other pre-painted page (below).
 
 ## Appearance
 

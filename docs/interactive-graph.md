@@ -3,9 +3,12 @@
 The Preact island renders a one-hop neighborhood above the sidebar outline, on
 the apex and the notes host alike. Expanding the sidebar uses a native modal
 without remounting the canvas or losing its camera; a second modal opens the
-whole garden. There is no graph page any more: `/notes/graph` (and `/graph` on
-the notes host) answers with a 301 to the garden root. The island's `fullPage`
-mode survives only for the browser harness (`tests/browser/graph.html?full`).
+whole garden. The whole garden also has a page of its own again, linked from
+the notes landing: `/notes/graph` (`/graph` on the notes host) renders the
+island's `fullPage` mode with every public note, framed under the site header
+(`src/pages/notes/graph.astro`); `#place=<note id>` centres the bloom on a
+note. The browser harness exercises the same mode
+(`tests/browser/graph.html?full`).
 
 ## Reference and decisions
 
@@ -96,10 +99,21 @@ The native visual treatment uses an open black canvas with a fine bottom rule,
 borderless controls, and a blue open-center current-note marker. Labels retain
 the site's rounded face. Physics, camera response, and return motion are unchanged.
 
-Below the 78rem sidebar breakpoint, note pages hide the inline graph; the
+Below the 64rem rail breakpoint (78rem before the November 2026 restyle),
+note pages hide the inline graph; the
 footer keeps the note's contents and the folder browser. The notes browser starts collapsed and remembers a separate narrow-screen choice.
 Its expanded tree scrolls with the page instead of trapping touch gestures in a
 height-capped inner scroller. Wide screens retain the graph and bounded explorer.
+
+## Portfolio restyle, November 2026
+
+The notes moved onto the portfolio shell (see `docs/portfolio.md`), so the
+canvas follows the visitor's theme and ink: it already read its palette from
+the colour roles, which now point at the portfolio tokens, and it re-reads
+them when `data-theme` or `data-ink` changes on `<html>` and when the system
+flips between light and dark under the `system` theme. The rail graph sits in
+a hairline frame with rounded corners, like a small project shot; the modal
+treatment and the physics are unchanged.
 
 ## Arrival and presence, October 2026
 

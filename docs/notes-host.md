@@ -93,15 +93,18 @@ stays readable and editable where it is. `tests/reserved-note-names.test.ts`
 derives the set from `public/`, the prerendered routes and the notes host's
 mapping, and fails when a name is missing.
 
-The notes shell (`src/layouts/NotesLayout.astro`):
+The notes pages use one layout on both hosts, `src/layouts/NotesLayout.astro`:
+a portfolio page (`<html data-site="portfolio" data-notes>`, see
+`docs/portfolio.md`) with the portfolio header, footer, theme, ink and
+cross-fade. On the notes host:
 
-- has its own header: a blue `oddava` wordmark (back to the apex) and search;
-- has no music widget and no sky;
-- preloads one font face (regular body) instead of three;
-- keeps the live graph in each note's rail, as the apex does. There is no
-  graph page: `/graph` answers with a 301 to the root.
-
-The apex keeps the old layout for `/notes/*`.
+- the header's wordmark, projects and about point at the apex origin; notes
+  is the current section, and search sits beside the appearance icon;
+- there is no music widget (its API is apex-only) and, on both hosts, no
+  visitor line in the footer;
+- the appearance choice is saved per origin, so it is chosen separately
+  from the apex's;
+- `/graph` is the whole-garden graph page, as `/notes/graph` is on the apex.
 
 ## How it works
 
