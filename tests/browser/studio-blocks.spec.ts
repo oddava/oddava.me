@@ -198,8 +198,14 @@ test('a footnote from the slash menu adds the reference and an empty note to wri
     path: `test-results/footnote-${page.viewportSize()!.width}.png`,
   });
 
-  // The pill leads to the note and the note leads back.
+  // The pill leads to the note and the note leads back. A finger's first
+  // tap only selects it; the second, on the selected pill, follows.
   await reference.click();
+  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+    await expect(reference).toHaveClass(/ProseMirror-selectednode/);
+    await page.waitForTimeout(600);
+    await reference.click();
+  }
   await page.keyboard.type('!');
   expect(await saved()).toContain('[^1]: !Because I read it.');
   await editor.locator('[data-footnote-jump]').click();

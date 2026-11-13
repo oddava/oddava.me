@@ -722,9 +722,16 @@ test('select all stays within the current text block', async ({ page }) => {
     await page.keyboard.press('Control+a');
     await expect.poll(selected).toBe(text);
   }
+  // Studio's command key is the platform's own — ⌘ on a Mac, Ctrl elsewhere —
+  // the same one the editor's bindings use.
+  const mod = (await page.evaluate(() =>
+    /Mac|iP(hone|[oa]d)/.test(navigator.platform),
+  ))
+    ? 'Meta'
+    : 'Control';
   const last = editor.locator('p').last();
   await last.click();
-  await selectBlock('Meta+a', await last.textContent());
+  await selectBlock(`${mod}+a`, await last.textContent());
   await page.keyboard.type('Only this block changes.');
   await expect(editor.locator('h1')).toHaveText('A quieter kind of workspace');
   await expect(editor.locator('p').last()).toHaveText(
