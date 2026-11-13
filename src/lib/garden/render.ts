@@ -3,6 +3,15 @@ import { marked, Renderer, type Token, type Tokens } from 'marked';
 import { slugifyHeading } from './headings';
 import { normalizeWikiLinkTarget } from './utils';
 import { notesTagUrl } from '../notes-url';
+import { fenceLanguage, resolveCodeLanguage } from './code-languages';
+import { highlightToHtml } from './highlight';
+import { calloutExtension } from './render-callouts';
+import {
+  createFootnoteState,
+  footnoteExtensions,
+  renderFootnotes,
+  trackFootnote,
+} from './render-footnotes';
 
 // Runtime Markdown -> HTML for garden notes. The ONLY note renderer.
 //
@@ -24,6 +33,10 @@ import { notesTagUrl } from '../notes-url';
 //   - inline `#tags` become `<a class="note-tag">` pointing at their tag page
 //   - external http(s) links gain `class="external-link"` and rel hygiene
 //   - h2–h4 gain a slug id, `tabindex="-1"`, and a trailing `#` anchor
+//   - fenced code gets class-only syntax tokens (`tok-*`), never inline styles:
+//     the page's hashed CSP has no room for them
+//   - `> [!NOTE]` quotes become callout cards; `[^1]` references become
+//     numbered superscripts and their definitions a list at the foot
 
 function escapeHtml(value: string): string {
   return value
@@ -163,6 +176,8 @@ function ensureConfigured(): void {
     extensions: [
       wikiLinkExtension,
       noteTagExtension,
+      calloutExtension,
+      ...footnoteExtensions,
       {
         name: 'noteColumns',
         level: 'block',
@@ -265,6 +280,19 @@ function createRenderer(
     return `<h${depth}>${text}</h${depth}>\n`;
   };
 
+  // Marked's own output plus token spans. `data-language` is what the
+  // stylesheet prints in the block's corner, so only a language we know gets it.
+  renderer.code = function code(token: Tokens.Code): string {
+    const word = fenceLanguage(token.lang);
+    const language = resolveCodeLanguage(token.lang);
+    const text = token.text.replace(/\n$/, '');
+    const attributes = language
+      ? ` data-language="${escapeAttr(language.label)}"`
+      : '';
+    const className = word ? ` class="language-${escapeAttr(word)}"` : '';
+    return `<pre${attributes}><code${className}>${highlightToHtml(text, token.lang)}\n</code></pre>\n`;
+  };
+
   // Outbound http(s) links get a class for the outward affordance and the
   // usual rel hygiene — same tab, no target. Internal, mailto:, and other
   // schemes render exactly as marked would.
@@ -319,10 +347,13 @@ export function renderNote(
 ): RenderedNote {
   ensureConfigured();
   const headings: NoteHeading[] = [];
+  const footnotes = createFootnoteState();
+  const renderer = createRenderer(headings, options.wikiLinkHrefs);
   const html = marked.parse(body, {
     async: false,
-    renderer: createRenderer(headings, options.wikiLinkHrefs),
+    renderer,
     walkTokens(token) {
+      trackFootnote(token, footnotes);
       if (!isWikiLinkToken(token)) return;
       token.href = options.wikiLinkHrefs?.get(
         normalizeWikiLinkTarget(token.target),
@@ -330,7 +361,13 @@ export function renderNote(
     },
   }) as string;
 
-  return { html, headings };
+  // Footnote bodies are blocks of their own, rendered after the note so the
+  // list follows the order the references were met in.
+  const footer = renderFootnotes(footnotes, (tokens) =>
+    marked.parser(tokens, { ...marked.defaults, renderer }),
+  );
+
+  return { html: html + footer, headings };
 }
 
 export function renderNoteHtml(

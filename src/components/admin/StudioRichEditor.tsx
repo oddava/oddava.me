@@ -116,6 +116,7 @@ function currentBlockType(editor: Editor): string {
   if (editor.isActive('taskList')) return 'To-do list';
   if (editor.isActive('orderedList')) return 'Numbered list';
   if (editor.isActive('bulletList')) return 'Bulleted list';
+  if (editor.isActive('callout')) return 'Callout';
   if (editor.isActive('blockquote')) return 'Quote';
   if (editor.isActive('codeBlock')) return 'Code';
   return 'Text';

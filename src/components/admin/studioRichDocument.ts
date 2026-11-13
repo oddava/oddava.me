@@ -1,4 +1,6 @@
+import { mentionsCallout, readCallout } from '../../lib/garden/callouts';
 import { readColumns } from '../../lib/garden/columns';
+import { readFootnoteDefinition } from '../../lib/garden/footnotes';
 import { parseImageMarkup } from './studioRichImage';
 import { parseYoutubeMarkup } from './studioYoutube';
 import {
@@ -122,7 +124,8 @@ export class RichDocument {
 
   parse(editor: Editor, source: string): JSONContent {
     const content: JSONContent[] = [];
-    const hasReferences = /^ {0,3}\[[^\]]+\]:/m.test(source);
+    // A footnote definition looks like a link reference to the pattern alone.
+    const hasReferences = /^ {0,3}\[(?!\^[\w-]+\]:)[^\]]+\]:/m.test(source);
     for (const block of parseBlocks(source)) {
       const columns = readColumns(block.raw);
       if (columns) {
@@ -133,6 +136,24 @@ export class RichDocument {
             type: 'column',
             content: this.parse(editor, raw).content,
           })),
+        });
+        continue;
+      }
+      const callout = readCallout(block.raw);
+      if (callout?.raw === block.raw) {
+        content.push({
+          type: 'callout',
+          attrs: { kind: callout.kind },
+          content: this.parse(editor, callout.body).content,
+        });
+        continue;
+      }
+      const footnote = readFootnoteDefinition(block.raw);
+      if (footnote?.raw === block.raw) {
+        content.push({
+          type: 'footnoteDefinition',
+          attrs: { id: footnote.id },
+          content: this.parse(editor, footnote.body).content,
         });
         continue;
       }
@@ -149,10 +170,16 @@ export class RichDocument {
 
       // HTML, reference definitions and inline HTML cannot safely be reduced
       // to the rich schema. Keep their source losslessly behind the rendered custom block.
+      // Footnote references the schema has a node for are not "custom": take
+      // them out before looking for the syntax it hasn't.
+      const text = block.raw.replace(/\[\^[\w-]+\](?!:)/g, '');
       const custom =
         (block.type !== 'code' &&
-          (/\[\^[^\]]+\]|\[[^\]]+\]\[[^\]]*\]/.test(block.raw) ||
-            (hasReferences && /\[[^\]]+\]/.test(block.raw)))) ||
+          (/\[\^[^\]]+\]|\[[^\]]+\]\[[^\]]*\]/.test(text) ||
+            (hasReferences && /\[[^\]]+\]/.test(text)) ||
+            // A callout the schema could not take whole (lazy lines, nesting)
+            // would lose its marker as a plain quote.
+            mentionsCallout(block.raw))) ||
         block.type === 'html' ||
         /^\s*</.test(block.raw) ||
         (block.type !== 'code' &&

@@ -13,6 +13,7 @@ import { YoutubeVideo } from './studioYoutube';
 import { StudioFind } from './studioFind';
 import { SourceBlock, WikiLink } from './studioRichDocument';
 import { StudioFocus } from './studioFocus';
+import { studioBlockExtensions } from './studioBlockExtensions';
 
 interface ExtensionOptions {
   /** Read at render time, so a custom block always uses the current renderer. */
@@ -28,6 +29,7 @@ export function studioRichExtensions({
   return [
     StarterKit.configure({
       underline: false,
+      codeBlock: false,
       trailingNode: false,
       link: { openOnClick: false },
     }),
@@ -41,6 +43,7 @@ export function studioRichExtensions({
     StudioFind,
     Columns,
     Column,
+    ...studioBlockExtensions,
     TableKit,
     Markdown,
     SourceBlock.extend({

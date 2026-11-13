@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  blockLabel,
   matchSlashCommands,
   parseBlocks,
 } from '../src/components/admin/studioBlocks';
@@ -159,5 +160,82 @@ describe('matchSlashCommands', () => {
 describe('unified editor session', () => {
   it('does not persist an editing mode', () => {
     expect(DEFAULT_SESSION).not.toHaveProperty('view');
+  });
+});
+
+describe('parseBlocks: callouts and footnotes', () => {
+  it('names a callout apart from an ordinary quote', () => {
+    const blocks = parseBlocks('> [!TIP]\n> Kind.\n\n> Just a quote.');
+    expect(blocks.map((block) => block.type)).toEqual(['callout', 'quote']);
+    expect(blockLabel(blocks[0]!)).toBe('Callout');
+  });
+
+  it('keeps a footnote definition whole across blank lines', () => {
+    const source = 'Text[^1]\n\n[^1]: First.\n\n    Second.\n\nAfter.';
+    const blocks = parseBlocks(source);
+    expect(blocks.map((block) => block.type)).toEqual([
+      'paragraph',
+      'footnote',
+      'paragraph',
+    ]);
+    expect(blocks[1]!.raw).toBe('[^1]: First.\n\n    Second.');
+    expect(blockLabel(blocks[1]!)).toBe('Footnote');
+  });
+
+  it('ends a paragraph where a definition begins', () => {
+    expect(
+      parseBlocks('One line[^a]\n[^a]: Note.').map((block) => block.type),
+    ).toEqual(['paragraph', 'footnote']);
+  });
+
+  it('does not take a link reference for a footnote', () => {
+    expect(parseBlocks('[ref]: https://example.com')[0]?.type).toBe(
+      'paragraph',
+    );
+  });
+});
+
+describe('slash menu: callouts and footnotes', () => {
+  it('offers a callout by default and the other tones when searched for', () => {
+    const idle = matchSlashCommands('').map((item) => item.id);
+    expect(idle).toContain('callout');
+    expect(idle.filter((id) => id.startsWith('callout-'))).toEqual([]);
+    expect(matchSlashCommands('callout')[0]?.id).toBe('callout');
+    expect(matchSlashCommands('callout').map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        'callout-tip',
+        'callout-important',
+        'callout-warning',
+        'callout-caution',
+      ]),
+    );
+  });
+
+  it('finds each callout by its own word', () => {
+    expect(matchSlashCommands('warning')[0]?.id).toBe('callout-warning');
+    expect(matchSlashCommands('tip')[0]?.id).toBe('callout-tip');
+    expect(matchSlashCommands('admonition')[0]?.id).toBe('callout');
+  });
+
+  it('offers footnotes under Insert, with the shorthand it writes', () => {
+    const footnote = matchSlashCommands('footnote')[0]!;
+    expect(footnote).toMatchObject({
+      id: 'footnote',
+      group: 'Insert',
+      hint: '[^1]',
+    });
+    expect(matchSlashCommands('').map((item) => item.id)).toContain('footnote');
+  });
+
+  it('teaches the markdown that makes each callout', () => {
+    const hints = matchSlashCommands('callout').map((item) => item.hint);
+    expect(hints).toContain('> [!NOTE]');
+    expect(hints).toContain('> [!CAUTION]');
+  });
+
+  it('does not make "head" find a warning', () => {
+    expect(matchSlashCommands('head').map((item) => item.id)).not.toContain(
+      'callout-warning',
+    );
   });
 });

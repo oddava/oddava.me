@@ -1,5 +1,7 @@
 import type { IconName } from './studioIcons';
 import { readColumns } from '../../lib/garden/columns';
+import { readCallout } from '../../lib/garden/callouts';
+import { readFootnoteDefinition } from '../../lib/garden/footnotes';
 // Lossless Markdown block parsing for RichDocument, plus the visual editor's
 // block labels and slash-command catalog. Editing and history belong to
 // ProseMirror; raw slices preserve source that the author has not changed.
@@ -10,6 +12,8 @@ export type BlockType =
   | 'list'
   | 'task'
   | 'quote'
+  | 'callout'
+  | 'footnote'
   | 'code'
   | 'table'
   | 'divider'
@@ -32,6 +36,7 @@ const FENCE = /^(\s*)(`{3,}|~{3,})/;
 const HEADING = /^ {0,3}(#{1,6})\s+/;
 const DIVIDER = /^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const QUOTE = /^ {0,3}>/;
+const FOOTNOTE_DEFINITION = /^ {0,3}\[\^[\w-]+\]:/;
 const BULLET = /^(\s*)([-*+])(\s+)/;
 const ORDERED = /^(\s*)(\d{1,9})([.)])(\s+)/;
 const TASK = /^(\s*)([-*+])(\s+)\[([ xX])\]\s/;
@@ -164,6 +169,19 @@ export function parseBlocks(markdown: string): StudioBlock[] {
       continue;
     }
 
+    // --- Footnote definition: its indented lines, blank ones included -------
+    if (FOOTNOTE_DEFINITION.test(line)) {
+      const definition = readFootnoteDefinition(
+        markdown.slice(offsets[index]!),
+      );
+      if (definition) {
+        const last = index + definition.raw.split('\n').length - 1;
+        push('footnote', index, last);
+        index = last + 1;
+        continue;
+      }
+    }
+
     // --- Blockquote: contiguous `>` lines and their lazy continuations -----
     if (QUOTE.test(line)) {
       let last = index;
@@ -174,7 +192,13 @@ export function parseBlocks(markdown: string): StudioBlock[] {
       ) {
         last += 1;
       }
-      push('quote', index, last);
+      push(
+        readCallout(lines.slice(index, last + 1).join('\n'))
+          ? 'callout'
+          : 'quote',
+        index,
+        last,
+      );
       index = last + 1;
       continue;
     }
@@ -228,6 +252,7 @@ export function parseBlocks(markdown: string): StudioBlock[] {
       !FENCE.test(lines[last + 1]!) &&
       !HEADING.test(lines[last + 1]!) &&
       !DIVIDER.test(lines[last + 1]!) &&
+      !FOOTNOTE_DEFINITION.test(lines[last + 1]!) &&
       !isListLine(lines[last + 1]!) &&
       !QUOTE.test(lines[last + 1]!)
     ) {
@@ -358,6 +383,35 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     description: 'Set a passage apart',
   },
   {
+    id: 'callout',
+    title: 'Callout',
+    hint: '> [!NOTE]',
+    keywords: 'callout note admonition aside highlight box info alert',
+    group: 'Blocks',
+    insert: '> [!NOTE]\n> ',
+    icon: { icon: 'callout' },
+    description: 'A friendly note that stands out',
+  },
+  ...(
+    [
+      ['tip', 'Tip', 'hint idea advice'],
+      ['important', 'Important', 'key remember crucial'],
+      ['warning', 'Warning', 'careful danger alert'],
+      ['caution', 'Caution', 'risk avoid stop'],
+    ] as const
+  ).map(([kind, title, words]): SlashCommand => ({
+    id: `callout-${kind}`,
+    title: `${title} callout`,
+    hint: `> [!${kind.toUpperCase()}]`,
+    keywords: `callout ${kind} ${words}`,
+    group: 'Blocks',
+    insert: `> [!${kind.toUpperCase()}]\n> `,
+    icon: { icon: 'callout' },
+    description: `A ${kind} note that stands out`,
+    // One callout earns a row of its own; the other tones are a search away.
+    searchOnly: true,
+  })),
+  {
     id: 'code',
     title: 'Code block',
     hint: '```',
@@ -412,6 +466,16 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     action: 'youtube',
     icon: { icon: 'video' },
     description: 'Embed a video by its link',
+  },
+  {
+    id: 'footnote',
+    title: 'Footnote',
+    hint: '[^1]',
+    keywords: 'footnote reference note citation endnote source',
+    group: 'Insert',
+    insert: '[^1]',
+    icon: { icon: 'footnote' },
+    description: 'Add a numbered note at the bottom',
   },
   {
     id: 'wikilink',
@@ -494,6 +558,8 @@ const BLOCK_LABELS: Record<BlockType, string> = {
   list: 'List',
   task: 'To-do list',
   quote: 'Quote',
+  callout: 'Callout',
+  footnote: 'Footnote',
   code: 'Code block',
   table: 'Table',
   divider: 'Divider',

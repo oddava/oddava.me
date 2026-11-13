@@ -1,0 +1,403 @@
+/* ---------------------------------------------------------------------------
+   Richer blocks: code, callouts and footnotes, as they behave in the editor.
+
+   How each one LOOKS — token colours, the callout card, the footnote pills —
+   is the note stylesheet's job (`_note-prose.css`), so the page and the editor
+   cannot drift. This file holds only what the page never shows: the chips that
+   change a block, the picker they open, and the footnote's way back.
+--------------------------------------------------------------------------- */
+
+/* --- Code: the language chip ---
+   It sits in the band the page prints the language in, so a block does not
+   change height between reading and writing. */
+
+.admin-page .studio-rich-content :is(pre, pre[data-language]) {
+  position: relative;
+  padding-top: 2.25rem;
+}
+
+/* The chip is the label here. */
+.admin-page .studio-rich-content pre[data-language]::before {
+  content: none;
+}
+
+.admin-page .studio-code-lang,
+.admin-page .callout__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: inherit;
+  font-family: var(--st-font);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    border-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-code-lang {
+  position: absolute;
+  top: 0.4rem;
+  left: calc(var(--space-sm) - 8px);
+  color: var(--st-text-3);
+}
+
+/* A small chevron says "this opens a list". */
+.admin-page :is(.studio-code-lang, .callout__kind)::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin-top: -3px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  opacity: 0.7;
+  transform: rotate(45deg);
+}
+
+.admin-page .studio-code-lang:hover,
+.admin-page .studio-code-lang[aria-expanded='true'] {
+  border-color: var(--st-line);
+  background: var(--st-hover);
+  color: var(--st-text);
+}
+
+.admin-page .studio-code-lang:active {
+  background: var(--st-press);
+}
+
+/* --- Callouts: the kind button ---
+   Reads as the title it is; it only looks like a control when pointed at. */
+
+.studio-rich-content .callout__title {
+  user-select: none;
+}
+
+.admin-page .callout__kind {
+  margin: -4px 0 -4px -8px;
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.admin-page .callout__kind:hover,
+.admin-page .callout__kind[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--callout-tone) 36%, transparent);
+  background: color-mix(in srgb, var(--callout-tone) 14%, transparent);
+}
+
+.admin-page .callout__kind:active {
+  background: color-mix(in srgb, var(--callout-tone) 22%, transparent);
+}
+
+/* The selection ring would square off the card's corners. */
+.admin-page .studio-rich-content .callout.ProseMirror-selectednode {
+  border-radius: var(--radius-lg);
+}
+
+/* --- Footnotes ---
+   The reference is a numbered pill; the definition is a soft strip at the foot
+   of the note, numbered the same way, with a button back to where it is used. */
+
+.studio-rich-content .studio-footnote-ref {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0.18em 0.4em;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--st-accent) 16%, transparent);
+  color: var(--st-accent-text);
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--st-fast) var(--st-ease);
+}
+
+.studio-rich-content .studio-footnote-ref::before {
+  content: attr(data-footnote-number);
+}
+
+.studio-rich-content .studio-footnote-ref:hover {
+  background: color-mix(in srgb, var(--st-accent) 30%, transparent);
+}
+
+/* A reference nothing explains yet. */
+.studio-rich-content .studio-footnote-ref.is-orphan {
+  background: transparent;
+  color: var(--st-danger);
+  outline: 1px dashed var(--st-danger);
+  outline-offset: -1px;
+}
+
+.admin-page .studio-rich-content .studio-footnote-ref.ProseMirror-selectednode {
+  border-radius: var(--radius-pill);
+}
+
+.studio-rich-content .studio-footnote {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0 var(--space-xs);
+  margin: 0.4rem 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--st-radius);
+  background: var(--st-hover);
+  color: var(--st-text-2);
+  font-size: var(--text-sm);
+}
+
+.studio-rich-content .studio-footnote::before {
+  content: attr(data-footnote-number);
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--st-accent) 18%, transparent);
+  color: var(--st-accent-text);
+  font-size: var(--st-size-xs);
+  font-weight: 700;
+  user-select: none;
+}
+
+/* Written but never referenced: it will not appear on the page. */
+.studio-rich-content .studio-footnote.is-unused::before {
+  content: '–';
+  background: var(--st-press);
+  color: var(--st-text-4);
+}
+
+.studio-rich-content .studio-footnote.is-unused {
+  opacity: 0.75;
+}
+
+.studio-rich-content .studio-footnote__body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.studio-rich-content .studio-footnote__body > * {
+  margin: 0.15rem 0;
+}
+
+.admin-page .studio-footnote__mark {
+  grid-column: 3;
+  grid-row: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-3);
+  font-size: var(--st-size-md);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--st-fast) var(--st-ease),
+    background-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-footnote__mark::before {
+  content: '\21A9\FE0E';
+}
+
+.studio-footnote:is(:hover, :focus-within) .studio-footnote__mark,
+.admin-page .studio-footnote__mark:focus-visible {
+  opacity: 1;
+}
+
+.admin-page .studio-footnote__mark:hover {
+  background: var(--st-press);
+  color: var(--st-text);
+}
+
+@media (hover: none) {
+  .admin-page .studio-footnote__mark {
+    opacity: 1;
+  }
+}
+
+/* --- The picker ---
+   One small list for a code block's language and a callout's kind. */
+
+.admin-page .studio-picker {
+  position: fixed;
+  z-index: 1300;
+  display: grid;
+  gap: 4px;
+  width: 232px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius-float);
+  background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
+  color: var(--st-text);
+  font-family: var(--st-font);
+  animation: studio-arrive var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-picker__search {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--st-control);
+  padding: 0 10px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-field);
+  color: var(--st-text);
+  font: inherit;
+  font-size: var(--st-size-md);
+  transition: border-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-picker__search::placeholder {
+  color: var(--st-text-4);
+}
+
+.admin-page .studio-picker__search:focus-visible {
+  outline: none;
+  border-color: var(--st-accent);
+}
+
+.admin-page .studio-picker__list {
+  display: grid;
+  align-content: start;
+  max-height: min(264px, 42dvh);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  list-style: none;
+}
+
+/* With no search field the list itself holds focus; its active row is the
+   indicator, so the ring would only crowd it. */
+.admin-page .studio-picker__list:focus-visible {
+  outline: none;
+}
+
+.admin-page .studio-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--st-row);
+  padding: 0 10px;
+  border-radius: var(--st-radius);
+  color: var(--st-text-2);
+  font-size: var(--st-size-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-picker__option.is-active {
+  background: var(--st-current);
+  color: var(--st-text);
+}
+
+.admin-page .studio-picker__option[aria-selected='true'] {
+  color: var(--st-accent-text);
+  font-weight: 500;
+}
+
+.admin-page .studio-picker__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-page .studio-picker__hint {
+  flex: none;
+  color: var(--st-text-4);
+  font-family: var(--st-mono);
+  font-size: var(--st-size-xs);
+}
+
+.admin-page .studio-picker__empty {
+  padding: 8px 10px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+}
+
+/* A callout's kind is its colour: a dot of it beside the name. */
+.admin-page .studio-picker__option[data-tone]::before {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--picker-tone);
+}
+
+.admin-page .studio-picker__option[data-tone='note'] {
+  --picker-tone: var(--color-brand);
+}
+.admin-page .studio-picker__option[data-tone='tip'] {
+  --picker-tone: var(--color-text-success);
+}
+.admin-page .studio-picker__option[data-tone='important'] {
+  --picker-tone: color-mix(
+    in srgb,
+    var(--color-brand) 58%,
+    var(--color-text-error)
+  );
+}
+.admin-page .studio-picker__option[data-tone='warning'] {
+  --picker-tone: var(--color-text-warning);
+}
+.admin-page .studio-picker__option[data-tone='caution'] {
+  --picker-tone: var(--color-text-error);
+}
+
+/* --- Touch ---
+   Controls reach the 44px target; the band they sit in grows to hold them. */
+
+@media (pointer: coarse) {
+  .admin-page .studio-rich-content :is(pre, pre[data-language]) {
+    padding-top: calc(var(--st-touch) + 0.25rem);
+  }
+
+  .admin-page .studio-code-lang,
+  .admin-page .callout__kind {
+    min-height: var(--st-touch);
+    padding: 0 12px;
+  }
+
+  .admin-page .studio-code-lang {
+    top: 0.1rem;
+  }
+
+  .admin-page .callout__kind {
+    margin-block: -10px;
+  }
+
+  .admin-page .studio-footnote__mark {
+    width: var(--st-touch);
+    height: var(--st-touch);
+    margin: -0.35rem -0.5rem -0.35rem 0;
+  }
+
+  .admin-page .studio-picker {
+    width: min(280px, calc(100vw - 16px));
+  }
+}
