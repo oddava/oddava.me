@@ -16,7 +16,7 @@
   }
 
   .admin-page .studio-sheet-layer--right .studio-sheet__scrim {
-    background: color-mix(in srgb, #000 36%, transparent);
+    background: var(--st-scrim);
   }
 
   .admin-page .studio-sheet-layer--right .studio-sheet {
@@ -28,7 +28,7 @@
     border: 0;
     border-left: 1px solid var(--st-line-strong);
     border-radius: var(--st-radius-float) 0 0 var(--st-radius-float);
-    box-shadow: -16px 0 48px rgb(0 0 0 / 0.5);
+    box-shadow: var(--st-shadow-float);
     transform: translate3d(100%, 0, 0);
   }
 
@@ -50,6 +50,23 @@
     position: absolute;
     top: 12px;
     right: 12px;
+  }
+}
+
+/* A restore turns the clock back, and the bar's history button shows it:
+   one turn anticlockwise. Whatever restores a version sets
+   `data-studio-restored` on the button, or on anything around it, for as
+   long as the turn should play. */
+@media (prefers-reduced-motion: no-preference) {
+  .admin-page .studio-bar__history[data-studio-restored] .studio-glyph,
+  .admin-page [data-studio-restored] .studio-bar__history .studio-glyph {
+    animation: studio-history-rewind var(--st-slow) var(--st-ease-move);
+  }
+}
+
+@keyframes studio-history-rewind {
+  to {
+    transform: rotate(-360deg);
   }
 }
 
@@ -168,33 +185,14 @@
   gap: 10px;
 }
 
+/* The look is the shared segmented control's (_primitives.css). */
 .admin-page .studio-history__modes {
   display: inline-flex;
-  padding: 2px;
-  border-radius: var(--st-radius);
-  background: var(--st-hover);
+  gap: 2px;
 }
 
 .admin-page .studio-history__modes button {
-  min-height: calc(var(--st-control) - 6px);
   padding: 0 12px;
-  border: 0;
-  border-radius: calc(var(--st-radius) - 2px);
-  background: transparent;
-  color: var(--st-text-3);
-  font: inherit;
-  font-size: var(--st-size-sm);
-  cursor: pointer;
-  transition:
-    background-color var(--st-fast) var(--st-ease),
-    color var(--st-fast) var(--st-ease);
-}
-
-.admin-page .studio-history__modes button[aria-pressed='true'] {
-  background: var(--st-field);
-  color: var(--st-text);
-  font-weight: 500;
-  box-shadow: 0 0 0 1px var(--st-line);
 }
 
 .admin-page .studio-history__summary {
@@ -206,13 +204,7 @@
   font-size: var(--st-size-xs);
 }
 
-.admin-page .studio-history__summary .is-add {
-  color: var(--st-accent-text);
-  font-weight: 500;
-}
-
-.admin-page .studio-history__summary .is-del {
-  color: var(--st-danger);
+.admin-page .studio-history__summary :is(.is-add, .is-del) {
   font-weight: 500;
 }
 
@@ -222,35 +214,11 @@
   padding: 12px 14px;
   overflow: auto;
   overscroll-behavior: contain;
-  border: 1px solid var(--st-line);
-  border-radius: var(--st-radius);
-  background: var(--st-field);
-  color: var(--st-text-2);
-  font-size: var(--st-size-sm);
-  line-height: 1.65;
-  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
-/* Changes read without colour too: what returns is underlined, what goes is
-   struck through. */
-.admin-page .studio-history__text ins {
-  padding: 0 2px;
-  border-radius: var(--radius-sm);
-  background: var(--st-picked);
-  color: var(--st-text);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-.admin-page .studio-history__text del {
-  padding: 0 2px;
-  border-radius: var(--radius-sm);
-  background: var(--st-danger-tint);
-  color: var(--st-danger);
-  text-decoration: line-through;
-}
+/* The box, and how a change is marked inside it, are shared with the conflict
+   comparison: see "What changed between two texts" in _primitives.css. */
 
 .admin-page .studio-history__skip {
   display: inline-block;
@@ -322,9 +290,16 @@
   height: 24px;
 }
 
+/* A few bobs to say "working on it", then it rests: a loop that never ends
+   is a thing to look away from. An error is not a moment to be playful at
+   all. */
 @media (prefers-reduced-motion: no-preference) {
   .admin-page .studio-history__bubble {
-    animation: studio-history-bob 2.4s var(--st-ease-move) infinite alternate;
+    animation: studio-history-bob 2.4s var(--st-ease-move) 4 alternate;
+  }
+
+  .admin-page .studio-history[data-status='error'] .studio-history__bubble {
+    animation: none;
   }
 }
 
@@ -343,6 +318,7 @@
 
 .admin-page .studio-history__empty .studio-history__hint {
   max-width: 30ch;
+  text-wrap: balance;
 }
 
 .admin-page .studio-history__shimmer {

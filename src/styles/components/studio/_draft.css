@@ -2,34 +2,28 @@
    Drafts
 
    The Draft / Published pill, and the small "draft" marker that follows an
-   unlisted note wherever it is listed. Both lean on the Studio tokens only:
-   the thumb is the current-row tint and the published tint is the selection
-   colour, so every ink and both themes come along for free.
+   unlisted note wherever it is listed. The pill is the shared segmented
+   control (_primitives.css) with round corners and a thumb that slides: a
+   draft is the neutral raised key every such control has, and Published is
+   the one place in the family the accent is spent.
 --------------------------------------------------------------------------- */
-
-.admin-page {
-  /* A little overshoot on arrival — the pill settles rather than snaps. */
-  --st-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
-}
 
 /* --- The pill --- */
 
 .admin-page .studio-draft-toggle {
+  --st-seg-radius: var(--radius-pill);
+
   position: relative;
   display: inline-grid;
   flex: none;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  padding: 2px;
-  border: 1px solid var(--st-line-strong);
-  border-radius: var(--radius-pill);
-  background: var(--st-field);
   transition: transform var(--st-fast) var(--st-ease);
 }
 
 /* A press squeezes the whole pill; releasing lets it spring back. */
 .admin-page .studio-draft-toggle:has(.studio-draft-toggle__option:active) {
-  transform: scale(0.96);
+  transform: scale(var(--st-press-scale));
 }
 
 .admin-page .studio-draft-toggle__thumb {
@@ -37,16 +31,19 @@
   inset: 2px auto 2px 2px;
   width: calc(50% - 2px);
   border-radius: var(--radius-pill);
-  background: var(--st-current);
+  background: var(--st-raised);
+  box-shadow: 0 0 0 1px var(--st-line-strong);
   transition:
     transform var(--st-slow) var(--st-spring),
-    background-color var(--st-base) var(--st-ease);
+    background-color var(--st-base) var(--st-ease),
+    box-shadow var(--st-base) var(--st-ease);
 }
 
 .admin-page
   .studio-draft-toggle[data-state='published']
   .studio-draft-toggle__thumb {
   background: var(--st-picked);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--st-accent) 32%, transparent);
   transform: translateX(100%);
 }
 
@@ -58,16 +55,8 @@
   gap: 6px;
   min-height: calc(var(--st-control) - 8px);
   padding: 0 12px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--st-text-3);
-  font: inherit;
-  font-size: var(--st-size-sm);
   line-height: 1.2;
   white-space: nowrap;
-  cursor: pointer;
-  transition: color var(--st-fast) var(--st-ease);
 }
 
 .admin-page .studio-draft-toggle__option::before {
@@ -83,14 +72,32 @@
     transform var(--st-slow) var(--st-spring);
 }
 
+/* The thumb is the raised key here, so the chosen word needs no fill of its
+   own. */
 .admin-page .studio-draft-toggle__option[aria-checked='true'] {
-  color: var(--st-text);
-  font-weight: 500;
+  background: transparent;
+  box-shadow: none;
 }
 
 .admin-page .studio-draft-toggle__option[aria-checked='true']::before {
   opacity: 1;
   transform: none;
+}
+
+/* Publishing, the dot sends out one soft ring. It is a transition rather
+   than an animation, so it answers the flip and stays still when a note that
+   is already published opens; going back to a draft, it simply is not there. */
+.admin-page .studio-draft-toggle__option[data-option='published']::before {
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-accent) 60%, transparent);
+}
+
+.admin-page
+  .studio-draft-toggle__option[data-option='published'][aria-checked='true']::before {
+  box-shadow: 0 0 0 10px transparent;
+  transition:
+    opacity var(--st-base) var(--st-ease),
+    transform var(--st-slow) var(--st-spring),
+    box-shadow calc(var(--st-slow) * 2) var(--st-ease);
 }
 
 .admin-page
@@ -178,10 +185,4 @@
 .admin-page .studio-palette__row .studio-draft-mark,
 .admin-page .studio-mfiles__open .studio-draft-mark {
   margin-left: 8px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .admin-page .studio-draft-toggle:has(.studio-draft-toggle__option:active) {
-    transform: none;
-  }
 }

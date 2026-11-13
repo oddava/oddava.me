@@ -689,3 +689,128 @@
   scrollbar-color: var(--st-line-strong) transparent;
   scrollbar-width: thin;
 }
+
+/* --- Segmented control ---
+   One look for every row of "pick one of these": the history's view switch,
+   the page-style choices, the Draft / Published pill. A dark tray with a
+   hairline, and the chosen option a raised key with a ring — neutral, so the
+   accent stays free to mean one thing (see the pill's Published). Each
+   feature keeps its own class names and its own layout; the look is here, at
+   the lowest specificity, so a feature can still adjust it.
+
+   `--st-seg-radius` is the tray's corner; an option nests 3px inside it. */
+
+.admin-page
+  :where(
+    .studio-segmented,
+    .studio-history__modes,
+    .studio-reading__segments,
+    .studio-draft-toggle
+  ) {
+  --st-seg-radius: var(--st-radius);
+
+  padding: 2px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-seg-radius);
+  background: var(--st-field);
+}
+
+.admin-page
+  :where(
+    .studio-segmented__option,
+    .studio-history__modes > button,
+    .studio-reading__segment,
+    .studio-draft-toggle__option
+  ) {
+  min-height: calc(var(--st-control) - 6px);
+  border: 0;
+  border-radius: calc(var(--st-seg-radius) - 3px);
+  background: transparent;
+  color: var(--st-text-3);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    box-shadow var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+@media (hover: hover) {
+  .admin-page
+    :where(
+      .studio-segmented__option,
+      .studio-history__modes > button,
+      .studio-reading__segment,
+      .studio-draft-toggle__option
+    ):hover {
+    color: var(--st-text);
+  }
+}
+
+.admin-page
+  :where(
+    .studio-segmented__option,
+    .studio-history__modes > button,
+    .studio-reading__segment,
+    .studio-draft-toggle__option
+  ):where([aria-pressed='true'], [aria-checked='true'], :has(input:checked)) {
+  background: var(--st-raised);
+  box-shadow: 0 0 0 1px var(--st-line-strong);
+  color: var(--st-text);
+  font-weight: 500;
+}
+
+/* --- What changed between two texts ---
+   One vocabulary wherever two versions are compared (history, a conflict):
+   what comes in is green and underlined, what goes is red and struck through.
+   Never colour alone, and never the accent, which under a pink or red ink
+   would make the pair one hue. The text sits in the same quiet box in both
+   places; only code keeps the monospace face. */
+
+.admin-page :where(.studio-history__text, .studio-diff) {
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius);
+  background: var(--st-field);
+  color: var(--st-text-2);
+  font-family: var(--st-font);
+  font-size: var(--st-size-sm);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.admin-page :where(.studio-history__text, .studio-diff) :where(code, pre) {
+  font-family: var(--st-mono);
+}
+
+.admin-page :where(.studio-history__text, .studio-diff) :where(ins, del) {
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.admin-page :where(.studio-history__text, .studio-diff) ins {
+  background: var(--st-added-tint);
+  color: var(--st-text);
+  text-decoration: underline;
+  text-decoration-color: var(--st-added);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.admin-page :where(.studio-history__text, .studio-diff) del {
+  background: var(--st-removed-tint);
+  color: var(--st-text-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--st-removed);
+}
+
+/* The same pair as a count: +12 −3. */
+.admin-page .studio-history__summary .is-add {
+  color: var(--st-added);
+}
+
+.admin-page .studio-history__summary .is-del {
+  color: var(--st-removed);
+}
