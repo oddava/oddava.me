@@ -23,6 +23,8 @@ function sections(): { title: string; rows: Row[] }[] {
         ['Search notes and commands', shortcut('P')],
         ['Show or hide the sidebar', shortcut('\\')],
         ['Save now', shortcut('S')],
+        ['Focus mode', shortcut('F', true)],
+        ['Leave focus mode', 'Esc'],
         ['Back / forward', `${altShortcut('←')} / ${altShortcut('→')}`],
         ['Keyboard shortcuts', shortcut('/')],
       ],

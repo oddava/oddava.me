@@ -1,0 +1,375 @@
+/* ---------------------------------------------------------------------------
+   Calm writing: the Aa popover, reading comfort, focus mode.
+
+   Everything keys on attributes the workspace sets on <html> (see
+   studioFocusPrefs.ts → focusAttributes), so a saved text size or width can
+   be on the page before the editor exists. Loaded last, after the phone
+   layout; the rules that must not touch a phone say so with a media query
+   instead of raising specificity.
+
+   Any other piece of chrome that should sleep in focus mode only has to carry
+   `data-studio-chrome`.
+--------------------------------------------------------------------------- */
+
+/* --- The bar's two controls --- */
+
+.admin-page .studio-reading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.admin-page .studio-reading__trigger {
+  font-size: var(--st-size-md);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.admin-page .studio-reading__trigger[aria-expanded='true'] {
+  background: var(--st-current);
+  color: var(--st-text);
+}
+
+.admin-page .studio-reading__focus[aria-pressed='true'] {
+  background: var(--st-picked);
+  color: var(--st-accent-text);
+}
+
+/* --- The popover ---
+   A small floating card under the Aa: one body with the menus and the
+   inline toolbar (raised fill, hairline, larger radius, one shadow). */
+
+.admin-page .studio-reading__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 14px;
+  width: min(304px, calc(100vw - 24px));
+  padding: 14px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius-float);
+  background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
+  color: var(--st-text);
+  font-size: var(--st-size-sm);
+  letter-spacing: -0.01em;
+  animation: studio-arrive var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-reading__group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-page .studio-reading__group legend {
+  padding: 0 0 6px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+}
+
+.admin-page .studio-reading__hint {
+  margin: -2px 0 6px;
+  color: var(--st-text-4);
+  font-size: var(--st-size-xs);
+}
+
+.admin-page .studio-reading__rule {
+  height: 1px;
+  margin-inline: -14px;
+  background: var(--st-line);
+}
+
+/* A row of pills that reads as one control: the chosen one is lit, the
+   rest sit in the tray. The radios underneath are real, so the arrow keys
+   move the choice. */
+.admin-page .studio-reading__segments {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--st-radius);
+  background: var(--st-hover);
+}
+
+.admin-page .studio-reading__segment {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: calc(var(--st-control) - 4px);
+  border-radius: calc(var(--st-radius) - 2px);
+  color: var(--st-text-3);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-reading__segment:hover {
+  color: var(--st-text);
+}
+
+.admin-page .studio-reading__segment input,
+.admin-page .studio-reading__switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.admin-page .studio-reading__segment:has(input:checked) {
+  background: var(--st-picked);
+  color: var(--st-accent-text);
+}
+
+.admin-page .studio-reading__segment:has(input:focus-visible) {
+  outline: 2px solid var(--st-focus);
+  outline-offset: -2px;
+}
+
+/* S, M and L are drawn at their own sizes: the control shows what it does. */
+.admin-page .studio-reading__segment [data-choice='sm'] {
+  font-size: 12px;
+}
+
+.admin-page .studio-reading__segment [data-choice='md'] {
+  font-size: 15px;
+}
+
+.admin-page .studio-reading__segment [data-choice='lg'] {
+  font-size: 19px;
+}
+
+.admin-page .studio-reading__switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: calc(var(--st-control) - 4px);
+  cursor: pointer;
+}
+
+.admin-page .studio-reading__track {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--st-press);
+  transition: background-color var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-reading__track::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--st-text-2);
+  content: '';
+  transition:
+    transform var(--st-base) var(--st-ease),
+    background-color var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-reading__switch input:checked + .studio-reading__track {
+  background: var(--st-accent);
+}
+
+.admin-page
+  .studio-reading__switch
+  input:checked
+  + .studio-reading__track::after {
+  background: var(--st-on-accent);
+  transform: translateX(14px);
+}
+
+.admin-page
+  .studio-reading__switch
+  input:focus-visible
+  + .studio-reading__track {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 2px;
+}
+
+/* --- Reading comfort ---
+   The page's type is the published note's (`.prose`). Size scales the body
+   and the two headings that carry their own fixed sizes, from the same
+   numbers `_note-prose.css` uses, so the editor is still the page. */
+
+.admin-page[data-studio-text='sm'] {
+  --studio-text-scale: 0.9;
+}
+
+.admin-page[data-studio-text='lg'] {
+  --studio-text-scale: 1.15;
+}
+
+.admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .studio-rich-content.prose {
+  font-size: calc(clamp(1.125rem, 1.7vw, 1.1875rem) * var(--studio-text-scale));
+}
+
+.admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .studio-rich-content.prose
+  h1 {
+  font-size: calc(clamp(2rem, 4vw, 2.625rem) * var(--studio-text-scale));
+}
+
+.admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .studio-rich-content.prose
+  h2 {
+  font-size: calc(clamp(1.5rem, 3vw, 1.875rem) * var(--studio-text-scale));
+}
+
+@media (max-width: 420px) {
+  .admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+    .studio-rich-content.prose
+    h1 {
+    font-size: calc(clamp(1.65rem, 8vw, 2.2rem) * var(--studio-text-scale));
+  }
+}
+
+/* Width is the column's, not the window's. The 72px floor keeps the block
+   handle's gutter. A phone's even margins are its own. */
+.admin-page[data-studio-measure='narrow'] {
+  --studio-measure: 30rem;
+}
+
+.admin-page[data-studio-measure='wide'] {
+  --studio-measure: 50rem;
+}
+
+@media (min-width: 721px) {
+  .admin-page:is([data-studio-measure='narrow'], [data-studio-measure='wide'])
+    .studio-rich-scroll {
+    padding-inline: max(72px, calc((100% - var(--studio-measure)) / 2));
+  }
+}
+
+/* --- Typewriter scroll ---
+   The caret rests mid-page, so the last line needs a page's worth of room
+   under it to be able to get there. */
+
+.admin-page[data-studio-typewriter='on'] .studio-rich-scroll,
+.admin-page[data-studio-typewriter='on']
+  .studio.is-keyboard-open
+  .studio-rich-scroll {
+  padding-bottom: calc(var(--studio-vh, 100dvh) * 0.45);
+}
+
+/* --- Focus mode --- */
+
+/* Everything but the line being written steps back. Where there is a pointer,
+   hovering a dimmed block brings it most of the way forward, so a glance never
+   needs focus mode off. A finger has no hover; its taps would leave blocks lit. */
+.studio-rich-content .studio-focus-dim {
+  opacity: 0.32;
+  transition: opacity var(--st-slow) var(--st-ease);
+}
+
+@media (hover: hover) {
+  .studio-rich-content .studio-focus-dim:hover {
+    opacity: 0.65;
+  }
+}
+
+.admin-page .studio-bar {
+  transition:
+    border-color var(--st-base) var(--st-ease),
+    opacity var(--st-slow) var(--st-ease);
+}
+
+.admin-page[data-studio-focus='on'] .studio-bar,
+.admin-page[data-studio-focus='on'] [data-studio-chrome] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Woken by the pointer at the edge, by the keyboard reaching into it, or by
+   a failed save, which is the one thing the bar must never swallow. */
+.admin-page[data-studio-focus='on'][data-studio-peek='on'] .studio-bar,
+.admin-page[data-studio-focus='on'][data-studio-peek='on'] [data-studio-chrome],
+.admin-page[data-studio-focus='on'] .studio-bar:has(:focus-visible),
+.admin-page[data-studio-focus='on'] [data-studio-chrome]:has(:focus-visible),
+.admin-page[data-studio-focus='on']
+  .studio-bar:has(.studio-save[data-tone='error']) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The gutter's handles are tools, and tools wait outside focus mode. */
+.admin-page[data-studio-focus='on'] .studio-rich-handle {
+  display: none;
+}
+
+@media (min-width: 721px) {
+  /* The sidebar's column closes, so the page centres on the whole screen
+     rather than on what the sidebar left over. */
+  .admin-page[data-studio-focus='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer) {
+    position: relative;
+    grid-template-columns: 0px minmax(0, 1fr);
+    transition: grid-template-columns var(--st-slow) var(--st-ease-move);
+  }
+
+  .admin-page[data-studio-focus='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer)
+    > .studio-workbench {
+    grid-column: 2;
+  }
+
+  /* The sidebar keeps its width while its column closes round it, so its
+     rows are clipped, not re-wrapped. */
+  .admin-page[data-studio-focus='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer)
+    > .studio-sidebar {
+    overflow: hidden;
+    border-right-color: transparent;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      opacity var(--st-base) var(--st-ease),
+      visibility 0s linear var(--st-base);
+  }
+
+  .admin-page[data-studio-focus='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer)
+    > .studio-sidebar
+    > * {
+    min-width: var(--studio-sidebar-w, 300px);
+  }
+
+  /* Peeking, it floats over the page as a card instead of pushing it. */
+  .admin-page[data-studio-focus='on'][data-studio-peek='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer)
+    > .studio-sidebar,
+  .admin-page[data-studio-focus='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer)
+    > .studio-sidebar:has(:focus-visible) {
+    position: absolute;
+    inset: 8px auto 8px 8px;
+    z-index: 20;
+    width: var(--studio-sidebar-w, 300px);
+    border: 1px solid var(--st-line-strong);
+    border-radius: var(--st-radius-float);
+    box-shadow: var(--st-shadow-float);
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transition:
+      opacity var(--st-base) var(--st-ease),
+      visibility 0s;
+  }
+}

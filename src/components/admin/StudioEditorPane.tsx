@@ -5,6 +5,7 @@ import type { ImageEditRequest } from './StudioImageDialog';
 import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
+import StudioFocusControls from './StudioFocusControls';
 import StudioSaveIndicator from './StudioSaveIndicator';
 import StudioRichEditor from './StudioRichEditor';
 import type { EditorCommands } from './studioEditorCommands';
@@ -179,6 +180,7 @@ export default function StudioEditorPane({
             </>
           ) : (
             <>
+              <StudioFocusControls compact={compact} />
               <StudioSaveIndicator
                 state={saveState}
                 savedAt={savedAt}
