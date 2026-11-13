@@ -16,10 +16,28 @@ export const NOTE_TOMBSTONES_KEY = 'content:note-tombstones';
  * removed. `cjson` keeps the reply a string on both the Upstash REST transport
  * and the node Redis client.
  */
+//
+// Each tombstone is described, not returned: its `draft` marker, or for one
+// trashed before the marker existed, just its frontmatter block (no body).
+// `isPublicTombstone` in note-archive.ts decides which a visitor may see.
 export const READ_RETIRED_SCRIPT = `
+local tombstones = {}
+local flat = redis.call('HGETALL', KEYS[2])
+for index = 1, #flat, 2 do
+  local entry = { path = flat[index] }
+  local ok, tombstone = pcall(cjson.decode, flat[index + 1])
+  if ok and type(tombstone) == 'table' then
+    if type(tombstone.draft) == 'boolean' then
+      entry.draft = tombstone.draft
+    elseif type(tombstone.content) == 'string' then
+      entry.frontmatter = string.match(tombstone.content, '^%-%-%-\\r?\\n.-\\r?\\n%-%-%-') or ''
+    end
+  end
+  tombstones[#tombstones + 1] = entry
+end
 return cjson.encode({
   redirects = redis.call('HGETALL', KEYS[1]),
-  tombstones = redis.call('HKEYS', KEYS[2])
+  tombstones = tombstones
 })
 `;
 
@@ -84,6 +102,7 @@ local ok, decoded = pcall(cjson.decode, current)
 if not ok or decoded.rev ~= ARGV[2] then return 'revision_conflict' end
 decoded.rev = ARGV[4]
 decoded.deletedAt = ARGV[5]
+decoded.draft = ARGV[6] == '1'
 local encoded = cjson.encode(decoded)
 redis.call('HSET', KEYS[5], ARGV[3], encoded)
 redis.call('HDEL', KEYS[4], ARGV[3])

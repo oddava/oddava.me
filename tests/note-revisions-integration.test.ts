@@ -173,6 +173,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         storePath,
         publicPath,
         revision: current!.revision,
+        draft: false,
         message: 'trash',
       });
     }
