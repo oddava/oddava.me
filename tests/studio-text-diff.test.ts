@@ -31,10 +31,11 @@ describe('diffLines', () => {
   });
 
   it('handles an empty side', () => {
-    expect(diffLines('', 'a')).toEqual([
-      { kind: 'removed', line: '' },
-      { kind: 'added', line: 'a' },
-    ]);
+    expect(diffLines('', 'a')).toEqual([{ kind: 'added', line: 'a' }]);
+  });
+
+  it('does not count blank-line spacing as a change', () => {
+    expect(hasChanges(diffRows('a\n\nb', 'a\nb\n\n'))).toBe(false);
   });
 });
 

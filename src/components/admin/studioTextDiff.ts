@@ -21,8 +21,16 @@ export interface DiffGap {
 /** LCS table cells we are willing to allocate (about 8 MB of Uint16). */
 const MAX_TABLE_CELLS = 4_000_000;
 
+/**
+ * Blank lines are dropped: Markdown from another tool spaces its blocks
+ * differently from Studio's own serializer, and a comparison that flags every
+ * paragraph break would bury the words that did change.
+ */
 function toLines(text: string): string[] {
-  return text.replace(/\r\n?/g, '\n').split('\n');
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .filter((line) => line.trim() !== '');
 }
 
 export function diffLines(mine: string, theirs: string): DiffOp[] {

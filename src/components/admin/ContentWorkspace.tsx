@@ -27,6 +27,11 @@ import { useContentLibrary } from './useContentLibrary';
 import { useContentMutations } from './useContentMutations';
 import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
+import { useStudioConflict } from './useStudioConflict';
+import StudioConflictBanner, {
+  focusConflictBanner,
+} from './StudioConflictBanner';
+import { isPaused } from './studioConflict';
 import { useStudioTabs } from './useStudioTabs';
 import {
   contentRequestError,
@@ -155,11 +160,27 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     [setEntries, syncSocialCards],
   );
 
+  // The conflict hook needs the document, and the document reports refused
+  // saves to it, so the callback is routed through a ref.
+  const saveRejectedRef = useRef<(reason: 'stale' | 'gone') => void>(() => {});
   const doc = useStudioDocument({
     collectionId: collection?.id ?? null,
     onSaved: onEntrySaved,
     onError: setError,
+    onSaveRejected: (reason) => saveRejectedRef.current(reason),
   });
+  const conflict = useStudioConflict({
+    collectionId: collection?.id ?? null,
+    doc,
+    onAdopted: onEntrySaved,
+    onGone: (id) => {
+      tabs.forgetTab(id);
+      void refreshTree();
+    },
+    onNotice: setNotice,
+    onError: reportError,
+  });
+  saveRejectedRef.current = conflict.handleSaveRejected;
   const {
     openId,
     body,
@@ -1177,6 +1198,16 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                     setImageDialogOpen(true);
                   }}
                   onNotice={setNotice}
+                  banner={
+                    <StudioConflictBanner
+                      conflict={conflict}
+                      body={body}
+                      dirty={doc.hasUnsavedWork}
+                      onNotice={setNotice}
+                    />
+                  }
+                  savePaused={isPaused(conflict.state)}
+                  onResolveSave={focusConflictBanner}
                 />
               )}
             </section>
