@@ -4,7 +4,7 @@ import { slugifyHeading } from './headings';
 import { normalizeWikiLinkTarget } from './utils';
 import { notesTagUrl } from '../notes-url';
 import { fenceLanguage, resolveCodeLanguage } from './code-languages';
-import { highlightToHtml } from './highlight';
+import { createHighlightBudget, highlightToHtml } from './highlight';
 import { calloutExtension } from './render-callouts';
 import {
   createFootnoteState,
@@ -261,6 +261,8 @@ function createRenderer(
 ): Renderer {
   const renderer = new Renderer();
   const slugCounts = new Map<string, number>();
+  // One allowance per render, shared by every code block in the note.
+  const highlightBudget = createHighlightBudget();
 
   renderer.heading = function heading(token: Tokens.Heading): string {
     const text = this.parser.parseInline(token.tokens);
@@ -290,7 +292,7 @@ function createRenderer(
       ? ` data-language="${escapeAttr(language.label)}"`
       : '';
     const className = word ? ` class="language-${escapeAttr(word)}"` : '';
-    return `<pre${attributes}><code${className}>${highlightToHtml(text, token.lang)}\n</code></pre>\n`;
+    return `<pre${attributes}><code${className}>${highlightToHtml(text, token.lang, highlightBudget)}\n</code></pre>\n`;
   };
 
   // Outbound http(s) links get a class for the outward affordance and the

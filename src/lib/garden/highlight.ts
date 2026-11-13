@@ -53,14 +53,42 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
-/** `code` as escaped HTML with token spans; plain escaped text if unhighlighted. */
+/**
+ * Characters one render may highlight across all its code blocks. Each block
+ * is linear and capped, but a note of many capped blocks is not: past this,
+ * the remaining blocks render as plain escaped code.
+ */
+export const MAX_DOCUMENT_HIGHLIGHT_LENGTH = 120_000;
+
+/** What is left of one render's highlighting allowance. */
+export interface HighlightBudget {
+  remaining: number;
+}
+
+export function createHighlightBudget(
+  limit = MAX_DOCUMENT_HIGHLIGHT_LENGTH,
+): HighlightBudget {
+  return { remaining: limit };
+}
+
+/**
+ * `code` as escaped HTML with token spans; plain escaped text if unhighlighted.
+ * With a `budget`, a block that does not fit what remains renders plain, and a
+ * block that is highlighted spends its length.
+ */
 export function highlightToHtml(
   code: string,
   info: string | null | undefined,
+  budget?: HighlightBudget,
 ): string {
+  let tokens: CodeToken[] = [];
+  if (!budget || code.length <= budget.remaining) {
+    tokens = tokenizeCode(code, info);
+    if (budget) budget.remaining -= code.length;
+  }
   let html = '';
   let cursor = 0;
-  for (const { from, to, kind } of tokenizeCode(code, info)) {
+  for (const { from, to, kind } of tokens) {
     html += escapeHtml(code.slice(cursor, from));
     html += `<span class="${tokenClass(kind)}">${escapeHtml(code.slice(from, to))}</span>`;
     cursor = to;
