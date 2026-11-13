@@ -142,7 +142,7 @@ test('keeping mine overwrites with the newer revision', async ({ page }) => {
 
   await typeAtEnd(page, ' Mine.');
   await banner(page)
-    .getByRole('button', { name: 'Keep mine (overwrite)' })
+    .getByRole('button', { name: 'Keep mine', exact: true })
     .click();
   await expect(banner(page)).toHaveCount(0);
   await expect(page.locator('.studio-save')).toHaveAttribute(

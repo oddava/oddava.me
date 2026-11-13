@@ -88,8 +88,10 @@ export default function StudioHistoryPanel({
             <span className="studio-history__bubble" aria-hidden="true">
               <Icon name="history" />
             </span>
-            <p className="studio-history__lead">The history would not open.</p>
-            <p className="studio-history__hint">{history.error}</p>
+            <p className="studio-history__lead">Couldn’t open the history</p>
+            <p className="studio-history__hint">
+              Your note is fine — try again in a moment.
+            </p>
             <button
               type="button"
               className="studio-btn press"

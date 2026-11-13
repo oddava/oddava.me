@@ -97,7 +97,10 @@ export default function WikiLinkAutocomplete({
           </span>
           <span className="studio-wikimenu__text">
             <span className="studio-wikimenu__title">
-              {item.title || item.id.replaceAll('-', ' ')}
+              {/* A #tag row has its hash already, in the icon column. */}
+              {item.count === undefined
+                ? item.title || item.id.replaceAll('-', ' ')
+                : item.id}
             </span>
             {item.folder && (
               <span className="studio-wikimenu__folder">
