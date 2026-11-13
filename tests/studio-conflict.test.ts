@@ -190,6 +190,24 @@ describe('observe', () => {
     });
   });
 
+  it('does not reload quietly under an author who is editing', () => {
+    const outcome = observe(CLEAR, found(note('r2', 'theirs')), {
+      ...local('r1', 'mine, all saved', false),
+      editing: true,
+    });
+    expect(outcome.effect).toEqual({ type: 'none' });
+    expect(outcome.state).toMatchObject({ kind: 'changed', again: false });
+    expect(isPaused(outcome.state)).toBe(true);
+    // Their version loads when asked; saved text needs no setting aside.
+    const loaded = choose(
+      outcome.state,
+      'load-theirs',
+      local('r1', 'mine, all saved', false),
+    );
+    expect(loaded.state).toEqual(CLEAR);
+    expect(loaded.effect).toMatchObject({ type: 'load', quiet: false });
+  });
+
   it('leaves set-aside text alone when a quiet refresh happens', () => {
     const aside: ConflictState = {
       kind: 'set-aside',

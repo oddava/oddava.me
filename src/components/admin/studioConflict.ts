@@ -19,6 +19,13 @@ export interface NoteVersion {
 /** The note as Studio shows it. `dirty` means edits the store does not have. */
 export interface LocalNote extends NoteVersion {
   dirty: boolean;
+  /**
+   * The author is at work in it: the editor has focus and holds edits made
+   * since the note opened. Replacing the text under them would move the caret
+   * and take their undo history, so a newer version waits for them to choose
+   * even when everything they typed is saved.
+   */
+  editing?: boolean;
 }
 
 /** What Studio wrote or typed, kept apart from the store's revision. */
@@ -33,7 +40,10 @@ export type Reading =
 
 export type ConflictState =
   | { kind: 'clear' }
-  /** The store moved on while there are unsaved edits; autosave is paused. */
+  /**
+   * The store moved on while there are unsaved edits, or while the author is
+   * editing; autosave is paused.
+   */
   | {
       kind: 'changed';
       theirs: NoteVersion;
@@ -136,7 +146,7 @@ export function observe(
       effect: { type: 'adopt-revision', revision: theirs.revision },
     };
   }
-  if (!local.dirty) {
+  if (!local.dirty && !local.editing) {
     return {
       state: settled(state),
       effect: { type: 'load', theirs, quiet: true },
@@ -165,9 +175,12 @@ export function choose(
 ): Outcome {
   if (state.kind === 'changed') {
     if (choice === 'load-theirs') {
-      const mine = sameContent(local, state.theirs)
-        ? state.aside
-        : setAsideText(local);
+      // Text the store already has is in its history; only unsaved text
+      // needs setting aside.
+      const mine =
+        local.dirty && !sameContent(local, state.theirs)
+          ? setAsideText(local)
+          : state.aside;
       return {
         state: mine ? { kind: 'set-aside', mine } : CLEAR,
         effect: { type: 'load', theirs: state.theirs, quiet: false },

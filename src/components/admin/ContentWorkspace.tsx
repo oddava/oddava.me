@@ -29,7 +29,7 @@ import { useContentMutations } from './useContentMutations';
 import { useStudioConnections } from './useStudioConnections';
 import { splitNotePath, unwrittenNoteBody } from './studioConnectionText';
 import { useSocialCardSync } from './useSocialCards';
-import { useStudioDocument } from './useStudioDocument';
+import { useStudioDocument, type OnNoteStored } from './useStudioDocument';
 import { useStudioDraft } from './useStudioDraft';
 import { useStudioConflict } from './useStudioConflict';
 import StudioConflictBanner, {
@@ -41,6 +41,7 @@ import { useStudioFocusRoot } from './useStudioFocus';
 import {
   contentRequestError,
   noteHref,
+  rowPatchFromNote,
   shortcut,
   titleFromBody,
 } from './studioHelpers';
@@ -162,11 +163,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // blocking it.
   const syncSocialCards = useSocialCardSync(Boolean(collection));
 
-  const onEntrySaved = useCallback(
-    (id: string, revision: string, title: string, icon?: string) => {
+  const onEntrySaved: OnNoteStored = useCallback(
+    (id, revision, storedBody, fields) => {
+      const patch = rowPatchFromNote(id, storedBody, fields);
       setEntries((items) =>
         items.map((entry) =>
-          entry.id === id ? { ...entry, title, revision, icon } : entry,
+          entry.id === id ? { ...entry, ...patch, revision } : entry,
         ),
       );
       syncSocialCards();
@@ -193,8 +195,17 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     },
     onNotice: setNotice,
     onError: reportError,
+    // The caret is in the note: a newer version asks rather than replacing
+    // the text (and the undo history) under it.
+    isEditing: () =>
+      Boolean(document.activeElement?.closest('.studio-rich-content')),
   });
   saveRejectedRef.current = conflict.handleSaveRejected;
+  // Writes the author asks for (a restore, publishing) wait while a conflict
+  // holds saving; this is what the disabled controls say.
+  const savePausedReason = isPaused(conflict.state)
+    ? 'Saving is paused until you choose a version in the banner above the note.'
+    : null;
   const {
     openId,
     body,
@@ -607,7 +618,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     title: currentTitle,
     entries,
     setEntries,
+    blockedReason: savePausedReason,
     notify: setNotice,
+    onError: reportError,
   });
 
   // On a phone the note's own screen is the one with the sidebar closed.
@@ -1064,7 +1077,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onChangeIcon={() => setIconPickerRequest((n) => n + 1)}
                 draft={
                   draft.state
-                    ? { state: draft.state, onChange: draft.set }
+                    ? {
+                        state: draft.state,
+                        onChange: draft.set,
+                      }
                     : null
                 }
                 onQuickCreate={(folder) => {
@@ -1362,6 +1378,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         title={currentTitle}
         compact={phone}
         onSaved={onEntrySaved}
+        blockedReason={savePausedReason}
         onNotice={setNotice}
         onClose={closeHistory}
       />

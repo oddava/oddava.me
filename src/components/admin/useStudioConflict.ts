@@ -12,8 +12,7 @@ import {
   type LocalNote,
   type Reading,
 } from './studioConflict';
-import { titleFromBody } from './studioHelpers';
-import type { StudioDocument } from './useStudioDocument';
+import type { OnNoteStored, StudioDocument } from './useStudioDocument';
 
 /** How often an open note is compared with the store while the tab is shown. */
 const POLL_MS = 20_000;
@@ -26,16 +25,16 @@ interface Options {
   collectionId: string | null;
   doc: StudioDocument;
   /** The store's version is now the open one: refresh the list row. */
-  onAdopted: (
-    id: string,
-    revision: string,
-    title: string,
-    icon?: string,
-  ) => void;
+  onAdopted: OnNoteStored;
   /** The open note no longer exists: close its tab and refresh the list. */
   onGone: (id: string) => void;
   onNotice: (message: string) => void;
   onError: (message: string) => void;
+  /**
+   * The author has the caret in the note. A newer version then waits for them
+   * to choose instead of replacing the text under it; see `LocalNote.editing`.
+   */
+  isEditing?: () => boolean;
 }
 
 export interface StudioConflict {
@@ -72,15 +71,15 @@ async function readStore(
   }
 }
 
-function iconOf(fields: Record<string, unknown>): string | undefined {
-  return typeof fields.icon === 'string' ? fields.icon : undefined;
-}
-
 /**
  * Notices when the open note was changed or removed by someone else (another
  * tab, the Notes API, the Obsidian plugin) and walks the author through it.
  * Decisions live in `studioConflict`; this hook only reads the store, applies
  * the resulting effects and keeps autosave paused while a choice is pending.
+ *
+ * It is the only thing that pauses or resumes saving. The document reports a
+ * refused save and stops there; whether to wait, and for how long, is decided
+ * here.
  */
 export function useStudioConflict({
   collectionId,
@@ -89,6 +88,7 @@ export function useStudioConflict({
   onGone,
   onNotice,
   onError,
+  isEditing,
 }: Options): StudioConflict {
   const [state, setState] = useState<ConflictState>(CLEAR);
   const [busy, setBusy] = useState(false);
@@ -101,42 +101,52 @@ export function useStudioConflict({
   const retryTimer = useRef<number | null>(null);
   const docRef = useRef(doc);
   docRef.current = doc;
-  const callbacks = useRef({ onAdopted, onGone, onNotice, onError });
-  callbacks.current = { onAdopted, onGone, onNotice, onError };
+  const callbacks = useRef({ onAdopted, onGone, onNotice, onError, isEditing });
+  callbacks.current = { onAdopted, onGone, onNotice, onError, isEditing };
 
   const { openId } = doc;
 
-  const apply = useCallback((next: ConflictState) => {
-    const current = docRef.current;
-    stateRef.current = next;
-    setState(next);
-    current.setPaused(isPaused(next));
-    const id = current.docRef.current?.id;
-    if (!id) return;
-    if (next.kind === 'set-aside') asideRef.current.set(id, next);
-    else asideRef.current.delete(id);
+  const clearRetry = useCallback(() => {
+    if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
+    retryTimer.current = null;
   }, []);
+
+  const apply = useCallback(
+    (next: ConflictState) => {
+      const current = docRef.current;
+      stateRef.current = next;
+      setState(next);
+      clearRetry();
+      current.setPaused(isPaused(next));
+      const id = current.docRef.current?.id;
+      if (!id) return;
+      if (next.kind === 'set-aside') asideRef.current.set(id, next);
+      else asideRef.current.delete(id);
+    },
+    [clearRetry],
+  );
 
   useEffect(() => {
     // A different note: its own set-aside text, or nothing to resolve.
     const next = asideRef.current.get(openId) ?? CLEAR;
     stateRef.current = next;
     setState(next);
-    docRef.current.setPaused(false);
-    return () => {
-      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-      retryTimer.current = null;
-    };
-  }, [openId]);
+    docRef.current.setPaused(isPaused(next));
+    return clearRetry;
+  }, [openId, clearRetry]);
 
   const localNote = useCallback((): LocalNote | null => {
-    const current = docRef.current.docRef.current;
-    if (!current) return null;
+    const current = docRef.current;
+    const open = current.docRef.current;
+    if (!open) return null;
     return {
-      revision: current.revision,
-      body: current.body,
-      fields: current.fields,
-      dirty: docRef.current.hasPendingWrites(),
+      revision: open.revision,
+      body: open.body,
+      fields: open.fields,
+      dirty: current.hasPendingWrites(),
+      editing:
+        current.documentVersion() > 0 &&
+        Boolean(callbacks.current.isEditing?.()),
     };
   }, []);
 
@@ -148,26 +158,20 @@ export function useStudioConflict({
       const { onAdopted, onGone, onNotice, onError } = callbacks.current;
 
       if (effect.type === 'adopt-revision') {
-        current.adoptRevision(effect.revision, true);
-        onAdopted(
-          open.id,
-          effect.revision,
-          titleFromBody(open.body, open.id),
-          iconOf(open.fields),
-        );
+        // Decided on the text as it is right now, so all of it is in step.
+        current.adoptRevision(effect.revision, current.documentVersion());
+        onAdopted(open.id, effect.revision, open.body, open.fields);
       } else if (effect.type === 'load') {
         const { theirs } = effect;
         current.replaceFromStore(theirs);
-        onAdopted(
-          open.id,
-          theirs.revision,
-          titleFromBody(theirs.body, open.id),
-          iconOf(theirs.fields),
-        );
+        onAdopted(open.id, theirs.revision, theirs.body, theirs.fields);
         if (effect.quiet) onNotice('Refreshed — this note changed elsewhere.');
       } else if (effect.type === 'overwrite') {
         // Their revision is the new base, so the store accepts our text.
-        current.adoptRevision(effect.revision, false);
+        current.adoptRevision(effect.revision);
+        // Kept while editing with nothing unsaved: what is on screen still has
+        // to be written over theirs, or "keep mine" would keep nothing.
+        if (!current.hasPendingWrites()) current.markDirty({});
         setBusy(true);
         try {
           await current.saveNow();
@@ -181,24 +185,32 @@ export function useStudioConflict({
           fields: effect.text.fields,
         });
       } else if (effect.type === 'recreate') {
+        // The request carries the text as it is now; anything typed while it
+        // is out must stay unsaved, so only this version is acknowledged.
+        const sentVersion = current.documentVersion();
+        const sentGeneration = current.generation();
+        const sent = { body: open.body, fields: open.fields };
         setBusy(true);
         try {
           const response = await createContentEntry(collectionId, {
             slug: open.id,
             folder: open.folder,
-            fields: open.fields,
-            body: open.body,
+            fields: sent.fields,
+            body: sent.body,
           });
           const revision = response.entry?.revision ?? response.result.revision;
           if (!revision) throw new Error('The save returned no revision.');
-          current.adoptRevision(revision, true);
+          // The row describes the stored note whichever note is open now.
+          onAdopted(open.id, revision, sent.body, sent.fields);
+          const now = docRef.current;
+          if (
+            now.generation() !== sentGeneration ||
+            now.docRef.current?.id !== open.id
+          ) {
+            return;
+          }
+          now.adoptRevision(revision, sentVersion);
           apply(saved(stateRef.current));
-          onAdopted(
-            open.id,
-            revision,
-            titleFromBody(open.body, open.id),
-            iconOf(open.fields),
-          );
           onNotice('Saved your note again.');
         } catch (caught) {
           onError(
@@ -246,12 +258,14 @@ export function useStudioConflict({
         if (!now || now.id !== id) return;
         if (!reading) {
           // The refused save left autosave paused with nothing to show for
-          // it. Let it try again rather than strand the author.
+          // it. Let it try again rather than strand the author — unless a
+          // choice has come up in the meantime.
           if (origin === 'save') {
-            retryTimer.current = window.setTimeout(
-              () => docRef.current.setPaused(false),
-              RETRY_AFTER_FAILED_READ_MS,
-            );
+            clearRetry();
+            retryTimer.current = window.setTimeout(() => {
+              retryTimer.current = null;
+              docRef.current.setPaused(isPaused(stateRef.current));
+            }, RETRY_AFTER_FAILED_READ_MS);
           }
           return;
         }
@@ -268,7 +282,7 @@ export function useStudioConflict({
         if (origin === 'poll') checkingRef.current = false;
       }
     },
-    [collectionId, resolve],
+    [clearRetry, collectionId, resolve],
   );
 
   useEffect(() => {
@@ -299,7 +313,9 @@ export function useStudioConflict({
 
   const handleSaveRejected = useCallback(
     (reason: 'stale' | 'gone') => {
-      // Pause now; the read that explains the refusal follows.
+      // Hold every write now; the read that explains the refusal decides
+      // what happens next. Retrying meanwhile could only be refused again.
+      docRef.current.setPaused(true);
       if (reason === 'gone') resolve({ kind: 'missing' });
       else void check('save');
     },

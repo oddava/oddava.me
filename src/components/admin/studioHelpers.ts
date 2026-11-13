@@ -1,5 +1,6 @@
 // Pure helpers shared by the Studio workspace, its hooks and its panes.
 
+import { parseDraftFlag } from '../../lib/content/noteDraft';
 import type { ContentEntryListItem } from '../../lib/contracts';
 import { noteUrl } from '../../lib/notes-url';
 
@@ -7,6 +8,31 @@ import { noteUrl } from '../../lib/notes-url';
 export function titleFromBody(body: string, fallback: string): string {
   const heading = body.match(/^#{1,6}\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
   return heading || fallback.replaceAll('-', ' ') || 'Untitled';
+}
+
+/** Every key is always present, so spreading it clears a stale value too. */
+export interface NoteRowPatch {
+  title: string;
+  icon: string | undefined;
+  draft: true | undefined;
+}
+
+/**
+ * What a list row shows of a note, derived from the note itself. Every path
+ * that adopts a stored version — a save, a restore, either side of a conflict —
+ * refreshes the row through this, so no part of the row (the draft pill reads
+ * `draft`) can drift from the note it describes.
+ */
+export function rowPatchFromNote(
+  id: string,
+  body: string,
+  fields: Record<string, unknown>,
+): NoteRowPatch {
+  return {
+    title: titleFromBody(body, id),
+    icon: typeof fields.icon === 'string' ? fields.icon : undefined,
+    draft: parseDraftFlag(fields.draft) ? true : undefined,
+  };
 }
 
 const APPLE =

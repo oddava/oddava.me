@@ -1,11 +1,9 @@
-import type { ContentEntryDetail } from '../../lib/contracts';
 import StudioHistoryList from './StudioHistoryList';
 import StudioHistoryPreview from './StudioHistoryPreview';
 import StudioSheet from './StudioSheet';
 import { Icon } from './studioIcons';
-import { titleFromBody } from './studioHelpers';
-import { useStudioHistory } from './useStudioHistory';
-import type { StudioDocument } from './useStudioDocument';
+import { adoptRestoredVersion, useStudioHistory } from './useStudioHistory';
+import type { OnNoteStored, StudioDocument } from './useStudioDocument';
 
 interface Props {
   open: boolean;
@@ -15,7 +13,12 @@ interface Props {
   /** A phone: the history rises as a sheet instead of sliding in as a drawer. */
   compact: boolean;
   /** A write landed — the workspace refreshes the note's row from this. */
-  onSaved: (id: string, revision: string, title: string, icon?: string) => void;
+  onSaved: OnNoteStored;
+  /**
+   * Why nothing can be written right now (a conflict holds saving), or null.
+   * Restoring waits, and says so.
+   */
+  blockedReason: string | null;
   onNotice: (message: string) => void;
   onClose: () => void;
 }
@@ -32,6 +35,7 @@ export default function StudioHistoryPanel({
   title,
   compact,
   onSaved,
+  blockedReason,
   onNotice,
   onClose,
 }: Props) {
@@ -41,20 +45,14 @@ export default function StudioHistoryPanel({
     noteId: doc.openId,
     flush: doc.saveNow,
     currentRevision: () => doc.docRef.current?.revision ?? '',
-    onRestored: (entry: ContentEntryDetail) => {
-      doc.patch({
-        fields: entry.fields,
-        body: entry.body,
-        revision: entry.revision,
-      });
-      doc.setBody(entry.body);
-      onSaved(
-        entry.id,
-        entry.revision,
-        titleFromBody(entry.body, entry.id),
-        typeof entry.fields.icon === 'string' ? entry.fields.icon : undefined,
+    blockedReason: () => blockedReason,
+    onRestored: (entry, fields) => {
+      const outcome = adoptRestoredVersion(doc, entry, fields, onSaved);
+      onNotice(
+        outcome === 'edited-meanwhile'
+          ? 'Restored — you kept typing, so choose a version in the banner.'
+          : 'Restored. The version it replaced is still in history.',
       );
-      onNotice('Restored. The version it replaced is still in history.');
       onClose();
     },
   });
@@ -148,13 +146,23 @@ export default function StudioHistoryPanel({
                 type="button"
                 className="studio-btn studio-btn--primary press"
                 disabled={!detail || history.restoring}
-                onClick={() => void history.restore()}
+                // Focusable while blocked, so the reason can be read: the
+                // tooltip, and the hint below it as its description.
+                aria-disabled={blockedReason ? 'true' : undefined}
+                aria-describedby="studio-history-restore-hint"
+                title={blockedReason ?? undefined}
+                onClick={() => {
+                  if (!blockedReason) void history.restore();
+                }}
               >
                 {history.restoring ? 'Restoring…' : 'Restore this version'}
               </button>
-              <p className="studio-history__hint">
-                What you have now is kept in history first, so you can undo
-                this.
+              <p
+                id="studio-history-restore-hint"
+                className="studio-history__hint"
+              >
+                {blockedReason ??
+                  'What you have now is kept in history first, so you can restore it again from history.'}
               </p>
             </footer>
           </>

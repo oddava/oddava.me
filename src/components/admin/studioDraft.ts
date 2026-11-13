@@ -71,3 +71,15 @@ export function stepDraftState(state: DraftState, step: 1 | -1): DraftState {
     (index + step + DRAFT_STATES.length) % DRAFT_STATES.length
   ]!;
 }
+
+/**
+ * A restore brings back words, never visibility: the note keeps its own draft
+ * flag, whatever the version had. (The server applies the same rule; this is
+ * the client's side of it for responses that do not say.)
+ */
+export function keepDraftState(
+  restored: Record<string, unknown>,
+  current: Record<string, unknown>,
+): Record<string, unknown> {
+  return withDraftState(restored, draftStateOf(current));
+}
