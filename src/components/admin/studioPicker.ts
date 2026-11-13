@@ -59,6 +59,39 @@ export interface PickerRequest {
   onPick: (id: string) => void;
 }
 
+/** How long after opening a scroll is still the page settling, not the writer. */
+export const PICKER_SETTLE_MS = 500;
+/** How recent a wheel, swipe or scroll key must be for a scroll to be theirs. */
+export const PICKER_GESTURE_MS = 800;
+
+/**
+ * What a scroll means to an open picker. Opening one moves the page by itself
+ * — focusing the search box on a phone raises the keyboard, which shrinks the
+ * viewport and scrolls the field into view — and closing on that would close
+ * the picker the moment it appeared. So only a scroll the writer made (a
+ * wheel, a swipe, a scroll key, just before it) outside the picker closes it;
+ * any other scroll only moves it back beside its anchor.
+ */
+export function pickerScrollAction(input: {
+  sinceOpenMs: number;
+  sinceGestureMs: number;
+  insidePicker: boolean;
+}): 'ignore' | 'reposition' | 'close' {
+  if (input.insidePicker) return 'ignore';
+  if (input.sinceOpenMs < PICKER_SETTLE_MS) return 'reposition';
+  return input.sinceGestureMs < PICKER_GESTURE_MS ? 'close' : 'reposition';
+}
+
+const SCROLL_KEYS = new Set([
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+  'ArrowUp',
+  'ArrowDown',
+  ' ',
+]);
+
 let closeActive: (() => void) | null = null;
 let serial = 0;
 
@@ -76,6 +109,7 @@ export function openPicker(request: PickerRequest): () => void {
   const root = document.createElement('div');
   root.className = 'studio-picker';
   root.setAttribute('role', 'dialog');
+  root.setAttribute('data-studio-layer', 'menu');
   root.setAttribute('aria-label', request.title);
 
   const list = document.createElement('ul');
@@ -218,11 +252,28 @@ export function openPicker(request: PickerRequest): () => void {
     }
   }
 
-  // Anything that moves the page out from under the anchor would leave the list
-  // floating over the wrong thing.
-  const away = (event: Event) => {
-    if (!root.contains(event.target as Node)) close(false);
+  // A scroll the writer made outside the list closes it; anything else that
+  // moves the page (the phone keyboard arriving, the field scrolled into
+  // view) only puts it back beside its anchor. A resize — the keyboard
+  // again, or a rotation — always just repositions.
+  const openedAt = performance.now();
+  let gestureAt = -Infinity;
+  const gesture = (event: Event) => {
+    if (root.contains(event.target as Node)) return;
+    if (event instanceof KeyboardEvent && !SCROLL_KEYS.has(event.key)) return;
+    gestureAt = performance.now();
   };
+  const away = (event: Event) => {
+    const now = performance.now();
+    const action = pickerScrollAction({
+      sinceOpenMs: now - openedAt,
+      sinceGestureMs: now - gestureAt,
+      insidePicker: root.contains(event.target as Node),
+    });
+    if (action === 'close') close(false);
+    else if (action === 'reposition') position();
+  };
+  const reposition = () => position();
   const outside = (event: PointerEvent) => {
     if (
       !root.contains(event.target as Node) &&
@@ -236,7 +287,11 @@ export function openPicker(request: PickerRequest): () => void {
     closeActive = null;
     document.removeEventListener('pointerdown', outside, true);
     window.removeEventListener('scroll', away, true);
-    window.removeEventListener('resize', away);
+    window.removeEventListener('resize', reposition);
+    window.visualViewport?.removeEventListener('resize', reposition);
+    window.removeEventListener('wheel', gesture, true);
+    window.removeEventListener('touchmove', gesture, true);
+    window.removeEventListener('keydown', gesture, true);
     anchor.setAttribute('aria-expanded', 'false');
     root.remove();
     if (restoreFocus) anchor.focus();
@@ -252,7 +307,14 @@ export function openPicker(request: PickerRequest): () => void {
   position();
   document.addEventListener('pointerdown', outside, true);
   window.addEventListener('scroll', away, true);
-  window.addEventListener('resize', away);
+  window.addEventListener('resize', reposition);
+  window.visualViewport?.addEventListener('resize', reposition);
+  window.addEventListener('wheel', gesture, { capture: true, passive: true });
+  window.addEventListener('touchmove', gesture, {
+    capture: true,
+    passive: true,
+  });
+  window.addEventListener('keydown', gesture, true);
   (input ?? list).focus({ preventScroll: true });
   return closeThis;
 }
