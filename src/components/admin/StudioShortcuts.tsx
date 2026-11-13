@@ -1,6 +1,6 @@
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
-import { altShortcut, shortcut } from './studioHelpers';
+import { altShortcut, historyShortcuts, shortcut } from './studioHelpers';
 import { Icon } from './studioIcons';
 
 interface Props {
@@ -15,7 +15,8 @@ type Row = [label: string, keys: string];
  * shortcuts one at a time, next to their commands; this is the place to see
  * them all at once — and to find the Markdown that makes each block.
  */
-function sections(): { title: string; rows: Row[] }[] {
+export function shortcutSections(): { title: string; rows: Row[] }[] {
+  const [back, forward] = historyShortcuts();
   return [
     {
       title: 'General',
@@ -24,11 +25,16 @@ function sections(): { title: string; rows: Row[] }[] {
         ['Show or hide the sidebar', shortcut('\\')],
         ['Save now', shortcut('S')],
         ['Find in note', shortcut('F')],
-        ['Next / previous match', 'Enter / Shift+Enter'],
+        [
+          'Next / previous match',
+          `Enter / Shift+Enter / F3 / Shift+F3 / ${shortcut('G')} / ${shortcut('G', true)}`,
+        ],
+        ['Replace', `${shortcut('F')}, then ›`],
         ['Outline', shortcut('O', true)],
         ['Focus mode', shortcut('F', true)],
-        ['Leave focus mode', 'Esc'],
-        ['Back / forward', `${altShortcut('←')} / ${altShortcut('→')}`],
+        ['Page style and typewriter scroll', 'Aa'],
+        ['Close what is open, one at a time', 'Esc'],
+        ['Back / forward', `${back} / ${forward}`],
         ['Keyboard shortcuts', shortcut('/')],
       ],
     },
@@ -38,9 +44,11 @@ function sections(): { title: string; rows: Row[] }[] {
         ['Bold', shortcut('B')],
         ['Italic', shortcut('I')],
         ['Strikethrough', shortcut('X', true)],
-        ['Inline code', shortcut('C', true)],
+        ['Inline code', `${shortcut('E')} / ${shortcut('C', true)}`],
         ['Link', shortcut('K')],
         ['Link to a note', '[['],
+        ['Tag', '#tag'],
+        ['Back from a footnote to its mark', `Esc / ${shortcut('Enter')}`],
         ['Undo / redo', `${shortcut('Z')} / ${shortcut('Z', true)}`],
         ['Formatting bar', altShortcut('F10')],
       ],
@@ -65,8 +73,11 @@ function sections(): { title: string; rows: Row[] }[] {
         ['Numbered list', '1.'],
         ['To-do list', '[ ]'],
         ['Quote', '>'],
+        ['Callout', '> [!NOTE]'],
         ['Code block', '```'],
         ['Divider', '---'],
+        ['Footnote', '[^1]'],
+        ['Tag', '#tag'],
       ],
     },
   ];
@@ -106,6 +117,7 @@ export default function StudioShortcuts({ open, onClose }: Props) {
     >
       <div
         className="studio-palette studio-shortcuts"
+        data-studio-layer="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="studio-shortcuts-title"
@@ -137,7 +149,7 @@ export default function StudioShortcuts({ open, onClose }: Props) {
           role="region"
           aria-label="Shortcut list"
         >
-          {sections().map((section) => (
+          {shortcutSections().map((section) => (
             <section key={section.title} className="studio-shortcuts__section">
               <h3>{section.title}</h3>
               <dl>
@@ -159,6 +171,10 @@ export default function StudioShortcuts({ open, onClose }: Props) {
               </dl>
             </section>
           ))}
+          <p className="studio-shortcuts__note">
+            Version history and Publish have no key: find them in the palette (
+            {shortcut('P')}).
+          </p>
         </div>
       </div>
     </div>,
