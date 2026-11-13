@@ -73,7 +73,7 @@ describe('Redis-backed notes runtime', () => {
       content: '# journal\n\nA live note.',
       updatedAt: '2026-01-03T00:00:00.000Z',
     });
-    runtime.version += 1;
+    runtime.version = (runtime.version ?? 0) + 1;
 
     expect((await getGardenIndex()).byId.get('journal')).toMatchObject({
       href: '/notes/journal',
