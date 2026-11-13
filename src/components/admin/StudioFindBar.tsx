@@ -201,7 +201,7 @@ export default function StudioFindBar({
             title={`Replace all ${count.toLocaleString('en-US')}`}
             onClick={replaceEverything}
           >
-            All
+            Replace all
           </button>
         </div>
       )}

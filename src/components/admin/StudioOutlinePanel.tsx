@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Editor, EditorEvents } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { Icon } from './studioIcons';
+import StudioWordCount from './StudioWordCounter';
 import {
   indentLevels,
   outlineOf,
@@ -243,6 +244,7 @@ export default function StudioOutline({
     >
       <header className="studio-outline__head">
         <strong>Outline</strong>
+        {compact && <StudioWordCount editor={editor} inline />}
         <button
           type="button"
           className="studio-icon-button"
@@ -263,7 +265,12 @@ export default function StudioOutline({
       </header>
       <div className="studio-outline__body">
         {items.length ? (
-          <ol ref={list} className="studio-outline__list">
+          <ol
+            ref={list}
+            className="studio-outline__list"
+            // Which row the marker rests on; the stylesheet slides it there.
+            style={{ '--studio-outline-at': String(Math.max(0, active)) }}
+          >
             {items.map((item, index) => (
               <li key={index}>
                 <button
