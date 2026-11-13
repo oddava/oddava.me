@@ -53,7 +53,7 @@
 /* "1 not written yet": a nudge, not an alarm — the accent, tinted. */
 .admin-page .studio-connections__badge {
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--st-picked);
   color: var(--st-accent-text);
   font-size: var(--st-size-xs);
@@ -91,7 +91,7 @@
   min-height: var(--st-touch);
   padding: 10px 12px;
   border: 1px solid var(--st-line);
-  border-radius: var(--st-radius-float);
+  border-radius: var(--st-radius);
   background: var(--st-panel);
   color: var(--st-text-2);
   font: inherit;
@@ -166,9 +166,13 @@
   font-style: italic;
 }
 
+/* On a line of its own, under the words: beside them it squeezed the title
+   to a few letters. Its plus sign starts where the words do — 32px in, past
+   the icon and its gap, less the button's own 12px of padding. */
 .admin-page .studio-connection-card__create {
-  flex: none;
-  margin-left: auto;
+  flex: 1 0 100%;
+  justify-content: flex-start;
+  margin: 2px 0 0 20px;
   color: var(--st-accent-text);
 }
 
