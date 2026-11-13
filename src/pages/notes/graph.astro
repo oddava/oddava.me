@@ -1,10 +1,49 @@
 ---
+/**
+ * The whole garden as one graph: every public note and every resolved link
+ * between them. The landing links here; each note's rail keeps its own local
+ * graph. Rendered per request from the live index, so drafts never appear.
+ * `#place=<note id>` centres the bloom on a note (the island reads it).
+ */
+import NotesLayout from '../../layouts/NotesLayout.astro';
+import InteractiveGraph from '../../components/garden/InteractiveGraph';
+import { registerPortfolioCsp } from '@lib/portfolio/csp';
+import { getGardenIndexOrUnavailable } from '@lib/garden';
+import { deriveNoteGraph } from '@lib/garden/graph';
 import { notesIndexUrl } from '@lib/notes-url';
+import '../../styles/components/_garden.css';
 
-// The graph page is gone; the live graph sits in every note's rail, and its
-// expand button opens the whole garden. Old links land on the garden's root.
-// The route stays so `graph` remains a reserved note name and old links
-// answer with a real 301 rather than a 404.
 export const prerender = false;
-return Astro.redirect(notesIndexUrl(), 301);
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
+
+const garden = await getGardenIndexOrUnavailable();
+if (!garden.ok) return Astro.rewrite('/503');
+const index = garden.index;
+const graph = deriveNoteGraph(index);
+const links = graph.edges.length;
 ---
+
+<NotesLayout
+  title="Note graph"
+  description="Every note by oddava and the links between them."
+>
+  <div class="notes-graph">
+    <header class="notes-graph__head">
+      <a class="notes-back" href={notesIndexUrl()}>← notes</a>
+      <h1 class="pf-title">graph</h1>
+      <p class="notes-graph__lede">
+        {graph.nodes.length}
+        {graph.nodes.length === 1 ? 'note' : 'notes'}, {links}
+        {links === 1 ? 'link' : 'links'}. drag to move, scroll or pinch to zoom,
+        choose a note to open it.
+      </p>
+    </header>
+    <InteractiveGraph
+      client:load
+      data={graph}
+      fullPage
+      rootHref={notesIndexUrl()}
+    />
+  </div>
+</NotesLayout>
