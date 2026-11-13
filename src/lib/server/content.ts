@@ -3,6 +3,7 @@ export {
   adminContentCollectionsRoute,
   adminContentEntryRoute,
   adminContentFoldersRoute,
+  adminContentHistoryRoute,
   adminContentMediaRoute,
   adminContentMoveRoute,
   adminContentReorderRoute,

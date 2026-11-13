@@ -18,6 +18,7 @@ import {
   withRedisContentMutationLock,
 } from './redis-store';
 import { contentStoreErrorResponse, contentStoreUnavailable } from './http';
+import { withNoteRevisions } from './revisions-hook';
 import { dispatchContentRequest } from './router';
 
 const MAX_CONTENT_REQUEST_BYTES = 6 * 1024 * 1024;
@@ -39,7 +40,7 @@ async function dispatchRedisRequest(
   mutation: boolean,
 ): Promise<Response> {
   if (!hasContentStore()) return contentStoreUnavailable();
-  const provider = createRedisContentProvider();
+  const provider = withNoteRevisions(createRedisContentProvider());
   const bounded = await boundedRequest(request, MAX_CONTENT_REQUEST_BYTES);
   const dispatch = () =>
     Promise.resolve(dispatchContentRequest(provider, bounded));
@@ -118,6 +119,12 @@ export function adminContentEntryRoute(context: APIContext): Promise<Response> {
 }
 
 export function adminContentFoldersRoute(
+  context: APIContext,
+): Promise<Response> {
+  return dispatch(context, context.request.method !== 'GET');
+}
+
+export function adminContentHistoryRoute(
   context: APIContext,
 ): Promise<Response> {
   return dispatch(context, context.request.method !== 'GET');
