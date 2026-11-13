@@ -1,5 +1,5 @@
 import type { Token, Tokens } from 'marked';
-import { FOOTNOTE_ID, readFootnoteDefinition } from './footnotes';
+import { readFootnoteDefinition, readFootnoteReference } from './footnotes';
 
 // The marked half of footnotes (syntax lives in footnotes.ts). A render owns a
 // `FootnoteState`: definitions found anywhere in the note, and the order the
@@ -53,10 +53,8 @@ const footnoteRefExtension = {
     return index < 0 ? undefined : index;
   },
   tokenizer(src: string) {
-    const match = new RegExp(`^\\[\\^(${FOOTNOTE_ID})\\](?!:)`).exec(src);
-    return match
-      ? { type: 'footnoteRef', raw: match[0], id: match[1]! }
-      : undefined;
+    const reference = readFootnoteReference(src);
+    return reference ? { type: 'footnoteRef', ...reference } : undefined;
   },
   renderer(token: Tokens.Generic) {
     if (!isRef(token)) return false;

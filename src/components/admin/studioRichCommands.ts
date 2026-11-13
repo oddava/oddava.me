@@ -11,6 +11,7 @@ import type { ImageEditRequest } from './StudioImageDialog';
 import { moveBlocksTo } from './studioSideDrop';
 import type { RichDocument } from './studioRichDocument';
 import { topBlock } from './studioRichGeometry';
+import { blockSlashActions } from './studioBlockCommands';
 
 // What the rich editor does to its document on request: the command set the
 // toolbar and slash menu share, Markdown insertion, and image uploads.
@@ -297,6 +298,7 @@ export function slashActions(
     code: commands.codeBlock,
     table: commands.table,
     divider: commands.divider,
+    ...blockSlashActions(editor),
     image: handlers.requestImage,
     youtube: handlers.embedYoutube,
     link: handlers.showLink,

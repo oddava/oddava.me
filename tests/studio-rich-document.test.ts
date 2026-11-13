@@ -32,12 +32,13 @@ import {
   SourceBlock,
   WikiLink,
 } from '../src/components/admin/studioRichDocument';
+import { studioBlockExtensions } from '../src/components/admin/studioBlockExtensions';
 
 const editors: Editor[] = [];
 function open(body: string) {
   const editor = new Editor({
     extensions: [
-      StarterKit.configure({ trailingNode: false }),
+      StarterKit.configure({ trailingNode: false, codeBlock: false }),
       Markdown,
       TaskList,
       TaskItem,
@@ -49,6 +50,7 @@ function open(body: string) {
       Column,
       SourceBlock,
       WikiLink,
+      ...studioBlockExtensions,
     ],
   });
   editors.push(editor);
@@ -123,13 +125,15 @@ describe('rich Markdown document boundary', () => {
     ).toBe(true);
     expect(document.serialize(editor)).toBe(body);
   });
-  it('preserves reference links and footnotes outside the supported schema', () => {
+  it('keeps reference links as source while footnotes become real nodes', () => {
     const body =
       'Read [this][ref] and the footnote[^1].\n\n[ref]: https://example.com\n\n[^1]: Details.';
     const { editor, document } = open(body);
-    expect(
-      editor.getJSON().content?.every((node) => node.type === 'sourceBlock'),
-    ).toBe(true);
+    expect(editor.getJSON().content?.map((node) => node.type)).toEqual([
+      'sourceBlock',
+      'sourceBlock',
+      'footnoteDefinition',
+    ]);
     expect(document.serialize(editor)).toBe(body);
   });
   it('undo restores the original Markdown after a block edit', () => {

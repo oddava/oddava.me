@@ -11,6 +11,7 @@ import { Columns, Column } from './studioColumns';
 import { RichImage } from './studioRichImage';
 import { YoutubeVideo } from './studioYoutube';
 import { SourceBlock, WikiLink } from './studioRichDocument';
+import { studioBlockExtensions } from './studioBlockExtensions';
 
 interface ExtensionOptions {
   /** Read at render time, so a custom block always uses the current renderer. */
@@ -26,6 +27,7 @@ export function studioRichExtensions({
   return [
     StarterKit.configure({
       underline: false,
+      codeBlock: false,
       trailingNode: false,
       link: { openOnClick: false },
     }),
@@ -38,6 +40,7 @@ export function studioRichExtensions({
     BlockSelectionExtension,
     Columns,
     Column,
+    ...studioBlockExtensions,
     TableKit,
     Markdown,
     SourceBlock.extend({

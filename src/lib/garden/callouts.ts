@@ -92,6 +92,14 @@ export function readCallout(source: string): CalloutSource | null {
   };
 }
 
+/** Whether any line of `source` is a callout marker, nested or not. */
+export function mentionsCallout(source: string): boolean {
+  return new RegExp(
+    `^[ \\t]*>[ \\t>]*\\[!(?:${CALLOUT_KINDS.join('|')})\\][ \\t]*$`,
+    'im',
+  ).test(source);
+}
+
 /** A callout's Markdown, given its body already serialized. */
 export function writeCallout(kind: CalloutKind, body: string): string {
   const quoted = body

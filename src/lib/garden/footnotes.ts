@@ -7,8 +7,17 @@
 
 export const FOOTNOTE_ID = '[\\w-]+';
 
+const REFERENCE = new RegExp(`^\\[\\^(${FOOTNOTE_ID})\\](?!:)`);
 const DEFINITION = new RegExp(`^ {0,3}\\[\\^(${FOOTNOTE_ID})\\]:[ \\t]*(.*)$`);
 const INDENTED = /^(?: {2,}|\t)/;
+
+/** The `[^id]` reference at the start of `source`, or null. */
+export function readFootnoteReference(
+  source: string,
+): { id: string; raw: string } | null {
+  const match = REFERENCE.exec(source);
+  return match ? { id: match[1]!, raw: match[0] } : null;
+}
 
 export interface FootnoteSource {
   id: string;

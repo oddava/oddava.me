@@ -37,6 +37,7 @@
   "dependencies": {
     "@astrojs/preact": "^6.0.1",
     "@tiptap/core": "^3.31.3",
+    "@tiptap/extension-code-block": "^3.31.3",
     "@tiptap/extension-image": "^3.31.3",
     "@tiptap/extension-placeholder": "^3.31.3",
     "@tiptap/extension-table": "^3.31.3",
