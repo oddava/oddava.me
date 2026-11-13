@@ -279,7 +279,7 @@ test('restore and the draft pill wait while a conflict pauses saving', async ({
     await expect(draft).toHaveAttribute('aria-pressed', 'false');
   }
 
-  await page.getByRole('button', { name: 'Version history' }).click();
+  await openHistory(page, info.project.name === 'mobile');
   const dialog = page.getByRole('dialog', { name: 'Version history' });
   const restore = dialog.getByRole('button', { name: 'Restore this version' });
   await expect(restore).toHaveAttribute('aria-disabled', 'true');
