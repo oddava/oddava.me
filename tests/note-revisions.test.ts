@@ -306,6 +306,46 @@ describe('createNoteRevisionStore', () => {
     ]);
   });
 
+  it('reads history only against the note now stored at the id', async () => {
+    // The scripts compare each entry's `born` with the live file's createdAt,
+    // so a list left by an earlier note under the same id stays invisible.
+    const command = vi.fn(async () => '[]');
+    const store = createNoteRevisionStore({
+      command: command as unknown as RevisionCommand,
+    });
+    await store.list('hello', NOTE);
+    await store.read('hello', NOTE, 'a'.repeat(16));
+
+    const calls = command.mock.calls as unknown as Array<
+      [Array<string | number>]
+    >;
+    for (const [args] of calls) {
+      expect(args[2]).toBe(2);
+      expect(args.slice(3, 5)).toEqual([
+        historyKey('hello'),
+        `content:file:${NOTE}`,
+      ]);
+      expect(String(args[1])).toContain('entry.born == born');
+    }
+    expect(calls[1]![0][5]).toBe('a'.repeat(16));
+  });
+
+  it('records which note a version came from and drops a stale list', async () => {
+    const command = vi.fn(async () => 'recorded');
+    await createNoteRevisionStore({
+      command: command as unknown as RevisionCommand,
+    }).snapshot({ id: 'hello', filePath: NOTE, expectedRevision: 'r1' });
+    const script = String(
+      (
+        command.mock.calls as unknown as Array<[Array<string | number>]>
+      )[0]![0][1],
+    );
+    expect(script).toContain('born = born');
+    expect(script).toMatch(
+      /last\.born ~= born[\s\S]*redis\.call\('DEL', KEYS\[1\]\)/,
+    );
+  });
+
   it('never renames a key onto itself', async () => {
     const command = vi.fn(async () => 1);
     await createNoteRevisionStore({
@@ -378,6 +418,8 @@ describe('handleContentRevisions', () => {
     expect(await response.json()).toEqual({
       versions: [expect.objectContaining({ id: VERSION.id })],
     });
+    // The history of the note at this path, not of whatever held the id.
+    expect(revisions.list).toHaveBeenCalledWith('hello', NOTE);
   });
 
   it('previews one version as fields and body', async () => {

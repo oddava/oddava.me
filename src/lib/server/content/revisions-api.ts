@@ -83,11 +83,11 @@ export async function handleContentRevisions(
     const versionId = new URL(request.url).searchParams.get('version');
     if (versionId === null) {
       return adminJson({
-        versions: await revisions.list(id),
+        versions: await revisions.list(id, existing.path),
       } satisfies NoteRevisionsResponse);
     }
     const version = isRevisionId(versionId)
-      ? await revisions.read(id, versionId)
+      ? await revisions.read(id, existing.path, versionId)
       : null;
     if (!version) return missingVersion();
     const { content, ...meta } = version;
@@ -112,7 +112,7 @@ export async function handleContentRevisions(
 
   const versionId = typeof body.versionId === 'string' ? body.versionId : '';
   const version = isRevisionId(versionId)
-    ? await revisions.read(id, versionId)
+    ? await revisions.read(id, existing.path, versionId)
     : null;
   if (!version) return missingVersion();
 

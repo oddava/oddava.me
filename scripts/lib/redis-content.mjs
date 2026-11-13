@@ -22,7 +22,31 @@ export const CONTENT_KEYS = {
   redirects: 'content:note-redirects',
   tombstones: 'content:note-tombstones',
   file: (path) => `content:file:${path}`,
+  // Mirrors historyKey in src/lib/server/content/revisions-store.ts.
+  history: (id) => `content:history:notes:${id}`,
 };
+
+/** A note's id: its file name without the extension, folder ignored. */
+export function noteIdFromNotePath(path) {
+  return (path.split('/').at(-1) ?? '').replace(/\.mdx?$/i, '');
+}
+
+/**
+ * History keys a prune leaves without a note: ids it removed that no imported
+ * note still uses. (A note moved between folders keeps its id, so its history
+ * stays.) History already ignores entries born before the note now at an id —
+ * see revisions-store.ts — so this is cleanup, not what keeps it correct.
+ */
+export function prunedHistoryKeys(prunedPaths, importedNoteIds) {
+  const kept = new Set(importedNoteIds);
+  const keys = new Set();
+  for (const path of prunedPaths) {
+    if (!/^src\/content\/notes\/.+\.mdx?$/i.test(path)) continue;
+    const id = noteIdFromNotePath(path);
+    if (id && !kept.has(id)) keys.add(CONTENT_KEYS.history(id));
+  }
+  return [...keys];
+}
 
 export function loadEnvironment(projectRoot) {
   const environment = { ...process.env };
