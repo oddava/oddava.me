@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runtime = vi.hoisted(() => ({
-  version: 1,
+  version: 1 as number | null,
+  loadError: null as Error | null,
+  versionError: null as Error | null,
   files: [
     {
       sourceId: 'index',
@@ -17,8 +19,14 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock('../src/lib/server/content/redis-store', () => ({
-  readRedisNoteFiles: async () => structuredClone(runtime.files),
-  readStableContentVersion: async () => String(runtime.version),
+  readRedisNoteFiles: async () => {
+    if (runtime.loadError) throw runtime.loadError;
+    return structuredClone(runtime.files);
+  },
+  readStableContentVersion: async () => {
+    if (runtime.versionError) throw runtime.versionError;
+    return runtime.version === null ? null : String(runtime.version);
+  },
   readRetiredNoteIndex: async () => ({
     redirects: new Map(),
     tombstones: new Set(),
@@ -28,6 +36,8 @@ vi.mock('../src/lib/server/content/redis-store', () => ({
 describe('Redis-backed notes runtime', () => {
   beforeEach(() => {
     runtime.version = 1;
+    runtime.loadError = null;
+    runtime.versionError = null;
     runtime.files = [
       {
         sourceId: 'index',
@@ -70,11 +80,49 @@ describe('Redis-backed notes runtime', () => {
       title: 'journal',
     });
   });
+
+  it('serves its cache while it cannot tell whether a newer version exists', async () => {
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
+    const warm = await getGardenIndex();
+
+    runtime.versionError = new Error('store unreachable');
+    expect(await getGardenIndex()).toBe(warm);
+  });
+
+  it('fails closed instead of serving an index it knows is outdated', async () => {
+    const { getGardenIndex, getGardenIndexOrUnavailable } =
+      await import('../src/lib/garden/runtime');
+    expect((await getGardenIndex()).byId.has('reading')).toBe(true);
+
+    // The note is withdrawn, the version moves on, and the rebuild fails.
+    runtime.files = runtime.files.map((file) =>
+      file.sourceId === 'reading'
+        ? { ...file, content: '---\ndraft: true\n---\n\n# reading' }
+        : file,
+    );
+    runtime.version = 2;
+    runtime.loadError = new Error('mid-read failure');
+
+    const { GardenOutdatedError } = await import('../src/lib/garden/errors');
+    await expect(getGardenIndex()).rejects.toBeInstanceOf(GardenOutdatedError);
+    const guarded = await getGardenIndexOrUnavailable();
+    expect(guarded.ok).toBe(false);
+    if (!guarded.ok) {
+      expect(guarded.response.status).toBe(503);
+      expect(guarded.response.headers.get('Retry-After')).toBe('5');
+    }
+
+    // Once the new version builds, the withdrawn note is gone.
+    runtime.loadError = null;
+    expect((await getGardenIndex()).byId.has('reading')).toBe(false);
+  });
 });
 
 describe('getRelatedNotes', () => {
   beforeEach(() => {
     runtime.version = 2;
+    runtime.loadError = null;
+    runtime.versionError = null;
     runtime.files = [
       { sourceId: 'index', content: '# notes\n\nHome.', updatedAt: 't0' },
       {

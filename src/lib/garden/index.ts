@@ -3,6 +3,7 @@ export {
   GardenUnavailableError,
   GardenEmptyError,
   GardenBusyError,
+  GardenOutdatedError,
 } from './errors';
 export {
   getGardenIndexOrUnavailable,
