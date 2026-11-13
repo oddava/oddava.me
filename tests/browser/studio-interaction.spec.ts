@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
+import type { Editor } from '@tiptap/core';
 
 // Where the editor's features meet: one Escape closing one thing, shortcuts
 // that work from anywhere on the page, the #tag menu leaving Enter alone,
@@ -105,6 +106,23 @@ async function setup(page: Page, options: Options = {}) {
   await expect(editor).toBeVisible();
   return { editor, saves };
 }
+
+/**
+ * What the editor's own state holds: the selected text, and the text of the
+ * block the caret is in. A click or a keystroke moves the DOM selection at
+ * once, but ProseMirror learns of it on the next `selectionchange`, so a
+ * chord pressed sooner acts on the selection before it. Nobody types that
+ * fast; a loaded runner does. Tiptap keeps its editor on the element.
+ */
+const editorSelection = (editor: Locator) =>
+  editor.evaluate((node) => {
+    const { state } = (node as HTMLElement & { editor: Editor }).editor;
+    const { from, to, $from } = state.selection;
+    return {
+      text: state.doc.textBetween(from, to),
+      block: $from.parent.textContent,
+    };
+  });
 
 const root = (page: Page) => page.locator('html');
 const findBar = (page: Page) =>
@@ -275,14 +293,28 @@ test('Ctrl+Shift+X strikes through, Ctrl+Shift+S does not save', async ({
   page,
 }) => {
   const { editor, saves } = await setup(page);
+  const line = 'Opening words with a needle in them.';
   await editor.getByText('Opening words').click();
+  // The click's caret has to land before the line is selected, or it lands
+  // after and collapses the selection again.
+  await expect
+    .poll(async () => (await editorSelection(editor)).block)
+    .toBe(line);
   await page.keyboard.press('Home');
   await page.keyboard.press('Shift+End');
+  await expect
+    .poll(async () => (await editorSelection(editor)).text)
+    .toBe(line);
+  const unsaved = saves.length;
   await page.keyboard.press('Control+Shift+X');
-  await expect(editor.locator('s')).toHaveText(
-    'Opening words with a needle in them.',
+  await expect(editor.locator('s')).toHaveText(line);
+  // The strike saves on its own; only once that save has come and gone can
+  // a save after the next chord be blamed on the chord.
+  await expect.poll(() => saves.length).toBeGreaterThan(unsaved);
+  await expect(page.locator('.studio-save')).toHaveAttribute(
+    'data-tone',
+    'saved',
   );
-  await page.waitForTimeout(1200);
   const before = saves.length;
   await page.keyboard.press('Control+Shift+S');
   await page.waitForTimeout(300);
@@ -323,11 +355,17 @@ test('the keyboard goes back from a footnote to where it is used', async ({
   test.skip(isMobile, 'The phone path is the tap test below.');
   const { editor } = await setup(page);
   const reference = editor.locator('[data-footnote-ref]');
+  const inFootnote = () =>
+    expect
+      .poll(async () => (await editorSelection(editor)).block)
+      .toBe('The source of the claim.');
   await editor.getByText('The source of the claim.').click();
+  await inFootnote();
   await page.keyboard.press('Escape');
   await expect(reference).toHaveClass(/ProseMirror-selectednode/);
 
   await editor.getByText('The source of the claim.').click();
+  await inFootnote();
   await page.keyboard.press('Control+Enter');
   await expect(reference).toHaveClass(/ProseMirror-selectednode/);
   await expect(editor.getByText('The source of the claim.')).toBeVisible();

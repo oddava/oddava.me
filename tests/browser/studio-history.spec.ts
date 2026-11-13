@@ -1,6 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const NOW = Date.now();
+// Yesterday by the calendar, whatever the hour: a fixed count of hours back
+// is the day before yesterday for the first hours after midnight.
+const YESTERDAY = (() => {
+  const day = new Date(NOW);
+  day.setDate(day.getDate() - 1);
+  day.setHours(12, 0, 0, 0);
+  return day.getTime();
+})();
 const CURRENT =
   '# Field notes\n\nThe good ideas are usually hiding in the ordinary.\n\nA brand new closing thought.\n';
 const OLD =
@@ -16,8 +24,8 @@ const versions = [
   },
   {
     id: 'b'.repeat(16),
-    at: new Date(NOW - 26 * 3_600_000).toISOString(),
-    recordedAt: NOW - 26 * 3_600_000,
+    at: new Date(YESTERDAY).toISOString(),
+    recordedAt: YESTERDAY,
     reason: 'pre-restore',
     bytes: 40,
   },

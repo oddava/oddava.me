@@ -194,15 +194,17 @@ test('typewriter scroll keeps the caret line near the middle while typing', asyn
 
   // Taking the wheel is the reader's call: typing resumes the follow, a
   // click or a wheel tick does not drag the page back by itself.
-  await page.mouse.wheel(0, -600);
-  const scrolled = await page.evaluate(
-    () => document.querySelector('.studio-rich-scroll')!.scrollTop,
-  );
-  await page.waitForTimeout(300);
   const scrollTop = () =>
     page.evaluate(
       () => document.querySelector('.studio-rich-scroll')!.scrollTop,
     );
+  const followed = await scrollTop();
+  await page.mouse.wheel(0, -600);
+  // The wheel lands a frame or more after it is sent; a reading taken sooner
+  // is the page before it moved, and the move then looks like a drag back.
+  await expect.poll(scrollTop).toBeLessThan(followed);
+  const scrolled = await scrollTop();
+  await page.waitForTimeout(300);
   expect(await scrollTop()).toBe(scrolled);
   // Neither does a click: the caret goes where it was pointed, and the page stays.
   const box = (await editor.boundingBox())!;
