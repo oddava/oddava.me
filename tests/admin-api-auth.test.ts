@@ -137,6 +137,22 @@ const ADMIN_ROUTES: {
     params: { collection: 'notes', id: 'index' },
   },
   {
+    file: 'content/[collection]/[id]/history.ts',
+    module: '../src/pages/api/admin/content/[collection]/[id]/history',
+    method: 'GET',
+    auth: true,
+    sameOrigin: false,
+    params: { collection: 'notes', id: 'index' },
+  },
+  {
+    file: 'content/[collection]/[id]/history.ts',
+    module: '../src/pages/api/admin/content/[collection]/[id]/history',
+    method: 'POST',
+    auth: true,
+    sameOrigin: true,
+    params: { collection: 'notes', id: 'index' },
+  },
+  {
     file: 'content/[collection]/folders.ts',
     module: '../src/pages/api/admin/content/[collection]/folders',
     method: 'GET',

@@ -1,0 +1,391 @@
+/* ---------------------------------------------------------------------------
+   Version history
+
+   A drawer on the right where there is room beside the note, the sheet from
+   the bottom on a phone. Both are StudioSheet; this file only says what goes
+   inside and how the drawer differs. Colour comes from the Studio tokens, so
+   the panel follows the theme and the ink like everything else.
+--------------------------------------------------------------------------- */
+
+/* --- Drawer ---------------------------------------------------------------- */
+
+@media (min-width: 721px) {
+  .admin-page .studio-sheet-layer--right {
+    align-items: stretch;
+    justify-content: flex-end;
+  }
+
+  .admin-page .studio-sheet-layer--right .studio-sheet__scrim {
+    background: color-mix(in srgb, #000 36%, transparent);
+  }
+
+  .admin-page .studio-sheet-layer--right .studio-sheet {
+    width: min(440px, 100%);
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    padding-bottom: 0;
+    border: 0;
+    border-left: 1px solid var(--st-line-strong);
+    border-radius: var(--st-radius-float) 0 0 var(--st-radius-float);
+    box-shadow: -16px 0 48px rgb(0 0 0 / 0.5);
+    transform: translate3d(100%, 0, 0);
+  }
+
+  .admin-page .studio-sheet-layer--right.is-open .studio-sheet {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .admin-page .studio-sheet-layer--right .studio-sheet::after {
+    content: none;
+  }
+
+  .admin-page .studio-sheet-layer--right .studio-sheet__head {
+    position: relative;
+    padding: 18px 56px 14px 20px;
+    border-bottom: 1px solid var(--st-line);
+  }
+
+  .admin-page .studio-sheet__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+}
+
+/* --- Frame ----------------------------------------------------------------- */
+
+/* The panel owns its own scrolling: the list and the text scroll apart, and
+   the restore button stays where the thumb or the pointer expects it. */
+.admin-page .studio-sheet__body:has(> .studio-history) {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* A sheet is as tall as its contents, which would make a list of two versions
+   a sliver. Giving it a height keeps it the same sheet whatever it holds. */
+@media (max-width: 720px) {
+  .admin-page .studio-sheet:has(.studio-history) {
+    height: calc(var(--studio-vh, 100dvh) * 0.85);
+  }
+}
+
+.admin-page .studio-history {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* --- Versions --------------------------------------------------------------- */
+
+.admin-page .studio-history__list {
+  flex: 0 1 36%;
+  min-height: 96px;
+  padding: 2px 12px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom: 1px solid var(--st-line);
+}
+
+.admin-page .studio-history__day-label {
+  margin: 12px 10px 4px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+}
+
+.admin-page .studio-history__version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--st-row);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-md);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-history__version:hover {
+  background: var(--st-hover);
+}
+
+.admin-page .studio-history__version[aria-pressed='true'] {
+  background: var(--st-picked);
+  color: var(--st-text);
+  font-weight: 500;
+}
+
+.admin-page .studio-history__tag {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--st-hover);
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+}
+
+.admin-page .studio-history__version[aria-pressed='true'] .studio-history__tag {
+  background: var(--st-press);
+  color: var(--st-text-2);
+}
+
+/* --- Preview ---------------------------------------------------------------- */
+
+.admin-page .studio-history__detail {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 12px 0;
+}
+
+.admin-page .studio-history__preview {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.admin-page .studio-history__preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 10px;
+}
+
+.admin-page .studio-history__modes {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--st-radius);
+  background: var(--st-hover);
+}
+
+.admin-page .studio-history__modes button {
+  min-height: calc(var(--st-control) - 6px);
+  padding: 0 12px;
+  border: 0;
+  border-radius: calc(var(--st-radius) - 2px);
+  background: transparent;
+  color: var(--st-text-3);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-history__modes button[aria-pressed='true'] {
+  background: var(--st-field);
+  color: var(--st-text);
+  font-weight: 500;
+  box-shadow: 0 0 0 1px var(--st-line);
+}
+
+.admin-page .studio-history__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+}
+
+.admin-page .studio-history__summary .is-add {
+  color: var(--st-accent-text);
+  font-weight: 500;
+}
+
+.admin-page .studio-history__summary .is-del {
+  color: var(--st-danger);
+  font-weight: 500;
+}
+
+.admin-page .studio-history__text {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius);
+  background: var(--st-field);
+  color: var(--st-text-2);
+  font-size: var(--st-size-sm);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Changes read without colour too: what returns is underlined, what goes is
+   struck through. */
+.admin-page .studio-history__text ins {
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  background: var(--st-picked);
+  color: var(--st-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.admin-page .studio-history__text del {
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  background: var(--st-danger-tint);
+  color: var(--st-danger);
+  text-decoration: line-through;
+}
+
+.admin-page .studio-history__skip {
+  display: inline-block;
+  margin: 2px 0;
+  padding: 1px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--st-hover);
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  line-height: 1.6;
+}
+
+/* --- Footer ----------------------------------------------------------------- */
+
+.admin-page .studio-history__foot {
+  display: grid;
+  flex: none;
+  gap: 8px;
+  padding: 12px 12px calc(14px + env(safe-area-inset-bottom));
+}
+
+.admin-page .studio-history__foot .studio-btn {
+  width: 100%;
+}
+
+.admin-page .studio-history__hint {
+  margin: 0;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.admin-page .studio-history__error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--st-radius);
+  background: var(--st-danger-tint);
+  color: var(--st-danger);
+  font-size: var(--st-size-sm);
+  line-height: 1.5;
+}
+
+/* --- Empty, loading, failed -------------------------------------------------- */
+
+.admin-page .studio-history__empty {
+  display: grid;
+  flex: 1 1 auto;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.admin-page .studio-history__bubble {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--st-hover);
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-history__bubble .studio-glyph {
+  width: 24px;
+  height: 24px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-page .studio-history__bubble {
+    animation: studio-history-bob 2.4s var(--st-ease-move) infinite alternate;
+  }
+}
+
+@keyframes studio-history-bob {
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+.admin-page .studio-history__lead {
+  margin: 0;
+  color: var(--st-text);
+  font-size: var(--st-size-lg);
+  font-weight: 700;
+}
+
+.admin-page .studio-history__empty .studio-history__hint {
+  max-width: 30ch;
+}
+
+.admin-page .studio-history__shimmer {
+  display: grid;
+  gap: 8px;
+  width: min(240px, 70%);
+  margin-top: 6px;
+}
+
+.admin-page .studio-history__shimmer span {
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--st-hover);
+}
+
+.admin-page .studio-history__shimmer span:nth-child(2) {
+  width: 78%;
+}
+
+.admin-page .studio-history__shimmer span:nth-child(3) {
+  width: 52%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-page .studio-history__shimmer span {
+    animation: studio-history-breathe 1.2s var(--st-ease) infinite alternate;
+  }
+
+  .admin-page .studio-history__shimmer span:nth-child(2) {
+    animation-delay: 120ms;
+  }
+
+  .admin-page .studio-history__shimmer span:nth-child(3) {
+    animation-delay: 240ms;
+  }
+}
+
+@keyframes studio-history-breathe {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

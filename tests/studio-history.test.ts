@@ -141,6 +141,20 @@ describe('diffWords', () => {
     ]);
   });
 
+  it('reads a rewritten phrase as one removal and one addition', () => {
+    expect(diffWords('keep going now', 'a big leap now')).toEqual([
+      { kind: 'del', text: 'keep going' },
+      { kind: 'add', text: 'a big leap' },
+      { kind: 'same', text: ' now' },
+    ]);
+    expect(
+      diffWords('one two three four five', 'six seven three eight nine'),
+    ).toEqual([
+      { kind: 'del', text: 'one two three four five' },
+      { kind: 'add', text: 'six seven three eight nine' },
+    ]);
+  });
+
   it('keeps line breaks, so either side can be rebuilt exactly', () => {
     const from = '# Title\n\nFirst paragraph here.\n\n- one\n- two\n';
     const to = '# Title\n\nFirst paragraph, edited.\n\n- one\n- two\n- three\n';

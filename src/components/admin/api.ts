@@ -33,3 +33,8 @@ export {
   type ContentFoldersResponse,
 } from './api/content';
 export { fetchSocialCards, uploadSocialCard } from './api/social-cards';
+export {
+  fetchNoteVersions,
+  fetchNoteVersion,
+  restoreNoteVersion,
+} from './api/history';

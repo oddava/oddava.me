@@ -14,6 +14,7 @@ import {
 import type {
   NoteRevision,
   NoteRevisionStore,
+  RevisionCommand,
 } from '../src/lib/server/content/revisions-store';
 import type {
   ContentProvider,
@@ -270,7 +271,7 @@ describe('createNoteRevisionStore', () => {
   it('sends the declared keys to one atomic script', async () => {
     const command = vi.fn(async () => 'recorded');
     const store = createNoteRevisionStore({
-      command,
+      command: command as unknown as RevisionCommand,
       now: () => 1_000,
       newId: () => 'f'.repeat(16),
     });
@@ -307,7 +308,9 @@ describe('createNoteRevisionStore', () => {
 
   it('never renames a key onto itself', async () => {
     const command = vi.fn(async () => 1);
-    await createNoteRevisionStore({ command }).rename('same', 'same');
+    await createNoteRevisionStore({
+      command: command as unknown as RevisionCommand,
+    }).rename('same', 'same');
     expect(command).not.toHaveBeenCalled();
   });
 });

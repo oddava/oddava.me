@@ -217,6 +217,39 @@ function backtrack(
 }
 
 /**
+ * A single shared word, or only the space between two changed words, is not a
+ * landmark worth stopping at: left alone it chops one rewritten phrase into a
+ * dozen fragments. Such a stretch between two changes is folded into both
+ * sides, so the phrase reads as one removal and one addition.
+ */
+function foldIslands(edits: Edit[]): Edit[] {
+  const folded: Edit[] = [];
+  let index = 0;
+  while (index < edits.length) {
+    if (edits[index]!.kind !== 'same') {
+      folded.push(edits[index]!);
+      index += 1;
+      continue;
+    }
+    let end = index;
+    while (end < edits.length && edits[end]!.kind === 'same') end += 1;
+    const run = edits.slice(index, end);
+    const words = run.filter((edit) => isWord(edit.token)).length;
+    const between = index > 0 && end < edits.length;
+    if (between && words <= 1) {
+      for (const edit of run) {
+        folded.push({ kind: 'del', token: edit.token });
+        folded.push({ kind: 'add', token: edit.token });
+      }
+    } else {
+      folded.push(...run);
+    }
+    index = end;
+  }
+  return folded;
+}
+
+/**
  * Joins neighbours of one kind, and puts what went away before what replaced
  * it within a changed stretch, so "old new" always reads in that order
  * whatever order the edit script happened to find them in.
@@ -273,11 +306,13 @@ export function diffWords(from: string, to: string): DiffSegment[] {
       ...middleB.map((token) => ({ kind: 'add' as const, token })),
     ] satisfies Edit[]);
 
-  return tidy([
-    ...a.slice(0, start).map((token) => ({ kind: 'same' as const, token })),
-    ...script,
-    ...a.slice(endA).map((token) => ({ kind: 'same' as const, token })),
-  ]);
+  return tidy(
+    foldIslands([
+      ...a.slice(0, start).map((token) => ({ kind: 'same' as const, token })),
+      ...script,
+      ...a.slice(endA).map((token) => ({ kind: 'same' as const, token })),
+    ]),
+  );
 }
 
 export interface DiffSummary {
