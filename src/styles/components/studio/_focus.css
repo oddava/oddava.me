@@ -20,12 +20,6 @@
   gap: 2px;
 }
 
-.admin-page .studio-reading__trigger {
-  font-size: var(--st-size-md);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-}
-
 .admin-page .studio-reading__trigger[aria-expanded='true'] {
   background: var(--st-current);
   color: var(--st-text);
@@ -37,7 +31,7 @@
 }
 
 /* --- The popover ---
-   A small floating card under the Aa: one body with the menus and the
+   A small floating card under its button: one body with the menus and the
    inline toolbar (raised fill, hairline, larger radius, one shadow). */
 
 .admin-page .studio-reading__panel {
@@ -57,6 +51,24 @@
   font-size: var(--st-size-sm);
   letter-spacing: -0.01em;
   animation: studio-arrive var(--st-base) var(--st-ease);
+}
+
+/* A phone's button sits mid-bar, so a card hung from it would start off the
+   screen's left edge. There it hangs from the bar instead, edge to edge. */
+@media (max-width: 720px) {
+  .admin-page .studio-bar {
+    position: relative;
+  }
+
+  .admin-page .studio-reading {
+    position: static;
+  }
+
+  .admin-page .studio-reading__panel {
+    right: max(8px, env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left));
+    width: auto;
+  }
 }
 
 .admin-page .studio-reading__group {
@@ -93,27 +105,13 @@
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
   gap: 2px;
-  padding: 2px;
-  border-radius: var(--st-radius);
-  background: var(--st-hover);
 }
 
+/* The look is the shared segmented control's (_primitives.css). */
 .admin-page .studio-reading__segment {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: calc(var(--st-control) - 4px);
-  border-radius: calc(var(--st-radius) - 2px);
-  color: var(--st-text-3);
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color var(--st-fast) var(--st-ease),
-    color var(--st-fast) var(--st-ease);
-}
-
-.admin-page .studio-reading__segment:hover {
-  color: var(--st-text);
 }
 
 .admin-page .studio-reading__segment input,
@@ -123,11 +121,6 @@
   margin: 0;
   opacity: 0;
   cursor: pointer;
-}
-
-.admin-page .studio-reading__segment:has(input:checked) {
-  background: var(--st-picked);
-  color: var(--st-accent-text);
 }
 
 .admin-page .studio-reading__segment:has(input:focus-visible) {
@@ -284,10 +277,13 @@
   }
 }
 
+/* The padding is for the peek below: it is let go only once the bar has
+   faded, so the name does not jump back under a bar still on its way out. */
 .admin-page .studio-bar {
   transition:
     border-color var(--st-base) var(--st-ease),
-    opacity var(--st-slow) var(--st-ease);
+    opacity var(--st-slow) var(--st-ease),
+    padding-left 0s linear var(--st-slow);
 }
 
 .admin-page[data-studio-focus='on'] .studio-bar,
@@ -371,5 +367,23 @@
     transition:
       opacity var(--st-base) var(--st-ease),
       visibility 0s;
+  }
+
+  /* One peek wakes both edges, so the card would land on the bar it woke:
+     the bar's own content starts past the card instead, and the note's icon,
+     path and name stay readable beside the list. */
+  .admin-page[data-studio-focus='on'][data-studio-peek='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer)
+    .studio-bar,
+  .admin-page[data-studio-focus='on']
+    .studio-grid:not(.studio-grid--collapsed, .studio-grid--drawer):has(
+      > .studio-sidebar :focus-visible
+    )
+    .studio-bar {
+    padding-left: calc(var(--studio-sidebar-w, 300px) + 18px);
+    transition:
+      border-color var(--st-base) var(--st-ease),
+      opacity var(--st-slow) var(--st-ease),
+      padding-left 0s;
   }
 }

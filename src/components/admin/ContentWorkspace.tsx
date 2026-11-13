@@ -1062,6 +1062,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 home={!openId}
                 noteActionsRequest={noteActionsRequest}
                 onChangeIcon={() => setIconPickerRequest((n) => n + 1)}
+                onHistory={() => setHistoryOpen(true)}
                 draft={
                   draft.state
                     ? { state: draft.state, onChange: draft.set }

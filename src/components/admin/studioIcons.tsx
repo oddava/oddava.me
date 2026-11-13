@@ -187,6 +187,11 @@ const PATHS = {
       <path d="M6 6.5h.01M8.67 6.5h.01M11.33 6.5h.01M14 6.5h.01M6.75 9.5h6.5M7.5 15.25 10 17.25l2.5-2" />
     </>
   ),
+  // Page style: a small letter and a large one. "Aa" as text is the find
+  // bar's Match case, so the two never look like the same button.
+  'text-size': (
+    <path d="M2.5 15.5 4.75 10 7 15.5M3.3 13.5h2.9M9 15.5l4.25-11 4.25 11M10.35 12h5.8" />
+  ),
   focus: (
     <>
       <path d="M4 7.5V5.25C4 4.56 4.56 4 5.25 4H7.5M12.5 4h2.25c.69 0 1.25.56 1.25 1.25V7.5M16 12.5v2.25c0 .69-.56 1.25-1.25 1.25H12.5M7.5 16H5.25C4.56 16 4 15.44 4 14.75V12.5" />

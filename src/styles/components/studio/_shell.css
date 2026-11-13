@@ -127,16 +127,22 @@
   border-bottom-color: var(--st-line);
 }
 
+/* The name is what the bar is for. It takes whatever the controls leave, the
+   path gives way before it does, and it is a container so the path can step
+   aside by the room there actually is — the sidebar's width is the writer's
+   to choose, so the window's width does not say. */
 .admin-page .studio-bar__title {
   display: flex;
   align-items: center;
   flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
+  container: studio-bar-title / inline-size;
 }
 
 .admin-page .studio-bar__title strong {
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 6ch;
   padding: 0 6px;
   overflow: hidden;
   color: var(--st-text);
@@ -155,13 +161,43 @@
 
 /* --- Path above the note --- */
 
+/* The path gives way four times as readily as the name, each step down to
+   a couple of letters and an ellipsis — and no further: the floor is the room
+   that many steps need, so a step is never cut through a letter. */
 .admin-page .studio-crumbs {
+  --studio-crumb-min: calc(var(--st-size-sm) * 2.5 + 11px);
+
   display: flex;
   align-items: center;
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 4 auto;
+  min-width: var(--studio-crumb-min);
   margin-left: 2px;
   overflow: hidden;
+}
+
+.admin-page .studio-crumbs:has(> :nth-child(3)) {
+  min-width: calc(var(--studio-crumb-min) * 2);
+}
+
+.admin-page .studio-crumbs:has(> :nth-child(5)) {
+  min-width: calc(var(--studio-crumb-min) * 3);
+}
+
+/* Deeper than three, the far end of the path is the part to let go of. */
+.admin-page .studio-crumbs > :nth-last-child(n + 7) {
+  display: none;
+}
+
+.admin-page .studio-crumbs:has(> :nth-child(7))::before {
+  flex: none;
+  padding: 0 2px 0 6px;
+  color: var(--st-text-4);
+  font-size: var(--st-size-sm);
+  content: '…';
+}
+
+.admin-page .studio-crumbs:has(> :nth-child(7)) {
+  min-width: calc(var(--studio-crumb-min) * 3 + 1.5em);
 }
 
 .admin-page .studio-crumbs__step {
@@ -196,6 +232,40 @@
   flex: none;
   padding: 0 2px;
   color: var(--st-text-4);
+}
+
+/* Short of room, the path keeps the nearest parent and says the rest is
+   there; shorter still, it leaves the bar to the name. */
+@container studio-bar-title (max-width: 22rem) {
+  .admin-page .studio-crumbs > :not(:nth-last-child(-n + 2)) {
+    display: none;
+  }
+
+  .admin-page .studio-crumbs:has(> :nth-child(3))::before {
+    flex: none;
+    padding: 0 2px 0 6px;
+    color: var(--st-text-4);
+    font-size: var(--st-size-sm);
+    content: '…';
+  }
+
+  .admin-page .studio-crumbs:has(> :nth-child(3)) {
+    min-width: calc(var(--studio-crumb-min) + 1.5em);
+  }
+}
+
+@container studio-bar-title (max-width: 13.5rem) {
+  .admin-page .studio-crumbs {
+    display: none;
+  }
+}
+
+/* Controls that belong together sit closer than the groups do. */
+.admin-page .studio-bar__group {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
 }
 
 .admin-page .studio-bar__actions {
