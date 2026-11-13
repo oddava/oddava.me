@@ -99,12 +99,14 @@ a portfolio page (`<html data-site="portfolio" data-notes>`, see
 cross-fade. On the notes host:
 
 - the header's wordmark, projects and about point at the apex origin; notes
-  is the current section, and search sits beside the appearance icon;
+  is the current section (search is on the page, not in the header);
 - there is no music widget (its API is apex-only) and, on both hosts, no
   visitor line in the footer;
 - the appearance choice is saved per origin, so it is chosen separately
   from the apex's;
-- `/graph` is the whole-garden graph page, as `/notes/graph` is on the apex.
+- `/graph` redirects to the notes root, as `/notes/graph` does on the apex
+  (the whole-garden graph page was retired; each note's graph opens the
+  whole garden in place).
 
 ## How it works
 

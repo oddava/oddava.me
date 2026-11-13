@@ -1,10 +1,10 @@
 ---
 import NotesLayout from '../../../layouts/NotesLayout.astro';
 import NoteCard from '../../../components/garden/NoteCard.astro';
+import NotesSearchButton from '../../../components/garden/NotesSearchButton.astro';
 import { registerPortfolioCsp } from '@lib/portfolio/csp';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
 import { notesIndexUrl } from '@lib/notes-url';
-import '../../../styles/components/_garden.css';
 
 registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
@@ -25,20 +25,25 @@ if (notes.length === 0) return Astro.rewrite('/404');
   title={`Notes tagged #${tag}`}
   description={`Every note by oddava tagged #${tag}.`}
 >
-  <div class="pf-column notes-topic">
-    <header class="notes-topic__head">
-      <a class="notes-back" href={notesIndexUrl()}>← notes</a>
-      <h1 class="pf-title">#{tag}</h1>
-      <p class="notes-topic__lede">
+  <div class="notes-column">
+    <header class="notes-head">
+      <div class="notes-bar">
+        <a class="notes-back" href={notesIndexUrl()}>← notes</a>
+        <NotesSearchButton variant="pill" />
+      </div>
+      <h1 class="notes-title">
+        <span class="notes-sticker notes-sticker--tag notes-sticker--big">
+          #{tag}
+        </span>
+      </h1>
+      <p class="notes-lede">
         {notes.length}
         {notes.length === 1 ? 'note' : 'notes'} kept under this word.
       </p>
     </header>
 
-    <section aria-label={`Notes tagged ${tag}`}>
-      <ol class="note-list" role="list">
-        {notes.map((note) => <NoteCard {note} {index} omitTag={tag} />)}
-      </ol>
-    </section>
+    <ol class="note-cards" role="list" aria-label={`Notes tagged ${tag}`}>
+      {notes.map((note) => <NoteCard {note} {index} />)}
+    </ol>
   </div>
 </NotesLayout>

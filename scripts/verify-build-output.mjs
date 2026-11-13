@@ -137,7 +137,9 @@ if (
   !serverEntry.includes('"route": "/notes/graph"') ||
   !serverEntry.includes('"component": "src/pages/notes/graph.astro"')
 ) {
-  failures.push('dist/server/entry.mjs: missing the /notes/graph SSR route');
+  failures.push(
+    'dist/server/entry.mjs: missing the /notes/graph SSR route (its retired-page 301)',
+  );
 }
 
 // The deployed config is the one the adapter generates, not wrangler.jsonc.
@@ -181,5 +183,5 @@ if (failures.length > 0) {
 }
 
 console.info(
-  `[build] Verified strict CSP output for ${htmlFiles.length} prerendered pages, the /notes/graph SSR route, and the notes-host Worker entry.`,
+  `[build] Verified strict CSP output for ${htmlFiles.length} prerendered pages, the /notes/graph SSR redirect, and the notes-host Worker entry.`,
 );

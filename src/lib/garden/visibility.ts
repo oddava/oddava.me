@@ -8,8 +8,8 @@ function isRootNote(source: Pick<NoteSource, 'id'>): boolean {
 
 /**
  * The one place drafts leave the garden. Filtering the *sources*, before the
- * index is built, means hierarchy, backlinks, tags, search, the graph, the
- * wikilink lookup and affinity edges are all derived from public notes only —
+ * index is built, means hierarchy, backlinks, tags, related notes, search,
+ * the graph and the wikilink lookup are all derived from public notes only —
  * there is no per-surface check to forget, and a link to a draft simply fails
  * to resolve instead of leaking its title or href.
  *

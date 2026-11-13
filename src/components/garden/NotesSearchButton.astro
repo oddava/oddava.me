@@ -1,0 +1,30 @@
+---
+/**
+ * The way into note search, on the page itself rather than as an icon in
+ * the header: a wide field under the landing's words, and a labelled pill at
+ * the top of every other notes page. Both open the one search dialog
+ * (NoteSearch, mounted by NotesLayout) through `data-note-search-open`;
+ * "/" opens it from anywhere.
+ */
+interface Props {
+  variant: 'field' | 'pill';
+}
+
+const { variant } = Astro.props;
+---
+
+<button
+  class:list={['notes-find', `notes-find--${variant}`]}
+  type="button"
+  data-note-search-open
+  aria-haspopup="dialog"
+>
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <circle cx="8.5" cy="8.5" r="4.75"></circle>
+    <path d="m12.1 12.1 4.15 4.15"></path>
+  </svg>
+  <span class="notes-find__label">
+    {variant === 'field' ? 'search the notes' : 'search'}
+  </span>
+  <kbd class="notes-find__key" aria-hidden="true">/</kbd>
+</button>

@@ -13,7 +13,6 @@ import { noteSocialCardImage } from '@lib/garden/og-card';
 import { resolveNoteSocialImage } from '@lib/garden/utils';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
 import { notesIndexUrl } from '@lib/notes-url';
-import '../../styles/components/_garden.css';
 
 registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
@@ -87,18 +86,18 @@ const description = document
   removed || !document ? (
     <NotesLayout title="Note removed" {description}>
       <meta slot="head" name="robots" content="noindex" />
-      <section class="pf-column">
-        <h1 class="pf-title">410</h1>
-        <p class="notes-gone__copy">
-          this note was removed. the link was real — the page is gone on
-          purpose, not a typo.
-        </p>
-        <ul class="notes-gone__links">
-          <li>
-            <a href={notesIndexUrl()}>notes</a>
-          </li>
-        </ul>
-      </section>
+      <div class="notes-column">
+        <article class="notes-sheet notes-gone">
+          <span class="notes-stamp">410 · removed</span>
+          <h1 class="notes-title">this page was taken down</h1>
+          <p class="notes-lede">
+            the link was real — the note is gone on purpose, not a typo.
+          </p>
+          <a class="notes-way" href={notesIndexUrl()}>
+            ← back to the notes
+          </a>
+        </article>
+      </div>
     </NotesLayout>
   ) : (
     <NotesLayout
@@ -108,18 +107,9 @@ const description = document
       imageAlt={socialImage?.alt}
       type="article"
       modifiedTime={document.updated}
-      wide
     >
       {draftPreview && <meta slot="head" name="robots" content="noindex" />}
-      <div class="garden-page">
-        {draftPreview && (
-          <p class="draft-banner" role="status">
-            <strong>draft</strong>
-            only you can see this page. publish it from Studio to share it.
-          </p>
-        )}
-        <GardenDocumentPage document={document} index={index} />
-      </div>
+      <GardenDocumentPage {document} {index} draft={draftPreview} />
     </NotesLayout>
   )
 }

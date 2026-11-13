@@ -1,6 +1,6 @@
 # Samsung note icons
 
-The icon picker, Studio file icons, and public note explorer render Samsung
+The icon picker, Studio file icons, and public note icons render Samsung
 One UI 8.5 PNGs from [RealityRipple/oneui-emoji](https://github.com/RealityRipple/oneui-emoji)
 at commit `d587ab50481ff2fd2cd48d27ced7489d2b2ecf6c` through jsDelivr. Images
 are requested individually, with no referrer, rather than bundling the 61 MB
@@ -16,6 +16,6 @@ commit, without their extension. Keep this index and the URL revision in
 are normalized only for lookup; stored emoji characters remain unchanged.
 Skin tones, flags, keycaps, and joined sequences use their complete sequence.
 Unsupported emojis render natively. Studio also falls back to native rendering
-if an image fails; the public explorer is static HTML and retains the emoji as
+if an image fails; the public pages are static HTML and retain the emoji as
 image alternative text. The paste field remains native text with a Samsung
 preview beside it. Uploaded icons and emojis in note bodies are unaffected.

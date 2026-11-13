@@ -1,37 +1,47 @@
 ---
+/**
+ * A note, as a sheet of paper on the desk: the same page Studio writes on,
+ * taped down, centred, one measure wide. Above it, the trail of folders it
+ * sits in and the search pill; on it, the note and (for a folder) an index of its pages; under
+ * it, the note's neighbourhood in the graph and a few cards to keep reading.
+ * Every part below the sheet appears only when it has something to show.
+ *
+ * Shared by the public note route and the owner's draft preview.
+ */
 import type { GardenDocument, GardenIndex } from '@lib/garden';
-import { hasLocalMap } from '@lib/garden/local-map';
+import { getRelatedNotes } from '@lib/garden';
+import { deriveNoteGraph } from '@lib/garden/graph';
 import { renderNote } from '@lib/garden/render';
 import {
   bodyProvidesTitleHeading,
-  shouldShowNoteTitle,
   formatNoteDate,
+  shouldShowNoteTitle,
 } from '@lib/garden/utils';
-import LocalNoteMap from './LocalNoteMap.astro';
-import NoteTableOfContents from './NoteTableOfContents.astro';
-import RelatedNotes from './RelatedNotes.astro';
-import InteractiveGraph from './InteractiveGraph';
-import { deriveNoteGraph } from '@lib/garden/graph';
-import '../../styles/components/_note-prose.css';
+import { folderAncestors } from '@lib/garden/wayfinder';
+import { notesTagUrl } from '@lib/notes-url';
 import NotePageIcon from '../NotePageIcon';
+import InteractiveGraph from './InteractiveGraph';
 import NoteCard from './NoteCard.astro';
-import { notesIndexUrl } from '@lib/notes-url';
+import NotesSearchButton from './NotesSearchButton.astro';
+import NoteTableOfContents from './NoteTableOfContents.astro';
+import '../../styles/components/_note-prose.css';
 
 interface Props {
   document: GardenDocument;
   index: GardenIndex;
+  /** The owner's preview of an unpublished note. */
+  draft?: boolean;
 }
 
-const { document, index } = Astro.props;
+const { document, index, draft = false } = Astro.props;
 const rendered = document.body.trim()
   ? renderNote(document.body, { wikiLinkHrefs: index.wikiLinkHrefs })
   : { html: '', headings: [] };
-const tocHeadings = rendered.headings.length >= 2 ? rendered.headings : [];
 
 const isRoot = document.id === index.root.id;
 
 // A note whose body opens with its own `# h1` supplies the page title itself;
-// otherwise the shell provides it only when there is content to introduce.
+// otherwise the page provides it.
 const showShellTitle = shouldShowNoteTitle(document.body);
 let authoredTitleHtml = '';
 let bodyHtml = rendered.html;
@@ -44,15 +54,10 @@ if (bodyProvidesTitleHeading(document.body)) {
 }
 const isStub = !rendered.html && document.childIds.length === 0;
 
-// Where the note lives: the folder it sits in, linked, unless that is the
-// root (every note is in the notes).
-const parent = document.parentId
-  ? index.byId.get(document.parentId)
-  : undefined;
-const folder = parent && parent.id !== index.root.id ? parent : undefined;
+const trail = folderAncestors(document, index);
 
-// A folder's note is its folder page: what is inside follows its own words.
-// The root's pages are the landing's business, so it never lists them here.
+// A folder's note is its folder page: an index of what is inside follows its
+// own words. The root's pages are the landing's business.
 const pages = isRoot
   ? []
   : document.childIds.flatMap((id) => {
@@ -60,93 +65,84 @@ const pages = isRoot
       return child ? [child] : [];
     });
 
-// Notes that link here, newest first; read from the public index, so a draft
-// that links here never shows.
+// Keep reading: notes that link here, newest first, then notes that share
+// its tags. Both read the public index, so a draft never shows.
 const backlinks = document.backlinks
   .flatMap((id) => {
     const source = index.byId.get(id);
     return source && source.id !== document.id ? [source] : [];
   })
   .toSorted((left, right) => right.updated.localeCompare(left.updated));
+const related = getRelatedNotes(document, index, { limit: 4 });
+
+// The note's corner of the graph, only when it has neighbours: a lone dot in
+// a frame says nothing.
+const neighbourhood = deriveNoteGraph(index, document.id);
+const showGraph = neighbourhood.nodes.length > 1;
 ---
 
-<div class="garden-document-layout">
-  {
-    /* Rail first in the tree so the wide layout can pin it left without
-       fighting source-order placement. On narrow screens grid areas still
-       stack the article above it. */
-  }
-  <aside class="note-context" aria-label={`Context for ${document.title}`}>
-    <div class="note-context__inner">
-      <div class="note-context__graph">
-        <InteractiveGraph
-          client:visible
-          data={deriveNoteGraph(index, document.id)}
-          globalData={deriveNoteGraph(index)}
-          currentId={document.id}
-          rootHref={notesIndexUrl()}
-        />
-      </div>
-      <NoteTableOfContents headings={tocHeadings} variant="rail" />
-      <RelatedNotes document={document} index={index} />
-      {
-        /* Narrow screens end the note with one card, reading outward: this
-           note's contents, then every note by folder. The wide rail has its
-           own contents and the live graph, so there only the folder browser
-           shows, as a plain rail section. */
-      }
-      <div class="note-wayfinder">
-        <NoteTableOfContents headings={tocHeadings} variant="mobile" />
-        {
-          /* Keep the explorer in the existing rail. Its anchor also serves
-             the landscape's nearby link; linked notes retain inbound
-             navigation. */
-          hasLocalMap(document, index) && (
-            <LocalNoteMap document={document} index={index} />
-          )
-        }
-      </div>
-    </div>
-  </aside>
+<div class="note-reading">
+  <div class="notes-bar">
+    {
+      trail.length > 0 && (
+        <nav class="note-trail" aria-label="Where this note lives">
+          <ol role="list">
+            {trail.map((folder) => (
+              <li>
+                <a href={folder.href} data-page-preview-ignore>
+                  {folder.title}
+                </a>
+              </li>
+            ))}
+            <li aria-current="page">{document.title}</li>
+          </ol>
+        </nav>
+      )
+    }
+    <NotesSearchButton variant="pill" />
+  </div>
 
-  <article class="garden-document">
+  <article class:list={['notes-sheet', 'note-sheet', draft && 'is-draft']}>
+    {
+      draft && (
+        <p class="note-sheet__draft" role="status">
+          <span class="notes-sticker notes-sticker--draft">draft</span>
+          only you can see this page. publish it from Studio to share it.
+        </p>
+      )
+    }
     <NotePageIcon icon={document.data.icon} />
-    {showShellTitle && <h1 class="garden-document__title">{document.title}</h1>}
+    {showShellTitle && <h1 class="note-sheet__title">{document.title}</h1>}
     {
       authoredTitleHtml && (
         <div
-          class="prose garden-document__authored-title"
+          class="prose note-sheet__authored-title"
           set:html={authoredTitleHtml}
         />
       )
     }
     {
       !isRoot && (
-        <p class="garden-document__tended">
-          {folder && (
-            <span>
-              in{' '}
-              <a class="link" href={folder.href}>
-                {folder.title}
-              </a>
-            </span>
-          )}
-          <span>
-            edited{' '}
-            <time datetime={document.updated}>
-              {formatNoteDate(document.updated)}
-            </time>
-          </span>
+        <p class="note-sheet__meta">
+          <time class="notes-stamp" datetime={document.updated}>
+            {formatNoteDate(document.updated)}
+          </time>
+          {document.tags.map((tag) => (
+            <a class="notes-sticker notes-sticker--tag" href={notesTagUrl(tag)}>
+              #{tag}
+            </a>
+          ))}
         </p>
       )
     }
+    <NoteTableOfContents headings={rendered.headings} />
     {
       bodyHtml && (
         <div
           class:list={[
             'prose',
-            'garden-document__body',
-            authoredTitleHtml && 'garden-document__body--continuation',
+            'note-sheet__body',
+            authoredTitleHtml && 'note-sheet__body--continuation',
           ]}
           set:html={bodyHtml}
         />
@@ -154,57 +150,73 @@ const backlinks = document.backlinks
     }
     {
       isStub && (
-        <p class="garden-document__stub">
-          this note is still a stub — nothing here yet.
+        <p class="note-sheet__stub">
+          nothing written here yet — this page is still blank.
         </p>
       )
     }
     {
       pages.length > 0 && (
-        <section
-          class="garden-document__pages"
-          aria-labelledby="note-pages-heading"
-        >
-          <h2 class="notes-label" id="note-pages-heading">
+        <section class="note-index" aria-labelledby="note-index-heading">
+          <h2 class="notes-label" id="note-index-heading">
             in this folder
-            <span class="notes-label__count">{pages.length}</span>
+            <span class="notes-sticker">{pages.length}</span>
           </h2>
-          <ol class="note-list" role="list">
-            {pages.map((note) => (
-              <NoteCard {note} {index} showFolder={false} />
+          <ol class="note-index__list" role="list">
+            {pages.map((page) => (
+              <li>
+                <a
+                  class="note-index__row"
+                  href={page.href}
+                  data-page-preview-ignore
+                >
+                  <span class="note-index__title">{page.title}</span>
+                  <span class="note-index__leader" aria-hidden="true" />
+                  <time datetime={page.updated}>
+                    {formatNoteDate(page.updated, 'short')}
+                  </time>
+                </a>
+              </li>
             ))}
           </ol>
         </section>
       )
     }
-    {
-      backlinks.length > 0 && (
-        <section
-          class="garden-document__backlinks"
-          aria-labelledby="note-backlinks-heading"
-        >
-          <h2 class="notes-label" id="note-backlinks-heading">
-            linked from
-            <span class="notes-label__count">{backlinks.length}</span>
-          </h2>
-          <ul class="note-backlinks" role="list">
-            {backlinks.map((source) => (
-              <li>
-                <a class="note-backlink" href={source.href}>
-                  <span class="note-backlink__title">{source.title}</span>
-                  {source.summary &&
-                    source.summary.trim().toLowerCase() !==
-                      source.title.trim().toLowerCase() && (
-                      <span class="note-backlink__summary">
-                        {source.summary}
-                      </span>
-                    )}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
-    }
   </article>
+
+  {
+    showGraph && (
+      <section class="note-nearby" aria-labelledby="note-nearby-heading">
+        <h2 class="notes-label" id="note-nearby-heading">
+          nearby
+        </h2>
+        <div class="notes-slip note-nearby__graph">
+          <InteractiveGraph
+            client:visible
+            data={neighbourhood}
+            globalData={deriveNoteGraph(index)}
+            currentId={document.id}
+          />
+        </div>
+      </section>
+    )
+  }
+
+  {
+    backlinks.length + related.length > 0 && (
+      <section class="note-keep" aria-labelledby="note-keep-heading">
+        <h2 class="notes-label" id="note-keep-heading">
+          keep reading
+        </h2>
+        <ol class="note-cards" role="list">
+          {backlinks.map((note) => (
+            <NoteCard {note} {index} kicker="links here" />
+          ))}
+          {related.map((note) => (
+            <NoteCard {note} {index} kicker="similar" />
+          ))}
+        </ol>
+      </section>
+    )
+  }
 </div>

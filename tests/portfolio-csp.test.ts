@@ -70,7 +70,6 @@ describe('portfolio CSP registration', () => {
         path.join('src', 'pages', 'admin', 'preview', '[...path].astro'),
         path.join('src', 'pages', 'notes', 'index.astro'),
         path.join('src', 'pages', 'notes', '[...path].astro'),
-        path.join('src', 'pages', 'notes', 'graph.astro'),
         path.join('src', 'pages', 'notes', 'tag', '[...tag].astro'),
       ]),
     );

@@ -2,27 +2,22 @@ import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type { NoteGraphData } from '../../lib/garden/graph';
 import { mountGraph } from '../../lib/garden/graph-canvas';
 import { animatePresence } from '../../lib/garden/graph-presence';
-import { notesIndexUrl } from '../../lib/notes-url';
 import '../../styles/components/_interactive-graph.css';
 
+/**
+ * A note's corner of the graph, drawn under its sheet. It expands in place
+ * into a modal, and a second modal opens the whole garden.
+ */
 type Props = {
   data: NoteGraphData;
   globalData?: NoteGraphData;
   currentId?: string;
-  fullPage?: boolean;
-  /**
-   * The garden root, from the server: islands cannot see the request, so on
-   * the notes host only the server knows links there are root-relative.
-   */
-  rootHref?: string;
 };
 
 export default function InteractiveGraph({
   data,
   globalData,
   currentId,
-  fullPage = false,
-  rootHref = notesIndexUrl(),
 }: Props) {
   const helpId = useId();
   const slot = useRef<HTMLDivElement>(null);
@@ -37,7 +32,6 @@ export default function InteractiveGraph({
   const globalEngine = useRef<ReturnType<typeof mountGraph>>();
   const [expanded, setExpanded] = useState(false);
   const [ready, setReady] = useState(false);
-  const [returnHref, setReturnHref] = useState(rootHref);
   const [focused, setFocused] = useState<string | null>(null);
 
   /** Where the surface grows from and sinks back to: the sidebar graph. */
@@ -128,16 +122,7 @@ export default function InteractiveGraph({
   }, []);
 
   useEffect(() => {
-    const originId =
-      currentId ??
-      (fullPage
-        ? (new URLSearchParams(location.hash.slice(1)).get('place') ??
-          undefined)
-        : undefined);
-    setReturnHref(
-      data.nodes.find((node) => node.id === originId)?.href ?? rootHref,
-    );
-    engine.current = mountGraph(canvas.current!, data, originId, setFocused);
+    engine.current = mountGraph(canvas.current!, data, currentId, setFocused);
     setReady(true);
     return () => engine.current?.destroy();
   }, [data, currentId]);
@@ -151,15 +136,12 @@ export default function InteractiveGraph({
   );
 
   return (
-    <section
-      class={`interactive-graph note-context__section${fullPage ? ' interactive-graph--page' : ''}`}
-      aria-label="Interactive graph"
-    >
+    <section class="interactive-graph" aria-label="Interactive graph">
       <div ref={slot} class="interactive-graph__slot">
         <dialog
           ref={dialog}
           open
-          aria-label={fullPage ? 'Global note graph' : 'Local note graph'}
+          aria-label="Local note graph"
           class={`interactive-graph__panel${expanded ? ' interactive-graph__panel--expanded' : ''}`}
           onCancel={(event) => {
             event.preventDefault();
@@ -170,58 +152,40 @@ export default function InteractiveGraph({
           }}
         >
           <div class="interactive-graph__viewport" aria-busy={!ready}>
-            {!fullPage && (
-              <div class="interactive-graph__actions">
-                {!expanded && globalData && (
-                  <button
-                    ref={globalButton}
-                    disabled={!ready}
-                    class="interactive-graph__button interactive-graph__button--global"
-                    aria-label="Open global graph"
-                    title="Open global graph"
-                    type="button"
-                    onClick={openGlobal}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M8 16V8h8M8 8l8 8" />
-                    </svg>
-                  </button>
-                )}
+            <div class="interactive-graph__actions">
+              {!expanded && globalData && (
                 <button
-                  ref={expandButton}
+                  ref={globalButton}
                   disabled={!ready}
+                  class="interactive-graph__button interactive-graph__button--global"
+                  aria-label="Open global graph"
+                  title="Open global graph"
                   type="button"
-                  class="interactive-graph__button"
-                  onClick={expanded ? collapse : expand}
-                  aria-label={
-                    expanded ? 'Close expanded graph' : 'Expand graph'
-                  }
-                  title={expanded ? 'Close expanded graph' : 'Expand graph'}
+                  onClick={openGlobal}
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
-                    {expanded ? (
-                      <path d="m7 7 10 10M17 7 7 17" />
-                    ) : (
-                      <path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4" />
-                    )}
+                    <path d="M8 16V8h8M8 8l8 8" />
                   </svg>
                 </button>
-              </div>
-            )}
-            {fullPage && (
-              <div class="interactive-graph__actions">
-                <a
-                  class="interactive-graph__button"
-                  href={returnHref}
-                  aria-label="Back to notes"
-                  title="Back to notes"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
+              )}
+              <button
+                ref={expandButton}
+                disabled={!ready}
+                type="button"
+                class="interactive-graph__button"
+                onClick={expanded ? collapse : expand}
+                aria-label={expanded ? 'Close expanded graph' : 'Expand graph'}
+                title={expanded ? 'Close expanded graph' : 'Expand graph'}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  {expanded ? (
                     <path d="m7 7 10 10M17 7 7 17" />
-                  </svg>
-                </a>
-              </div>
-            )}
+                  ) : (
+                    <path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4" />
+                  )}
+                </svg>
+              </button>
+            </div>
             {!ready && <span class="sr-only">Preparing graph.</span>}
             {ready && data.nodes.length === 0 && (
               <p class="interactive-graph__empty">No notes here yet.</p>
@@ -239,16 +203,14 @@ export default function InteractiveGraph({
               ?.title ?? ''}
           </span>
         </dialog>
-        {!fullPage && (
-          <canvas
-            ref={snapshot}
-            class="interactive-graph__snapshot"
-            aria-hidden="true"
-            hidden={!expanded}
-          />
-        )}
+        <canvas
+          ref={snapshot}
+          class="interactive-graph__snapshot"
+          aria-hidden="true"
+          hidden={!expanded}
+        />
       </div>
-      {!fullPage && globalData && (
+      {globalData && (
         <dialog
           ref={globalDialog}
           aria-label="Global note graph"

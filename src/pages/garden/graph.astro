@@ -1,6 +1,7 @@
 ---
-import { notesGraphUrl } from '@lib/notes-url';
+import { notesIndexUrl } from '@lib/notes-url';
 
-// The old garden graph lives on as the notes graph page.
-return Astro.redirect(notesGraphUrl(), 301);
+// The old garden graph, then the notes graph page; both are retired, so the
+// link lands on the notes.
+return Astro.redirect(notesIndexUrl(), 301);
 ---

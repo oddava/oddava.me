@@ -8,8 +8,8 @@ shell (`Cabinet.astro`).
 
 ## Notes pages
 
-The notes (`/notes`, every note, folder and tag page, `/notes/graph`, and the
-owner's draft preview) are portfolio pages too, through
+The notes (`/notes`, every note, folder and tag page, and the owner's draft
+preview) are portfolio pages too, through
 `src/layouts/NotesLayout.astro`, on the apex and on the notes host alike
 (`docs/notes-host.md`).
 
@@ -17,14 +17,37 @@ owner's draft preview) are portfolio pages too, through
   whole shell (tokens, header, footer, appearance panel, cross-fade); the
   second scopes `src/styles/portfolio/_notes.css`, the notes' additions:
   the colour roles the rendered note needs that the portfolio never defined
-  (warning, disabled, code ground), search in the header, and the resets the
-  old site stylesheet used to provide. Nothing in it reaches home, about,
+  (warning, disabled, code ground), the desk and the paper (below), the
+  motion tokens, and the resets the old site stylesheet used to provide. Nothing in it reaches home, about,
   projects or the cabinet.
 - The header is the portfolio's own (`Header.astro` with `section="notes"`
-  and, on the notes host, `origin` set to the apex), with note search in its
-  `tools` slot. The footer is the portfolio's, without the visitor line.
-- The notes' component stylesheets (`components/_garden.css`, the explorer,
-  search and graph) are written against the site's colour roles, which the
+  and, on the notes host, `origin` set to the apex). Search is not in it: an
+  icon there was easy to miss. The landing has a search field under its
+  words and every other notes page a labelled "search /" pill at the top
+  (`NotesSearchButton.astro`); both, and "/", open the one dialog that
+  `NoteSearch` (mounted by the layout without its own icon) draws. The
+  footer is the portfolio's, without the visitor line.
+- The notes borrow Studio's room: the page is a desk with a dot every 20px
+  (`--desk`, which also becomes the shell's `--bg`), and each note is a sheet
+  of paper (`--paper`) held by a strip of tape, centred at the portfolio's
+  44rem measure. Lists of notes are index cards lying a touch askew, folders
+  are drawn as folders, tags and counts are stickers, a date is a stamp, and
+  a draft (the owner's preview) wears amber tape and a draft sticker, as in
+  Studio. A note page is the trail of its folders, the sheet (title, stamp,
+  tags, a folded contents slip for three or more headings, the body, and a
+  folder's index of pages), then "nearby" (its corner of the graph) and
+  "keep reading" (backlinks and similar notes), each only when it has
+  something to show.
+- Touch is one vocabulary (`--t-lift`, `--t-press` in `_notes.css`), after
+  iOS: a press dips at once (110ms), a release springs back past rest and
+  settles (`--settle`), a hover glides on the sheet curve (`--ease-lift`).
+  Objects on the desk (cards, folders, the search pill, tag stickers) lift;
+  rows in a list (the trail, a folder's index, the contents) light with a
+  soft rounded fill. A folder lets a sheet of paper slide out of it under
+  the pointer, and the contents slip unfolds its height where the browser
+  can animate to `auto`.
+- The notes' component stylesheets (`components/_garden.css`, loaded once by
+  the layout, plus search and graph) are written against the site's colour roles, which the
   portfolio tokens point at the theme and ink, so one set of rules serves
   light and dark. `_note-prose.css` is shared with Studio and stays as it
   is; the published page's typography over it lives in `_garden.css`.

@@ -62,7 +62,11 @@ async function fetchResults(query: string, signal: AbortSignal) {
   return (data as { results: SearchResult[] }).results;
 }
 
-export default function NoteSearch() {
+/**
+ * `trigger`: render the island's own icon button. The notes pages leave it
+ * out and open search from buttons on the page (`data-note-search-open`).
+ */
+export default function NoteSearch({ trigger = true }: { trigger?: boolean }) {
   // `open` mounts the dialog; `closing` plays the exit animation before the
   // unmount, so a close is not an instant disappearance. The actual unmount
   // happens in `onPanelAnimationEnd` once the exit animation finishes.
@@ -273,17 +277,19 @@ export default function NoteSearch() {
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="note-search__trigger"
-        onClick={openSearch}
-        aria-label="Find a note"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <SearchIcon />
-      </button>
+      {trigger && (
+        <button
+          ref={triggerRef}
+          type="button"
+          className="note-search__trigger"
+          onClick={openSearch}
+          aria-label="Find a note"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <SearchIcon />
+        </button>
+      )}
 
       {open && (
         <div

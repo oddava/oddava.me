@@ -14,7 +14,6 @@ import { registerPortfolioCsp } from '@lib/portfolio/csp';
 import { getGardenIndexOrUnavailable, isDraftNote } from '@lib/garden';
 import { requireAdminPage } from '@lib/server/admin';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
-import '../../../styles/components/_garden.css';
 
 registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 
@@ -41,18 +40,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   description={document.summary || NOTE_FALLBACK_DESCRIPTION}
   type="article"
   modifiedTime={document.updated}
-  wide
 >
   <meta slot="head" name="robots" content="noindex, nofollow" />
-  <div class="garden-page">
-    {
-      draft && (
-        <p class="draft-banner" role="status">
-          <strong>draft</strong>
-          only you can see this page. publish it from Studio to share it.
-        </p>
-      )
-    }
-    <GardenDocumentPage document={document} index={owner.index} />
-  </div>
+  <GardenDocumentPage {document} index={owner.index} {draft} />
 </NotesLayout>

@@ -1,7 +1,7 @@
 /* ===================================================
    PORTFOLIO — the notes pages' additions to the shell
 
-   The notes pages (NotesLayout: the landing, every note, tags, the graph,
+   The notes pages (NotesLayout: the landing, every note, tags, the 410,
    on the apex and on the notes host) are portfolio pages carrying one more
    attribute: <html data-site="portfolio" data-notes>. Everything here is
    scoped to that attribute, so home, about, projects and the admin cabinet
@@ -34,6 +34,89 @@
   }
 }
 
+/* ---- The desk and the paper ---------------------------------------------
+   The notes borrow Studio's room: a desk with a dot every 20px, and each
+   note a sheet of paper taped to it. The desk becomes the shell's page
+   colour (--bg), so the html, the phone's glass header and the footer all
+   sit on it; paper is a step brighter in light and a step raised in dark.
+   Both carry a breath of the chosen ink, as Studio's do. */
+
+:root[data-site='portfolio'][data-notes] {
+  --desk: color-mix(in srgb, var(--accent) 5%, #f2f4f7);
+  --paper: #ffffff;
+  --bg: var(--desk);
+  --paper-line: color-mix(in srgb, var(--ink) 11%, transparent);
+  --paper-line-2: color-mix(in srgb, var(--ink) 22%, transparent);
+  --dots: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--ink) 13%, transparent) 0.8px,
+    transparent 1.3px
+  );
+  /* Paper lies on the desk: a hairline and the faintest lift. */
+  --paper-lift:
+    0 1px 1px color-mix(in srgb, var(--ink) 5%, transparent),
+    0 14px 28px -22px color-mix(in srgb, var(--ink) 45%, transparent);
+  --paper-lift-up:
+    0 1px 1px color-mix(in srgb, var(--ink) 5%, transparent),
+    0 20px 34px -20px color-mix(in srgb, var(--ink) 50%, transparent);
+  /* Tape, stickers and the draft's amber, as in Studio. */
+  --tape: color-mix(in srgb, var(--accent) 30%, transparent);
+  --tape-stripe: color-mix(in srgb, var(--accent) 16%, transparent);
+  --sticker: color-mix(in srgb, var(--ink) 7%, transparent);
+  --sticker-ink: color-mix(in srgb, var(--accent) 14%, transparent);
+  --draft: var(--color-text-warning);
+
+  /* Touch, the way iOS does it. A press answers at once: the thing dips a
+     few percent in 110ms. Letting go, it springs back past where it was and
+     settles (--settle). A hover glides on the sheet curve (--ease-lift):
+     quick to start, long to come to rest, never bouncing. Rows highlight
+     with a soft fill rather than a colour change alone. */
+  --glide: 420ms;
+  --hover-fill: color-mix(in srgb, var(--ink) 6%, transparent);
+  --press-fill: color-mix(in srgb, var(--ink) 10%, transparent);
+  --t-lift:
+    translate var(--glide) var(--ease-lift),
+    rotate var(--glide) var(--ease-lift), scale 560ms var(--settle),
+    box-shadow var(--glide) var(--ease-lift), background-color 200ms ease,
+    border-color 200ms ease, color 200ms ease;
+  --t-press:
+    translate var(--glide) var(--ease-lift),
+    rotate var(--glide) var(--ease-lift), scale 110ms ease-out,
+    box-shadow var(--glide) var(--ease-lift), background-color 90ms ease,
+    border-color 90ms ease, color 90ms ease;
+}
+
+:root[data-notes][data-theme='dark'] {
+  --desk: color-mix(in srgb, var(--accent) 4%, #111418);
+  --paper: color-mix(in srgb, var(--accent) 3%, #1b1f26);
+  --paper-lift: 0 1px 1px rgb(0 0 0 / 0.3), 0 16px 30px -20px rgb(0 0 0 / 0.75);
+  --paper-lift-up:
+    0 1px 1px rgb(0 0 0 / 0.3), 0 22px 38px -20px rgb(0 0 0 / 0.85);
+  --sticker-ink: color-mix(in srgb, var(--accent) 18%, transparent);
+  --hover-fill: color-mix(in srgb, var(--ink) 8%, transparent);
+  --press-fill: color-mix(in srgb, var(--ink) 13%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-notes][data-theme='system'] {
+    --desk: color-mix(in srgb, var(--accent) 4%, #111418);
+    --paper: color-mix(in srgb, var(--accent) 3%, #1b1f26);
+    --paper-lift:
+      0 1px 1px rgb(0 0 0 / 0.3), 0 16px 30px -20px rgb(0 0 0 / 0.75);
+    --paper-lift-up:
+      0 1px 1px rgb(0 0 0 / 0.3), 0 22px 38px -20px rgb(0 0 0 / 0.85);
+    --sticker-ink: color-mix(in srgb, var(--accent) 18%, transparent);
+    --hover-fill: color-mix(in srgb, var(--ink) 8%, transparent);
+    --press-fill: color-mix(in srgb, var(--ink) 13%, transparent);
+  }
+}
+
+[data-notes] body {
+  background:
+    var(--dots) 0 0 / 20px 20px,
+    var(--desk);
+}
+
 /* ---- What the old site reset did for these pages ----------------------- */
 
 [data-notes] :where(h4, h5, h6, blockquote, dl, dd, pre, details, summary) {
@@ -57,62 +140,15 @@
   max-width: 100%;
 }
 
-/* ---- Header: notes is where you are, search beside the appearance ----- */
+/* ---- Header: notes is where you are ----------------------------------- */
 
 /* Inside the notes, the notes link wears the current page's wave on every
-   page, not only on the landing. */
+   page, not only on the landing. Search is not in the header: it is on the
+   page (components/_garden.css, .notes-find). */
 [data-notes] .pf-nav a[aria-current='true'] {
   color: var(--ink);
   text-decoration: underline wavy var(--accent) 1.5px;
   text-underline-offset: 0.3em;
-}
-
-/* The search trigger is drawn like the appearance icon beside it: the nav's
-   grey, one line weight, no box; the 44px button is only the hit area. */
-[data-notes] .pf-header .note-search__trigger {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: max(44px, 2.75rem);
-  height: max(44px, 2.75rem);
-  margin: 0;
-  border-radius: 8px;
-  color: var(--ink-2);
-  transition: color 120ms ease;
-}
-
-[data-notes] .pf-header .note-search__trigger svg {
-  width: 1.1875rem;
-  height: 1.1875rem;
-  stroke-width: 1.5;
-}
-
-[data-notes] .pf-header .note-search__trigger:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 0;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-notes] .pf-header .note-search__trigger:hover {
-    color: var(--ink);
-  }
-}
-
-/* A phone row holds the wordmark, three links and two icons; the links give
-   up a little padding so both 44px icons stay whole on screen. */
-@media (max-width: 40em) {
-  [data-notes] .pf-nav a {
-    padding: 0 6px;
-  }
-}
-
-@media (max-width: 22.5em) {
-  [data-notes] .pf-nav a {
-    padding: 0 3px;
-  }
-  [data-notes] .pf-header .note-search__trigger {
-    width: 36px;
-  }
 }
 
 /* ---- Page frame ---------------------------------------------------------- */
@@ -138,30 +174,8 @@
   }
 }
 
-/* "← notes": the way back from a tag or the graph. */
-[data-notes] .notes-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin-bottom: 4px;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  text-decoration: none;
-}
-
-[data-notes] a.notes-back {
-  margin: 0 0 4px -0.2em;
-  padding: 0 0.2em;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-notes] .notes-back:hover {
-    color: var(--accent);
-  }
-}
-
-/* The search field shows focus with its own accent underline; the shell's
-   ring around the bare input inside it would draw a second, inner box. */
+/* The search dialog's field shows focus with its own accent underline; the
+   shell's ring around the bare input inside it would draw a second box. */
 [data-notes] .note-search__field input:focus-visible {
   outline: none;
 }

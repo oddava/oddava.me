@@ -104,7 +104,8 @@ describe('static legacy redirects', () => {
   it.each([
     ['src/pages/blog/index.astro', 'notesIndexUrl()'],
     ['src/pages/garden/index.astro', 'notesIndexUrl()'],
-    ['src/pages/garden/graph.astro', 'notesGraphUrl()'],
+    ['src/pages/garden/graph.astro', 'notesIndexUrl()'],
+    ['src/pages/notes/graph.astro', 'notesIndexUrl()'],
   ])('%s answers with a real 301 to %s', async (route, target) => {
     const source = await readFile(
       fileURLToPath(new URL(`../${route}`, import.meta.url)),

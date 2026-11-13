@@ -8,7 +8,9 @@
  *
  * `<html data-site="portfolio" data-notes>`: the first attribute brings the
  * whole portfolio shell; the second scopes the notes' own additions
- * (portfolio/_notes.css), so nothing here reaches the portfolio pages.
+ * (portfolio/_notes.css: the dotted desk, the paper), so nothing here
+ * reaches the portfolio pages. The notes' components are styled by
+ * components/_garden.css, loaded here once for every notes page.
  *
  * Per host:
  * - apex: the header's links are this site's own, and the now-playing widget
@@ -23,6 +25,7 @@ import '../styles/_fonts.css';
 import '../styles/_variables.css';
 import '../styles/portfolio/portfolio.css';
 import '../styles/portfolio/_notes.css';
+import '../styles/components/_garden.css';
 import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
@@ -36,23 +39,9 @@ import { apexOriginFor } from '../lib/notes-host';
 import { isNotesHostRequest } from '../lib/server/core';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
-export interface Props extends Omit<
-  SiteHeadProps,
-  'documentTheme' | 'fontPreloads'
-> {
-  /** A reading page with a rail: the full frame instead of one column. */
-  wide?: boolean;
-}
+export type Props = Omit<SiteHeadProps, 'documentTheme' | 'fontPreloads'>;
 
-const {
-  title,
-  description,
-  image,
-  imageAlt,
-  type,
-  modifiedTime,
-  wide = false,
-} = Astro.props;
+const { title, description, image, imageAlt, type, modifiedTime } = Astro.props;
 
 const onNotesHost = isNotesHostRequest(Astro.url);
 const origin = onNotesHost ? apexOriginFor(Astro.url) : '';
@@ -86,17 +75,17 @@ const SpotifyWidgetLoader = onNotesHost ? null : await loadSpotifyWidgetSlot();
   <body>
     <a href="#main" class="skip-link link">skip to content</a>
     <div class="pf-page">
-      <Header {origin} section="notes">
-        <NoteSearch slot="tools" client:load />
-      </Header>
-      <main
-        id="main"
-        class:list={['pf-main', 'notes-main', wide && 'notes-main--wide']}
-      >
+      <Header {origin} section="notes" />
+      <main id="main" class="pf-main notes-main">
         <slot />
       </main>
       <Footer pulse={false} />
     </div>
+    {
+      /* The search dialog. Its ways in are on the pages themselves
+        (NotesSearchButton) and "/", not an icon in the header. */
+    }
+    <NoteSearch trigger={false} client:load />
     <PagePreview />
     {SpotifyWidgetLoader && <SpotifyWidgetLoader />}
   </body>

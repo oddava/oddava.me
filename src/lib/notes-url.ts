@@ -51,8 +51,6 @@ export interface NotesUrls {
   tag(tag: string): string;
   /** A folder, which redirects to the note that represents it. */
   folder(path: string): string;
-  /** The whole garden as one graph. */
-  graph(): string;
 }
 
 function trimSlashes(value: string): string {
@@ -80,7 +78,6 @@ export function createNotesUrls(base: string): NotesUrls {
     note: (path) => join(trimSlashes(path)),
     tag: (tag) => join(`tag/${encodeSegments(tag)}`),
     folder: (path) => join(`folder/${encodeSegments(path)}`),
-    graph: () => join('graph'),
   };
 }
 
@@ -91,7 +88,6 @@ export const notesIndexUrl = (): string => urls().index();
 export const noteUrl = (path: string): string => urls().note(path);
 export const notesTagUrl = (tag: string): string => urls().tag(tag);
 export const notesFolderUrl = (path: string): string => urls().folder(path);
-export const notesGraphUrl = (): string => urls().graph();
 
 /** Whether a request pathname is one of this app's note routes. */
 export function isNotesRoute(pathname: string): boolean {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GardenDocument, GardenIndex } from '../src/lib/garden';
-import { compactTrail, folderTrail } from '../src/lib/garden/wayfinder';
+import { folderAncestors, folderTrail } from '../src/lib/garden/wayfinder';
 
 function note(
   id: string,
@@ -32,7 +32,6 @@ function garden(documents: GardenDocument[]): GardenIndex {
     documents,
     byId: new Map(documents.map((document) => [document.id, document])),
     wikiLinkHrefs: new Map(),
-    affinityPaths: [],
   };
 }
 
@@ -60,5 +59,20 @@ describe('folderTrail', () => {
     ]);
     expect(folderTrail(index.byId.get('a')!, index)).toEqual(['b']);
     expect(folderTrail(index.byId.get('orphan')!, index)).toEqual([]);
+  });
+});
+
+describe('folderAncestors', () => {
+  it('returns the folder notes themselves, so a trail can link them', () => {
+    const index = garden([
+      note('index', { title: 'notes', childIds: ['reading'] }),
+      note('reading', { parentId: 'index', childIds: ['habits'] }),
+      note('habits', { parentId: 'reading' }),
+    ]);
+    expect(
+      folderAncestors(index.byId.get('habits')!, index).map(
+        (folder) => folder.href,
+      ),
+    ).toEqual(['/notes', '/notes/reading']);
   });
 });

@@ -48,53 +48,39 @@ const globalData: NoteGraphData = params.has('global')
       ],
     }
   : data;
-const fullPage = params.has('full');
 render(
-  fullPage ? (
-    <InteractiveGraph data={data} currentId="note-0" fullPage />
-  ) : (
-    <div class="garden-page">
-      <div class="garden-document-layout">
-        <aside class="note-context">
-          <div class="note-context__inner">
-            <InteractiveGraph
-              data={data}
-              globalData={globalData}
-              currentId="note-0"
-            />
-            <nav class="note-toc note-toc--rail note-context__section">
-              <h2 class="note-context__label">In this note</h2>
-              <ol class="note-toc__list">
-                <li>
-                  <a href="#connections" class="note-toc__link">
-                    Ideas grow through connections
-                  </a>
-                </li>
-                <li>
-                  <a href="#practice" class="note-toc__link">
-                    A practice of attention
-                  </a>
-                </li>
-              </ol>
-            </nav>
-          </div>
-        </aside>
-        <article class="garden-document">
-          <h1>A garden of connected ideas</h1>
-          <p>
-            Notes are a place to think out loud. Follow a connection, pull on a
-            thread, and see where it leads.
-          </p>
-          <h2 id="connections">Ideas grow through connections</h2>
-          <p>
-            A thought rarely stands alone. The links between notes make room for
-            discoveries that a folder could never quite contain.
-          </p>
-          <h2 id="practice">A practice of attention</h2>
-          <p>Keep a little space for curiosity.</p>
-        </article>
+  <main class="note-reading">
+    <article class="notes-sheet note-sheet">
+      <h1 class="note-sheet__title">A garden of connected ideas</h1>
+      <p>
+        Notes are a place to think out loud. Follow a connection, pull on a
+        thread, and see where it leads.
+      </p>
+    </article>
+    <section class="note-nearby">
+      <div class="note-nearby__graph">
+        <InteractiveGraph
+          data={data}
+          globalData={globalData}
+          currentId="note-0"
+        />
       </div>
-    </div>
-  ),
+    </section>
+    <section class="note-keep">
+      <h2 class="notes-label">keep reading</h2>
+      <ol class="note-cards">
+        <li class="note-card">
+          <a class="note-card__link" href="#connections">
+            Ideas grow through connections
+          </a>
+        </li>
+        <li class="note-card">
+          <a class="note-card__link" href="#practice">
+            A practice of attention
+          </a>
+        </li>
+      </ol>
+    </section>
+  </main>,
   document.getElementById('app')!,
 );

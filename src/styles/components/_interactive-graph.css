@@ -56,10 +56,6 @@
   padding-inline: var(--space-half);
 }
 
-.note-context .interactive-graph.note-context__section {
-  flex: 0 0 auto;
-  overflow: visible;
-}
 .interactive-graph__panel {
   position: relative;
   inset: auto;
@@ -128,15 +124,17 @@
   box-shadow: 0 12px 36px rgb(0 0 0 / 0.2);
 }
 
+/* A plain scrim, no blur. A backdrop-filter over the whole viewport is
+   recomposited on every frame the canvas paints, which roughly halved the
+   expanded graph's frame rate; the engine steps its springs per frame, so
+   every settle ran long and a pan drifted under the hand. */
 .interactive-graph__panel::backdrop {
-  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
-  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
 }
 body:has(.interactive-graph__panel:modal) {
   overflow: hidden;
 }
-.interactive-graph__panel:modal .interactive-graph__viewport,
-.interactive-graph--page .interactive-graph__viewport {
+.interactive-graph__panel:modal .interactive-graph__viewport {
   flex: 1 1 auto;
   width: 100%;
   max-width: none;
@@ -148,15 +146,6 @@ body:has(.interactive-graph__panel:modal) {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-}
-.interactive-graph.interactive-graph--page {
-  width: 100%;
-  height: 100dvh;
-  padding: 24px;
-  box-sizing: border-box;
-}
-.interactive-graph--page .interactive-graph__panel {
-  height: 100%;
 }
 @media (pointer: coarse) {
   .interactive-graph button,
@@ -171,9 +160,6 @@ body:has(.interactive-graph__panel:modal) {
     height: 100dvh;
     padding: 16px;
     border-radius: 0;
-  }
-  .interactive-graph.interactive-graph--page {
-    padding: 16px;
   }
 }
 
@@ -255,9 +241,4 @@ body:has(.interactive-graph__panel:modal) {
 }
 .interactive-graph__snapshot[hidden] {
   display: none;
-}
-.interactive-graph--page .interactive-graph__slot {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: auto;
 }

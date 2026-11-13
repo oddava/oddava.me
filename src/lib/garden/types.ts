@@ -31,9 +31,9 @@ export type GardenDocument = {
   body: string;
   outbound: GardenLink[];
   backlinks: string[];
-  // Inline #tags, derived once at index build. Every consumer (tag pages, the
-  // graph's affinity edges, related-note discovery) reads these instead of
-  // re-parsing note bodies per request — the graph did so O(n²) times.
+  // Inline #tags, derived once at index build. Every consumer (tag pages,
+  // related-note discovery) reads these instead of re-parsing note bodies
+  // per request — the old graph page did so O(n²) times.
   tags: string[];
 };
 
@@ -42,15 +42,4 @@ export type GardenIndex = {
   documents: GardenDocument[];
   byId: Map<string, GardenDocument>;
   wikiLinkHrefs: Map<string, string>;
-  // Affinity edges — pairs of notes sharing at least two tags — precomputed once
-  // per content version so the landscape graph reads them instead of running an
-  // O(n²) pair scan per request. Pairs already joined by a reference (wikilink)
-  // are excluded, matching the graph's existing dedup rule. See
-  // `notes/graph.astro`.
-  affinityPaths: AffinityEdge[];
-};
-
-export type AffinityEdge = {
-  sourceId: string;
-  targetId: string;
 };

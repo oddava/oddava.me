@@ -3,6 +3,7 @@ import { isDraftNote, parseDraftFlag } from '../src/lib/content/noteDraft';
 import { noteDataSchema } from '../src/lib/content/schemas';
 import { buildGardenIndex } from '../src/lib/garden/build';
 import { deriveNoteGraph } from '../src/lib/garden/graph';
+import { getRelatedNotes } from '../src/lib/garden/relationships';
 import { searchNotes } from '../src/lib/garden/search';
 import type { NoteSource } from '../src/lib/garden/types';
 import { hasDrafts, publicNoteSources } from '../src/lib/garden/visibility';
@@ -129,8 +130,9 @@ describe('public visibility', () => {
     ).toBeUndefined();
     expect(index.wikiLinkHrefs.has('secret-plan')).toBe(false);
 
-    // Tags and affinity edges only see public notes.
-    expect(index.affinityPaths).toEqual([]);
+    // Related notes only see public notes: the draft shares #books and #craft
+    // with "reading", so a leak would list it here.
+    expect(getRelatedNotes(index.byId.get('reading')!, index)).toEqual([]);
 
     // Search and the graph.
     expect(searchNotes(index.documents, 'unreleased', 8)).toEqual([]);

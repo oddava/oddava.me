@@ -5,7 +5,6 @@ import type {
   NoteSource,
 } from './types';
 import { GardenEmptyError } from './errors';
-import { buildAffinityPaths } from './relationships';
 import {
   buildWikiLinkHrefLookup,
   deriveSummary,
@@ -192,7 +191,5 @@ export function buildGardenIndex(sources: NoteSource[]): GardenIndex {
     })),
   );
 
-  const affinityPaths = buildAffinityPaths(documents);
-
-  return { root, documents, byId, wikiLinkHrefs, affinityPaths };
+  return { root, documents, byId, wikiLinkHrefs };
 }

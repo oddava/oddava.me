@@ -1,4 +1,4 @@
-export type { AffinityEdge, GardenDocument, GardenIndex } from './types';
+export type { GardenDocument, GardenIndex } from './types';
 export {
   GardenUnavailableError,
   GardenEmptyError,
@@ -13,11 +13,7 @@ export {
 } from './runtime';
 export { isDraftNote } from '../content/noteDraft';
 export { decidePublicNote, type PublicNoteDecision } from './retired';
-export {
-  buildAffinityPaths,
-  getRelatedNotes,
-  findNoteLeafRedirect,
-} from './relationships';
+export { getRelatedNotes, findNoteLeafRedirect } from './relationships';
 export {
   getNoteTags,
   noteHrefFromSourceId,

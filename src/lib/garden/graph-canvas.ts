@@ -207,13 +207,18 @@ export function mountGraph(
       moving = true;
     } else if (!gesture) {
       panVelocity = { x: 0, y: 0 };
-      camera.x = approach(camera.x, targetCamera.x, cameraEase);
-      camera.y = approach(camera.y, targetCamera.y, cameraEase);
+      // The camera lands once what is left is invisible: a twentieth of a CSS
+      // pixel (under a tenth of a device pixel at 2x), and a scale step that
+      // moves a node 1000px out by no more. Easing on to 0.002px kept a big
+      // canvas (the expanded graph) redrawing for dozens of frames after the
+      // motion had visibly stopped.
+      camera.x = approach(camera.x, targetCamera.x, cameraEase, 0.05);
+      camera.y = approach(camera.y, targetCamera.y, cameraEase, 0.05);
       camera.scale = approach(
         camera.scale,
         targetCamera.scale,
         cameraEase,
-        0.00001,
+        0.00005,
       );
     }
     const near = selected >= 0 ? neighbors[selected]! : undefined;

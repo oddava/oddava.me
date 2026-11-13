@@ -57,13 +57,27 @@ async function setup(page: Page, suffix = '') {
     .poll(() => page.evaluate(() => window.graphProbe.points.length))
     .toBeGreaterThan(0);
 }
+/** The note's graph, expanded into its modal: the big canvas a reader
+ * explores, where drag, wheel, pinch and keyboard are checked. */
+async function setupExpanded(page: Page) {
+  await setup(page);
+  await page.getByRole('button', { name: 'Expand graph', exact: true }).click();
+  await expect
+    .poll(() =>
+      page
+        .locator('dialog')
+        .first()
+        .evaluate((element) => element.matches(':modal')),
+    )
+    .toBe(true);
+}
 async function currentPoint(page: Page) {
   return page.evaluate(() =>
     window.graphProbe.points.reduce((a, b) => (a.radius > b.radius ? a : b)),
   );
 }
 
-test('expansion preserves camera, Escape restores focus, graph stays before outline', async ({
+test('expansion preserves camera, Escape restores focus, graph stays before keep reading', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -102,7 +116,7 @@ test('expansion preserves camera, Escape restores focus, graph stays before outl
         (element) =>
           !!(
             element.compareDocumentPosition(
-              document.querySelector('.note-toc')!,
+              document.querySelector('.note-keep')!,
             ) & Node.DOCUMENT_POSITION_FOLLOWING
           ),
       ),
@@ -121,7 +135,7 @@ test('node drag pulls neighbors without navigating, pan and zoom work, simulatio
     testInfo.project.name === 'mobile',
     'Mouse gestures checked on desktop; touch checked separately.',
   );
-  await setup(page, '?full');
+  await setupExpanded(page);
   await page.waitForTimeout(2300);
   await expect
     .poll(
@@ -166,7 +180,7 @@ test('node drag pulls neighbors without navigating, pan and zoom work, simulatio
 test('keyboard selects and opens notes without extra placeholder text', async ({
   page,
 }) => {
-  await setup(page, '?full');
+  await setupExpanded(page);
   await page.locator('canvas').first().focus();
   await page.keyboard.press(']');
   await expect(page.getByRole('status')).toHaveText('Learning in public');
@@ -180,7 +194,7 @@ test('touch pinch zooms and never activates a note', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'Touch fixture');
-  await setup(page, '?full');
+  await setupExpanded(page);
   const session = await page.context().newCDPSession(page);
   const radius = (await currentPoint(page)).radius;
   await session.send('Input.dispatchTouchEvent', {
@@ -246,7 +260,7 @@ test('wheel zoom eases around its anchor and settles without a render loop', asy
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'Wheel gesture');
-  await setup(page, '?full');
+  await setupExpanded(page);
   await expect
     .poll(
       async () => {
@@ -308,7 +322,7 @@ test('sidebar pan release stays bounded and reduced motion has no coast', async 
   }
 });
 
-test('modal keeps the mini graph and the entire sidebar in place throughout the transition', async ({
+test('modal keeps the mini graph and the page around it in place throughout the transition', async ({
   page,
 }) => {
   await setup(page);
@@ -317,7 +331,7 @@ test('modal keeps the mini graph and the entire sidebar in place throughout the 
     .scrollIntoViewIfNeeded();
   const result = await page.evaluate(async () => {
     const slot = document.querySelector('.interactive-graph__slot')!;
-    const section = document.querySelector<HTMLElement>('.note-toc')!;
+    const section = document.querySelector<HTMLElement>('.note-keep')!;
     // The production mobile outline is elsewhere; make this fixture's following
     // section visible so its geometry measures layout rather than a hidden box.
     section.style.display = 'block';
@@ -768,11 +782,4 @@ test('dragging a node along fractional-resolution edges leaves no pixels behind'
   } finally {
     await context.close();
   }
-});
-
-test('full-page graph returns to its source note', async ({ page }) => {
-  await setup(page, '?full#place=note-0');
-  await expect(
-    page.getByRole('link', { name: 'Back to notes' }),
-  ).toHaveAttribute('href', '#note-0');
 });

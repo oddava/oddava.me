@@ -1,14 +1,15 @@
 # Interactive note graph
 
-The Preact island renders a one-hop neighborhood above the sidebar outline, on
-the apex and the notes host alike. Expanding the sidebar uses a native modal
+The Preact island renders a note's one-hop neighborhood under its sheet, in
+the "nearby" slip (only when the note has at least one neighbour), on the
+apex and the notes host alike. Expanding it uses a native modal
 without remounting the canvas or losing its camera; a second modal opens the
-whole garden. The whole garden also has a page of its own again, linked from
-the notes landing: `/notes/graph` (`/graph` on the notes host) renders the
-island's `fullPage` mode with every public note, framed under the site header
-(`src/pages/notes/graph.astro`); `#place=<note id>` centres the bloom on a
-note. The browser harness exercises the same mode
-(`tests/browser/graph.html?full`).
+whole garden. That modal is the only whole-garden view: the
+`/notes/graph` page and the island's `fullPage` mode were removed in the
+paper restyle, and `/notes/graph` (like `/garden/graph` before it) now
+301s to the notes landing. The browser harness (`tests/browser/graph.html`)
+checks drag, wheel, pinch and keyboard on the expanded modal, the big canvas
+a reader actually explores.
 
 ## Reference and decisions
 
@@ -55,7 +56,7 @@ offscreen detection on tab return. The critic judged further changes marginal.
 Unit checks cover resolved-link derivation and physics settling/elasticity.
 Playwright checks cover desktop dragging/panning/zoom, idle rendering, mobile
 pinch, modal focus/camera restoration, and keyboard navigation. The fixture
-at `tests/browser/graph.html?full&count=120` exercises denser constellations without
+at `tests/browser/graph.html?count=120` exercises denser constellations without
 changing content. Live Redis pages were rendered at desktop and mobile widths;
 DOM-only outline/explorer injection checked sidebar overflow with an actual Astro
 island wrapper.
@@ -99,11 +100,34 @@ The native visual treatment uses an open black canvas with a fine bottom rule,
 borderless controls, and a blue open-center current-note marker. Labels retain
 the site's rounded face. Physics, camera response, and return motion are unchanged.
 
-Below the 64rem rail breakpoint (78rem before the November 2026 restyle),
-note pages hide the inline graph; the
-footer keeps the note's contents and the folder browser. The notes browser starts collapsed and remembers a separate narrow-screen choice.
-Its expanded tree scrolls with the page instead of trapping touch gestures in a
-height-capped inner scroller. Wide screens retain the graph and bounded explorer.
+The rail, its folder explorer and the narrow-screen wayfinder were removed in
+the paper restyle (below); "Sidebar" in the history that follows means the
+in-page graph, which now sits under the note.
+
+## Paper restyle, November 2026
+
+The note became a sheet of paper on Studio's dotted desk, centred, with the
+trail of its folders above it. The left rail (graph, contents, related notes,
+folder explorer) is gone: contents fold into the sheet, related notes and
+backlinks are "keep reading" cards under it, and the graph moved under the
+sheet as the "nearby" slip, drawn at a 5:2 frame (4:3 on a phone) and shown
+on every screen size, but only for a note with neighbours, since a lone dot
+in a frame says nothing. The island's own buttons expand it and open the
+whole garden in place. The slip sets `--color-surface` to the paper, so the
+canvas paints its ground to match. The browser harness
+(`tests/browser/graph.tsx`) renders the same structure.
+
+Moving the drag, wheel, pinch and keyboard checks from the retired page onto
+the expanded modal found two slow-settle faults that the page never showed.
+The modal's `::backdrop` blurred the whole viewport, and a backdrop filter is
+recomposited on every frame the canvas paints: the expanded graph ran at
+roughly half the frame rate of the in-page one, and because the engine steps
+its springs per frame, every settle ran long and a pan drifted under the
+hand. The backdrop is now a plain, denser scrim. Separately, the camera eased
+on until it was within 0.002px of its target, so a zoom on the big canvas
+kept redrawing for dozens of frames after the motion had visibly stopped; it
+now lands at 0.05px (and a matching scale step), under a tenth of a device
+pixel.
 
 ## Portfolio restyle, November 2026
 
