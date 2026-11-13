@@ -213,6 +213,19 @@ export default function StudioEditorPane({
               {compact && draftState === 'draft' && (
                 <span className="studio-draft-mark">draft</span>
               )}
+              <button
+                type="button"
+                className="studio-icon-button"
+                aria-label="Outline"
+                title={`Outline (${shortcut('O', true)})`}
+                aria-haspopup="dialog"
+                // The panel's outside-press watcher leaves this alone, so a
+                // second press closes the panel instead of reopening it.
+                data-studio-nav-trigger
+                onClick={() => commandsRef.current?.outline?.()}
+              >
+                <Icon name="outline" />
+              </button>
               {compact && onNoteActions && (
                 <button
                   type="button"

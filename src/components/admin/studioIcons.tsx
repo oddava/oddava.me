@@ -160,6 +160,8 @@ const PATHS = {
     <path d="M12.75 5 16 8.25l-3.25 3.25M15.5 8.25H8.25a4 4 0 0 0 0 8h2.25" />
   ),
   indent: <path d="M4 4.75h12M9.5 10H16M4 15.25h12M4 7.75 6.75 10 4 12.25" />,
+  // A heading and the shallower ones beneath it: the outline's own shape.
+  outline: <path d="M4 5.25h12M7 10h9M10 14.75h6" />,
   outdent: (
     <path d="M4 4.75h12M9.5 10H16M4 15.25h12M6.75 7.75 4 10l2.75 2.25" />
   ),

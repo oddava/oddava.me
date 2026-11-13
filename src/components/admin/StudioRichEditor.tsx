@@ -16,6 +16,10 @@ import StudioInlineToolbar, {
   focusFormattingToolbar,
 } from './StudioInlineToolbar';
 import StudioKeyboardBar from './StudioKeyboardBar';
+import StudioOutline from './StudioOutlinePanel';
+import StudioFindBar from './StudioFindBar';
+import StudioWordCount from './StudioWordCounter';
+import { useStudioNavigate } from './useStudioNavigate';
 import StudioBlockHandle from './StudioBlockHandle';
 import StudioRichBlockMenu from './StudioRichBlockMenu';
 import StudioImageMenu from './StudioImageMenu';
@@ -163,6 +167,9 @@ export default function StudioRichEditor(props: Props) {
   const chooseRef = useRef<(index: number) => void>(() => {});
   const chooseWikiRef = useRef<(index: number) => void>(() => {});
   const moveRef = useRef<(direction: -1 | 1) => void>(() => {});
+  // The palette and the bar reach the navigation panels through the commands,
+  // which are built once; this is how those see the current render's.
+  const navRef = useRef<ReturnType<typeof useStudioNavigate>>(null!);
 
   function refresh() {
     const editor = editorRef.current;
@@ -416,7 +423,11 @@ export default function StudioRichEditor(props: Props) {
     source.current.remember(editor, live.current.body);
     emitted.current = live.current.body;
 
-    const commands = createEditorCommands(editor, { showLink, insertMarkdown });
+    const commands: EditorCommands = {
+      ...createEditorCommands(editor, { showLink, insertMarkdown }),
+      outline: () => navRef.current.toggleOutline(),
+      find: () => navRef.current.openFind(),
+    };
     commandsRef.current = commands;
     if (live.current.visible) {
       live.current.commandsRef.current = commands;
@@ -458,6 +469,7 @@ export default function StudioRichEditor(props: Props) {
     setRawEdit(null);
     setYoutube(null);
     setLink(null);
+    nav.close();
   }, [props.body]);
 
   useEffect(() => {
@@ -480,6 +492,9 @@ export default function StudioRichEditor(props: Props) {
   }, [props.visible]);
 
   useSuggestionAria(editorRef, slash, wiki);
+  // After the effect that builds the editor, so it finds the editor built.
+  const nav = useStudioNavigate(editorRef, props.visible);
+  navRef.current = nav;
 
   useEffect(() => {
     scroller.current
@@ -585,7 +600,7 @@ export default function StudioRichEditor(props: Props) {
   const activeCommands = commandsRef.current;
 
   return (
-    <div className="studio-rich-shell">
+    <div className="studio-rich-shell" onKeyDown={nav.onKeyDown}>
       {youtube && (
         <StudioYoutubePopover
           youtube={youtube}
@@ -697,6 +712,19 @@ export default function StudioRichEditor(props: Props) {
           </p>
         )}
       </div>
+      {props.visible &&
+        nav.editor &&
+        !(props.compact && props.keyboardOpen) && (
+          <StudioWordCount editor={nav.editor} />
+        )}
+      {nav.editor && nav.panel === 'outline' && (
+        <StudioOutline
+          editor={nav.editor}
+          compact={props.compact}
+          onClose={nav.close}
+          onFind={nav.openFind}
+        />
+      )}
       <StudioSlashMenu
         open={Boolean(slash)}
         items={slash?.items ?? []}
@@ -741,6 +769,14 @@ export default function StudioRichEditor(props: Props) {
               ),
             )
           }
+        />
+      )}
+      {nav.editor && nav.panel === 'find' && (
+        <StudioFindBar
+          editor={nav.editor}
+          seed={nav.seed}
+          docked={props.compact}
+          onClose={nav.close}
         />
       )}
       {props.visible &&

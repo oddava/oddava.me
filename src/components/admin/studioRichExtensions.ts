@@ -10,6 +10,7 @@ import { BlockSelectionExtension } from './studioBlockSelection';
 import { Columns, Column } from './studioColumns';
 import { RichImage } from './studioRichImage';
 import { YoutubeVideo } from './studioYoutube';
+import { StudioFind } from './studioFind';
 import { SourceBlock, WikiLink } from './studioRichDocument';
 
 interface ExtensionOptions {
@@ -36,6 +37,7 @@ export function studioRichExtensions({
     }),
     YoutubeVideo,
     BlockSelectionExtension,
+    StudioFind,
     Columns,
     Column,
     TableKit,
