@@ -11,6 +11,7 @@ import { Columns, Column } from './studioColumns';
 import { RichImage } from './studioRichImage';
 import { YoutubeVideo } from './studioYoutube';
 import { SourceBlock, WikiLink } from './studioRichDocument';
+import { StudioFocus } from './studioFocus';
 
 interface ExtensionOptions {
   /** Read at render time, so a custom block always uses the current renderer. */
@@ -75,6 +76,7 @@ export function studioRichExtensions({
       },
     }),
     WikiLink,
+    StudioFocus,
     Placeholder.configure({
       placeholder: ({ node, pos }) =>
         node.type.name !== 'heading'
