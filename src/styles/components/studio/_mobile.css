@@ -103,39 +103,6 @@
   }
 }
 
-/* Narrower still, the pill stops being two equal halves: each word takes the
-   room it needs and the chosen one is filled where it stands, so the pair
-   costs the bar a third less. */
-@media (max-width: 900px) and (min-width: 721px) {
-  .admin-page .studio-draft-toggle[data-variant='bar'] {
-    grid-template-columns: auto auto;
-  }
-
-  .admin-page
-    .studio-draft-toggle[data-variant='bar']
-    .studio-draft-toggle__thumb {
-    display: none;
-  }
-
-  .admin-page
-    .studio-draft-toggle[data-variant='bar']
-    .studio-draft-toggle__option {
-    padding: 0 10px;
-  }
-
-  .admin-page
-    .studio-draft-toggle[data-variant='bar']
-    .studio-draft-toggle__option[aria-pressed='true'] {
-    background: var(--st-draft-tint);
-  }
-
-  .admin-page
-    .studio-draft-toggle[data-variant='bar']
-    .studio-draft-toggle__option[data-option='published'][aria-pressed='true'] {
-    background: var(--st-picked);
-  }
-}
-
 /* The narrowest window that still has a sidebar (and a tablet held upright,
    whose controls are finger-sized): focus mode and history leave the bar for
    the palette, where both already are, so the name keeps a dozen letters. */
@@ -484,49 +451,6 @@
   background: var(--st-press);
 }
 
-/* Scrolls sideways rather than wrapping: a path that grew a second line would
-   push the list down every time you went a level deeper. */
-.admin-page .studio-mfiles__crumbs {
-  display: flex;
-  align-items: center;
-  flex: none;
-  gap: 2px;
-  padding: 0 10px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  white-space: nowrap;
-}
-
-.admin-page .studio-mfiles__crumbs::-webkit-scrollbar {
-  display: none;
-}
-
-.admin-page .studio-mfiles__crumbs :is(button, span) {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--st-size-sm);
-}
-
-.admin-page .studio-mfiles__crumbs button {
-  color: var(--st-text-3);
-  cursor: pointer;
-}
-
-.admin-page .studio-mfiles__crumbs button::after {
-  margin-left: 8px;
-  color: var(--st-text-4);
-  content: '/' / '';
-}
-
-.admin-page .studio-mfiles__crumbs span {
-  color: var(--st-text-2);
-}
-
 .admin-page .studio-mfiles__search {
   position: relative;
   flex: none;
@@ -763,17 +687,6 @@
   background: var(--st-press);
 }
 
-.admin-page .studio-mfiles__actions .studio-mfiles__new {
-  border-color: transparent;
-  background: var(--st-accent-text);
-  color: var(--st-on-accent);
-  font-weight: 700;
-}
-
-.admin-page .studio-mfiles__actions .studio-mfiles__new:active {
-  background: color-mix(in srgb, var(--st-accent-text) 80%, black);
-}
-
 .admin-page .studio-mfiles__actions button.is-danger {
   color: var(--st-danger);
 }
@@ -851,7 +764,7 @@
   display: grid;
   flex: none;
   place-items: center;
-  padding: 8px 0 4px;
+  padding: 10px 0 6px;
   touch-action: none;
 }
 
@@ -866,8 +779,7 @@
   display: grid;
   flex: none;
   gap: 2px;
-  padding: 4px 20px 12px;
-  border-bottom: 1px solid var(--st-line);
+  padding: 2px 20px 14px;
 }
 
 .admin-page .studio-sheet__head strong {
@@ -889,14 +801,14 @@
   display: grid;
   align-content: start;
   flex: 1 1 auto;
+  gap: 12px;
   min-height: 0;
-  padding: 8px;
+  padding: 0 12px 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.admin-page .studio-sheet__body > button,
-.admin-page .studio-sheet__body > a.studio-sheet__link {
+.admin-page .studio-sheet__body > button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -914,8 +826,7 @@
   transition: background-color var(--st-fast) var(--st-ease);
 }
 
-.admin-page .studio-sheet__body > button:active:not(:disabled),
-.admin-page .studio-sheet__body > a.studio-sheet__link:active {
+.admin-page .studio-sheet__body > button:active:not(:disabled) {
   background: var(--st-press);
 }
 
@@ -1243,27 +1154,6 @@
 
 .admin-page .studio-sheet__drag:active {
   cursor: grabbing;
-}
-
-.admin-page .studio-sheet__grip {
-  padding: 10px 0 6px;
-}
-
-.admin-page .studio-sheet__grip span {
-  width: 40px;
-  height: 5px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--color-text-primary) 28%, transparent);
-}
-
-.admin-page .studio-sheet__head {
-  padding: 2px 20px 14px;
-  border-bottom: 0;
-}
-
-.admin-page .studio-sheet__body {
-  gap: 12px;
-  padding: 0 12px 16px;
 }
 
 /* Grouped, the body is a column of cards that never shrink: a long list

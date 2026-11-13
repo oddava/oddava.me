@@ -73,7 +73,6 @@ export default function StudioDraftToggle({
       title={blockedReason ?? undefined}
       onKeyDown={onKeyDown}
     >
-      <span className="studio-draft-toggle__thumb" aria-hidden="true" />
       {DRAFT_STATES.map((option) => (
         <button
           key={option}

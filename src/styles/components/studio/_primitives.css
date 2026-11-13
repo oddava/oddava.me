@@ -32,7 +32,6 @@
    true. The sheet and a notice each wear one; they set where it sits, and
    may restate its two colours. (A callout's tape is drawn the same way in
    _note-prose.css, where the published page can reach it.) */
-.admin-page .studio-tape,
 .admin-page .studio-paper::before,
 .admin-page .studio-conflict::before {
   height: 22px;
@@ -87,14 +86,10 @@
 /* "You are here": the squiggle under the current item of a short list — the
    outline's heading, a tab. Type draws it, so it takes the ink's colour and
    needs no image. */
-.admin-page .studio-squiggle,
 .admin-page .studio-outline__item[aria-current='location'] span,
 .admin-page
-  :is(
-    .studio-tab,
-    .studio-history__modes > button,
-    .studio-icon-tabs > button
-  ):is([aria-selected='true'], [aria-pressed='true']) {
+  :is(.studio-history__modes, .studio-icon-tabs)
+  > button:is([aria-selected='true'], [aria-pressed='true']) {
   text-decoration: underline wavy var(--st-accent);
   text-decoration-thickness: 1.5px;
   text-decoration-skip-ink: none;
@@ -122,7 +117,6 @@
   rotate: -2deg;
 }
 
-.admin-page .studio-sticker--draft,
 .admin-page .studio-draft-mark {
   --studio-sticker-fill: var(--st-draft-tint);
   --studio-sticker-ink: var(--st-draft);
@@ -798,14 +792,14 @@
    popover). No tray and no raised key: the options sit in a quiet row and the
    chosen one takes the soft fill a current row takes anywhere else. */
 
-.admin-page :where(.studio-choices, .studio-reading__segments) {
+.admin-page :where(.studio-reading__segments) {
   display: grid;
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
   gap: 2px;
 }
 
-.admin-page :where(.studio-choice, .studio-reading__segment) {
+.admin-page :where(.studio-reading__segment) {
   min-height: var(--st-control);
   border: 0;
   border-radius: var(--st-radius);
@@ -820,14 +814,14 @@
 }
 
 @media (hover: hover) {
-  .admin-page :where(.studio-choice, .studio-reading__segment):hover {
+  .admin-page :where(.studio-reading__segment):hover {
     background: var(--st-hover);
     color: var(--st-text);
   }
 }
 
 .admin-page
-  :where(.studio-choice, .studio-reading__segment):where(
+  :where(.studio-reading__segment):where(
     [aria-pressed='true'],
     [aria-checked='true'],
     :has(input:checked)
@@ -842,17 +836,12 @@
    history's Changes / Full text, the icon picker's Emoji / Upload). Plain
    words; the one you are on wears the squiggle (see Decoration, above). */
 
-.admin-page :where(.studio-tabs, .studio-history__modes, .studio-icon-tabs) {
+.admin-page :where(.studio-history__modes, .studio-icon-tabs) {
   display: flex;
   gap: 4px;
 }
 
-.admin-page
-  :where(
-    .studio-tab,
-    .studio-history__modes > button,
-    .studio-icon-tabs > button
-  ) {
+.admin-page :where(.studio-history__modes, .studio-icon-tabs) > button {
   min-height: var(--st-control);
   padding: 0 10px;
   border: 0;
@@ -866,20 +855,14 @@
 }
 
 .admin-page
-  :where(
-    .studio-tab,
-    .studio-history__modes > button,
-    .studio-icon-tabs > button
-  ):where(:hover, [aria-pressed='true'], [aria-selected='true']) {
+  :where(.studio-history__modes, .studio-icon-tabs)
+  > button:where(:hover, [aria-pressed='true'], [aria-selected='true']) {
   color: var(--st-text);
 }
 
 .admin-page
-  :where(
-    .studio-tab,
-    .studio-history__modes > button,
-    .studio-icon-tabs > button
-  ):where([aria-pressed='true'], [aria-selected='true']) {
+  :where(.studio-history__modes, .studio-icon-tabs)
+  > button:where([aria-pressed='true'], [aria-selected='true']) {
   font-weight: 500;
 }
 

@@ -2,56 +2,31 @@
    Drafts
 
    The Draft / Published switch, and the small "draft" sticker that follows
-   an unlisted note wherever it is listed. The switch is two plain words and
-   one sticker that slides between them, tilting as it lands: amber on Draft,
-   the ink on Published.
+   an unlisted note wherever it is listed. The switch is two plain words; the
+   chosen one is stamped like a sticker: amber on Draft, the ink on
+   Published.
 --------------------------------------------------------------------------- */
 
 /* --- The switch --- */
 
 .admin-page .studio-draft-toggle {
-  position: relative;
-  display: inline-grid;
+  display: inline-flex;
   flex: none;
-  grid-template-columns: 1fr 1fr;
-  align-items: stretch;
+  gap: 2px;
   transition: transform var(--st-base) var(--st-spring);
 }
 
-/* A press squeezes the whole pill; releasing lets it spring back. */
+/* A press squeezes the pair; releasing lets it spring back. */
 .admin-page .studio-draft-toggle:has(.studio-draft-toggle__option:active) {
   transform: scale(var(--st-press-scale));
 }
 
-.admin-page .studio-draft-toggle__thumb {
-  position: absolute;
-  inset: 3px auto 3px 0;
-  width: 50%;
-  border-radius: var(--st-radius);
-  background: var(--st-draft-tint);
-  rotate: -1.5deg;
-  transition:
-    transform var(--st-slow) var(--st-spring),
-    rotate var(--st-slow) var(--st-spring),
-    background-color var(--st-base) var(--st-ease);
-}
-
-.admin-page
-  .studio-draft-toggle[data-state='published']
-  .studio-draft-toggle__thumb {
-  background: var(--st-picked);
-  rotate: 1.5deg;
-  transform: translateX(100%);
-}
-
 .admin-page .studio-draft-toggle__option {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   min-height: var(--st-control);
-  padding: 0 12px;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--st-radius);
   background: transparent;
@@ -61,12 +36,33 @@
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
-  transition: color var(--st-fast) var(--st-ease);
+  transition:
+    color var(--st-fast) var(--st-ease),
+    background-color var(--st-base) var(--st-ease),
+    rotate var(--st-slow) var(--st-spring);
 }
 
+/* The chosen word is stamped on: a sticker's fill and its tilt, landing on
+   the spring. Amber for a draft; the ink, the other way, for published. */
+.admin-page .studio-draft-toggle__option[aria-pressed='true'] {
+  background: var(--st-draft-tint);
+  color: var(--st-draft);
+  font-weight: 600;
+  rotate: -1.5deg;
+}
+
+.admin-page
+  .studio-draft-toggle__option[data-option='published'][aria-pressed='true'] {
+  background: var(--st-picked);
+  color: var(--st-accent-text);
+  rotate: 1.5deg;
+}
+
+/* A dot leads the chosen word, and takes no room beside the other. */
 .admin-page .studio-draft-toggle__option::before {
   width: 6px;
   height: 6px;
+  margin-right: -6px;
   border-radius: 50%;
   background: currentColor;
   content: '';
@@ -74,15 +70,12 @@
   transform: scale(0.4);
   transition:
     opacity var(--st-base) var(--st-ease),
+    margin var(--st-base) var(--st-ease),
     transform var(--st-slow) var(--st-spring);
 }
 
-/* The thumb is the sticker; the chosen word only gains weight and colour. */
-.admin-page .studio-draft-toggle__option[aria-pressed='true'] {
-  font-weight: 600;
-}
-
 .admin-page .studio-draft-toggle__option[aria-pressed='true']::before {
+  margin-right: 6px;
   opacity: 1;
   transform: none;
 }
@@ -99,18 +92,9 @@
   box-shadow: 0 0 0 10px transparent;
   transition:
     opacity var(--st-base) var(--st-ease),
+    margin var(--st-base) var(--st-ease),
     transform var(--st-slow) var(--st-spring),
     box-shadow calc(var(--st-slow) * 2) var(--st-ease);
-}
-
-.admin-page
-  .studio-draft-toggle__option[data-option='published'][aria-pressed='true'] {
-  color: var(--st-accent-text);
-}
-
-.admin-page
-  .studio-draft-toggle__option[data-option='draft'][aria-pressed='true'] {
-  color: var(--st-draft);
 }
 
 @media (hover: hover) {

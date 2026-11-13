@@ -61,12 +61,11 @@
 .admin-page {
   /* Surfaces. The desk is what the panes are made of; the sheet is the paper
      the note is written on; raised is anything floating over both. Each takes
-     a breath of the ink, so the greys belong to the accent beside them. */
-  --st-canvas: color-mix(
-    in srgb,
-    var(--color-brand) 3%,
-    var(--color-surface-raised)
-  );
+     a breath of the ink, so the greys belong to the accent beside them. The
+     desk is the deepest tone the theme has, which is a different one in each
+     theme: see --st-desk-base below. */
+  --st-desk-base: var(--color-surface);
+  --st-canvas: color-mix(in srgb, var(--color-brand) 5%, var(--st-desk-base));
   --st-panel: var(--st-canvas);
   --st-sheet: color-mix(
     in srgb,
@@ -211,8 +210,10 @@
   --st-slow: 280ms;
 }
 
-/* A light canvas needs far less shade to read as depth. */
+/* A light canvas needs far less shade to read as depth, and its deepest tone
+   is the raised grey rather than the page's white. */
 .admin-page[data-theme='light'] {
+  --st-desk-base: var(--color-surface-raised);
   --st-shadow-strength: 16%;
   --st-scrim-strength: 22%;
   --st-scrim-strong-strength: 34%;
