@@ -54,6 +54,11 @@ export function fenceLanguage(info: string | null | undefined): string {
   return (info ?? '').trim().split(/[\s{]/, 1)[0]!.toLowerCase();
 }
 
+/** Whether a fence names no language at all, or says so ("text", "plain"). */
+export function isPlainFence(info: string | null | undefined): boolean {
+  return PLAIN.has(fenceLanguage(info));
+}
+
 /** The catalogued language a fence names, or null for plain or unknown ones. */
 export function resolveCodeLanguage(
   info: string | null | undefined,
@@ -66,7 +71,7 @@ export function resolveCodeLanguage(
  * when no language is named, or the author's own word for one we don't know.
  */
 export function codeLanguageLabel(info: string | null | undefined): string {
+  if (isPlainFence(info)) return 'Plain text';
   const word = fenceLanguage(info);
-  if (PLAIN.has(word)) return 'Plain text';
   return BY_NAME.get(word)?.label ?? word;
 }

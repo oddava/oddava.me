@@ -1,6 +1,7 @@
 import {
   CODE_LANGUAGES,
   fenceLanguage,
+  isPlainFence,
   resolveCodeLanguage,
 } from '../../lib/garden/code-languages';
 import type { PickerOption } from './studioPicker';
@@ -28,14 +29,15 @@ export function codeLanguageOptions(
     })),
   ];
   const word = fenceLanguage(info);
-  if (word && !resolveCodeLanguage(word) && word !== PLAIN_ID)
+  if (!isPlainFence(info) && !resolveCodeLanguage(word))
     options.splice(1, 0, { id: word, label: word, hint: 'custom' });
   return options;
 }
 
 /** Which row is in effect for `info`: the catalogued id, the author's own word, or plain. */
 export function currentCodeLanguage(info: string | null | undefined): string {
-  return resolveCodeLanguage(info)?.id ?? (fenceLanguage(info) || PLAIN_ID);
+  if (isPlainFence(info)) return PLAIN_ID;
+  return resolveCodeLanguage(info)?.id ?? fenceLanguage(info);
 }
 
 /**

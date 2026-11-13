@@ -150,9 +150,10 @@ export const FootnoteRef = TiptapNode.create({
   addInputRules() {
     return [
       nodeInputRule({
-        find: new RegExp(`\\[\\^(${FOOTNOTE_ID})\\]$`),
+        // No capture group: with one, the rule would replace only the id.
+        find: new RegExp(`\\[\\^${FOOTNOTE_ID}\\]$`),
         type: this.type,
-        getAttributes: (match) => ({ id: match[1] }),
+        getAttributes: (match) => ({ id: match[0].slice(2, -1) }),
       }),
     ];
   },

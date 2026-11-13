@@ -145,11 +145,10 @@ export function openPicker(request: PickerRequest): () => void {
         hint.textContent = option.hint;
         row.append(hint);
       }
-      // Pressing, not clicking, so the editor behind never sees a blur first.
-      row.addEventListener('pointerdown', (event) => {
-        event.preventDefault();
-        choose(index);
-      });
+      // Keep focus where it is on press (a field must not blur mid-pick), but
+      // choose on click: a finger that starts a scroll is not a choice.
+      row.addEventListener('mousedown', (event) => event.preventDefault());
+      row.addEventListener('click', () => choose(index));
       row.addEventListener('pointermove', () => {
         if (active !== index) highlight(index);
       });
