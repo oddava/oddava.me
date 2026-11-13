@@ -1,3 +1,4 @@
+import { DoodleNoMatch } from './studioDoodles';
 import { createPortal } from 'preact/compat';
 import {
   useEffect,
@@ -215,9 +216,10 @@ export default function StudioCommandPalette({
           aria-label="Notes and commands"
         >
           {rows.length === 0 ? (
-            <p className="studio-palette__empty">
-              No note or command matches “{query.trim()}”.
-            </p>
+            <div className="studio-palette__empty">
+              <DoodleNoMatch />
+              <p>No note or command matches “{query.trim()}”.</p>
+            </div>
           ) : (
             (() => {
               const renderRow = (row: Row, index: number) => (

@@ -8,44 +8,46 @@
    its two sides the way every comparison in Studio does (_primitives.css).
 --------------------------------------------------------------------------- */
 
+/* A slip of paper taped above the sheet: the page's own fill, a hairline, and
+   a strip of tape at its corner. No badge, no tinted slab. It is a little
+   narrower than the sheet, so the two never look like they meant to align. */
 .admin-page .studio-conflict {
+  position: relative;
   display: flex;
   flex: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 16px;
-  margin: 4px 12px 8px;
-  padding: 10px 12px 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--st-accent) 28%, transparent);
+  box-sizing: border-box;
+  width: min(
+    calc(100% - 80px),
+    calc(var(--studio-measure, var(--max-width)) + 64px)
+  );
+  margin: 14px auto 6px;
+  padding: 14px 16px 14px 20px;
+  border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
-  background: var(--st-picked);
+  background: var(--st-sheet);
   color: var(--st-text);
   font-size: var(--st-size-sm);
   line-height: 1.45;
-  animation: studio-arrive var(--st-base) var(--st-ease);
+  animation: studio-arrive var(--st-slow) var(--st-spring);
+}
+
+.admin-page .studio-conflict::before {
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  width: 64px;
+  content: '';
+  rotate: -3deg;
 }
 
 /* Moved or set aside: something to know about, not something to hurry. */
-.admin-page .studio-conflict:is([data-state='gone'], [data-state='set-aside']) {
-  border-color: var(--st-line-strong);
-  background: var(--st-current);
-}
-
-.admin-page .studio-conflict__mark {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  padding: 5px;
-  border-radius: var(--st-radius);
-  background: color-mix(in srgb, var(--st-accent) 14%, transparent);
-  color: var(--st-accent-text);
-}
-
 .admin-page
-  .studio-conflict:is([data-state='gone'], [data-state='set-aside'])
-  .studio-conflict__mark {
-  background: var(--st-hover);
-  color: var(--st-text-3);
+  .studio-conflict:is([data-state='gone'], [data-state='set-aside'])::before {
+  --studio-tape: var(--st-press);
+  --studio-tape-stripe: var(--st-hover);
 }
 
 .admin-page .studio-conflict__text {
@@ -56,7 +58,7 @@
 .admin-page .studio-conflict__text strong {
   display: block;
   font-size: var(--st-size-md);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .admin-page .studio-conflict__text p {
@@ -95,14 +97,12 @@
   flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 10px 10px 20px;
-  border-bottom: 1px solid var(--st-line);
+  padding: 12px 12px 4px 24px;
 }
 
 .admin-page .studio-conflict-dialog__head h2 {
   margin: 0;
   font-size: var(--st-size-lg);
-  font-weight: 700;
 }
 
 .admin-page .studio-conflict-dialog__foot {
@@ -111,8 +111,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  padding: 12px 20px;
-  border-top: 1px solid var(--st-line);
+  padding: 4px 24px 20px;
 }
 
 .admin-page .studio-diff__legend,
@@ -126,7 +125,7 @@
    padding, then a cell's own indent. */
 .admin-page .studio-diff__legend {
   flex: none;
-  padding: 12px 25px 0;
+  padding: 12px 33px 0;
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
   font-weight: 500;
@@ -143,7 +142,7 @@
   flex-direction: column;
   gap: 2px;
   min-height: 0;
-  margin: 8px 16px 14px;
+  margin: 8px 24px 16px;
   padding: 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -250,7 +249,8 @@
 
 @media (max-width: 720px) {
   .admin-page .studio-conflict {
-    margin: 4px 8px 8px;
+    width: auto;
+    margin: 12px 12px 8px;
   }
 
   .admin-page .studio-conflict__actions {

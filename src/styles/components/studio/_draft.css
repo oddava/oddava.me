@@ -1,24 +1,21 @@
 /* ---------------------------------------------------------------------------
    Drafts
 
-   The Draft / Published pill, and the small "draft" marker that follows an
-   unlisted note wherever it is listed. The pill is the shared segmented
-   control (_primitives.css) with round corners and a thumb that slides: a
-   draft is the neutral raised key every such control has, and Published is
-   the one place in the family the accent is spent.
+   The Draft / Published switch, and the small "draft" sticker that follows
+   an unlisted note wherever it is listed. The switch is two plain words and
+   one sticker that slides between them, tilting as it lands: amber on Draft,
+   the ink on Published.
 --------------------------------------------------------------------------- */
 
-/* --- The pill --- */
+/* --- The switch --- */
 
 .admin-page .studio-draft-toggle {
-  --st-seg-radius: var(--radius-pill);
-
   position: relative;
   display: inline-grid;
   flex: none;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  transition: transform var(--st-fast) var(--st-ease);
+  transition: transform var(--st-base) var(--st-spring);
 }
 
 /* A press squeezes the whole pill; releasing lets it spring back. */
@@ -28,22 +25,22 @@
 
 .admin-page .studio-draft-toggle__thumb {
   position: absolute;
-  inset: 2px auto 2px 2px;
-  width: calc(50% - 2px);
-  border-radius: var(--radius-pill);
-  background: var(--st-raised);
-  box-shadow: 0 0 0 1px var(--st-line-strong);
+  inset: 3px auto 3px 0;
+  width: 50%;
+  border-radius: var(--st-radius);
+  background: var(--st-draft-tint);
+  rotate: -1.5deg;
   transition:
     transform var(--st-slow) var(--st-spring),
-    background-color var(--st-base) var(--st-ease),
-    box-shadow var(--st-base) var(--st-ease);
+    rotate var(--st-slow) var(--st-spring),
+    background-color var(--st-base) var(--st-ease);
 }
 
 .admin-page
   .studio-draft-toggle[data-state='published']
   .studio-draft-toggle__thumb {
   background: var(--st-picked);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--st-accent) 32%, transparent);
+  rotate: 1.5deg;
   transform: translateX(100%);
 }
 
@@ -53,10 +50,18 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: calc(var(--st-control) - 8px);
+  min-height: var(--st-control);
   padding: 0 12px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-3);
+  font: inherit;
+  font-size: var(--st-size-sm);
   line-height: 1.2;
   white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--st-fast) var(--st-ease);
 }
 
 .admin-page .studio-draft-toggle__option::before {
@@ -72,11 +77,9 @@
     transform var(--st-slow) var(--st-spring);
 }
 
-/* The thumb is the raised key here, so the chosen word needs no fill of its
-   own. */
+/* The thumb is the sticker; the chosen word only gains weight and colour. */
 .admin-page .studio-draft-toggle__option[aria-pressed='true'] {
-  background: transparent;
-  box-shadow: none;
+  font-weight: 600;
 }
 
 .admin-page .studio-draft-toggle__option[aria-pressed='true']::before {
@@ -105,6 +108,11 @@
   color: var(--st-accent-text);
 }
 
+.admin-page
+  .studio-draft-toggle__option[data-option='draft'][aria-pressed='true'] {
+  color: var(--st-draft);
+}
+
 @media (hover: hover) {
   .admin-page
     .studio-draft-toggle__option[aria-pressed='false']:not(
@@ -114,7 +122,7 @@
   }
 }
 
-/* The pill is a rounded shape; the ring follows it instead of boxing it. */
+/* The ring hugs the word rather than standing off it. */
 .admin-page .studio .studio-draft-toggle__option:focus-visible {
   outline-offset: 0;
 }
@@ -157,28 +165,14 @@
 .admin-page
   .studio-draft-toggle[data-variant='sheet']
   .studio-draft-toggle__option {
-  min-height: calc(var(--st-touch) - 8px);
+  min-height: var(--st-touch);
   font-size: var(--st-size-md);
 }
 
 /* --- The marker --- */
 
-/* Dashed, like a sketch not yet inked. It states a fact and asks for
-   nothing, so it stays the quietest thing on its row. */
-.admin-page .studio-draft-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  padding: 0 7px;
-  border: 1px dashed var(--st-line-strong);
-  border-radius: var(--radius-pill);
-  color: var(--st-text-3);
-  font-size: var(--st-size-xs);
-  font-style: normal;
-  line-height: 16px;
-  white-space: nowrap;
-}
-
+/* The "draft" sticker itself is a primitive (_primitives.css, Decoration):
+   amber, a touch askew. It states a fact and asks for nothing. */
 /* The tree row's label is a two-column grid (glyph, name); the marker takes a
    third rather than squeezing into the ellipsised name. */
 .admin-page .studio-tree-row__label:has(> .studio-draft-mark) {

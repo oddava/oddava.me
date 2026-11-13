@@ -75,7 +75,7 @@ export default function StudioHistoryList({
                       })}
                 </time>
                 {version.reason === 'pre-restore' && (
-                  <span className="studio-history__tag">Before a restore</span>
+                  <span className="studio-sticker">Before a restore</span>
                 )}
               </button>
             );

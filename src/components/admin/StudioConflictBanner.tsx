@@ -39,27 +39,6 @@ function useSpoken(text: string): string {
   return said;
 }
 
-/** Two pages, one a little askew: the same note, written twice. */
-function PagesMark() {
-  return (
-    <svg
-      className="studio-conflict__mark"
-      viewBox="0 0 28 28"
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.6"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <rect x="4.5" y="7" width="12.5" height="16" rx="2.5" />
-      <path d="M8 12.5h5.5M8 16h5.5M8 19.5h3" />
-      <path d="m15.2 6.2 2.3-1.1a2.5 2.5 0 0 1 3.3 1.3l3.2 8.6a2.5 2.5 0 0 1-1.4 3.2l-2.1.8" />
-      <path d="M23.5 3.5v2M22.5 4.5h2" />
-    </svg>
-  );
-}
-
 interface Copy {
   title: string;
   detail: string;
@@ -203,7 +182,6 @@ export default function StudioConflictBanner({
         data-state={state.kind}
         aria-label="This note changed elsewhere"
       >
-        <PagesMark />
         <div className="studio-conflict__text">
           <strong>{copy.title}</strong>
           <p>{copy.detail}</p>

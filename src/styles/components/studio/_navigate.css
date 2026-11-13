@@ -22,7 +22,7 @@
   box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   font-family: var(--st-font);
-  animation: studio-arrive var(--st-base) var(--st-ease);
+  animation: studio-arrive var(--st-base) var(--st-spring);
 }
 
 .admin-page :is(.studio-outline, .studio-find) :focus-visible {
@@ -66,14 +66,13 @@
   align-items: center;
   flex: none;
   gap: 2px;
-  padding: 6px 6px 2px 14px;
+  padding: 6px 6px 2px 16px;
 }
 
 .admin-page .studio-outline__head strong {
   flex: 1 1 auto;
   font-size: var(--st-size-sm);
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: 600;
 }
 
 /* A phone's word count: beside the panel's name rather than over the page. */
@@ -92,7 +91,7 @@
 .admin-page .studio-outline__body {
   position: relative;
   min-height: 0;
-  padding: 2px 4px 4px;
+  padding: 2px 6px 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -154,38 +153,11 @@
   color: var(--st-text);
 }
 
-/* Where you are: the ink's soft tint and a small pill on the left edge. */
+/* Where you are: full ink, and the squiggle under the words (_primitives.css,
+   Decoration). No fill: the list stays a list. */
 .admin-page .studio-outline__item[aria-current='location'] {
-  background: var(--st-picked);
   color: var(--st-text);
   font-weight: 500;
-}
-
-/* The pill is the list's, not the row's: one mark that slides to the row you
-   are on (every row is one --st-row tall, a pixel apart) instead of one that
-   fades out here and in there. */
-.admin-page .studio-outline__list::before {
-  position: absolute;
-  top: 8px;
-  left: 3px;
-  z-index: 1;
-  width: 3px;
-  height: calc(var(--st-row) - 16px);
-  border-radius: var(--radius-sm);
-  background: var(--st-accent);
-  content: '';
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(
-    calc(var(--studio-outline-at, 0) * (var(--st-row) + 1px))
-  );
-  transition:
-    transform var(--st-base) var(--st-spring),
-    opacity var(--st-fast) var(--st-ease);
-}
-
-.admin-page .studio-outline__list:has([aria-current='location'])::before {
-  opacity: 1;
 }
 
 .admin-page .studio-outline__empty {
@@ -200,8 +172,8 @@
 
 .admin-page .studio-find {
   width: min(420px, calc(100% - 40px));
-  padding: 4px;
-  gap: 2px;
+  padding: 6px;
+  gap: 4px;
 }
 
 .admin-page .studio-find__row {
@@ -295,27 +267,28 @@
   transition: opacity var(--st-slow) var(--st-ease);
 }
 
+/* A sticker in the corner of the desk (_primitives.css, Decoration), with an
+   opaque fill of its own: on a narrow window it sits over the page. */
 .admin-page .studio-wordcount span {
   position: absolute;
-  right: 22px;
-  bottom: 10px;
-  padding: 3px 10px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--st-canvas) 90%, transparent);
-  color: var(--st-text-4);
+  right: 20px;
+  bottom: 12px;
+  padding: 2px 8px;
+  border-radius: var(--st-radius-sm);
+  background: color-mix(
+    in srgb,
+    var(--color-text-primary) 7%,
+    var(--st-canvas)
+  );
+  color: var(--st-text-3);
   font-family: var(--st-font);
-  font-size: var(--st-size-xs);
+  font-size: 11px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 18px;
   white-space: nowrap;
-}
-
-@media (max-width: 900px) {
-  .admin-page .studio-wordcount span {
-    border-color: var(--st-line);
-    background: var(--st-raised);
-    color: var(--st-text-3);
-  }
+  rotate: -2deg;
 }
 
 @media (max-width: 720px) {

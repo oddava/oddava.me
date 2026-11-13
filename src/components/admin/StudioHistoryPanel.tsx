@@ -1,6 +1,7 @@
 import StudioHistoryList from './StudioHistoryList';
 import StudioHistoryPreview from './StudioHistoryPreview';
 import StudioSheet from './StudioSheet';
+import { DoodleCloudy, DoodleFirstCopy } from './studioDoodles';
 import { Icon } from './studioIcons';
 import { adoptRestoredVersion, useStudioHistory } from './useStudioHistory';
 import type { OnNoteStored, StudioDocument } from './useStudioDocument';
@@ -90,9 +91,7 @@ export default function StudioHistoryPanel({
 
         {status === 'error' && (
           <div className="studio-history__empty" role="alert">
-            <span className="studio-history__bubble" aria-hidden="true">
-              <Icon name="history" />
-            </span>
+            <DoodleCloudy />
             <p className="studio-history__lead">Couldn’t open the history</p>
             <p className="studio-history__hint">
               Your note is fine — try again in a moment.
@@ -109,9 +108,7 @@ export default function StudioHistoryPanel({
 
         {status === 'ready' && versions.length === 0 && (
           <div className="studio-history__empty">
-            <span className="studio-history__bubble" aria-hidden="true">
-              <Icon name="history" />
-            </span>
+            <DoodleFirstCopy />
             <p className="studio-history__lead">Nothing to go back to yet</p>
             <p className="studio-history__hint">
               While you write, Studio tucks away a copy about every five

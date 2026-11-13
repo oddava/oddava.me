@@ -45,7 +45,9 @@ function Disclosure({
       >
         <Icon name="chevron-right" />
         <span>{title}</span>
-        {badge && <span className="studio-connections__badge">{badge}</span>}
+        {badge && (
+          <span className="studio-sticker studio-sticker--ink">{badge}</span>
+        )}
       </button>
       <div id={panel} className="studio-connections__panel" hidden={!open}>
         {children}

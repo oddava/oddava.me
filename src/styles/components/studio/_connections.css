@@ -3,7 +3,7 @@
 
    What links to a note and what it links to, under the page, and the #tag
    menu's extra columns. Everything is quiet until asked for: two collapsed
-   rows at rest, soft cards when open.
+   rows at rest, a plain list when open.
 --------------------------------------------------------------------------- */
 
 .admin-page .studio-connections {
@@ -12,6 +12,7 @@
   margin-top: 56px;
   padding-top: 12px;
   border-top: 1px solid var(--st-line);
+  font-family: var(--st-font);
 }
 
 .admin-page .studio-connections__toggle {
@@ -51,26 +52,16 @@
 }
 
 /* "1 not written yet": a nudge, not an alarm — the accent, tinted. */
-.admin-page .studio-connections__badge {
-  padding: 1px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--st-picked);
-  color: var(--st-accent-text);
-  font-size: var(--st-size-xs);
-  font-weight: 500;
-}
-
 .admin-page .studio-connections__panel:not([hidden]) {
   padding: 4px 0 12px;
   animation: studio-fade var(--st-base) var(--st-ease);
 }
 
+/* A list, not a wall of cards: these are the page's own "see also". */
 .admin-page .studio-connections__list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-  gap: 8px;
   margin: 0;
-  padding: 0 0 0 6px;
+  padding: 0;
   list-style: none;
 }
 
@@ -89,17 +80,14 @@
   gap: 10px;
   width: 100%;
   min-height: var(--st-touch);
-  padding: 10px 12px;
-  border: 1px solid var(--st-line);
+  padding: 10px 10px 10px 6px;
+  border: 0;
   border-radius: var(--st-radius);
-  background: var(--st-panel);
+  background: transparent;
   color: var(--st-text-2);
   font: inherit;
   text-align: left;
-  transition:
-    background-color var(--st-fast) var(--st-ease),
-    border-color var(--st-fast) var(--st-ease),
-    transform var(--st-base) var(--st-ease);
+  transition: background-color var(--st-fast) var(--st-ease);
 }
 
 .admin-page button.studio-connection-card {
@@ -107,29 +95,41 @@
 }
 
 .admin-page button.studio-connection-card:hover {
-  border-color: var(--st-line-strong);
   background: var(--st-hover);
-  transform: translateY(-1px);
-}
-
-.admin-page button.studio-connection-card:active {
-  transform: none;
 }
 
 /* A note that is only a promise so far: dashed, like a place saved for it. */
+/* A note that is only a promise so far: its name is underlined in dashes,
+   like a place saved for it. */
 .admin-page .studio-connection-card.is-unwritten {
   flex-wrap: wrap;
-  border-style: dashed;
-  background: transparent;
+  align-items: center;
+}
+
+.admin-page
+  .studio-connection-card.is-unwritten
+  .studio-connection-card__title {
+  text-decoration: underline dashed var(--st-text-4);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
 }
 
 .admin-page .studio-connection-card__icon {
   display: grid;
   flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: var(--st-glyph-sm);
+  height: 20px;
   color: var(--st-text-3);
+}
+
+.admin-page
+  .studio-connection-card__icon
+  :is(.studio-glyph, .studio-file-icon) {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  font-size: 14px;
+  line-height: var(--st-glyph-sm);
 }
 
 .admin-page .studio-connection-card__text {
@@ -170,9 +170,8 @@
    to a few letters. Its plus sign starts where the words do — 32px in, past
    the icon and its gap, less the button's own 12px of padding. */
 .admin-page .studio-connection-card__create {
-  flex: 1 0 100%;
-  justify-content: flex-start;
-  margin: 2px 0 0 20px;
+  flex: none;
+  margin-left: auto;
   color: var(--st-accent-text);
 }
 
@@ -194,16 +193,4 @@
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
   white-space: nowrap;
-}
-
-@media (hover: none) {
-  .admin-page button.studio-connection-card:hover {
-    transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .admin-page button.studio-connection-card:hover {
-    transform: none;
-  }
 }

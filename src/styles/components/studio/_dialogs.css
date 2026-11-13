@@ -14,7 +14,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 16px 16px;
-  background: color-mix(in srgb, var(--st-shade) 70%, transparent);
+  background: var(--st-scrim-strong);
   animation: studio-fade var(--st-base) var(--st-ease);
 }
 
@@ -25,11 +25,11 @@
   max-height: min(60vh, 520px);
   overflow: hidden;
   border: 1px solid var(--st-line-strong);
-  border-radius: var(--st-radius-float);
+  border-radius: var(--st-radius-sheet);
   background: var(--st-raised);
   box-shadow: var(--st-shadow-float);
   color: var(--st-text);
-  animation: studio-arrive var(--st-base) var(--st-ease);
+  animation: studio-arrive var(--st-base) var(--st-spring);
 }
 
 /* The glyph sits in the rows' icon column, so typed text starts where the
@@ -38,7 +38,7 @@
   display: flex;
   align-items: center;
   flex: none;
-  padding-left: 14px;
+  padding-left: 18px;
   border-bottom: 1px solid var(--st-line);
 }
 
@@ -86,17 +86,16 @@
 .admin-page .studio-palette__list {
   display: flex;
   flex-direction: column;
-  padding: 4px;
+  padding: 6px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 .admin-page .studio-palette__group {
-  margin: 10px 10px 4px;
-  color: var(--st-text-4);
+  margin: 10px 12px 4px;
+  color: var(--st-text-3);
   font-size: var(--st-size-xs);
   font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .admin-page .studio-palette__section {
@@ -113,26 +112,14 @@
   display: flex;
   flex: none;
   gap: 16px;
-  padding: 8px 14px;
+  padding: 10px 18px;
   border-top: 1px solid var(--st-line);
-  color: var(--st-text-4);
+  color: var(--st-text-3);
   font-size: var(--st-size-xs);
 }
 
 .admin-page .studio-palette__footer kbd {
-  display: inline-grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  margin-right: 2px;
-  padding: 0 4px;
-  border: 1px solid var(--st-line);
-  border-radius: var(--radius-sm);
-  background: var(--st-canvas);
-  color: var(--st-text-3);
-  font-family: var(--st-mono);
-  font-size: 11px;
-  line-height: 1;
+  margin-right: 4px;
 }
 
 @media (pointer: coarse) {
@@ -142,12 +129,18 @@
 }
 
 .admin-page .studio-palette__empty {
-  margin: 0;
-  padding: 24px 16px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 16px 32px;
   color: var(--st-text-3);
   font-size: var(--st-size-sm);
   text-align: center;
   overflow-wrap: anywhere;
+}
+
+.admin-page .studio-palette__empty p {
+  margin: 0;
 }
 
 .admin-page .studio-palette__row {
@@ -157,7 +150,7 @@
   gap: 12px;
   width: 100%;
   min-height: 40px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 0;
   border-radius: var(--st-radius);
   background: transparent;
@@ -232,7 +225,6 @@
 
 .admin-page .studio-editor-popover__head strong {
   font-size: var(--st-size-md);
-  font-weight: 700;
 }
 
 .admin-page .studio-editor-popover__body {
@@ -256,36 +248,7 @@
 }
 
 .admin-page .studio-icon-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 12px;
-  padding: 2px;
-  border-radius: var(--st-radius);
-  background: var(--st-canvas);
-}
-
-.admin-page .studio-icon-tabs button {
-  flex: 1;
-  min-height: 30px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--st-text-3);
-  font: inherit;
-  font-size: var(--st-size-sm);
-  cursor: pointer;
-  transition:
-    background-color var(--st-fast) var(--st-ease),
-    color var(--st-fast) var(--st-ease);
-}
-
-.admin-page .studio-icon-tabs button:hover:not(:disabled) {
-  color: var(--st-text);
-}
-
-.admin-page .studio-icon-tabs [aria-selected='true'] {
-  background: var(--st-current);
-  color: var(--st-text);
+  margin: -4px 0 8px -6px;
 }
 
 .admin-page .studio-icon-picker form {
@@ -362,7 +325,7 @@
   padding: 28px 16px 24px;
   border: 1px dashed var(--st-line-strong);
   border-radius: var(--st-radius);
-  background: var(--st-canvas);
+  background: transparent;
   color: var(--st-text-2);
   text-align: center;
   cursor: pointer;
@@ -386,7 +349,7 @@
   margin-top: 8px;
   color: var(--st-text);
   font-size: var(--st-size-sm);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .admin-page .studio-icon-upload__target > span:last-of-type {
@@ -448,8 +411,8 @@
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius);
   background:
-    repeating-conic-gradient(#ffffff10 0% 25%, transparent 0% 50%) 0 0 / 16px
-      16px,
+    repeating-conic-gradient(var(--st-hover) 0% 25%, transparent 0% 50%) 0 0 /
+      16px 16px,
     var(--st-canvas);
   touch-action: none;
   cursor: grab;
@@ -505,20 +468,18 @@
   flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 10px 10px 20px;
-  border-bottom: 1px solid var(--st-line);
+  padding: 12px 12px 4px 24px;
 }
 
 .admin-page .studio-shortcuts__head h2 {
   margin: 0;
   font-size: var(--st-size-lg);
-  font-weight: 700;
 }
 
 .admin-page .studio-shortcuts__body {
   columns: 2 300px;
-  column-gap: 32px;
-  padding: 12px 20px 20px;
+  column-gap: 40px;
+  padding: 4px 24px 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -531,11 +492,10 @@
 }
 
 .admin-page .studio-shortcuts__section h3 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
   font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .admin-page .studio-shortcuts__section dl {
@@ -544,40 +504,26 @@
 
 .admin-page .studio-shortcuts__row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  min-height: 32px;
-  border-bottom: 1px solid var(--st-line);
+  padding: 5px 0;
 }
 
 .admin-page .studio-shortcuts__row dt {
+  flex: 1 1 9rem;
   color: var(--st-text-2);
   font-size: var(--st-size-sm);
 }
 
 .admin-page .studio-shortcuts__row dd {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
+  row-gap: 4px;
   margin: 0;
-}
-
-.admin-page .studio-shortcuts__row kbd {
-  display: inline-grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border: 1px solid var(--st-line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--st-hover);
-  color: var(--st-text);
-  font-family: var(--st-font);
-  font-size: var(--st-size-xs);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  white-space: pre;
 }
 
 .admin-page .studio-shortcuts__or {

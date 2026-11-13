@@ -19,6 +19,8 @@
     background: var(--st-scrim);
   }
 
+  /* A drawer is a second desk slid in beside the first: the desk's own fill,
+     one hairline, and the one shadow, because it does float over the page. */
   .admin-page .studio-sheet-layer--right .studio-sheet {
     width: min(440px, 100%);
     max-width: none;
@@ -27,7 +29,8 @@
     padding-bottom: 0;
     border: 0;
     border-left: 1px solid var(--st-line-strong);
-    border-radius: var(--st-radius-float) 0 0 var(--st-radius-float);
+    border-radius: var(--st-radius-sheet) 0 0 var(--st-radius-sheet);
+    background: var(--st-panel);
     box-shadow: var(--st-shadow-float);
     transform: translate3d(100%, 0, 0);
   }
@@ -42,14 +45,13 @@
 
   .admin-page .studio-sheet-layer--right .studio-sheet__head {
     position: relative;
-    padding: 18px 56px 14px 20px;
-    border-bottom: 1px solid var(--st-line);
+    padding: 20px 56px 8px 24px;
   }
 
   .admin-page .studio-sheet__close {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 14px;
+    right: 14px;
   }
 }
 
@@ -98,36 +100,39 @@
 
 /* --- Versions --------------------------------------------------------------- */
 
+/* A timeline: one thread down the left, a bead for each saved copy. */
 .admin-page .studio-history__list {
   flex: 0 1 36%;
   min-height: 96px;
-  padding: 2px 12px 10px;
+  padding: 0 16px 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-bottom: 1px solid var(--st-line);
 }
 
 .admin-page .studio-history__day-label {
-  margin: 12px 10px 4px;
+  margin: 14px 0 4px 34px;
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
   font-weight: 500;
 }
 
 .admin-page .studio-history__version {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  min-height: var(--st-row);
-  padding: 0 10px;
+  min-height: var(--st-control);
+  padding: 0 10px 0 34px;
   border: 0;
   border-radius: var(--st-radius);
   background: transparent;
   color: var(--st-text-2);
   font: inherit;
   font-size: var(--st-size-md);
+  font-variant-numeric: tabular-nums;
   text-align: left;
   cursor: pointer;
   transition:
@@ -135,28 +140,47 @@
     color var(--st-fast) var(--st-ease);
 }
 
+/* The thread, and the bead on it. */
+.admin-page .studio-history__version::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 15px;
+  width: 1px;
+  background: var(--st-line-strong);
+  content: '';
+}
+
+.admin-page .studio-history__version::after {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--st-panel);
+  box-shadow: 0 0 0 1.5px var(--st-text-4);
+  content: '';
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    transform var(--st-base) var(--st-spring);
+}
+
+.admin-page .studio-history__version[aria-pressed='true']::after {
+  background: var(--st-accent);
+  box-shadow: 0 0 0 1.5px var(--st-accent);
+  transform: scale(1.3);
+}
+
 .admin-page .studio-history__version:hover {
   background: var(--st-hover);
 }
 
 .admin-page .studio-history__version[aria-pressed='true'] {
-  background: var(--st-picked);
+  background: var(--st-current);
   color: var(--st-text);
   font-weight: 500;
-}
-
-.admin-page .studio-history__tag {
-  flex: none;
-  padding: 2px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--st-hover);
-  color: var(--st-text-3);
-  font-size: var(--st-size-xs);
-}
-
-.admin-page .studio-history__version[aria-pressed='true'] .studio-history__tag {
-  background: var(--st-press);
-  color: var(--st-text-2);
 }
 
 /* --- Preview ---------------------------------------------------------------- */
@@ -166,7 +190,7 @@
   flex: 1 1 0;
   flex-direction: column;
   min-height: 0;
-  padding: 12px 12px 0;
+  padding: 8px 16px 0;
 }
 
 .admin-page .studio-history__preview {
@@ -185,14 +209,10 @@
   gap: 10px;
 }
 
-/* The look is the shared segmented control's (_primitives.css). */
+/* The look is the shared tabs' (_primitives.css). Pulled left so the first
+   word, not its padding, lines up with the text below. */
 .admin-page .studio-history__modes {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.admin-page .studio-history__modes button {
-  padding: 0 12px;
+  margin-left: -10px;
 }
 
 .admin-page .studio-history__summary {
@@ -202,6 +222,7 @@
   margin: 0;
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-page .studio-history__summary :is(.is-add, .is-del) {
@@ -211,7 +232,7 @@
 .admin-page .studio-history__text {
   flex: 1 1 0;
   min-height: 0;
-  padding: 12px 14px;
+  padding: 14px 16px;
   overflow: auto;
   overscroll-behavior: contain;
   white-space: pre-wrap;
@@ -223,12 +244,12 @@
 .admin-page .studio-history__skip {
   display: inline-block;
   margin: 2px 0;
-  padding: 1px 10px;
-  border-radius: var(--radius-pill);
+  padding: 0 8px;
+  border-radius: var(--st-radius-sm);
   background: var(--st-hover);
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 /* --- Footer ----------------------------------------------------------------- */
@@ -236,12 +257,14 @@
 .admin-page .studio-history__foot {
   display: grid;
   flex: none;
-  gap: 8px;
-  padding: 12px 12px calc(14px + env(safe-area-inset-bottom));
+  gap: 10px;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
 }
 
 .admin-page .studio-history__foot .studio-btn {
   width: 100%;
+  min-height: 40px;
+  font-size: var(--st-size-md);
 }
 
 .admin-page .studio-history__hint {
@@ -269,25 +292,22 @@
   flex: 1 1 auto;
   place-content: center;
   justify-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 32px 28px;
   text-align: center;
 }
 
+/* Loading: the clock alone, no badge round it. */
 .admin-page .studio-history__bubble {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
   margin-bottom: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--st-hover);
   color: var(--st-text-3);
 }
 
 .admin-page .studio-history__bubble .studio-glyph {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
 /* A few bobs to say "working on it", then it rests: a loop that never ends
@@ -310,10 +330,9 @@
 }
 
 .admin-page .studio-history__lead {
-  margin: 0;
+  margin: 8px 0 0;
   color: var(--st-text);
   font-size: var(--st-size-lg);
-  font-weight: 700;
 }
 
 .admin-page .studio-history__empty .studio-history__hint {
@@ -329,8 +348,8 @@
 }
 
 .admin-page .studio-history__shimmer span {
-  height: 12px;
-  border-radius: var(--radius-pill);
+  height: 10px;
+  border-radius: var(--st-radius-sm);
   background: var(--st-hover);
 }
 
