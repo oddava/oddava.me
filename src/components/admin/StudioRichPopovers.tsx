@@ -209,6 +209,9 @@ export function StudioLinkPopover({
           }
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
+              // Consumed here: the page's Escape must not also close find.
+              event.preventDefault();
+              event.stopPropagation();
               setLink(null);
               editor?.commands.focus();
             }

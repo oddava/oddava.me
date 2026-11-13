@@ -130,6 +130,7 @@ export default function StudioEditorPopover({
     <div
       ref={ref}
       className={`studio-editor-popover ${className}`}
+      data-studio-layer="popover"
       role="dialog"
       aria-label={title}
       style={{

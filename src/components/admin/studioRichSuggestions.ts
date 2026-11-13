@@ -19,7 +19,19 @@ export type WikiState = Omit<Suggestion, 'items'> & {
   items: WikiSuggestion[];
   /** `[[` offers notes; `#` offers tags. Both share this menu and its keys. */
   kind: 'note' | 'tag';
+  /** The writer moved the highlight with the arrow keys since the query changed. */
+  moved?: boolean;
 };
+
+/**
+ * Whether Enter takes the highlighted #tag. Only once the writer has chosen a
+ * row with the arrows: until then Enter is the newline it always is, so a tag
+ * typed in full — or a word that merely starts like one — is never swapped for
+ * something else. Tab is the way to take the top row without choosing.
+ */
+export function acceptsTagOnEnter(state: Pick<WikiState, 'moved' | 'items'>) {
+  return Boolean(state.moved && state.items.length);
+}
 
 /** The best eight notes for a [[ query, by fuzzy score. */
 export function rankWikiSuggestions(

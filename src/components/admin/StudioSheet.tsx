@@ -207,6 +207,7 @@ export default function StudioSheet({
       <div
         ref={panelRef}
         className={`studio-sheet ${dragging ? 'is-dragging' : ''}`}
+        data-studio-layer={open ? 'modal' : undefined}
         role="dialog"
         aria-modal="true"
         aria-label={title}

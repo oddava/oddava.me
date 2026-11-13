@@ -177,7 +177,7 @@ export default function StudioRichEditor(props: Props) {
   const moveRef = useRef<(direction: -1 | 1) => void>(() => {});
   // The palette and the bar reach the navigation panels through the commands,
   // which are built once; this is how those see the current render's.
-  const navRef = useRef<ReturnType<typeof useStudioNavigate>>(null!);
+  const navRef = useRef<ReturnType<typeof useStudioNavigate> | null>(null);
 
   function refresh() {
     const editor = editorRef.current;
@@ -438,8 +438,8 @@ export default function StudioRichEditor(props: Props) {
 
     const commands: EditorCommands = {
       ...createEditorCommands(editor, { showLink, insertMarkdown }),
-      outline: () => navRef.current.toggleOutline(),
-      find: () => navRef.current.openFind(),
+      outline: () => navRef.current?.toggleOutline(),
+      find: () => navRef.current?.openFind(),
     };
     commandsRef.current = commands;
     if (live.current.visible) {
@@ -620,7 +620,7 @@ export default function StudioRichEditor(props: Props) {
   const activeCommands = commandsRef.current;
 
   return (
-    <div className="studio-rich-shell" onKeyDown={nav.onKeyDown}>
+    <div className="studio-rich-shell">
       {youtube && (
         <StudioYoutubePopover
           youtube={youtube}

@@ -42,11 +42,14 @@ import { useStudioTabs } from './useStudioTabs';
 import { useStudioFocusRoot } from './useStudioFocus';
 import {
   contentRequestError,
+  historyStep,
+  isMod,
   noteHref,
   rowPatchFromNote,
   shortcut,
   titleFromBody,
 } from './studioHelpers';
+import { MODALS, OVERLAYS, registerEscape } from './studioLayers';
 import {
   PHONE_QUERY,
   useDrawerSwipe,
@@ -115,6 +118,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const conflictBannerRef = useRef<HTMLElement | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageEdit, setImageEdit] = useState<ImageEditRequest | null>(null);
@@ -511,24 +515,40 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Global keyboard shortcuts ---
 
+  // The phone's file drawer is the outermost thing Escape closes: anything
+  // open over it — a menu, a dialog, find — goes first, one press at a time.
+  useEffect(() => {
+    if (!phone || session.sidebarCollapsed) return;
+    return registerEscape('sidebar', {
+      isOpen: () => true,
+      close: () => setSidebarCollapsed(true),
+    });
+  }, [phone, session.sidebarCollapsed, setSidebarCollapsed]);
+
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
-      const mod = event.metaKey || event.ctrlKey;
-      if (event.key === 'Escape' && phone && !session.sidebarCollapsed) {
-        event.preventDefault();
-        setSidebarCollapsed(true);
-        return;
-      }
+      if (event.isComposing) return;
+      // Only the platform's command key: a Mac's Ctrl+P is "previous line".
+      const mod = isMod(event) && !event.altKey;
+      // A dialog holding the page keeps the keys; only its own shortcut
+      // (the palette's, the sheet's) still reaches it, to close it again.
+      const modal = document.querySelector(MODALS);
+      const holds = (own: boolean) => Boolean(modal) && !own;
       if (mod && event.key === '/') {
         event.preventDefault();
+        if (holds(shortcutsOpen)) return;
         setShortcutsOpen((open) => !open);
         return;
       }
-      if (mod && (event.key === 'k' || event.key === 'p')) {
+      // Mod+P only: Mod+K is Link in the editor.
+      if (mod && !event.shiftKey && event.key.toLowerCase() === 'p') {
+        // Never the browser's print dialog, whatever is open.
         event.preventDefault();
+        if (holds(paletteOpen)) return;
         setPaletteOpen((open) => !open);
         return;
       }
+      if (modal) return;
       if (mod && event.key === '\\') {
         event.preventDefault();
         patchSession({ sidebarCollapsed: !session.sidebarCollapsed });
@@ -539,14 +559,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         void closeTab(openId);
         return;
       }
-      if (event.altKey && event.key === 'ArrowLeft') {
+      const step = historyStep(event);
+      if (step) {
         event.preventDefault();
-        goThroughHistory(-1);
-        return;
-      }
-      if (event.altKey && event.key === 'ArrowRight') {
-        event.preventDefault();
-        goThroughHistory(1);
+        goThroughHistory(step);
         return;
       }
       if (mod && /^[1-9]$/.test(event.key)) {
@@ -571,6 +587,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     patchSession,
     setSidebarCollapsed,
     openNote,
+    paletteOpen,
+    shortcutsOpen,
   ]);
 
   // --- Sidebar resize ------------------------------------------------------
@@ -827,9 +845,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       // back is taken forward again. Only a step that left a note can be
       // retaken; a forward gesture is let through.
       const left = studioDepthOf(event.state);
-      const modal = document.querySelector(
-        '[role="alertdialog"], .studio-sheet-layer.is-open [role="dialog"], .studio-palette-overlay [role="dialog"], .studio-editor-popover, .studio-menu[role="menu"]',
-      );
+      const modal = document.querySelector(OVERLAYS);
       if (modal && left < lastDepth.current) {
         modal.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
@@ -1286,10 +1302,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                       body={body}
                       dirty={doc.hasUnsavedWork}
                       onNotice={setNotice}
+                      sectionRef={conflictBannerRef}
                     />
                   }
                   savePaused={isPaused(conflict.state)}
-                  onResolveSave={focusConflictBanner}
+                  onResolveSave={() =>
+                    focusConflictBanner(conflictBannerRef.current)
+                  }
                 />
               )}
             </section>

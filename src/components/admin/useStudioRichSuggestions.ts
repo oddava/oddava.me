@@ -100,6 +100,8 @@ export function useStudioRichSuggestions() {
         items: tagItems,
         point: pointAt(editor, from),
         index: keptIndex(prev, query, tagItems.length),
+        // A new query is a new offer: Enter is the newline again.
+        moved: prev?.kind === 'tag' && prev.query === query && prev.moved,
       }));
     } else setWiki(null);
     return Boolean(slashMatch || wikiMatch || (tagMatch && tagItems.length));

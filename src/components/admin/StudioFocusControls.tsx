@@ -192,6 +192,7 @@ export default function StudioFocusControls({ compact }: Props) {
         <div
           className="studio-reading__panel"
           ref={panel}
+          data-studio-layer="popover"
           role="dialog"
           aria-label="Page style"
         >

@@ -46,6 +46,8 @@ export default function StudioCommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  /** The command chosen, run once the palette has gone and focus is back. */
+  const pending = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -53,7 +55,14 @@ export default function StudioCommandPalette({
     setQuery('');
     setActive(0);
     inputRef.current?.focus();
-    return () => previous?.focus({ preventScroll: true });
+    return () => {
+      previous?.focus({ preventScroll: true });
+      // After the hand-back, so a command that moves focus itself (find,
+      // the outline) is not undone by it — and needs no frame to wait out.
+      const run = pending.current;
+      pending.current = null;
+      run?.();
+    };
   }, [open]);
 
   const rows = useMemo<Row[]>(() => {
@@ -112,8 +121,8 @@ export default function StudioCommandPalette({
   function choose(row: Row | undefined) {
     if (!row) return;
     if (row.kind === 'command') {
+      pending.current = row.command.run;
       onClose();
-      row.command.run();
     } else {
       onOpenEntry(row.entry);
     }
@@ -129,6 +138,7 @@ export default function StudioCommandPalette({
       <div
         className="studio-palette"
         ref={panelRef}
+        data-studio-layer="modal"
         role="dialog"
         aria-label="Find a note or command"
         aria-modal="true"

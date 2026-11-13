@@ -25,6 +25,7 @@ export default function StudioContextMenu({
     <div
       ref={menuRef}
       className="studio-menu"
+      data-studio-layer="menu"
       role="menu"
       aria-label={label}
       style={{

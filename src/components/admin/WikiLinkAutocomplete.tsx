@@ -63,6 +63,7 @@ export default function WikiLinkAutocomplete({
       ref={listRef}
       id={WIKI_MENU_ID}
       className={`studio-wikimenu ${docked ? 'is-docked' : ''}`}
+      data-studio-layer="menu"
       role="listbox"
       aria-label={kind === 'tag' ? 'Add a tag' : 'Link to a note'}
       style={

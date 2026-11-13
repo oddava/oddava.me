@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
+import type { MutableRef } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import StudioConflictDialog from './StudioConflictDialog';
 import type { ConflictChoice, ConflictState } from './studioConflict';
 import { Icon } from './studioIcons';
@@ -13,13 +14,29 @@ interface Props {
   dirty: boolean;
   /** The Studio notice for results that need no further choice. */
   onNotice: (message: string) => void;
+  /** The strip itself, so the save indicator can lead the keyboard to it. */
+  sectionRef?: MutableRef<HTMLElement | null>;
 }
 
 /** Bring the keyboard to the choices, from the save indicator's "Paused". */
-export function focusConflictBanner(): void {
-  document
-    .querySelector<HTMLElement>('.studio-conflict button:not([disabled])')
-    ?.focus();
+export function focusConflictBanner(section: HTMLElement | null): void {
+  section?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
+}
+
+/**
+ * What the strip says aloud. A live region that arrives already holding its
+ * text is often not read at all, so the region is always on the page, empty,
+ * and the words are put into it a moment after they change.
+ */
+function useSpoken(text: string): string {
+  const [said, setSaid] = useState('');
+  useEffect(() => {
+    setSaid('');
+    if (!text) return;
+    const timer = window.setTimeout(() => setSaid(text), 150);
+    return () => window.clearTimeout(timer);
+  }, [text]);
+  return said;
 }
 
 /** Two pages, one a little askew: the same note, written twice. */
@@ -93,11 +110,18 @@ export default function StudioConflictBanner({
   body,
   dirty,
   onNotice,
+  sectionRef,
 }: Props) {
   const { state, busy, pick, copyMine } = conflict;
   const [comparing, setComparing] = useState(false);
   const copy = copyFor(state, dirty);
-  if (!copy) return null;
+  const said = useSpoken(copy ? `${copy.title}. ${copy.detail}` : '');
+  const live = (
+    <span className="studio-visually-hidden" role="status">
+      {said}
+    </span>
+  );
+  if (!copy) return live;
 
   const mineBody = state.kind === 'set-aside' ? state.mine.body : body;
   const theirsBody =
@@ -172,9 +196,10 @@ export default function StudioConflictBanner({
 
   return (
     <>
+      {live}
       <section
+        ref={sectionRef}
         className="studio-conflict"
-        role="status"
         data-state={state.kind}
         aria-label="This note changed elsewhere"
       >

@@ -297,13 +297,15 @@
 }
 
 /* Woken by the pointer at the edge, by the keyboard reaching into it, or by
-   a failed save, which is the one thing the bar must never swallow. */
+   a failed or paused save, which the bar must never swallow. */
 .admin-page[data-studio-focus='on'][data-studio-peek='on'] .studio-bar,
 .admin-page[data-studio-focus='on'][data-studio-peek='on'] [data-studio-chrome],
 .admin-page[data-studio-focus='on'] .studio-bar:has(:focus-visible),
 .admin-page[data-studio-focus='on'] [data-studio-chrome]:has(:focus-visible),
 .admin-page[data-studio-focus='on']
-  .studio-bar:has(.studio-save[data-tone='error']) {
+  .studio-bar:has(.studio-save[data-tone='error']),
+.admin-page[data-studio-focus='on']
+  .studio-bar:has(.studio-save[data-tone='paused']) {
   opacity: 1;
   pointer-events: auto;
 }

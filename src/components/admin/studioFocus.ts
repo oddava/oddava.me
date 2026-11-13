@@ -11,7 +11,7 @@ import { Extension } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { OVERLAYS, type Spotlight } from './studioFocusPrefs';
+import type { Spotlight } from './studioFocusPrefs';
 import { studioFocus, type FocusStore } from './studioFocusStore';
 import { shouldFollowCaret, TypewriterScroll } from './studioTypewriter';
 
@@ -123,19 +123,11 @@ export const StudioFocus = Extension.create<StudioFocusOptions>({
         },
         props: {
           decorations: (state) => focusPluginKey.getState(state)?.decorations,
-          handleKeyDown: (_view, event) => {
+          // Escape is not handled here: leaving focus mode is one step in the
+          // page's single Escape order (studioLayers), after find and the
+          // outline, so one press never closes two things.
+          handleKeyDown: () => {
             lastKeyAt = Date.now();
-            // ProseMirror treats every Escape as handled, so the page-level
-            // listener never learns whether the editor wanted it. Here the
-            // editor's own keymap has already declined it.
-            if (
-              event.key === 'Escape' &&
-              store.getState().focusMode &&
-              !document.querySelector(OVERLAYS)
-            ) {
-              store.setFocusMode(false);
-              return true;
-            }
             return false;
           },
           handleDOMEvents: {

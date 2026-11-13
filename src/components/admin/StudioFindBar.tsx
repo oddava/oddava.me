@@ -93,6 +93,7 @@ export default function StudioFindBar({
   return (
     <div
       className={`studio-find${docked ? ' is-docked' : ''}`}
+      data-studio-layer="panel"
       role="search"
       aria-label="Find in note"
     >

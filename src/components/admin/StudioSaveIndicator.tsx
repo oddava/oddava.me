@@ -33,15 +33,25 @@ const LABELS: Record<SaveState, string> = {
   error: '',
 };
 
+/** Said once when autosave stops for a conflict; the state itself stays `dirty`. */
+export const PAUSED_ANNOUNCEMENT =
+  'Saving paused — this note changed elsewhere';
+
 /**
  * What a screen reader hears. Every save while typing would be a sentence
- * per pause, so only the news is spoken: a failed save, and the save that
- * recovers from one.
+ * per pause, so only the news is spoken: a failed save, the save that
+ * recovers from one, and autosave pausing for a conflict — which leaves the
+ * save state on `dirty`, so it is its own piece of news.
  */
-function useAnnouncement(state: SaveState) {
+function useAnnouncement(state: SaveState, paused: boolean) {
   const [message, setMessage] = useState('');
   const failed = useRef(false);
   useEffect(() => {
+    if (paused) setMessage(PAUSED_ANNOUNCEMENT);
+    else setMessage((said) => (said === PAUSED_ANNOUNCEMENT ? '' : said));
+  }, [paused]);
+  useEffect(() => {
+    if (paused) return;
     if (state === 'error') {
       failed.current = true;
       setMessage('Save failed. Your changes are kept here; retry to save.');
@@ -49,7 +59,7 @@ function useAnnouncement(state: SaveState) {
       failed.current = false;
       setMessage('Saved.');
     }
-  }, [state]);
+  }, [state, paused]);
   return message;
 }
 
@@ -67,7 +77,7 @@ export default function StudioSaveIndicator({
   onResolve,
   onSave,
 }: Props) {
-  const announcement = useAnnouncement(state);
+  const announcement = useAnnouncement(state, paused);
   // An untouched note is as saved as a freshly saved one.
   const tone = state === 'idle' ? 'saved' : state;
   const label = uploading ? 'Uploading…' : LABELS[state];
