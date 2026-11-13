@@ -35,3 +35,18 @@ export class GardenBusyError extends GardenUnavailableError {
     this.name = 'GardenBusyError';
   }
 }
+
+/**
+ * This isolate holds an index for an older content version, has seen a newer
+ * one, and could not build it. The old index cannot be served: it may still
+ * list a note that has since been withdrawn.
+ */
+export class GardenOutdatedError extends GardenUnavailableError {
+  readonly code = 'garden_outdated';
+  override readonly retryAfterSeconds = 5;
+
+  constructor(options?: { cause?: unknown }) {
+    super('The notes garden is being updated. Try again shortly.', options);
+    this.name = 'GardenOutdatedError';
+  }
+}

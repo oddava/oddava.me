@@ -145,12 +145,12 @@ describe('footnotes', () => {
       'Second[^b] and first[^a].\n\n[^a]: Alpha.\n\n[^b]: Beta.',
     );
     expect(html).toContain(
-      '<sup class="footnote-ref"><a href="#fn-b" id="fnref-b" role="doc-noteref" aria-label="Footnote 1">1</a></sup>',
+      '<sup class="footnote-ref"><a href="#fn-b" id="fnref-1" role="doc-noteref" aria-label="Footnote 1">1</a></sup>',
     );
-    expect(html).toContain('href="#fn-a" id="fnref-a"');
+    expect(html).toContain('href="#fn-a" id="fnref-2"');
     expect(html.indexOf('id="fn-b"')).toBeLessThan(html.indexOf('id="fn-a"'));
     expect(html).toContain(
-      '<li id="fn-b" role="doc-endnote"><p>Beta. <a href="#fnref-b" class="footnote-backref"',
+      '<li id="fn-b" role="doc-endnote"><p>Beta. <a href="#fnref-1" class="footnote-backref"',
     );
     expect(html.lastIndexOf('footnote-ref')).toBeLessThan(
       html.indexOf('class="footnotes"'),
@@ -162,9 +162,24 @@ describe('footnotes', () => {
 
   it('gives a second reference to the same note its own anchor', () => {
     const html = renderNoteHtml('A[^x] B[^x]\n\n[^x]: Same.');
-    expect(html).toContain('id="fnref-x"');
-    expect(html).toContain('id="fnref-x-2"');
+    expect(html).toContain('id="fnref-1"');
+    expect(html).toContain('id="fnref-1-2"');
     expect(html.match(/<li id="fn-x"/g)).toHaveLength(1);
+  });
+
+  it('never gives two references the same anchor, whatever the ids', () => {
+    // `a` used twice and a footnote called `a-2` once both made `fnref-a-2`.
+    const html = renderNoteHtml(
+      'A[^a] B[^a] C[^a-2]\n\n[^a]: First.\n\n[^a-2]: Second.',
+    );
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(html).toContain('href="#fn-a" id="fnref-1"');
+    expect(html).toContain('href="#fn-a" id="fnref-1-2"');
+    expect(html).toContain('href="#fn-a-2" id="fnref-2"');
+    // Each backlink returns to its footnote's first reference.
+    expect(html).toContain('<a href="#fnref-1" class="footnote-backref"');
+    expect(html).toContain('<a href="#fnref-2" class="footnote-backref"');
   });
 
   it('leaves a reference with no definition as written', () => {

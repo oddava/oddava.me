@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
-import { basename, dirname, extname, join, relative } from 'node:path';
+import { dirname, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CONTENT_KEYS,
@@ -9,7 +9,9 @@ import {
   assertKnownArgs,
   createRedisTransport,
   loadEnvironment,
+  noteIdFromNotePath,
   parentDirectory,
+  prunedHistoryKeys,
   resolveTarget,
   withContentLock,
 } from './lib/redis-content.mjs';
@@ -23,7 +25,7 @@ const MEDIA_EXTENSIONS = new Set(['.gif', '.jpeg', '.jpg', '.png', '.webp']);
 const NOTE_EXTENSIONS = new Set(['.md', '.mdx']);
 
 function noteId(path) {
-  return basename(path).replace(/\.mdx?$/i, '');
+  return noteIdFromNotePath(path);
 }
 const arguments_ = process.argv.slice(2);
 assertKnownArgs(arguments_, ['--dry-run', '--prune', '--target']);
@@ -215,6 +217,7 @@ async function main() {
   try {
     await withContentLock(transport, async () => {
       const snapshot = await snapshotManagedStore(transport);
+      const prunedPaths = [];
       // Advance the version before touching data. The lock hides the in-flight
       // state; if the process or transport fails, readers will still reject
       // their old cached version after the lock expires.
@@ -244,6 +247,7 @@ async function main() {
             if (!managedPath(path) || imported.has(path)) continue;
             await transport.command(['DEL', CONTENT_KEYS.file(path)]);
             await transport.command(['SREM', CONTENT_KEYS.files, path]);
+            prunedPaths.push(path);
             console.info(`  prune ${path}`);
           }
 
@@ -271,6 +275,14 @@ async function main() {
           );
         });
         throw error;
+      }
+
+      // Only once the import has stuck: a rollback restores the pruned notes,
+      // and their history must still be there for them.
+      const historyKeys = prunedHistoryKeys(prunedPaths, notePathById.keys());
+      if (historyKeys.length) {
+        await transport.command(['DEL', ...historyKeys]);
+        console.info(`  drop history of ${historyKeys.length} pruned note(s)`);
       }
     });
     console.info('Done. Redis content is live.');

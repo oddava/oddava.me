@@ -306,6 +306,46 @@ describe('createNoteRevisionStore', () => {
     ]);
   });
 
+  it('reads history only against the note now stored at the id', async () => {
+    // The scripts compare each entry's `born` with the live file's createdAt,
+    // so a list left by an earlier note under the same id stays invisible.
+    const command = vi.fn(async () => '[]');
+    const store = createNoteRevisionStore({
+      command: command as unknown as RevisionCommand,
+    });
+    await store.list('hello', NOTE);
+    await store.read('hello', NOTE, 'a'.repeat(16));
+
+    const calls = command.mock.calls as unknown as Array<
+      [Array<string | number>]
+    >;
+    for (const [args] of calls) {
+      expect(args[2]).toBe(2);
+      expect(args.slice(3, 5)).toEqual([
+        historyKey('hello'),
+        `content:file:${NOTE}`,
+      ]);
+      expect(String(args[1])).toContain('entry.born == born');
+    }
+    expect(calls[1]![0][5]).toBe('a'.repeat(16));
+  });
+
+  it('records which note a version came from and drops a stale list', async () => {
+    const command = vi.fn(async () => 'recorded');
+    await createNoteRevisionStore({
+      command: command as unknown as RevisionCommand,
+    }).snapshot({ id: 'hello', filePath: NOTE, expectedRevision: 'r1' });
+    const script = String(
+      (
+        command.mock.calls as unknown as Array<[Array<string | number>]>
+      )[0]![0][1],
+    );
+    expect(script).toContain('born = born');
+    expect(script).toMatch(
+      /last\.born ~= born[\s\S]*redis\.call\('DEL', KEYS\[1\]\)/,
+    );
+  });
+
   it('never renames a key onto itself', async () => {
     const command = vi.fn(async () => 1);
     await createNoteRevisionStore({
@@ -378,6 +418,8 @@ describe('handleContentRevisions', () => {
     expect(await response.json()).toEqual({
       versions: [expect.objectContaining({ id: VERSION.id })],
     });
+    // The history of the note at this path, not of whatever held the id.
+    expect(revisions.list).toHaveBeenCalledWith('hello', NOTE);
   });
 
   it('previews one version as fields and body', async () => {
@@ -503,6 +545,115 @@ describe('handleContentRevisions', () => {
       ),
     ).rejects.toThrow('redis down');
     expect(writes).toHaveLength(0);
+  });
+
+  for (const outcome of ['skipped', 'throttled'] as const) {
+    it(`overwrites nothing when the undo copy is ${outcome}`, async () => {
+      const { store, writes } = provider(file('# Now'));
+      const revisions = fakeRevisions({
+        read: vi.fn(async () => VERSION),
+        snapshot: vi.fn(async () => outcome),
+      });
+
+      const response = await handleContentRevisions(
+        store,
+        'notes',
+        'hello',
+        request({
+          method: 'POST',
+          body: JSON.stringify({ versionId: VERSION.id, revision: 'r5' }),
+        }),
+        revisions,
+      );
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        code: 'restore_backup_failed',
+        error: expect.stringContaining('Nothing was changed'),
+      });
+      expect(writes).toHaveLength(0);
+    });
+  }
+
+  it('restores when the current note is already the newest version', async () => {
+    const { store, writes } = provider(file('# Now'));
+    const revisions = fakeRevisions({
+      read: vi.fn(async () => VERSION),
+      snapshot: vi.fn(async () => 'unchanged' as const),
+    });
+
+    const response = await handleContentRevisions(
+      store,
+      'notes',
+      'hello',
+      request({
+        method: 'POST',
+        body: JSON.stringify({ versionId: VERSION.id, revision: 'r5' }),
+      }),
+      revisions,
+    );
+
+    expect(response.status).toBe(200);
+    expect(writes).toHaveLength(1);
+  });
+
+  describe('keeps the current draft state', () => {
+    async function restore(currentContent: string, versionContent: string) {
+      const { store, writes } = provider(file(currentContent));
+      const revisions = fakeRevisions({
+        read: vi.fn(async () => ({ ...VERSION, content: versionContent })),
+      });
+      const response = await handleContentRevisions(
+        store,
+        'notes',
+        'hello',
+        request({
+          method: 'POST',
+          body: JSON.stringify({ versionId: VERSION.id, revision: 'r5' }),
+        }),
+        revisions,
+      );
+      expect(response.status).toBe(200);
+      expect(writes).toHaveLength(1);
+      return {
+        written: writes[0]!.content,
+        body: (await response.json()) as {
+          fields: Record<string, unknown>;
+          entry: { draft?: boolean; fields: Record<string, unknown> };
+        },
+      };
+    }
+
+    it('does not publish a draft by restoring a pre-draft version', async () => {
+      const { written, body } = await restore(
+        '---\ndraft: true\n---\n\n# Draft now\n',
+        '# Written before drafts existed\n',
+      );
+      expect(written).toContain('draft: true');
+      expect(written).toContain('# Written before drafts existed');
+      expect(body.fields.draft).toBe(true);
+      expect(body.entry.draft).toBe(true);
+    });
+
+    it('does not publish a draft by restoring a published version', async () => {
+      const { written, body } = await restore(
+        '---\ndraft: true\n---\n\n# Draft now\n',
+        '---\norder: 3\n---\n\n# Was published\n',
+      );
+      expect(written).toContain('draft: true');
+      expect(body.fields.draft).toBe(true);
+    });
+
+    it('does not hide a live note by restoring an old draft version', async () => {
+      const { written, body } = await restore(
+        '# Live now\n',
+        '---\ndraft: true\n---\n\n# Back when it was a draft\n',
+      );
+      expect(written).not.toContain('draft:');
+      expect(written).toContain('# Back when it was a draft');
+      expect(body.fields).not.toHaveProperty('draft');
+      expect(body.entry).not.toHaveProperty('draft');
+    });
   });
 
   it('requires the current revision to restore', async () => {

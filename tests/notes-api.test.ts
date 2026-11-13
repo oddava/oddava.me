@@ -121,6 +121,7 @@ class MemoryContentProvider {
     storePath: string;
     publicPath: string;
     revision: string;
+    draft: boolean;
     message: string;
   }): Promise<StoredTombstone> {
     const current = this.files.get(input.storePath);
@@ -140,6 +141,7 @@ class MemoryContentProvider {
       createdAt: current.updatedAt,
       updatedAt: current.updatedAt,
       deletedAt: '2026-10-30T00:00:00.000Z',
+      draft: input.draft,
     };
     this.tombstones.set(input.publicPath, tombstone);
     this.redirects.delete(input.publicPath);
@@ -832,6 +834,39 @@ describe('notes API writes', () => {
     expect(await bodyOf(plain)).toMatchObject({
       note: { updated: '2026-02-02T00:00:00.000Z' },
     });
+  });
+
+  it('marks the tombstone of a trashed draft so it is never announced', async () => {
+    const provider = new MemoryContentProvider();
+    const store = provider.asProvider();
+    for (const [path, draft] of [
+      ['diary/secret.md', true],
+      ['diary/public.md', false],
+    ] as const) {
+      await handleCreateNote(
+        store,
+        request('POST', `${ORIGIN}/api/notes`, {
+          path,
+          content: '# note',
+          ...(draft ? { draft: true } : {}),
+        }),
+      );
+      const stored = provider.files.get(`src/content/notes/${path}`)!;
+      if (draft && !stored.content.includes('draft: true')) {
+        provider.files.set(`src/content/notes/${path}`, {
+          ...stored,
+          content: `---\ndraft: true\n---\n\n${stored.content}`,
+        });
+      }
+      const deleted = await handleDeleteNote(
+        store,
+        path,
+        request('DELETE', `${ORIGIN}/api/notes/${path}`),
+      );
+      expect(deleted.status).toBe(200);
+    }
+    expect(provider.tombstones.get('diary/secret')?.draft).toBe(true);
+    expect(provider.tombstones.get('diary/public')?.draft).toBe(false);
   });
 
   it('soft-deletes a note, hides it from Studio, and restores it', async () => {

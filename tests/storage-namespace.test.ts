@@ -6,8 +6,10 @@ import {
   LOCK_TTL_MS,
   MUTATION_LOCK_KEY,
   namespaceCommand,
+  prunedHistoryKeys,
   storageNamespacePrefix,
 } from '../scripts/lib/redis-content.mjs';
+import { historyKey } from '../src/lib/server/content/revisions-store';
 import { firstConfiguredSecret } from '../src/lib/server/core/secrets';
 import {
   DIRECTORIES_SET,
@@ -110,6 +112,25 @@ describe('content key layout agrees between the app and the sync scripts', () =>
     ]) {
       expect(CONTENT_KEYS.file(path)).toBe(fileKey(path));
     }
+  });
+
+  it('derives the same note history key', () => {
+    expect(CONTENT_KEYS.history('hello')).toBe(historyKey('hello'));
+  });
+
+  it('drops history only for ids a prune left without a note', () => {
+    expect(
+      prunedHistoryKeys(
+        [
+          'src/content/notes/old/hello.md',
+          // Moved between folders: the id is still imported, history stays.
+          'src/content/notes/archive/kept.md',
+          'src/content/notes/legacy.mdx',
+          'public/images/notes/hello.png',
+        ],
+        ['index', 'kept'],
+      ),
+    ).toEqual([historyKey('hello'), historyKey('legacy')]);
   });
 
   it('contends for the same lock on the same terms', () => {

@@ -3,6 +3,7 @@ export {
   createAdminSessionValue,
   isAdminConfigured,
   isAdminRequest,
+  requireAdminPage,
   requireSecuredAdminApi,
   setAdminSession,
   verifyAdminToken,

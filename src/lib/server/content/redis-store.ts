@@ -827,7 +827,7 @@ export function createRedisContentProvider(
       return result(message, nextRevision);
     },
 
-    async softDeleteNote({ storePath, publicPath, revision }) {
+    async softDeleteNote({ storePath, publicPath, revision, draft }) {
       assertSafeRepositoryPath(storePath);
       const outcome = await command<string>([
         'EVAL',
@@ -843,6 +843,7 @@ export function createRedisContentProvider(
         publicPath,
         newRevision(),
         now().toISOString(),
+        draft ? '1' : '0',
       ]);
       if (typeof outcome === 'string' && outcome.startsWith('{')) {
         const tombstone = parseTombstone(outcome);

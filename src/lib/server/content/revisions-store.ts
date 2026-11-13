@@ -15,6 +15,17 @@ import { redisCommand } from '../core';
  * Every mutation is one script: the throttle check, the push, and both caps
  * must agree about the list they are looking at, and a save that lands between
  * a read and a write would otherwise record twice or trim the wrong end.
+ *
+ * An id outlives the note that holds it: trash `old/hello` (its history is
+ * kept for a restore) and `new/hello` can be created under the same id, and a
+ * `notes:migrate --prune` or a failed best-effort drop leaves a list behind
+ * just as well. Clearing the list at every way a note can end would need each
+ * of those paths to succeed, atomically, forever. Instead every entry carries
+ * the `createdAt` of the note it was taken from (`born`) — a value a file keeps
+ * through saves, moves, renames, trash and restore, and that only a new note
+ * gets fresh — and history answers only with entries born with the note now
+ * at that id. A stale list is therefore invisible, and the next record for
+ * the new note replaces it.
  */
 export const HISTORY_KEY_PREFIX = 'content:history:notes:';
 
@@ -52,8 +63,13 @@ export interface SnapshotInput {
 
 export interface NoteRevisionStore {
   snapshot(input: SnapshotInput): Promise<SnapshotOutcome>;
-  list(id: string): Promise<NoteRevisionMeta[]>;
-  read(id: string, revisionId: string): Promise<NoteRevision | null>;
+  /** The history of the note stored at `filePath` under `id`. */
+  list(id: string, filePath: string): Promise<NoteRevisionMeta[]>;
+  read(
+    id: string,
+    filePath: string,
+    revisionId: string,
+  ): Promise<NoteRevision | null>;
   rename(fromId: string, toId: string): Promise<void>;
   drop(id: string): Promise<void>;
 }
@@ -75,11 +91,16 @@ local ok, file = pcall(cjson.decode, current)
 if not ok or type(file) ~= 'table' or file.enc ~= 'utf8' then return 'skipped' end
 if file.rev ~= ARGV[1] then return 'skipped' end
 if #file.content > tonumber(ARGV[6]) then return 'skipped' end
+local born = file.createdAt
+if type(born) ~= 'string' then born = '' end
 
 local newest = redis.call('LINDEX', KEYS[1], 0)
 if newest then
   local decodedOk, last = pcall(cjson.decode, newest)
-  if decodedOk and type(last) == 'table' then
+  if not decodedOk or type(last) ~= 'table' or last.born ~= born then
+    -- The list belongs to an earlier note that held this id.
+    redis.call('DEL', KEYS[1])
+  else
     if last.content == file.content then return 'unchanged' end
     if ARGV[4] ~= '1' and tonumber(ARGV[2]) - tonumber(last.rec) < tonumber(ARGV[3]) then
       return 'throttled'
@@ -92,6 +113,7 @@ redis.call('LPUSH', KEYS[1], cjson.encode({
   at = file.updatedAt,
   rec = tonumber(ARGV[2]),
   reason = ARGV[8],
+  born = born,
   content = file.content
 }))
 redis.call('LTRIM', KEYS[1], 0, tonumber(ARGV[5]) - 1)
@@ -108,12 +130,27 @@ end
 return 'recorded'
 `;
 
+// KEYS: history list, note file. Sets `born` to the live note's createdAt, or
+// false when there is no readable note (whose history is then empty).
+const CURRENT_BIRTH = `
+local born = false
+local current = redis.call('GET', KEYS[2])
+if current then
+  local fileOk, file = pcall(cjson.decode, current)
+  if fileOk and type(file) == 'table' then
+    born = file.createdAt
+    if type(born) ~= 'string' then born = '' end
+  end
+end
+`;
+
 // Metadata only: the list view never needs the Markdown itself.
-const LIST_SCRIPT = `
+const LIST_SCRIPT = `${CURRENT_BIRTH}
 local out = {}
+if not born then return cjson.encode(out) end
 for _, raw in ipairs(redis.call('LRANGE', KEYS[1], 0, -1)) do
   local ok, entry = pcall(cjson.decode, raw)
-  if ok and type(entry) == 'table' then
+  if ok and type(entry) == 'table' and entry.born == born then
     out[#out + 1] = {
       id = entry.id,
       at = entry.at,
@@ -126,10 +163,13 @@ end
 return cjson.encode(out)
 `;
 
-const READ_SCRIPT = `
+const READ_SCRIPT = `${CURRENT_BIRTH}
+if not born then return false end
 for _, raw in ipairs(redis.call('LRANGE', KEYS[1], 0, -1)) do
   local ok, entry = pcall(cjson.decode, raw)
-  if ok and type(entry) == 'table' and entry.id == ARGV[1] then return raw end
+  if ok and type(entry) == 'table' and entry.id == ARGV[1] and entry.born == born then
+    return raw
+  end
 end
 return false
 `;
@@ -236,19 +276,26 @@ export function createNoteRevisionStore(
         : 'skipped';
     },
 
-    async list(id) {
+    async list(id, filePath) {
       return parseRevisionList(
-        await command<unknown>(['EVAL', LIST_SCRIPT, 1, historyKey(id)]),
+        await command<unknown>([
+          'EVAL',
+          LIST_SCRIPT,
+          2,
+          historyKey(id),
+          `content:file:${filePath}`,
+        ]),
       );
     },
 
-    async read(id, revisionId) {
+    async read(id, filePath, revisionId) {
       return parseRevision(
         await command<unknown>([
           'EVAL',
           READ_SCRIPT,
-          1,
+          2,
           historyKey(id),
+          `content:file:${filePath}`,
           revisionId,
         ]),
       );

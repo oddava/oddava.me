@@ -71,16 +71,16 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       await save(store, 'v2');
       await save(store, 'v3');
       expect(
-        (await revisions.list('history-note')).map((r) => r.bytes),
+        (await revisions.list('history-note', path)).map((r) => r.bytes),
       ).toEqual([2]);
 
       tick(6 * MINUTE);
       await save(store, 'v4');
-      const kept = await revisions.list('history-note');
+      const kept = await revisions.list('history-note', path);
       expect(kept).toHaveLength(2);
-      const newest = await revisions.read('history-note', kept[0]!.id);
+      const newest = await revisions.read('history-note', path, kept[0]!.id);
       expect(newest?.content).toBe('v3');
-      const oldest = await revisions.read('history-note', kept[1]!.id);
+      const oldest = await revisions.read('history-note', path, kept[1]!.id);
       expect(oldest?.content).toBe('v1');
     });
 
@@ -98,7 +98,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         reason: 'pre-restore',
       });
 
-      const kept = await revisions.list('history-note');
+      const kept = await revisions.list('history-note', path);
       expect(kept.map((r) => r.reason)).toEqual(['pre-restore', 'autosave']);
       // The same state twice is one entry, not two.
       expect(
@@ -123,7 +123,7 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
           expectedRevision: 'not-the-revision',
         }),
       ).toBe('skipped');
-      expect(await revisions.list('history-note')).toEqual([]);
+      expect(await revisions.list('history-note', path)).toEqual([]);
     });
 
     it('caps a note at the newest revisions', async () => {
@@ -135,9 +135,9 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         await save(store, `v${index}`);
       }
 
-      const kept = await revisions.list('history-note');
+      const kept = await revisions.list('history-note', path);
       expect(kept).toHaveLength(maxRevisions);
-      const newest = await revisions.read('history-note', kept[0]!.id);
+      const newest = await revisions.read('history-note', path, kept[0]!.id);
       expect(newest?.content).toBe(`v${maxRevisions + 4}`);
     });
 
@@ -149,12 +149,85 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       const current = await store.readFile(path);
       const renamed = 'src/content/notes/history-renamed.md';
       await store.moveFile(path, renamed, 'rename', current!.revision);
-      expect(await revisions.list('history-note')).toEqual([]);
-      expect(await revisions.list('history-renamed')).toHaveLength(1);
+      expect(await revisions.list('history-note', path)).toEqual([]);
+      expect(await revisions.list('history-renamed', renamed)).toHaveLength(1);
 
       const moved = await store.readFile(renamed);
       await store.deleteFile(renamed, 'delete', moved!.revision);
-      expect(await revisions.list('history-renamed')).toEqual([]);
+      expect(await revisions.list('history-renamed', renamed)).toEqual([]);
+      expect(
+        await cleanupClient.exists('dev:content:history:notes:history-renamed'),
+      ).toBe(0);
+    });
+
+    const oldPath = 'src/content/notes/old/hello.md';
+    const newPath = 'src/content/notes/new/hello.md';
+
+    async function trash(
+      store: Awaited<ReturnType<typeof setup>>['store'],
+      storePath: string,
+      publicPath: string,
+    ) {
+      const current = await store.readFile(storePath);
+      return store.softDeleteNote({
+        storePath,
+        publicPath,
+        revision: current!.revision,
+        draft: false,
+        message: 'trash',
+      });
+    }
+
+    it('keeps a trashed note its history through a restore', async () => {
+      const { provider, store, revisions } = await setup();
+      await provider.writeTextFile(oldPath, 'v1', 'create');
+      const current = await store.readFile(oldPath);
+      await store.writeTextFile(oldPath, 'v2', 'save', current!.revision);
+
+      const tombstone = await trash(store, oldPath, 'old/hello');
+      await store.restoreArchivedNote({
+        storePath: oldPath,
+        publicPath: 'old/hello',
+        revision: undefined,
+        record: JSON.stringify({
+          content: tombstone.content,
+          enc: 'utf8',
+          rev: tombstone.rev,
+          createdAt: tombstone.createdAt,
+          updatedAt: tombstone.updatedAt,
+        }),
+        message: 'restore',
+      });
+      expect(await revisions.list('hello', oldPath)).toHaveLength(1);
+    });
+
+    it('never hands a trashed note’s history to a new note with its id', async () => {
+      const { provider, store, revisions } = await setup();
+      await provider.writeTextFile(oldPath, 'old secret', 'create');
+      const old = await store.readFile(oldPath);
+      await store.writeTextFile(oldPath, 'old v2', 'save', old!.revision);
+      const [oldVersion] = await revisions.list('hello', oldPath);
+      expect(oldVersion).toBeDefined();
+
+      await trash(store, oldPath, 'old/hello');
+      // A different note, born later, under the same id.
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await provider.writeTextFile(newPath, 'fresh', 'create');
+
+      expect(await revisions.list('hello', newPath)).toEqual([]);
+      expect(await revisions.read('hello', newPath, oldVersion!.id)).toBeNull();
+
+      // Its first recorded version replaces the stale list outright.
+      const fresh = await store.readFile(newPath);
+      await store.writeTextFile(newPath, 'fresh v2', 'save', fresh!.revision);
+      const kept = await revisions.list('hello', newPath);
+      expect(kept).toHaveLength(1);
+      expect(
+        (await revisions.read('hello', newPath, kept[0]!.id))?.content,
+      ).toBe('fresh');
+      expect(await cleanupClient.lLen('dev:content:history:notes:hello')).toBe(
+        1,
+      );
     });
   },
 );

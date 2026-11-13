@@ -793,9 +793,11 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
         storePath: `${notes}/archive-flow/c.md`,
         publicPath: 'archive-flow/c',
         revision: again.revision!,
+        draft: false,
         message: 'delete c',
       });
       expect(tombstone.content).toBe(tricky);
+      expect(tombstone.draft).toBe(false);
       expect(tombstone.createdAt).toBe(createdAt);
       expect(
         (await readRedisNoteFiles()).some(
@@ -805,6 +807,59 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       const retired = await readRetiredNoteIndex();
       expect(retired?.tombstones.has('archive-flow/c')).toBe(true);
       expect(retired?.redirects.get('archive-flow/a')).toBe('archive-flow/c');
+
+      // A never-published draft's tombstone stays out of the public set, as
+      // does one written before the marker existed whose frontmatter says
+      // draft; a legacy published one is still announced as removed.
+      await provider.writeTextFile(
+        `${notes}/archive-flow/secret.md`,
+        '---\ndraft: true\n---\n\n# secret',
+        'create secret',
+      );
+      const secret = await provider.readFile(`${notes}/archive-flow/secret.md`);
+      const secretTombstone = await provider.softDeleteNote({
+        storePath: `${notes}/archive-flow/secret.md`,
+        publicPath: 'archive-flow/secret',
+        revision: secret!.revision,
+        draft: true,
+        message: 'trash secret',
+      });
+      expect(secretTombstone.draft).toBe(true);
+      const legacy = (content: string) =>
+        JSON.stringify({
+          content,
+          enc: 'utf8',
+          rev: 'r-legacy',
+          createdAt,
+          updatedAt: createdAt,
+          deletedAt: createdAt,
+        });
+      await cleanupClient.hSet('dev:content:note-tombstones', {
+        'archive-flow/legacy-draft': legacy(
+          '---\r\ndraft: true\r\n---\r\n\r\n# x',
+        ),
+        'archive-flow/legacy-public': legacy('# just a note'),
+        'archive-flow/garbled': 'not json',
+      });
+      const publicRetired = await readRetiredNoteIndex();
+      expect(publicRetired?.tombstones.has('archive-flow/c')).toBe(true);
+      expect(publicRetired?.tombstones.has('archive-flow/secret')).toBe(false);
+      expect(publicRetired?.tombstones.has('archive-flow/legacy-draft')).toBe(
+        false,
+      );
+      expect(publicRetired?.tombstones.has('archive-flow/legacy-public')).toBe(
+        true,
+      );
+      expect(publicRetired?.tombstones.has('archive-flow/garbled')).toBe(false);
+      // Owner recovery still sees every tombstone.
+      expect(await provider.readTombstone('archive-flow/secret')).toMatchObject(
+        { draft: true },
+      );
+      await cleanupClient.hDel('dev:content:note-tombstones', [
+        'archive-flow/legacy-draft',
+        'archive-flow/legacy-public',
+        'archive-flow/garbled',
+      ]);
 
       await expect(
         provider.moveArchivedNote({

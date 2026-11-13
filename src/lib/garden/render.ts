@@ -4,7 +4,7 @@ import { slugifyHeading } from './headings';
 import { normalizeWikiLinkTarget } from './utils';
 import { notesTagUrl } from '../notes-url';
 import { fenceLanguage, resolveCodeLanguage } from './code-languages';
-import { highlightToHtml } from './highlight';
+import { createHighlightBudget, highlightToHtml } from './highlight';
 import { calloutExtension } from './render-callouts';
 import {
   createFootnoteState,
@@ -261,6 +261,8 @@ function createRenderer(
 ): Renderer {
   const renderer = new Renderer();
   const slugCounts = new Map<string, number>();
+  // One allowance per render, shared by every code block in the note.
+  const highlightBudget = createHighlightBudget();
 
   renderer.heading = function heading(token: Tokens.Heading): string {
     const text = this.parser.parseInline(token.tokens);
@@ -290,7 +292,7 @@ function createRenderer(
       ? ` data-language="${escapeAttr(language.label)}"`
       : '';
     const className = word ? ` class="language-${escapeAttr(word)}"` : '';
-    return `<pre${attributes}><code${className}>${highlightToHtml(text, token.lang)}\n</code></pre>\n`;
+    return `<pre${attributes}><code${className}>${highlightToHtml(text, token.lang, highlightBudget)}\n</code></pre>\n`;
   };
 
   // Outbound http(s) links get a class for the outward affordance and the
@@ -337,6 +339,52 @@ function createRenderer(
   return renderer;
 }
 
+/**
+ * Every token, depth first, in document order — what marked's `walkTokens`
+ * visits. Marked's own walker collects callback results with `concat` per
+ * token, re-copying a growing array each time, so passing `walkTokens` to
+ * `marked.parse` made a note of many short blocks quadratic to render
+ * (10,000 paragraphs took ~20 seconds). This visits the same tokens in the
+ * same order in linear time.
+ */
+function visitTokens(tokens: Token[], visit: (token: Token) => void): void {
+  const childTokens = marked.defaults.extensions?.childTokens ?? {};
+  const stack: Token[][] = [tokens];
+  const positions: number[] = [0];
+  while (stack.length) {
+    const level = stack.at(-1)!;
+    const position = positions.at(-1)!;
+    if (position >= level.length) {
+      stack.pop();
+      positions.pop();
+      continue;
+    }
+    positions[positions.length - 1] = position + 1;
+    const token = level[position]!;
+    visit(token);
+    const children: Token[] = [];
+    if (token.type === 'table') {
+      const table = token as Tokens.Table;
+      for (const cell of table.header) children.push(...cell.tokens);
+      for (const row of table.rows)
+        for (const cell of row) children.push(...cell.tokens);
+    } else if (token.type === 'list') {
+      children.push(...(token as Tokens.List).items);
+    } else if (childTokens[token.type]) {
+      for (const field of childTokens[token.type]!) {
+        const value = (token as Tokens.Generic)[field] as Token[] | Token[][];
+        children.push(...(value.flat(Infinity) as Token[]));
+      }
+    } else if ('tokens' in token && Array.isArray(token.tokens)) {
+      children.push(...(token.tokens as Token[]));
+    }
+    if (children.length) {
+      stack.push(children);
+      positions.push(0);
+    }
+  }
+}
+
 export interface RenderNoteOptions {
   wikiLinkHrefs?: ReadonlyMap<string, string>;
 }
@@ -349,17 +397,16 @@ export function renderNote(
   const headings: NoteHeading[] = [];
   const footnotes = createFootnoteState();
   const renderer = createRenderer(headings, options.wikiLinkHrefs);
-  const html = marked.parse(body, {
-    async: false,
-    renderer,
-    walkTokens(token) {
-      trackFootnote(token, footnotes);
-      if (!isWikiLinkToken(token)) return;
-      token.href = options.wikiLinkHrefs?.get(
-        normalizeWikiLinkTarget(token.target),
-      );
-    },
-  }) as string;
+  const parseOptions = { ...marked.defaults, async: false, renderer };
+  const tokens = marked.lexer(body, parseOptions);
+  visitTokens(tokens, (token) => {
+    trackFootnote(token, footnotes);
+    if (!isWikiLinkToken(token)) return;
+    token.href = options.wikiLinkHrefs?.get(
+      normalizeWikiLinkTarget(token.target),
+    );
+  });
+  const html = marked.parser(tokens, parseOptions);
 
   // Footnote bodies are blocks of their own, rendered after the note so the
   // list follows the order the references were met in.

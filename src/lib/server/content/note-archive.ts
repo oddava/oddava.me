@@ -1,3 +1,5 @@
+import { parseDraftFlag } from '../../content/noteDraft';
+import { parseContentDocument } from './serializers';
 import type {
   ContentProvider,
   ContentSourceFile,
@@ -23,10 +25,16 @@ export interface StoredTombstone {
   createdAt: string;
   updatedAt: string;
   deletedAt: string;
+  /**
+   * Whether the note was a draft when it was trashed. Absent on tombstones
+   * written before drafts existed; see `isPublicTombstone`.
+   */
+  draft?: boolean;
 }
 
 export interface RetiredNoteIndex {
   redirects: ReadonlyMap<string, string>;
+  /** Trashed paths a visitor may be told were removed: never a draft's. */
   tombstones: ReadonlySet<string>;
 }
 
@@ -48,6 +56,8 @@ export interface NoteArchiveOps {
     storePath: string;
     publicPath: string;
     revision: string;
+    /** Whether the note at `revision` is a draft; recorded on the tombstone. */
+    draft: boolean;
     message: string;
   }): Promise<StoredTombstone>;
   restoreArchivedNote(input: {
@@ -172,12 +182,25 @@ export function redisStringPairs(value: unknown): Array<[string, string]> {
   return [];
 }
 
-export function redisStrings(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === 'string');
-  }
-  if (value && typeof value === 'object') return [];
-  return [];
+/**
+ * Whether a trashed path may be announced as removed (410). A note that was a
+ * draft when it was trashed was never public, so its tombstone must not tell
+ * a visitor it existed: they get the same 404 as before it was trashed.
+ *
+ * `READ_RETIRED_SCRIPT` describes each tombstone without its Markdown: the
+ * `draft` marker written at trash time, or — for a tombstone from before that
+ * marker existed — its frontmatter block, read here with the same parser and
+ * the same fail-closed rule as a live note (unparseable means draft). Anything
+ * the script could not decode stays hidden.
+ */
+export function isPublicTombstone(entry: unknown): entry is { path: string } {
+  if (!entry || typeof entry !== 'object') return false;
+  const { path, draft, frontmatter } = entry as Record<string, unknown>;
+  if (typeof path !== 'string') return false;
+  if (typeof draft === 'boolean') return !draft;
+  if (typeof frontmatter !== 'string') return false;
+  if (!frontmatter) return true;
+  return !parseDraftFlag(parseContentDocument(`${frontmatter}\n`).fields.draft);
 }
 
 export function parseRetiredPayload(raw: unknown): RetiredNoteIndex {
@@ -186,9 +209,12 @@ export function parseRetiredPayload(raw: unknown): RetiredNoteIndex {
     parsed && typeof parsed === 'object'
       ? (parsed as { redirects?: unknown; tombstones?: unknown })
       : {};
+  const tombstones = Array.isArray(body.tombstones) ? body.tombstones : [];
   return {
     redirects: new Map(redisStringPairs(body.redirects)),
-    tombstones: new Set(redisStrings(body.tombstones)),
+    tombstones: new Set(
+      tombstones.filter(isPublicTombstone).map((entry) => entry.path),
+    ),
   };
 }
 

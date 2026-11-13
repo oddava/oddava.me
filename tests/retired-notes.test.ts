@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { decidePublicNote } from '../src/lib/garden/retired';
 import {
   followNoteRedirect,
+  isPublicTombstone,
+  parseRetiredPayload,
   retargetRedirects,
 } from '../src/lib/server/content/note-archive';
 
@@ -115,5 +117,53 @@ describe('note redirects', () => {
         tombstones: new Set(['hello']),
       }).kind,
     ).toBe('gone');
+  });
+});
+
+describe('public retirement never reveals a draft', () => {
+  // What READ_RETIRED_SCRIPT returns: each tombstone described, not returned.
+  const payload = JSON.stringify({
+    redirects: ['old/secret', 'diary/secret', 'old/gone', 'diary/gone'],
+    tombstones: [
+      { path: 'diary/secret', draft: true },
+      { path: 'diary/gone', draft: false },
+      // Trashed before the marker existed: read from their frontmatter.
+      { path: 'legacy/plain', frontmatter: '' },
+      { path: 'legacy/titled', frontmatter: '---\ntitle: x\n---' },
+      { path: 'legacy/draft', frontmatter: '---\ndraft: true\n---' },
+      { path: 'legacy/quoted', frontmatter: "---\r\ndraft: 'TRUE'\r\n---" },
+      // Unparseable frontmatter fails closed, like a live note.
+      { path: 'legacy/broken', frontmatter: '---\ndraft: true\nimage: [\n---' },
+      // Undecodable: hidden.
+      { path: 'legacy/garbled' },
+    ],
+  });
+
+  it('keeps draft tombstones out of the public set', () => {
+    expect([...parseRetiredPayload(payload).tombstones].toSorted()).toEqual([
+      'diary/gone',
+      'legacy/plain',
+      'legacy/titled',
+    ]);
+    // An empty hash encodes as `{}` in cjson.
+    expect(
+      parseRetiredPayload('{"redirects":{},"tombstones":{}}').tombstones.size,
+    ).toBe(0);
+  });
+
+  it('answers 404, not 410, for a trashed draft and redirects ending at it', () => {
+    const retired = parseRetiredPayload(payload);
+    expect(decidePublicNote('diary/secret', [], retired).kind).toBe('missing');
+    expect(decidePublicNote('old/secret', [], retired).kind).toBe('missing');
+    expect(decidePublicNote('diary/gone', [], retired).kind).toBe('gone');
+    expect(decidePublicNote('old/gone', [], retired).kind).toBe('gone');
+  });
+
+  it('describes each tombstone conservatively', () => {
+    expect(isPublicTombstone({ path: 'a', draft: false })).toBe(true);
+    expect(isPublicTombstone({ path: 'a', draft: true })).toBe(false);
+    expect(isPublicTombstone({ path: 'a' })).toBe(false);
+    expect(isPublicTombstone({ draft: false })).toBe(false);
+    expect(isPublicTombstone('a')).toBe(false);
   });
 });

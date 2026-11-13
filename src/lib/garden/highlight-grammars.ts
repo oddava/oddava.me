@@ -51,6 +51,16 @@ const identifier = rule(null, '[A-Za-z_$][\\w$]*');
 const call = rule('fn', '[A-Za-z_$][\\w$]*(?=\\s*\\()');
 const pascal = rule('type', '[A-Z][\\w$]*');
 
+// Linear time is a property of the whole grammar, not of each rule: where no
+// rule matches, the scan advances one character and tries every rule again.
+// A rule that reads ahead (a word waiting for `=` or `(`) or behind (a
+// lookbehind over indentation) before failing costs that distance at every
+// such position, which is quadratic over a long run. So each run a failing
+// rule reads across is consumed whole by a silent rule, and lookarounds are
+// bounded. Horizontal whitespace only: the `^[ \t]*` rules in Markdown and
+// TOML need every line start visited.
+const whitespace = rule(null, '[ \\t]+');
+
 /** The shared shape of C-descended languages: comments, strings, then words. */
 function cLike(keywords: string, literals: string, extra: Rule[] = []): Rule[] {
   return [
@@ -65,6 +75,7 @@ function cLike(keywords: string, literals: string, extra: Rule[] = []): Rule[] {
     call,
     pascal,
     identifier,
+    whitespace,
   ];
 }
 
@@ -86,6 +97,7 @@ function script(keywords: string): Rule[] {
     call,
     pascal,
     identifier,
+    whitespace,
   ];
 }
 
@@ -96,6 +108,7 @@ const json: Rule[] = [
   rule('num', '-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?'),
   lineComment('//'),
   blockComment,
+  whitespace,
 ];
 
 const css: Rule[] = [
@@ -106,12 +119,15 @@ const css: Rule[] = [
   rule('prop', '--[\\w-]+'),
   // A declaration ends in `;` or `}` before any `{` — which keeps `a:hover {`
   // from being read as a property.
-  rule('prop', '-?[a-zA-Z][\\w-]*(?=\\s*:[^;{}]*[;}])'),
+  // Bounded: unbounded, every word before a colon read to the end of an
+  // unterminated block. A longer value just goes unhighlighted.
+  rule('prop', '-?[a-zA-Z][\\w-]*(?=\\s*:[^;{}]{0,1000}[;}])'),
   rule('num', '#[\\da-fA-F]{3,8}\\b'),
   rule('num', '-?(?:\\d+\\.?\\d*|\\.\\d+)(?:[a-zA-Z%]+)?'),
   rule('fn', '-?[a-zA-Z][\\w-]*(?=\\()'),
   rule('type', '[.#][A-Za-z_-][\\w-]*'),
   rule(null, '-?[A-Za-z_][\\w-]*'),
+  whitespace,
 ];
 
 const html: Rule[] = [
@@ -122,6 +138,10 @@ const html: Rule[] = [
   rule('attr', '[A-Za-z_:@][\\w:.@-]*(?=\\s*=)'),
   rule('str', '(?<==\\s*)(?:"[^"]*"?|\'[^\']*\'?)'),
   rule('lit', '&#?\\w+;'),
+  // The words `attr` reads before failing, and the whitespace (newlines
+  // included) the `str` lookbehind reads.
+  rule(null, '[A-Za-z_:@][\\w:.@-]*'),
+  rule(null, '\\s+'),
 ];
 
 const bash: Rule[] = [
@@ -141,6 +161,7 @@ const bash: Rule[] = [
   // The first word of a command, including after a `$ ` prompt.
   rule('fn', '(?<=(?:^|[|;&(]|\\$\\(|^\\$)[ \\t]*)[A-Za-z_./~][\\w./~-]*'),
   rule(null, '[\\w./~-]+'),
+  whitespace,
 ];
 
 const python: Rule[] = [
@@ -164,7 +185,9 @@ const python: Rule[] = [
   number,
   call,
   pascal,
-  rule(null, '[A-Za-z_]\\w*'),
+  // `call` and `pascal` read `$` as well, so this consumes what they read.
+  identifier,
+  whitespace,
 ];
 
 const rust: Rule[] = [
@@ -185,7 +208,9 @@ const rust: Rule[] = [
   number,
   call,
   pascal,
-  rule(null, '[A-Za-z_]\\w*'),
+  // `call` and `pascal` read `$` as well, so this consumes what they read.
+  identifier,
+  whitespace,
 ];
 
 const go: Rule[] = [
@@ -210,7 +235,9 @@ const go: Rule[] = [
   number,
   call,
   pascal,
-  rule(null, '[A-Za-z_]\\w*'),
+  // `call` and `pascal` read `$` as well, so this consumes what they read.
+  identifier,
+  whitespace,
 ];
 
 const c = cLike(
@@ -255,6 +282,7 @@ const sql: Rule[] = [
   rule('num', '\\b\\d+(?:\\.\\d+)?\\b'),
   rule('fn', '[A-Za-z_]\\w*(?=\\s*\\()'),
   rule(null, '[A-Za-z_]\\w*'),
+  whitespace,
 ];
 
 const yaml: Rule[] = [
@@ -269,6 +297,7 @@ const yaml: Rule[] = [
   rule('attr', '[&*][\\w-]+'),
   rule('lit', words('true false null yes no on off')),
   rule('num', '(?<![\\w.-])-?\\d+(?:\\.\\d+)?(?![\\w.-])'),
+  whitespace,
 ];
 
 const toml: Rule[] = [
@@ -280,6 +309,7 @@ const toml: Rule[] = [
   singleQuoted,
   rule('lit', words('true false')),
   number,
+  whitespace,
 ];
 
 const diff: Rule[] = [
@@ -294,6 +324,9 @@ const markdown: Rule[] = [
   rule('str', '`[^`\\n]+`'),
   rule('fn', '\\[[^\\]\\n]*\\]\\([^)\\n]*\\)'),
   rule('punct', '^[ \\t]*(?:[-*+]|\\d+\\.|>)(?=[ \\t])'),
+  // No link can start before the `]` a failed link read up to.
+  rule(null, '\\[[^\\]\\n]*'),
+  whitespace,
 ];
 
 /** Grammars by catalogued language id (see code-languages.ts). */

@@ -10,13 +10,28 @@ import {
 import { delay, isStorageUnavailableError } from '../server/core';
 import type { RetiredNoteIndex } from '../server/content/note-archive';
 import { buildGardenIndex } from './build';
-import { GardenBusyError, GardenUnavailableError } from './errors';
+import {
+  GardenBusyError,
+  GardenOutdatedError,
+  GardenUnavailableError,
+} from './errors';
 import type { GardenIndex, NoteSource } from './types';
 import { hasDrafts, publicNoteSources } from './visibility';
 
 async function loadNoteSources(): Promise<NoteSource[]> {
   return (await readRedisNoteFiles()).map((file) => {
     const document = parseContentDocument(file.content);
+    if (document.frontmatterError) {
+      console.warn(
+        `[garden] Unparseable frontmatter for note "${file.sourceId}"; keeping it unlisted until it is repaired.`,
+      );
+      return {
+        id: file.sourceId,
+        data: { draft: true },
+        body: document.body,
+        updatedAt: file.updatedAt,
+      };
+    }
     // Field-level validation failures (a hand-edited `order: 1.5`, an
     // unparseable `updated`) degrade this one note to defaults rather than
     // throwing out of the shared index build and 500-ing the whole garden.
@@ -102,36 +117,46 @@ export async function getGardenIndex({
   // lock covers compound Studio operations; checking the version again after
   // the build also catches a write that began between the first check and the
   // file reads. Only plain data is cached globally—never request-bound I/O.
+  //
+  // The cache is a fallback only until a newer version has been seen. Before
+  // that it may well be current (the store is unreachable, or a mutation holds
+  // the lock), and serving it beats a 503. After it, the cache is known to be
+  // outdated, and an outdated public index can still list a note that has
+  // since been withdrawn (marked draft, trashed): it fails closed instead.
+  let outdated = false;
+  const fallback = (error?: unknown): GardenIndex => {
+    if (cachedGardenIndex && !outdated) return pick(cachedGardenIndex);
+    if (outdated) throw new GardenOutdatedError({ cause: error });
+    throw error;
+  };
   for (let attempt = 0; attempt < STABLE_READ_ATTEMPTS; attempt += 1) {
     let version: string | null;
     try {
       version = await readStableContentVersion();
     } catch (error) {
-      if (cachedGardenIndex) return pick(cachedGardenIndex);
-      throw error;
+      return fallback(error);
     }
     if (version === null) {
-      if (cachedGardenIndex) return pick(cachedGardenIndex);
+      if (cachedGardenIndex && !outdated) return pick(cachedGardenIndex);
       await delay(STABLE_READ_RETRY_MS);
       continue;
     }
     if (cachedGardenIndex?.version === version) {
       return pick(cachedGardenIndex);
     }
+    if (cachedGardenIndex) outdated = true;
 
     let built: Pick<CachedGardenIndexes, 'index' | 'ownerIndex'>;
     try {
       built = buildAudienceIndexes(await loadNoteSources());
     } catch (error) {
-      if (cachedGardenIndex) return pick(cachedGardenIndex);
-      throw error;
+      return fallback(error);
     }
     let confirmedVersion: string | null;
     try {
       confirmedVersion = await readStableContentVersion();
     } catch (error) {
-      if (cachedGardenIndex) return pick(cachedGardenIndex);
-      throw error;
+      return fallback(error);
     }
     if (confirmedVersion === version) {
       const cached = { version, ...built };
@@ -141,6 +166,7 @@ export async function getGardenIndex({
     await delay(STABLE_READ_RETRY_MS);
   }
 
+  if (outdated) throw new GardenOutdatedError();
   if (cachedGardenIndex) return pick(cachedGardenIndex);
   throw new GardenBusyError();
 }

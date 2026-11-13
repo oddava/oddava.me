@@ -69,7 +69,12 @@ export function applySecurityHeaders(
   // Authenticated HTML must not be retained by browser or intermediary
   // caches. API responses already set this at their domain boundary; applying
   // it here covers the server-rendered dashboard, Studio, and login pages.
-  if (isAdminPath(url.pathname)) {
+  // A page that already forbids storing (the owner's note preview sends
+  // `private, no-store`) keeps its stricter value.
+  if (
+    isAdminPath(url.pathname) &&
+    !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(headers.get('Cache-Control') ?? '')
+  ) {
     headers.set('Cache-Control', 'no-store');
   }
 

@@ -17,7 +17,7 @@ import {
   verifySession,
   type AdminSession,
 } from './auth-shared';
-import { withAdminSecurityHeaders } from './response';
+import { adminRedirect, withAdminSecurityHeaders } from './response';
 
 function getAdminToken(): string | null {
   return (
@@ -107,6 +107,25 @@ export async function requireSecuredAdminApi(
 ): Promise<Response | null> {
   const authError = await requireAdminApi(cookies);
   return authError ? withAdminSecurityHeaders(authError) : null;
+}
+
+/**
+ * The gate for an owner-only page that has nothing to show anyone else (the
+ * note preview): null for a signed-in owner; otherwise the sign-in page,
+ * coming back here afterwards, or a plain 404 where admin is not configured
+ * at all. Pages with an "unavailable" screen of their own keep their checks.
+ */
+export async function requireAdminPage(
+  cookies: AstroCookies,
+  url: URL,
+): Promise<Response | null> {
+  if (!isAdminConfigured()) {
+    return withAdminSecurityHeaders(
+      new Response('Not found.', { status: 404 }),
+    );
+  }
+  if (await isAdminRequest(cookies)) return null;
+  return adminRedirect(`/admin/login?next=${encodeURIComponent(url.pathname)}`);
 }
 
 export function setAdminSession(

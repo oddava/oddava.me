@@ -739,6 +739,10 @@ export async function handleDeleteNote(
       storePath: resolved.storePath,
       publicPath: resolved.publicPath,
       revision: existing.revision,
+      // The script deletes only `existing.revision`, so this is the draft
+      // state of exactly the note being trashed. A draft's tombstone stays
+      // out of the public 410/redirect decision.
+      draft: Boolean(toDetail(NOTES_COLLECTION, existing).draft),
       message: `notes-api: delete ${resolved.relative}`,
     });
     return json(
