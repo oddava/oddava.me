@@ -23,16 +23,39 @@ const versions = [
   },
 ];
 
-async function setup(page: Page, withVersions = true) {
+interface SetupOptions {
+  /** The open note is a draft; the restored version was published. */
+  draft?: boolean;
+  /** Every save is refused: the note changed elsewhere. */
+  refuseSaves?: boolean;
+}
+
+async function setup(
+  page: Page,
+  withVersions = true,
+  options: SetupOptions = {},
+) {
   const restores: unknown[] = [];
-  const entry = {
+  const puts: Array<{ fields: Record<string, unknown> }> = [];
+  const entry: {
+    id: string;
+    title: string;
+    folder: string;
+    path: string;
+    href: string;
+    revision: string;
+    draft?: true;
+    fields: Record<string, unknown>;
+    body: string;
+  } = {
     id: 'welcome',
     title: 'Field notes',
     folder: '',
     path: 'welcome.md',
     href: '/notes/welcome',
     revision: 'r1',
-    fields: {},
+    ...(options.draft ? { draft: true as const } : {}),
+    fields: options.draft ? { draft: true } : {},
     body: CURRENT,
   };
   const collection = {
@@ -55,6 +78,10 @@ async function setup(page: Page, withVersions = true) {
         restores.push(request.postDataJSON());
         entry.body = OLD;
         entry.revision = 'r2';
+        // As a server that does not keep the flag would: the version's
+        // fields, published.
+        entry.fields = {};
+        delete entry.draft;
         return route.fulfill({
           json: { entry, result: { revision: 'r2', message: 'ok' } },
         });
@@ -78,10 +105,21 @@ async function setup(page: Page, withVersions = true) {
       return route.fulfill({
         json: { collection, entries: [entry], folders: [] },
       });
-    if (request.method() === 'PUT')
+    if (request.method() === 'PUT') {
+      if (options.refuseSaves) {
+        // Someone else saved first: the store has moved on.
+        entry.revision = 'r7';
+        entry.body = '# Field notes\n\nRewritten elsewhere.\n';
+        return route.fulfill({
+          status: 409,
+          json: { error: 'The note changed.', code: 'revision_conflict' },
+        });
+      }
+      puts.push({ fields: request.postDataJSON().fields });
       return route.fulfill({
         json: { entry, result: { revision: 'r1', message: 'Saved' } },
       });
+    }
     return route.fulfill({ json: { collection, entry } });
   });
   await page.goto('/tests/browser/');
@@ -95,7 +133,7 @@ async function setup(page: Page, withVersions = true) {
   await expect(
     page.getByRole('textbox', { name: 'Note editor' }),
   ).toBeVisible();
-  return { restores };
+  return { restores, puts };
 }
 
 test('history lists versions, shows what restoring changes, and restores', async ({
@@ -164,4 +202,66 @@ test('the palette opens the history', async ({ page, isMobile }) => {
   await expect(
     page.getByRole('dialog', { name: 'Version history' }),
   ).toBeVisible();
+});
+
+test('restoring keeps the note a draft and its pill in step', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === 'mobile', 'the pill lives in the bar');
+  const { restores, puts } = await setup(page, true, { draft: true });
+  const pill = page.getByRole('group', { name: 'Who can read this note' });
+  const draft = pill.getByRole('button', { name: 'Draft', exact: true });
+  await expect(draft).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: 'Version history' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Version history' });
+  await expect(dialog.getByText(/restore it again from history/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Restore this version' }).click();
+  await expect(dialog).toBeHidden();
+  expect(restores).toHaveLength(1);
+
+  // The words came back; who can read the note did not change.
+  await expect(
+    page.getByRole('textbox', { name: 'Note editor' }),
+  ).toContainText('Keep following the thread.');
+  await expect(draft).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => puts.at(-1)?.fields).toEqual({ draft: true });
+
+  // And the pill still works: one press publishes.
+  await pill.getByRole('button', { name: 'Published', exact: true }).click();
+  await expect.poll(() => puts.at(-1)?.fields).toEqual({});
+  await expect(page.locator('.studio-toast')).toContainText('Published!');
+});
+
+test('restore and the draft pill wait while a conflict pauses saving', async ({
+  page,
+}, info) => {
+  const { restores } = await setup(page, true, { refuseSaves: true });
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.focus();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type(' More.');
+  await expect(page.locator('.studio-conflict')).toContainText(
+    'Someone edited this note elsewhere',
+  );
+
+  if (info.project.name === 'desktop') {
+    const pill = page.getByRole('group', { name: 'Who can read this note' });
+    await expect(pill).toHaveAttribute('title', /Saving is paused/);
+    const draft = pill.getByRole('button', { name: 'Draft', exact: true });
+    await expect(draft).toHaveAttribute('aria-disabled', 'true');
+    // Forced: Playwright, like a person, treats it as disabled.
+    await draft.click({ force: true });
+    await expect(draft).toHaveAttribute('aria-pressed', 'false');
+  }
+
+  await page.getByRole('button', { name: 'Version history' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Version history' });
+  const restore = dialog.getByRole('button', { name: 'Restore this version' });
+  await expect(restore).toHaveAttribute('aria-disabled', 'true');
+  await expect(restore).toHaveAccessibleDescription(/Saving is paused/);
+  await restore.dispatchEvent('click');
+  await page.waitForTimeout(300);
+  expect(restores).toHaveLength(0);
+  await expect(dialog).toBeVisible();
 });
