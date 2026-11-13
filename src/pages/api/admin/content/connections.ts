@@ -10,7 +10,7 @@ import {
 // note called "connections" must stay reachable through `[collection]/[id]`.
 /**
  * What links to a note, what it links to, and the tags in use — read from the
- * garden index, which is already cached per content version. Read-only, so
+ * owner's garden index (drafts included), which is already cached per content version. Read-only, so
  * admin auth is the whole contract; there is no mutation to origin-check.
  */
 export const GET: APIRoute = async ({ cookies, url }) => {
@@ -25,7 +25,11 @@ export const GET: APIRoute = async ({ cookies, url }) => {
     );
   }
 
-  const garden = await getGardenIndexOrUnavailable();
+  // The owner's index: Studio creates every note as a draft, so the public
+  // one would show a draft no links, report links to drafts as unwritten
+  // notes, and leave draft-only tags out of autocomplete. Safe only because
+  // the admin session was proved above.
+  const garden = await getGardenIndexOrUnavailable({ includeDrafts: true });
   if (!garden.ok) {
     return adminJson(
       { error: 'Notes are not available yet.', code: 'content_unavailable' },

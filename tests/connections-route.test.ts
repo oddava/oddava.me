@@ -5,13 +5,17 @@ import { buildGardenIndex } from '../src/lib/garden/build';
 const state = vi.hoisted(() => ({
   authError: null as Response | null,
   garden: null as unknown,
+  calls: [] as unknown[],
 }));
 vi.mock('../src/lib/server/admin', () => ({
   adminJson: (data: unknown, init?: ResponseInit) => Response.json(data, init),
   requireSecuredAdminApi: async () => state.authError,
 }));
 vi.mock('../src/lib/garden', () => ({
-  getGardenIndexOrUnavailable: async () => state.garden,
+  getGardenIndexOrUnavailable: async (options?: unknown) => {
+    state.calls.push(options);
+    return state.garden;
+  },
 }));
 import { GET } from '../src/pages/api/admin/content/connections';
 
@@ -40,6 +44,19 @@ describe('GET /api/admin/content/connections', () => {
   beforeEach(() => {
     state.authError = null;
     state.garden = { ok: true, index };
+    state.calls = [];
+  });
+
+  it('reads the owner index, drafts included, and only after auth', async () => {
+    // Every note Studio creates starts as a draft: links to and from drafts,
+    // and draft-only tags, must show up in the editor.
+    await call('?id=a');
+    expect(state.calls).toEqual([{ includeDrafts: true }]);
+
+    state.calls = [];
+    state.authError = new Response('no', { status: 401 });
+    await call('?id=a');
+    expect(state.calls).toEqual([]);
   });
 
   it('answers the admin session check first', async () => {
