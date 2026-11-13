@@ -83,23 +83,26 @@
     transform var(--st-slow) var(--st-spring);
 }
 
-.admin-page .studio-draft-toggle__option[aria-checked='true'] {
+.admin-page .studio-draft-toggle__option[aria-pressed='true'] {
   color: var(--st-text);
   font-weight: 500;
 }
 
-.admin-page .studio-draft-toggle__option[aria-checked='true']::before {
+.admin-page .studio-draft-toggle__option[aria-pressed='true']::before {
   opacity: 1;
   transform: none;
 }
 
 .admin-page
-  .studio-draft-toggle__option[data-option='published'][aria-checked='true'] {
+  .studio-draft-toggle__option[data-option='published'][aria-pressed='true'] {
   color: var(--st-accent-text);
 }
 
 @media (hover: hover) {
-  .admin-page .studio-draft-toggle__option[aria-checked='false']:hover {
+  .admin-page
+    .studio-draft-toggle__option[aria-pressed='false']:not(
+      [aria-disabled='true']
+    ):hover {
     color: var(--st-text-2);
   }
 }
@@ -184,4 +187,14 @@
   .admin-page .studio-draft-toggle:has(.studio-draft-toggle__option:active) {
     transform: none;
   }
+}
+
+/* Held while a conflict pauses saving; the reason is its tooltip. */
+.admin-page .studio-draft-toggle[data-blocked] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-page .studio-draft-toggle[data-blocked] .studio-draft-toggle__option {
+  cursor: inherit;
 }

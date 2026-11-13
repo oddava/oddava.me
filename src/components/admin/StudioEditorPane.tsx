@@ -59,6 +59,8 @@ interface Props {
   /** Absent when the note cannot be unlisted (the Notes root). */
   draftState?: DraftState | null;
   onDraftChange?: (next: DraftState) => void;
+  /** Why the draft flag cannot change right now; the pill says so. */
+  draftBlockedReason?: string | null;
   /** Bumped to open the icon picker from elsewhere (the phone's ⋯ sheet). */
   iconPickerRequest?: number;
   onSave: () => void;
@@ -107,6 +109,7 @@ export default function StudioEditorPane({
   onHistory,
   draftState = null,
   onDraftChange,
+  draftBlockedReason = null,
   iconPickerRequest = 0,
   onSave,
   onBodyChange,
@@ -268,6 +271,7 @@ export default function StudioEditorPane({
                 <StudioDraftToggle
                   state={draftState}
                   onChange={onDraftChange}
+                  blockedReason={draftBlockedReason}
                 />
               )}
               {publishedUrl && !compact && (

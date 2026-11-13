@@ -107,15 +107,20 @@ test('a draft is marked in the list and published from the editor bar', async ({
   ).toHaveCount(0);
 
   await openNote(page, 'half-written');
-  const group = page.getByRole('radiogroup', {
+  const group = page.getByRole('group', {
     name: 'Who can read this note',
   });
-  const draft = group.getByRole('radio', { name: 'Draft' });
-  const published = group.getByRole('radio', { name: 'Published' });
-  await expect(draft).toBeChecked();
+  const draft = group.getByRole('button', { name: 'Draft', exact: true });
+  const published = group.getByRole('button', {
+    name: 'Published',
+    exact: true,
+  });
+  await expect(draft).toHaveAttribute('aria-pressed', 'true');
+  // The desktop bar says who can see a draft, not only the phone sheet.
+  await expect(draft).toHaveAttribute('title', 'Only you can see drafts.');
 
   await published.click();
-  await expect(published).toBeChecked();
+  await expect(published).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.studio-toast')).toContainText('Published!');
   await expect(draftRow.getByText('draft', { exact: true })).toHaveCount(0);
   // Publishing writes at once and leaves no `draft` key behind.
@@ -123,11 +128,21 @@ test('a draft is marked in the list and published from the editor bar', async ({
     .poll(() => store.writes().at(-1))
     .toEqual({ saved: 'half-written', fields: {} });
 
-  // The arrow keys move the selection, and focus goes with it.
+  // The arrow keys only move focus — publishing is consequential, so nothing
+  // changes until Space or Enter — and they stop at either end.
+  const writesBefore = store.writes().length;
   await published.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(published).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(draft).toBeChecked();
   await expect(draft).toBeFocused();
+  await expect(published).toHaveAttribute('aria-pressed', 'true');
+  await expect(draft).toHaveAttribute('aria-pressed', 'false');
+  await page.waitForTimeout(300);
+  expect(store.writes()).toHaveLength(writesBefore);
+
+  await page.keyboard.press('Space');
+  await expect(draft).toHaveAttribute('aria-pressed', 'true');
   await expect
     .poll(() => store.writes().at(-1))
     .toEqual({ saved: 'half-written', fields: { draft: true } });
@@ -152,8 +167,24 @@ test('the palette publishes the open note and new notes start as drafts', async 
     .poll(() => store.writes().find((write) => 'created' in write))
     .toEqual({ created: 'untitled', fields: { draft: true } });
   await expect(
-    page.getByRole('radio', { name: 'Draft', checked: true }),
+    page.getByRole('button', { name: 'Draft', exact: true, pressed: true }),
   ).toBeVisible();
+  // The first note Studio makes says why it is a draft — once.
+  await expect(page.locator('.studio-toast')).toContainText(
+    'New notes start as drafts',
+  );
+  await expect(page.locator('.studio-toast')).toHaveCount(0, {
+    timeout: 5_000,
+  });
+  await page.keyboard.press('Control+p');
+  await page.getByRole('option', { name: /^New note/ }).click();
+  await expect
+    .poll(() => store.writes().filter((write) => 'created' in write).length)
+    .toBe(2);
+  // The notice would follow the note opening; give it the chance, then
+  // make sure it stayed quiet.
+  await page.waitForTimeout(500);
+  await expect(page.getByText('New notes start as drafts')).toHaveCount(0);
 });
 
 test('the phone note actions sheet carries the visibility control', async ({
@@ -165,7 +196,7 @@ test('the phone note actions sheet carries the visibility control', async ({
   await expect(page.locator('.studio-bar .studio-draft-mark')).toBeVisible();
 
   await page.getByRole('button', { name: 'Note actions', exact: true }).click();
-  await page.getByRole('radio', { name: 'Published' }).click();
+  await page.getByRole('button', { name: 'Published', exact: true }).click();
   await expect
     .poll(() => store.writes().at(-1))
     .toEqual({ saved: 'half-written', fields: {} });

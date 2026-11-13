@@ -1080,6 +1080,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                     ? {
                         state: draft.state,
                         onChange: draft.set,
+                        blockedReason: draft.blockedReason,
                       }
                     : null
                 }
@@ -1307,6 +1308,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   onHistory={() => setHistoryOpen(true)}
                   draftState={draft.state}
                   onDraftChange={draft.set}
+                  draftBlockedReason={draft.blockedReason}
                   iconPickerRequest={iconPickerRequest}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {

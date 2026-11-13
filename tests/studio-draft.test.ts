@@ -3,9 +3,12 @@ import {
   canToggleDraft,
   draftNotice,
   draftStateOf,
+  keepDraftState,
+  NEW_DRAFT_NOTICE,
   NEW_NOTE_FIELDS,
   nextDraftState,
   stepDraftState,
+  takeNewDraftNotice,
   withDraftState,
 } from '../src/components/admin/studioDraft';
 
@@ -42,12 +45,42 @@ describe('Studio draft state', () => {
     expect(canToggleDraft(undefined)).toBe(false);
   });
 
-  it('flips and steps between the two states, wrapping like a radio group', () => {
+  it('flips between the two states, and arrows stop at either end', () => {
     expect(nextDraftState('draft')).toBe('published');
     expect(nextDraftState('published')).toBe('draft');
     expect(stepDraftState('draft', 1)).toBe('published');
-    expect(stepDraftState('draft', -1)).toBe('published');
-    expect(stepDraftState('published', 1)).toBe('draft');
+    expect(stepDraftState('published', -1)).toBe('draft');
+    // No wrap: an arrow past the end goes nowhere rather than to the other.
+    expect(stepDraftState('draft', -1)).toBe('draft');
+    expect(stepDraftState('published', 1)).toBe('published');
+  });
+
+  it('keeps the note’s own flag over a restored version’s', () => {
+    expect(keepDraftState({ icon: 'a' }, { draft: true })).toEqual({
+      icon: 'a',
+      draft: true,
+    });
+    expect(keepDraftState({ draft: true, icon: 'a' }, {})).toEqual({
+      icon: 'a',
+    });
+  });
+
+  it('explains new drafts once per browser', () => {
+    const stored = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+    };
+    expect(takeNewDraftNotice(storage)).toBe(NEW_DRAFT_NOTICE);
+    expect(takeNewDraftNotice(storage)).toBeNull();
+    expect(takeNewDraftNotice(null)).toBeNull();
+    const broken = {
+      getItem: () => {
+        throw new Error('denied');
+      },
+      setItem: () => {},
+    };
+    expect(takeNewDraftNotice(broken)).toBeNull();
   });
 
   it('words the confirmation by direction and keeps long titles short', () => {

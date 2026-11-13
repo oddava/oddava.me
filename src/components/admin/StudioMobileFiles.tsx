@@ -90,7 +90,11 @@ interface Props {
   /** The open note's icon picker, offered in that sheet. */
   onChangeIcon?: () => void;
   /** The open note's draft state, offered in that sheet; absent for the root. */
-  draft?: { state: DraftState; onChange: (next: DraftState) => void } | null;
+  draft?: {
+    state: DraftState;
+    onChange: (next: DraftState) => void;
+    blockedReason?: string | null;
+  } | null;
   /**
    * Compose: a blank note in this folder, open and ready, named later — the
    * way a notes app starts a note, rather than asking for a name first.
@@ -555,6 +559,7 @@ export default function StudioMobileFiles({
                 variant="sheet"
                 state={draft.state}
                 onChange={(next) => act(() => draft.onChange(next))}
+                blockedReason={draft.blockedReason}
               />
             )}
           </SheetGroup>
