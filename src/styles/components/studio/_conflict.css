@@ -1,0 +1,243 @@
+/* ---------------------------------------------------------------------------
+   "This note changed elsewhere": a soft strip above the page, the comparison
+   it opens, and the save indicator's "Paused".
+
+   Nothing here is an error and nothing is red. The author's text is safe, so
+   the strip borrows the accent's calm tint (neutral when there is no choice
+   to make) and uses the shared buttons for its choices.
+--------------------------------------------------------------------------- */
+
+.admin-page .studio-conflict {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 4px 12px 8px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--st-accent) 28%, transparent);
+  border-radius: var(--st-radius-float);
+  background: var(--st-picked);
+  color: var(--st-text);
+  font-size: var(--st-size-sm);
+  line-height: 1.45;
+  animation: studio-arrive var(--st-base) var(--st-ease);
+}
+
+/* Moved or set aside: something to know about, not something to hurry. */
+.admin-page .studio-conflict:is([data-state='gone'], [data-state='set-aside']) {
+  border-color: var(--st-line-strong);
+  background: var(--st-current);
+}
+
+.admin-page .studio-conflict__mark {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 5px;
+  border-radius: var(--st-radius);
+  background: color-mix(in srgb, var(--st-accent) 14%, transparent);
+  color: var(--st-accent-text);
+}
+
+.admin-page
+  .studio-conflict:is([data-state='gone'], [data-state='set-aside'])
+  .studio-conflict__mark {
+  background: var(--st-hover);
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-conflict__text {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.admin-page .studio-conflict__text strong {
+  display: block;
+  font-size: var(--st-size-md);
+  font-weight: 500;
+}
+
+.admin-page .studio-conflict__text p {
+  margin: 2px 0 0;
+  color: var(--st-text-2);
+}
+
+.admin-page .studio-conflict__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+/* --- Save indicator: paused --- */
+
+/* Beats the failed-save button's danger colour: paused is not a failure. */
+.admin-page .studio-btn.studio-save[data-tone='paused'] {
+  color: var(--st-accent-text);
+}
+
+.admin-page .studio-btn.studio-save[data-tone='paused']:hover:not(:disabled) {
+  background: var(--st-picked);
+}
+
+/* --- Comparison dialog --- */
+
+.admin-page .studio-palette.studio-conflict-dialog {
+  width: min(100%, 880px);
+  max-height: min(80vh, 680px);
+}
+
+.admin-page .studio-conflict-dialog__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 10px 20px;
+  border-bottom: 1px solid var(--st-line);
+}
+
+.admin-page .studio-conflict-dialog__head h2 {
+  margin: 0;
+  font-size: var(--st-size-lg);
+  font-weight: 700;
+}
+
+.admin-page .studio-conflict-dialog__foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--st-line);
+}
+
+.admin-page .studio-diff__legend,
+.admin-page .studio-diff__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.admin-page .studio-diff__legend {
+  flex: none;
+  padding: 10px 24px 0;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+}
+
+.admin-page .studio-diff {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  padding: 8px 16px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family: var(--st-mono);
+  font-size: var(--st-size-sm);
+  line-height: 1.5;
+}
+
+.admin-page .studio-diff__same {
+  margin: 24px 0;
+  color: var(--st-text-3);
+  font-family: var(--st-font);
+  text-align: center;
+}
+
+.admin-page .studio-diff__gap {
+  margin: 4px 0;
+  color: var(--st-text-4);
+  font-family: var(--st-font);
+  font-size: var(--st-size-xs);
+  text-align: center;
+}
+
+.admin-page .studio-diff__cell {
+  min-width: 0;
+  padding: 1px 8px;
+  border-radius: 4px;
+  color: var(--st-text-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Colour is never the only cue: each changed side also has its own edge. */
+.admin-page .studio-diff__row[data-kind='changed'] .studio-diff__cell {
+  color: var(--st-text);
+}
+
+.admin-page
+  .studio-diff__row[data-kind='changed']
+  .studio-diff__cell[data-side='mine']:not([data-empty]) {
+  border-left: 2px solid var(--st-text-4);
+  background: var(--st-current);
+}
+
+.admin-page
+  .studio-diff__row[data-kind='changed']
+  .studio-diff__cell[data-side='theirs']:not([data-empty]) {
+  border-left: 2px solid var(--st-accent);
+  background: var(--st-picked);
+}
+
+@media (max-width: 720px) {
+  .admin-page .studio-conflict {
+    margin: 4px 8px 8px;
+  }
+
+  .admin-page .studio-conflict__actions {
+    flex: 1 1 100%;
+    justify-content: stretch;
+  }
+
+  .admin-page .studio-conflict__actions .studio-btn {
+    flex: 1 1 auto;
+    min-height: var(--st-touch);
+    white-space: normal;
+  }
+
+  .admin-page .studio-diff__legend {
+    display: none;
+  }
+
+  /* One column: each changed line shows who wrote it above its text. */
+  .admin-page .studio-diff__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  /* An unchanged line is the same on both sides; once is enough. */
+  .admin-page .studio-diff__cell[data-empty],
+  .admin-page
+    .studio-diff__row[data-kind='same']
+    .studio-diff__cell[data-side='theirs'] {
+    display: none;
+  }
+
+  .admin-page
+    .studio-diff__row[data-kind='changed']
+    .studio-diff__cell::before {
+    display: block;
+    color: var(--st-text-3);
+    content: attr(data-label);
+    font-family: var(--st-font);
+    font-size: var(--st-size-xs);
+    font-weight: 500;
+  }
+
+  .admin-page .studio-conflict-dialog__foot {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .admin-page .studio-conflict-dialog__foot .studio-btn {
+    flex: 1 1 auto;
+    min-height: var(--st-touch);
+    white-space: normal;
+  }
+}

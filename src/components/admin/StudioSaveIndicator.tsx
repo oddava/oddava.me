@@ -13,6 +13,12 @@ interface Props {
    * take the room the note's name needs.
    */
   iconOnly?: boolean;
+  /**
+   * Autosave is paused on a conflict. That is neither saved nor failed, so it
+   * has its own word, and the word leads to the choice that ends it.
+   */
+  paused?: boolean;
+  onResolve?: () => void;
   onSave: () => void;
 }
 
@@ -57,6 +63,8 @@ export default function StudioSaveIndicator({
   savedAt,
   uploading = false,
   iconOnly = false,
+  paused = false,
+  onResolve,
   onSave,
 }: Props) {
   const announcement = useAnnouncement(state);
@@ -76,7 +84,20 @@ export default function StudioSaveIndicator({
       <span className="studio-visually-hidden" role="status">
         {announcement}
       </span>
-      {state === 'error' ? (
+      {paused ? (
+        <button
+          type="button"
+          className="studio-btn studio-btn--quiet studio-save"
+          data-tone="paused"
+          onClick={onResolve}
+          title="Saving is paused until you choose a version of this note"
+        >
+          <Icon name="pencil" />
+          <span className={iconOnly ? 'studio-visually-hidden' : undefined}>
+            Paused
+          </span>
+        </button>
+      ) : state === 'error' ? (
         <button
           type="button"
           className="studio-btn studio-btn--danger-quiet studio-save"

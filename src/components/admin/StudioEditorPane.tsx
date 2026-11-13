@@ -3,6 +3,7 @@ import { FileIcon } from './studioFileIcons';
 import { Icon } from './studioIcons';
 import type { ImageEditRequest } from './StudioImageDialog';
 import { Fragment } from 'preact';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import StudioFocusControls from './StudioFocusControls';
@@ -66,6 +67,11 @@ interface Props {
   uploadImage: (file: File) => Promise<string | null>;
   onRequestImage: (request?: ImageEditRequest) => void;
   onNotice: (message: string) => void;
+  /** A strip between the bar and the page, for something to settle first. */
+  banner?: ComponentChildren;
+  /** Autosave is held back; the save indicator says so and leads to `banner`. */
+  savePaused?: boolean;
+  onResolveSave?: () => void;
 }
 
 /**
@@ -107,6 +113,9 @@ export default function StudioEditorPane({
   uploadImage,
   onRequestImage,
   onNotice,
+  banner,
+  savePaused = false,
+  onResolveSave,
 }: Props) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   useEffect(() => {
@@ -184,6 +193,8 @@ export default function StudioEditorPane({
                 savedAt={savedAt}
                 uploading={uploading}
                 iconOnly
+                paused={savePaused}
+                onResolve={onResolveSave}
                 onSave={onSave}
               />
               <button
@@ -208,6 +219,8 @@ export default function StudioEditorPane({
                 savedAt={savedAt}
                 uploading={uploading}
                 iconOnly={compact}
+                paused={savePaused}
+                onResolve={onResolveSave}
                 onSave={onSave}
               />
               {onHistory && (
@@ -284,6 +297,7 @@ export default function StudioEditorPane({
           onClose={() => setIconPickerOpen(false)}
         />
       )}
+      {banner}
       <div className="studio-surface">
         <StudioRichEditor
           icon={icon}
