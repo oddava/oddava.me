@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
    Richer blocks: code, callouts and footnotes, as they behave in the editor.
 
-   How each one LOOKS — token colours, the callout card, the footnote pills —
+   How each one LOOKS — token colours, the callout, the footnote marks —
    is the note stylesheet's job (`_note-prose.css`), so the page and the editor
    cannot drift. This file holds only what the page never shows: the chips that
    change a block, the picker they open, and the footnote's way back.
@@ -84,7 +84,7 @@
 .admin-page .callout__kind {
   margin: -4px 0 -4px -8px;
   font-size: inherit;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .admin-page .callout__kind:hover,
@@ -118,7 +118,7 @@
   background: color-mix(in srgb, var(--st-accent) 16%, transparent);
   color: var(--st-accent-text);
   font-size: 0.75em;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   text-align: center;
   cursor: pointer;
@@ -146,39 +146,38 @@
   border-radius: var(--radius-pill);
 }
 
+/* As on the published page: a rule above the first, then plain numbered
+   lines. No boxes: these are the page's small print, not its cards. */
 .studio-rich-content .studio-footnote {
   position: relative;
   display: grid;
-  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
   align-items: start;
   gap: 0 var(--space-xs);
-  margin: 0.4rem 0;
-  padding: 0.35rem 0.5rem;
-  border-radius: var(--st-radius);
-  background: var(--st-hover);
+  margin: 0;
+  padding: 0.2rem 0;
   color: var(--st-text-2);
   font-size: var(--text-sm);
 }
 
+.studio-rich-content :not(.studio-footnote) + .studio-footnote {
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--st-line);
+}
+
 .studio-rich-content .studio-footnote::before {
-  content: attr(data-footnote-number);
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 0.1rem;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--st-accent) 18%, transparent);
+  content: attr(data-footnote-number) '.';
+  margin-top: 0.15rem;
   color: var(--st-accent-text);
-  font-size: var(--st-size-xs);
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   user-select: none;
 }
 
 /* Written but never referenced: it will not appear on the page. */
 .studio-rich-content .studio-footnote.is-unused::before {
   content: '–';
-  background: var(--st-press);
   color: var(--st-text-4);
 }
 
@@ -254,7 +253,7 @@
   box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   font-family: var(--st-font);
-  animation: studio-arrive var(--st-base) var(--st-ease);
+  animation: studio-arrive var(--st-base) var(--st-spring);
 }
 
 .admin-page .studio-picker__search {
@@ -306,7 +305,7 @@
   padding: 0 10px;
   border-radius: var(--st-radius);
   color: var(--st-text-2);
-  font-size: var(--st-size-md);
+  font-size: var(--st-size-sm);
   cursor: pointer;
   user-select: none;
   transition: background-color var(--st-fast) var(--st-ease);

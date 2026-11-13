@@ -266,7 +266,7 @@
   font-size: 0.85em;
   background: var(--color-surface-raised);
   padding: 0.15em 0.35em;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -274,7 +274,7 @@
 .prose pre {
   background: var(--color-surface-raised);
   padding: var(--space-sm);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   margin: 1.5em 0;
   max-width: 100%;
   overflow-x: auto;
@@ -368,37 +368,51 @@
 }
 
 /* --- Callouts ---
-   A friendly sticky note rather than a banner: a tinted card, a strip of tape,
-   and the kind drawn as a small round badge. One tone per kind, taken from the
+   A note stuck to the page rather than a banner: a flat wash of the kind's
+   colour, held on by a strip of washi tape. No border and no shadow; the
+   tint and the tape are the whole card. One tone per kind, taken from the
    site's own colours, so the card follows whatever the theme does. */
 
 .prose .callout {
   --callout-tone: var(--color-brand);
   position: relative;
-  margin: 1.75em 0 1.5em;
-  padding: var(--space-sm) 1.15rem 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--callout-tone) 32%, transparent);
+  margin: 1.9em 0 1.5em;
+  padding: 1.05rem 1.15rem 0.35rem;
   border-radius: var(--radius-lg);
-  background: color-mix(
-    in srgb,
-    var(--callout-tone) 9%,
-    var(--color-surface-raised)
-  );
-  box-shadow: 0 8px 18px -14px
-    color-mix(in srgb, var(--callout-tone) 70%, transparent);
+  background: color-mix(in srgb, var(--callout-tone) 9%, transparent);
   color: var(--color-text-secondary);
   font-style: normal;
 }
 
+/* The tape: striped, with pinked ends. (Studio's own strips of tape —
+   _primitives.css — are drawn the same way; the published page cannot load
+   that stylesheet, so the recipe is written here for both.) */
 .prose .callout::before {
   content: '';
   position: absolute;
-  top: -0.45rem;
-  left: 1.25rem;
-  width: 2.6rem;
-  height: 0.8rem;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--callout-tone) 38%, transparent);
+  top: -0.55rem;
+  left: 1.1rem;
+  width: 3.5rem;
+  height: 1.05rem;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--callout-tone) 20%, transparent) 0 5px,
+      transparent 5px 10px
+    ),
+    color-mix(in srgb, var(--callout-tone) 32%, transparent);
+  clip-path: polygon(
+    0 0,
+    3px 25%,
+    0 50%,
+    3px 75%,
+    0 100%,
+    100% 100%,
+    calc(100% - 3px) 75%,
+    100% 50%,
+    calc(100% - 3px) 25%,
+    100% 0
+  );
   transform: rotate(var(--callout-tape-tilt, -2.5deg));
   pointer-events: none;
 }
@@ -439,22 +453,18 @@
 .prose .callout__title {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
   color: color-mix(in srgb, var(--callout-tone) 78%, var(--color-text-primary));
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
 }
 
 .prose .callout__icon {
-  box-sizing: content-box;
   flex: none;
   width: 1.15rem;
   height: 1.15rem;
-  padding: 0.3rem;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--callout-tone) 20%, transparent);
   color: var(--callout-tone);
 }
 
@@ -492,7 +502,7 @@
   white-space: nowrap;
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--color-brand) 16%, transparent);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   text-align: center;
   text-decoration: none;
@@ -506,7 +516,7 @@
 .prose .footnotes {
   margin-top: var(--space-md);
   padding-top: var(--space-sm);
-  border-top: 1px dashed var(--color-rule-strong);
+  border-top: 1px solid var(--color-rule);
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
 }
@@ -515,9 +525,7 @@
   margin-bottom: 0.4rem;
   color: var(--color-text-muted);
   font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .prose .footnotes ol {
@@ -533,7 +541,8 @@
 
 .prose .footnotes li::marker {
   color: var(--color-text-interactive);
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .prose .footnotes li:target {
