@@ -3,7 +3,7 @@ import { FileIcon } from './studioFileIcons';
 import { Icon } from './studioIcons';
 import type { ImageEditRequest } from './StudioImageDialog';
 import { Fragment } from 'preact';
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import StudioSaveIndicator from './StudioSaveIndicator';
 import StudioRichEditor from './StudioRichEditor';
@@ -39,6 +39,10 @@ interface Props {
   focusRef: MutableRef<(() => void) | null>;
   suggestions: WikiSuggestion[];
   onShowSidebar: () => void;
+  /** Phone: the note's ⋯ — its actions, as a sheet. */
+  onNoteActions?: () => void;
+  /** Bumped to open the icon picker from elsewhere (the phone's ⋯ sheet). */
+  iconPickerRequest?: number;
   onSave: () => void;
   onBodyChange: (value: string) => void;
   /** Uploads and returns a URL, so a drop can place the image where it landed. */
@@ -73,6 +77,8 @@ export default function StudioEditorPane({
   focusRef,
   suggestions,
   onShowSidebar,
+  onNoteActions,
+  iconPickerRequest = 0,
   onSave,
   onBodyChange,
   uploadImage,
@@ -80,20 +86,36 @@ export default function StudioEditorPane({
   onNotice,
 }: Props) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  useEffect(() => {
+    if (iconPickerRequest) setIconPickerOpen(true);
+  }, [iconPickerRequest]);
   return (
     <>
       <header className="studio-bar">
         <div className="studio-bar__title">
-          {!sidebarVisible && (
+          {compact ? (
+            // A phone has two screens, the list and the note; this is the
+            // way back to the list, named for where it goes.
             <button
               type="button"
-              className="studio-icon-button"
-              aria-label="Show Files explorer"
-              title={compact ? 'Notes' : `Show sidebar (${shortcut('\\')})`}
+              className="studio-bar__back"
               onClick={onShowSidebar}
             >
-              <Icon name="sidebar" />
+              <Icon name="chevron-left" />
+              <span>Notes</span>
             </button>
+          ) : (
+            !sidebarVisible && (
+              <button
+                type="button"
+                className="studio-icon-button"
+                aria-label="Show Files explorer"
+                title={compact ? 'Notes' : `Show sidebar (${shortcut('\\')})`}
+                onClick={onShowSidebar}
+              >
+                <Icon name="sidebar" />
+              </button>
+            )
           )}
           <button
             type="button"
@@ -132,28 +154,50 @@ export default function StudioEditorPane({
         </div>
         <div className="studio-bar__actions">
           {compact && keyboardOpen ? (
-            <button
-              type="button"
-              className="studio-btn studio-btn--quiet studio-keyboard-done"
-              onClick={() => {
-                if (document.activeElement instanceof HTMLElement)
-                  document.activeElement.blur();
-                document
-                  .querySelector<HTMLElement>('.studio-rich-content')
-                  ?.blur();
-              }}
-            >
-              Done
-            </button>
+            <>
+              {/* Still answers "is it saved?" while typing, as a mark. */}
+              <StudioSaveIndicator
+                state={saveState}
+                savedAt={savedAt}
+                uploading={uploading}
+                iconOnly
+                onSave={onSave}
+              />
+              <button
+                type="button"
+                className="studio-btn studio-btn--quiet studio-keyboard-done"
+                onClick={() => {
+                  if (document.activeElement instanceof HTMLElement)
+                    document.activeElement.blur();
+                  document
+                    .querySelector<HTMLElement>('.studio-rich-content')
+                    ?.blur();
+                }}
+              >
+                Done
+              </button>
+            </>
           ) : (
             <>
               <StudioSaveIndicator
                 state={saveState}
                 savedAt={savedAt}
                 uploading={uploading}
+                iconOnly={compact}
                 onSave={onSave}
               />
-              {publishedUrl && (
+              {compact && onNoteActions && (
+                <button
+                  type="button"
+                  className="studio-icon-button studio-bar__more"
+                  aria-label="Note actions"
+                  aria-haspopup="dialog"
+                  onClick={onNoteActions}
+                >
+                  <Icon name="more" />
+                </button>
+              )}
+              {publishedUrl && !compact && (
                 <a
                   className="studio-btn studio-btn--quiet studio-bar__open"
                   href={publishedUrl}
@@ -191,6 +235,7 @@ export default function StudioEditorPane({
           suggestions={suggestions}
           uploading={uploading}
           compact={compact}
+          keyboardOpen={keyboardOpen}
           onChange={onBodyChange}
           onSave={onSave}
           uploadImage={uploadImage}

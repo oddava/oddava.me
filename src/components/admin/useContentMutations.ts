@@ -61,7 +61,12 @@ interface Deps {
 export interface ContentMutations {
   uniqueItemId: (base: string) => string;
   toggleFolder: (id: string) => void;
-  createEntryInFolder: (folder: string, name: string) => Promise<boolean>;
+  createEntryInFolder: (
+    folder: string,
+    name: string,
+    /** The note's first Markdown; a heading named for the file otherwise. */
+    body?: string,
+  ) => Promise<boolean>;
   openFolderPage: (
     folder: ContentFolder,
     options?: OpenOptions,
@@ -155,6 +160,7 @@ export function useContentMutations({
   async function createEntryInFolder(
     folder: string,
     name: string,
+    body?: string,
   ): Promise<boolean> {
     if (!collection) return false;
     const id = gardenSlug(name);
@@ -174,7 +180,7 @@ export function useContentMutations({
         slug: id,
         folder,
         fields: {},
-        body: `# ${id.replaceAll('-', ' ')}\n\n`,
+        body: body ?? `# ${id.replaceAll('-', ' ')}\n\n`,
       });
       setActiveFolder(folder);
       setExpandedFolders((current) => new Set(current).add(folder));

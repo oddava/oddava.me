@@ -132,6 +132,13 @@ describe('matchSlashCommands', () => {
     expect(matchSlashCommands('').length).toBeGreaterThan(6);
   });
 
+  it('keeps the rarer heading levels for a search', () => {
+    const idle = matchSlashCommands('').map((item) => item.id);
+    expect(idle).toEqual(expect.arrayContaining(['h1', 'h2', 'h3']));
+    expect(idle).not.toEqual(expect.arrayContaining(['h4']));
+    expect(matchSlashCommands('h5')[0]?.id).toBe('h5');
+  });
+
   it('groups the full menu so its shape is learnable', () => {
     const groups = matchSlashCommands('').map((item) => item.group);
     // Each group appears once, as one run of rows.

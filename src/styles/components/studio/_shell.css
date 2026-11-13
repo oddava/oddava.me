@@ -141,7 +141,7 @@
   overflow: hidden;
   color: var(--st-text);
   font-size: var(--st-size-sm);
-  font-weight: 400;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -210,23 +210,78 @@
 /* --- Save state --- */
 
 .admin-page .studio-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  /* As wide as "Saving…", so the bar never shifts as the state changes. */
+  min-width: 84px;
   padding: 0 8px;
-  color: var(--st-text-3);
+  color: var(--st-text-4);
   font-size: var(--st-size-sm);
   white-space: nowrap;
   transition: color var(--st-base) var(--st-ease);
 }
 
-.admin-page .studio-save[data-tone='dirty'],
-.admin-page .studio-save[data-tone='saving'] {
-  color: var(--st-text-4);
+/* The mark: a check when saved, a soft pulsing dot while saving. */
+.admin-page .studio-save__mark {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+.admin-page .studio-save__mark .studio-glyph {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.75;
+  animation: studio-fade var(--st-base) var(--st-ease);
+}
+
+.admin-page
+  .studio-save:is([data-tone='dirty'], [data-tone='saving'])
+  .studio-save__mark::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--st-text-3);
+  content: '';
+  animation: studio-save-pulse 1s var(--st-ease) infinite alternate;
+}
+
+@keyframes studio-save-pulse {
+  from {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.admin-page .studio-save[data-tone='saved'] .studio-save__mark {
+  color: var(--st-text-3);
+}
+
+/* On a phone the mark stands alone, in a fixed square. */
+.admin-page .studio-save.is-icon-only {
+  justify-content: center;
+  min-width: 0;
+  width: 32px;
+  padding: 0;
 }
 
 /* As a button (a failed save) it is a real control, sized like one, and the
    one time the save state is allowed to be loud. */
 .admin-page .studio-btn.studio-save {
+  min-width: 0;
   padding: 0 10px;
   color: var(--st-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page .studio-save .studio-save__mark::after {
+    animation: none;
+  }
 }
 
 .admin-page .studio-bar__open .studio-glyph {
@@ -329,6 +384,7 @@
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   font-size: var(--st-size-sm);
   line-height: 1.45;

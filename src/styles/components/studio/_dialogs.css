@@ -14,7 +14,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 16px 16px;
-  background: color-mix(in srgb, #000 55%, transparent);
+  background: color-mix(in srgb, #000 70%, transparent);
   animation: studio-fade var(--st-base) var(--st-ease);
 }
 
@@ -27,22 +27,30 @@
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   animation: studio-arrive var(--st-base) var(--st-ease);
 }
 
+/* The glyph sits in the rows' icon column, so typed text starts where the
+   results' names do: 4 (list) + 10 (row) + 18 (icon) + 12 (gap). */
 .admin-page .studio-palette__search {
   display: flex;
   align-items: center;
   flex: none;
+  padding-left: 14px;
   border-bottom: 1px solid var(--st-line);
+}
+
+.admin-page .studio-palette__search > .studio-glyph {
+  color: var(--st-text-3);
 }
 
 .admin-page .studio-palette__input {
   flex: 1 1 auto;
   min-width: 0;
   height: 52px;
-  padding: 0 16px;
+  padding: 0 16px 0 12px;
   border: 0;
   outline: none;
   background: transparent;
@@ -81,6 +89,56 @@
   padding: 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.admin-page .studio-palette__group {
+  margin: 10px 10px 4px;
+  color: var(--st-text-4);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.admin-page .studio-palette__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-page .studio-palette__section:first-child .studio-palette__group {
+  margin-top: 6px;
+}
+
+/* How to drive it, once, where the eye ends up after a search. */
+.admin-page .studio-palette__footer {
+  display: flex;
+  flex: none;
+  gap: 16px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--st-line);
+  color: var(--st-text-4);
+  font-size: var(--st-size-xs);
+}
+
+.admin-page .studio-palette__footer kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--radius-sm);
+  background: var(--st-canvas);
+  color: var(--st-text-3);
+  font-family: var(--st-mono);
+  font-size: 11px;
+  line-height: 1;
+}
+
+@media (pointer: coarse) {
+  .admin-page .studio-palette__footer {
+    display: none;
+  }
 }
 
 .admin-page .studio-palette__empty {
@@ -433,4 +491,97 @@
 
 .admin-page .studio-icon-cropper__actions .studio-btn--primary {
   margin-left: auto;
+}
+
+/* --- Keyboard shortcuts sheet --- */
+
+.admin-page .studio-palette.studio-shortcuts {
+  width: min(100%, 720px);
+  max-height: min(80vh, 640px);
+}
+
+.admin-page .studio-shortcuts__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 10px 20px;
+  border-bottom: 1px solid var(--st-line);
+}
+
+.admin-page .studio-shortcuts__head h2 {
+  margin: 0;
+  font-size: var(--st-size-lg);
+  font-weight: 700;
+}
+
+.admin-page .studio-shortcuts__body {
+  columns: 2 300px;
+  column-gap: 32px;
+  padding: 12px 20px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Columns drop a heading's top margin where a column starts but keep it in
+   the first; padding they keep everywhere, so the tops line up. */
+.admin-page .studio-shortcuts__section {
+  break-inside: avoid;
+  padding: 12px 0 8px;
+}
+
+.admin-page .studio-shortcuts__section h3 {
+  margin: 0 0 6px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.admin-page .studio-shortcuts__section dl {
+  margin: 0;
+}
+
+.admin-page .studio-shortcuts__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 32px;
+  border-bottom: 1px solid var(--st-line);
+}
+
+.admin-page .studio-shortcuts__row dt {
+  color: var(--st-text-2);
+  font-size: var(--st-size-sm);
+}
+
+.admin-page .studio-shortcuts__row dd {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin: 0;
+}
+
+.admin-page .studio-shortcuts__row kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--st-hover);
+  color: var(--st-text);
+  font-family: var(--st-font);
+  font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: pre;
+}
+
+.admin-page .studio-shortcuts__or {
+  margin: 0 6px;
+  color: var(--st-text-4);
+  font-size: var(--st-size-xs);
 }

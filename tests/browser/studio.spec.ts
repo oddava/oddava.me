@@ -442,15 +442,17 @@ test('create, rename and move a file without losing the open document', async ({
 }, info) => {
   const store = await setup(page);
   if (info.project.name === 'mobile') {
-    // The bottom bar names the note straight away: no menu in between.
+    // Compose starts a blank note at once, the way a notes app does; it is
+    // named afterwards, from the list.
     await page.getByRole('button', { name: 'New note', exact: true }).click();
-    await page
-      .getByRole('textbox', { name: 'Name', exact: true })
-      .fill('Fresh thought');
-    await page.getByRole('button', { name: 'Create', exact: true }).click();
-    await page
-      .getByRole('button', { name: 'Actions for fresh thought' })
-      .click();
+    await expect
+      .poll(() => store.entries().some((entry) => entry.id === 'untitled'))
+      .toBe(true);
+    await expect(
+      page.getByRole('textbox', { name: 'Note editor' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Notes', exact: true }).click();
+    await page.getByRole('button', { name: 'Actions for untitled' }).click();
     await page.getByRole('button', { name: 'Rename', exact: true }).click();
     await page
       .getByRole('textbox', { name: 'New name', exact: true })
@@ -494,7 +496,7 @@ test('create, rename and move a file without losing the open document', async ({
   await renamed.click({ button: 'right' });
   await page
     .getByRole('menu')
-    .getByRole('button', { name: 'Move to…', exact: true })
+    .getByRole('menuitem', { name: 'Move to…', exact: true })
     .click();
   await page.getByRole('button', { name: 'Move better thought to' }).click();
   await page.getByRole('option', { name: 'welcome', exact: true }).click();
@@ -570,7 +572,11 @@ test('delete requires confirmation and removes the selected file', async ({
   if (await page.getByRole('searchbox').count())
     await page.getByRole('searchbox').fill('reading');
   await page.getByRole('button', { name: 'Actions for reading list' }).click();
-  await page.getByRole('button', { name: /^Delete(?: Del)?$/ }).click();
+  // A menu row on desktop, a sheet button on a phone.
+  await page
+    .getByRole('menuitem', { name: /^Delete(?: Del)?$/ })
+    .or(page.getByRole('button', { name: /^Delete(?: Del)?$/ }))
+    .click();
   const dialog = page.getByRole('alertdialog', { name: 'Delete note' });
   await expect(dialog).toBeVisible();
   expect(store.entries().some((entry) => entry.id === 'reading-list')).toBe(
@@ -771,9 +777,8 @@ test('phone typing keeps the page spacious and Files covers editor controls', as
   await page.keyboard.press('Control+Home');
   await page.keyboard.press('Control+Shift+ArrowRight');
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Show Files explorer', exact: true })
-    .click();
+  // A phone's way back to the list is named for where it goes.
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
   await expect(
     page.getByRole('toolbar', { name: 'Formatting' }),
   ).not.toBeVisible();
@@ -997,7 +1002,9 @@ test('columns keep mixed content in the document and storage', async ({
   await page
     .getByRole('button', { name: 'Block actions', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Wider left', exact: true }).click();
+  await page
+    .getByRole('menuitemradio', { name: 'Wider left', exact: true })
+    .click();
   await expect(editor.locator('.note-columns')).toHaveClass(
     /note-columns--left/,
   );
@@ -1017,7 +1024,7 @@ test('columns keep mixed content in the document and storage', async ({
   await page
     .getByRole('button', { name: 'Block actions', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Stack', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Stack', exact: true }).click();
   await expect(editor.locator('.note-columns')).toHaveCount(0);
   await expect(editor).toContainText('Right text edited');
   await page.keyboard.press('Control+z');
@@ -1147,7 +1154,7 @@ test('create columns from a block and add a third column', async ({
   await page
     .getByRole('button', { name: 'Block actions', exact: true })
     .click();
-  await page.getByRole('button', { name: '2 columns', exact: true }).click();
+  await page.getByRole('menuitem', { name: '2 columns', exact: true }).click();
   await expect(editor.locator('.note-column')).toHaveCount(2);
   await page.keyboard.type('Beside it.');
   await expect(editor.locator('.note-column').nth(1)).toContainText(
@@ -1157,7 +1164,7 @@ test('create columns from a block and add a third column', async ({
   await page
     .getByRole('button', { name: 'Block actions', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Add column', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Add column', exact: true }).click();
   await expect(editor.locator('.note-column')).toHaveCount(3);
   await editor.locator('.note-column').nth(2).locator('p').click();
   await page.keyboard.type('One more.');
@@ -1492,7 +1499,12 @@ test('existing notes accept child notes through one creation action', async ({
   await expect(
     page.getByRole('button', { name: 'New folder', exact: true }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Add subnote', exact: true }).click();
+  await page
+    .getByRole(info.project.name === 'desktop' ? 'menuitem' : 'button', {
+      name: 'Add subnote',
+      exact: true,
+    })
+    .click();
   const input =
     info.project.name === 'desktop'
       ? page.getByRole('textbox', { name: 'New note name' })
@@ -1565,7 +1577,7 @@ test('deeply nested notes keep their labels and actions inside the sidebar', asy
   await page
     .getByRole('button', { name: 'Actions for Home', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Expand all', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Expand all', exact: true }).click();
   const rows = page.locator('.studio-tree-row[data-tree-key^="folder:"]');
   await expect(rows).toHaveCount(20);
   const first = await rows.first().boundingBox();
@@ -1840,7 +1852,7 @@ test('tree menus support keyboard navigation and Tab leaves the writing surface'
     exact: true,
   });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('button')).toHaveText([
+  await expect(menu.getByRole('menuitem')).toHaveText([
     'Add subnote',
     'RenameF2',
     'Move to…',
@@ -1852,11 +1864,11 @@ test('tree menus support keyboard navigation and Tab leaves the writing surface'
   await expect(menu.locator(':scope > span')).toHaveCount(2);
   await page.screenshot({ path: 'test-results/note-actions-desktop.png' });
 
-  await expect(menu.getByRole('button').first()).toBeFocused();
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
   await page.keyboard.press('End');
-  await expect(menu.getByRole('button').last()).toBeFocused();
+  await expect(menu.getByRole('menuitem').last()).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(menu.getByRole('button').first()).toBeFocused();
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(row).toBeFocused();
@@ -2042,4 +2054,338 @@ test('legacy modes restore into one editor and all heading levels save as Markdo
   await page.screenshot({
     path: `test-results/unified-editor-${test.info().project.name}.png`,
   });
+});
+
+test('phone keyboard bar inserts blocks and tidies a dismissed slash', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await setup(page);
+  await openNote(page);
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.locator('p').first().click();
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport!, 'height', {
+      configurable: true,
+      value: 420,
+    });
+    window.visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  const bar = page.getByRole('toolbar', { name: 'Writing tools' });
+  await expect(bar).toBeVisible();
+  const paragraphs = await editor.locator('p').count();
+  await bar.getByRole('button', { name: 'Insert a block' }).click();
+  const menu = page.getByRole('listbox', { name: 'Insert a block' });
+  await expect(menu).toBeVisible();
+  await expect(menu).toHaveClass(/is-docked/);
+  // A second press closes the menu and takes back the line it made.
+  await bar.getByRole('button', { name: 'Close block menu' }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(editor.locator('p')).toHaveCount(paragraphs);
+  await expect(editor).not.toContainText('/');
+  // Choosing from it makes the block.
+  await bar.getByRole('button', { name: 'Insert a block' }).click();
+  await menu.getByRole('option', { name: 'To-do list' }).click();
+  await expect(editor.locator('ul[data-type="taskList"]')).toHaveCount(2);
+});
+
+test('phone navigation: the list is home, a note has a way back and its actions', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await setup(page);
+  const list = page.getByRole('region', { name: 'Files explorer' });
+  await expect(list).toBeVisible();
+  // Nothing to close the home list to.
+  await expect(
+    list.getByRole('button', { name: 'Close notes', exact: true }),
+  ).toHaveCount(0);
+  await openNote(page);
+  await expect(list).not.toBeInViewport();
+  await page.getByRole('button', { name: 'Note actions', exact: true }).click();
+  const sheet = page.getByRole('dialog', {
+    name: 'A quieter kind of workspace',
+  });
+  await expect(sheet).toBeVisible();
+  await expect(
+    sheet.getByRole('link', { name: 'View published page' }),
+  ).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Rename' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Select' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await expect(list).toBeInViewport();
+  // Back to the note is its row, marked as the one open.
+  await list.locator('.studio-mfiles__open[aria-current="true"]').click();
+  await expect(list).not.toBeInViewport();
+  // Arriving, focus is on the way back, not in the text: no keyboard.
+  await expect(
+    page.getByRole('button', { name: 'Notes', exact: true }),
+  ).toBeFocused();
+});
+
+test('keyboard reaches block actions, the formatting bar and the shortcut sheet', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop');
+  await setup(page);
+  await openNote(page);
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.locator('p').first().click();
+  await page.keyboard.press('Shift+F10');
+  const menu = page.getByRole('menu', { name: /Actions for this/ });
+  await expect(menu).toBeVisible();
+  const turn = menu.getByRole('menuitem', { name: 'Turn into' });
+  await expect(turn).toBeFocused();
+  await expect(turn).toHaveAttribute('aria-expanded', 'false');
+  await page.keyboard.press('ArrowRight');
+  await expect(turn).toHaveAttribute('aria-expanded', 'true');
+  await expect(
+    menu.getByRole('menuitemradio', { name: 'Text' }),
+  ).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await expect(turn).toBeFocused();
+  await expect(turn).toHaveAttribute('aria-expanded', 'false');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+
+  await editor.locator('strong').first().dblclick();
+  const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+  await expect(toolbar).toBeVisible();
+  await page.keyboard.press('Alt+F10');
+  await expect(toolbar.getByRole('button').first()).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(toolbar.getByRole('button', { name: 'Bold' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeFocused();
+
+  await page.keyboard.press('Control+/');
+  const sheet = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toContainText('Block actions');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+});
+
+test('phone sheets drag away and system back returns to the list', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await setup(page);
+  await openNote(page);
+  const list = page.getByRole('region', { name: 'Files explorer' });
+  // The platform's back — Android's button, Safari's swipe — is history.
+  await page.goBack();
+  await expect(list).toBeInViewport();
+  await expect(
+    list.locator('.studio-mfiles__open[aria-current="true"]'),
+  ).toBeFocused();
+
+  await list.getByRole('button', { name: 'Actions for reading list' }).click();
+  const sheet = page.getByRole('dialog', { name: 'reading list' });
+  await expect(sheet).toBeVisible();
+  // Measured once it has finished rising.
+  await page.waitForTimeout(400);
+  // A short, slow pull springs back…
+  const grip = sheet.locator('.studio-sheet__drag');
+  const box = (await grip.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + 10;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 40, { steps: 4 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+  await expect(sheet).toBeVisible();
+  // Let it settle back before the next pull starts on the grip.
+  await page.waitForTimeout(400);
+  // …a long one takes the sheet with it, whatever the pointer.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 160, { steps: 8 });
+  await page.mouse.up();
+  await expect(sheet).toHaveCount(0);
+});
+
+test('turning a block into what it already is leaves it alone', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop');
+  await setup(page);
+  await openNote(page);
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.locator('h1').dblclick();
+  const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
+  await toolbar.getByRole('button', { name: /^Turn into/ }).click();
+  const current = page.getByRole('menuitemradio', { name: 'Heading 1' });
+  await expect(current).toHaveAttribute('aria-checked', 'true');
+  await current.click();
+  await expect(editor.locator('h1')).toHaveCount(1);
+  // Tab from the bar goes back to the words, not to the page's end.
+  await editor.locator('h1').dblclick();
+  await page.keyboard.press('Alt+F10');
+  await expect(toolbar.getByRole('button').first()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(editor).toBeFocused();
+});
+
+test('phone back stack stays one deep through rename-free flows and delete', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  const store = await setup(page);
+  const list = page.getByRole('region', { name: 'Files explorer' });
+  // The list takes a step of its own once it is up, so Back on it can
+  // close a sheet before it leaves Studio.
+  await expect
+    .poll(() => page.evaluate(() => history.state?.studioList ?? false))
+    .toBe(true);
+  const depth = await page.evaluate(() => history.length);
+  await openNote(page);
+  await expect
+    .poll(() => page.evaluate(() => history.state?.studioNote))
+    .toBe('welcome');
+  // Back to the list, then into another note: still one step deep — the
+  // step is taken for the note that arrives, not the one it replaces.
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await expect(list).toBeInViewport();
+  await expect
+    .poll(() => page.evaluate(() => history.state?.studioNote ?? null))
+    .toBe(null);
+  await list
+    .locator('.studio-mfiles__open')
+    .filter({ hasText: 'reading list' })
+    .click();
+  await expect(list).not.toBeInViewport();
+  expect(await page.evaluate(() => history.length)).toBe(depth + 1);
+  // Deleting the open note ends its screen without a back: its step goes.
+  await page.getByRole('button', { name: 'Note actions', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Reading list' })
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await page
+    .getByRole('alertdialog', { name: 'Delete note' })
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await expect
+    .poll(() => store.entries().some((entry) => entry.id === 'reading-list'))
+    .toBe(false);
+  await expect(list).toBeInViewport();
+  await expect
+    .poll(() => page.evaluate(() => history.state?.studioNote ?? null))
+    .toBe(null);
+  // Into a folder, focus goes to where you now are.
+  await list
+    .locator('.studio-mfiles__open')
+    .filter({ hasText: /^projects/ })
+    .click();
+  await expect(list.getByRole('heading', { name: 'projects' })).toBeFocused();
+});
+
+test('phone history: reload stays put, back closes a sheet, rename replaces', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await setup(page);
+  await openNote(page);
+  const list = page.getByRole('region', { name: 'Files explorer' });
+  const marker = () => page.evaluate(() => history.state?.studioNote ?? null);
+  await expect.poll(marker).toBe('welcome');
+  // A reload keeps the note on screen and its single back step (once the
+  // session, saved a moment after a change, knows which note it was).
+  await page.waitForTimeout(400);
+  const depth = await page.evaluate(() => history.length);
+  await page.reload();
+  await expect(
+    page.getByRole('textbox', { name: 'Note editor' }),
+  ).toBeVisible();
+  await expect(list).not.toBeInViewport();
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => history.length)).toBe(depth);
+  await expect.poll(marker).toBe('welcome');
+
+  // Back with a sheet up closes the sheet, and the note stays.
+  await page.getByRole('button', { name: 'Note actions', exact: true }).click();
+  const sheet = page.getByRole('dialog', {
+    name: 'A quieter kind of workspace',
+  });
+  await expect(sheet).toBeVisible();
+  await page.goBack();
+  await expect(sheet).toHaveCount(0);
+  await expect(list).not.toBeInViewport();
+  await expect.poll(marker).toBe('welcome');
+
+  // A rename changes the note's id under the same step.
+  await page.getByRole('button', { name: 'Note actions', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Rename', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'New name', exact: true })
+    .fill('Renamed note');
+  await page.getByRole('button', { name: 'Rename', exact: true }).click();
+  await expect.poll(marker).toBe('renamed-note');
+  expect(await page.evaluate(() => history.length)).toBe(depth);
+  await page.goBack();
+  await expect(list).toBeInViewport();
+});
+
+test('a composed note takes its name from its title when you leave it', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  const store = await setup(page);
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await expect(editor.locator('h1')).toHaveAttribute(
+    'data-placeholder',
+    'Untitled',
+  );
+  await editor.locator('h1').click();
+  await page.keyboard.type('Groceries');
+  await expect.poll(() => store.saved()).toContain('# Groceries');
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await expect
+    .poll(() => store.entries().map((entry) => entry.id))
+    .toContain('groceries');
+});
+
+test('phone back on the list closes its sheet before leaving Studio', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await setup(page);
+  const list = page.getByRole('region', { name: 'Files explorer' });
+  await expect
+    .poll(() => page.evaluate(() => history.state?.studioList ?? false))
+    .toBe(true);
+  await list.getByRole('button', { name: 'Actions for reading list' }).click();
+  const sheet = page.getByRole('dialog', { name: 'reading list' });
+  await expect(sheet).toBeVisible();
+  await page.goBack();
+  await expect(sheet).toHaveCount(0);
+  await expect(list).toBeInViewport();
+  await expect
+    .poll(() => page.evaluate(() => history.state?.studioList ?? false))
+    .toBe(true);
+});
+
+test('a composed note is still named from its title after a reload', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'mobile');
+  const store = await setup(page);
+  await page.getByRole('button', { name: 'New note', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Note editor' });
+  await editor.locator('h1').click();
+  await page.keyboard.type('Packing list');
+  await expect.poll(() => store.saved()).toContain('# Packing list');
+  // The session is written a moment after a change.
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(editor).toBeVisible();
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await expect
+    .poll(() => store.entries().map((entry) => entry.id))
+    .toContain('packing-list');
 });

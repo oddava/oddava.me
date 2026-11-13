@@ -74,16 +74,19 @@ export function useStudioBlockHandle(
     }
     hoveredBlock.current = dom;
     const column = dom.parentElement?.matches('[data-note-column]') ?? false;
+    const blockLeft =
+      dom.getBoundingClientRect().left -
+      pane.getBoundingClientRect().left +
+      pane.scrollLeft;
     setHandle({
       from,
       column,
-      left:
-        dom.getBoundingClientRect().left -
-        pane.getBoundingClientRect().left +
-        pane.scrollLeft -
-        // The handle's width plus a 12px gap: one grip in a column or on a
-        // phone, add and grip side by side otherwise.
-        (live.current.compact || column ? 36 : 62),
+      left: live.current.compact
+        ? // A phone's margin is just the grip's width: it sits in it, flush.
+          Math.max(0, blockLeft - 24)
+        : // The handle's width plus a 12px gap: one grip in a column, add
+          // and grip side by side otherwise.
+          blockLeft - (column ? 36 : 62),
       top:
         dom.getBoundingClientRect().top -
         pane.getBoundingClientRect().top +

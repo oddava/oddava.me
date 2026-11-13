@@ -1,4 +1,4 @@
-import StudioContextMenu from './StudioContextMenu';
+import StudioContextMenu, { MenuItem } from './StudioContextMenu';
 import type { StudioTreeView } from './StudioTreeNode';
 import type { StudioMenu } from './useStudioMenu';
 import {
@@ -32,37 +32,40 @@ export function StudioTreeRowMenu({
       menuRef={menu.ref}
       position={menu.position}
     >
-      <button type="button" onClick={() => inline.beginCreate(folderForNew)}>
-        Add subnote
-      </button>
-      <button type="button" onClick={() => inline.beginRename(node)}>
-        Rename
-        <span className="studio-menu__hint">F2</span>
-      </button>
-      <button
-        type="button"
+      <MenuItem
+        icon="plus"
+        label="Add subnote"
+        onClick={() => inline.beginCreate(folderForNew)}
+      />
+      <MenuItem
+        icon="pencil"
+        label="Rename"
+        hint="F2"
+        onClick={() => inline.beginRename(node)}
+      />
+      <MenuItem
+        icon="folder"
+        label="Move to…"
         onClick={() => {
           inline.setMoving(nodeRef(node));
           menu.close();
         }}
-      >
-        Move to…
-      </button>
-      <button
-        type="button"
+      />
+      <MenuItem
+        icon="copy"
+        label="Duplicate"
         onClick={() => {
           menu.close();
           void (node.kind === 'entry'
             ? view.onDuplicateEntry(node.entry)
             : view.onDuplicateFolder(node.folder));
         }}
-      >
-        Duplicate
-      </button>
-      <span />
+      />
+      <span role="separator" />
       {page && (
-        <button
-          type="button"
+        <MenuItem
+          icon="link"
+          label="Copy link"
           onClick={() => {
             menu.close();
             void view.copyToClipboard(
@@ -70,31 +73,27 @@ export function StudioTreeRowMenu({
               'Link',
             );
           }}
-        >
-          Copy link
-        </button>
+        />
       )}
-      <button
-        type="button"
+      <MenuItem
+        icon="hash"
+        label="Copy path"
         onClick={() => {
           menu.close();
           void view.copyToClipboard(nodePath(node), 'Path');
         }}
-      >
-        Copy path
-      </button>
-      <span />
-      <button
-        type="button"
-        className="is-danger"
+      />
+      <span role="separator" />
+      <MenuItem
+        icon="trash"
+        label="Delete"
+        hint="Del"
+        danger
         onClick={() => {
           menu.close();
           view.deleteNode(node);
         }}
-      >
-        Delete
-        <span className="studio-menu__hint">Del</span>
-      </button>
+      />
     </StudioContextMenu>
   );
 }
@@ -122,38 +121,33 @@ export function StudioTreeRootMenu({
       menuRef={menu.ref}
       position={menu.position}
     >
-      <button type="button" onClick={onNewNote}>
-        New note
-      </button>
-      <span />
-      <button
-        type="button"
+      <MenuItem icon="plus" label="New note" onClick={onNewNote} />
+      <span role="separator" />
+      <MenuItem
+        icon="expand"
+        label="Expand all"
         onClick={() => {
           menu.close();
           onExpandAll();
         }}
-      >
-        Expand all
-      </button>
-      <button
-        type="button"
+      />
+      <MenuItem
+        icon="collapse"
+        label="Collapse all"
         onClick={() => {
           menu.close();
           onCollapseAll();
         }}
-      >
-        Collapse all
-      </button>
-      <button
-        type="button"
+      />
+      <MenuItem
+        icon="refresh"
+        label="Refresh notes"
         disabled={refreshing}
         onClick={() => {
           menu.close();
           onRefresh();
         }}
-      >
-        Refresh notes
-      </button>
+      />
     </StudioContextMenu>
   );
 }

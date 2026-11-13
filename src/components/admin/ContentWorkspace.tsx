@@ -12,6 +12,7 @@ import { uploadContentMedia } from './api';
 import type { ContentEntryListItem } from '../../lib/contracts';
 import StudioFolderTree, { type StudioTreeItemRef } from './StudioFolderTree';
 import StudioMobileFiles from './StudioMobileFiles';
+import StudioShortcuts from './StudioShortcuts';
 import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
@@ -55,6 +56,41 @@ interface ContentWorkspaceProps {
   fullWidth?: boolean;
 }
 
+/** Where a history entry sits: -1 the page as loaded, 0 the phone list's
+ * own step, 1 and up a note and the notes stacked on it. */
+function studioDepthOf(state: unknown): number {
+  const value = (state ?? {}) as {
+    studioNote?: string;
+    studioList?: boolean;
+    studioDepth?: number;
+  };
+  if (value.studioNote) return value.studioDepth ?? 1;
+  return value.studioList ? 0 : -1;
+}
+
+const AUTO_NAMED_KEY = 'oddava.studio.autoNamed';
+
+/** Composed notes still waiting to be named from their title. */
+function readAutoNamed(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(AUTO_NAMED_KEY) ?? '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAutoNamed(ids: string[]) {
+  try {
+    if (ids.length) localStorage.setItem(AUTO_NAMED_KEY, JSON.stringify(ids));
+    else localStorage.removeItem(AUTO_NAMED_KEY);
+  } catch {
+    // Private mode or storage off: the name just waits for this visit.
+  }
+}
+
 export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [query, setQuery] = useState('');
   const [activeFolder, setActiveFolder] = useState('');
@@ -66,11 +102,18 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageEdit, setImageEdit] = useState<ImageEditRequest | null>(null);
 
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
   const [sessionRestored, setSessionRestored] = useState(false);
+  /**
+   * The last session's note has been reopened (or there was none to reopen).
+   * Phone history waits for this: the marker a reload keeps names a note
+   * that is not open yet, and must not read as a note screen that ended.
+   */
+  const [restoreDone, setRestoreDone] = useState(false);
 
   const commandsRef = useRef<EditorCommands | null>(null);
   // How the active surface takes focus, registered by the surface itself.
@@ -83,6 +126,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // beside it, and the shell tracks the visual viewport so the format bar
   // stays above the keyboard.
   const phone = useMediaQuery(PHONE_QUERY);
+  const standalone = useMediaQuery('(display-mode: standalone)');
   const keyboardOpen = useVisualViewportHeight(phone);
 
   const reportError = useCallback((message: string) => setError(message), []);
@@ -211,7 +255,16 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // Swipe in from the left edge for the file drawer, swipe it away to dismiss.
   // Off while a dialog owns the screen, so its own gestures stay unambiguous.
   useDrawerSwipe({
-    enabled: phone && !paletteOpen && !imageDialogOpen,
+    // With no note open the list is the screen, not a drawer to swipe away.
+    // In a browser tab the platform's own back gesture already returns to
+    // the list (see the history entry below); this one is for the installed
+    // app, which has none.
+    enabled:
+      phone &&
+      standalone &&
+      Boolean(openId) &&
+      !paletteOpen &&
+      !imageDialogOpen,
     open: !session.sidebarCollapsed,
     drawer: sidebarRef,
     scrim: scrimRef,
@@ -285,9 +338,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     });
     const target = stored.lastOpenId;
     if (target && entries.some((entry) => entry.id === target)) {
-      void openNote(target).finally(() => setSessionRestored(true));
+      void openNote(target).finally(() => {
+        setSessionRestored(true);
+        setRestoreDone(true);
+      });
     } else {
       setSessionRestored(true);
+      setRestoreDone(true);
     }
   }, [collection, entries, openNote, restoreTabs]);
 
@@ -328,8 +385,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         (candidate.parentId ?? '') === entry.folder,
     );
     setActiveFolder(folderNode ? folderNode.id : entry.folder);
-    void openNote(entry.id, entry.folder, options);
-    if (window.matchMedia(PHONE_QUERY).matches) setSidebarCollapsed(true);
+    const onPhone = window.matchMedia(PHONE_QUERY).matches;
+    // On a phone a note opens to be read; the keyboard comes when you tap
+    // into it, not with every note you look at.
+    void openNote(entry.id, entry.folder, { ...options, focus: !onPhone });
+    if (onPhone) setSidebarCollapsed(true);
   }
 
   function goThroughHistory(direction: -1 | 1) {
@@ -367,6 +427,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           title: entry.title,
           folder: entry.folder,
           href: entry.href,
+          icon: entry.icon,
           insert: entry.title
             ? `[[${target}|${entry.title}]]`
             : `[[${target}]]`,
@@ -408,6 +469,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       if (event.key === 'Escape' && phone && !session.sidebarCollapsed) {
         event.preventDefault();
         setSidebarCollapsed(true);
+        return;
+      }
+      if (mod && event.key === '/') {
+        event.preventDefault();
+        setShortcutsOpen((open) => !open);
         return;
       }
       if (mod && (event.key === 'k' || event.key === 'p')) {
@@ -519,6 +585,13 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       hint: shortcut('\\'),
       run: () => patchSession({ sidebarCollapsed: !session.sidebarCollapsed }),
     },
+    {
+      id: 'shortcuts',
+      title: 'Keyboard shortcuts',
+      icon: 'keyboard',
+      hint: shortcut('/'),
+      run: () => setShortcutsOpen(true),
+    },
   ];
   if (openId) {
     paletteCommands.push(
@@ -581,12 +654,219 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Render --------------------------------------------------------------
 
-  const sidebarVisible = !session.sidebarCollapsed;
+  // On a phone with no note open the list is the home screen: nothing to
+  // close it to, so it stays up whatever the saved state says.
+  const sidebarVisible = !session.sidebarCollapsed || (phone && !openId);
+  const [noteActionsRequest, setNoteActionsRequest] = useState(0);
+  const [iconPickerRequest, setIconPickerRequest] = useState(0);
+
+  // On a phone the list and the note are two screens, and going from one to
+  // the other is navigation: the note gets a history entry, so the system's
+  // back — Android's button, Safari's edge swipe — returns to the list
+  // rather than leaving Studio.
+  //
+  // Each entry carries the note and its depth — how many notes sit between
+  // it and the list. A note opened from another (a [[link]], the palette)
+  // stacks on top, so back returns to the note you came from, as Notion and
+  // Craft do; a note that changes its own id (a rename) replaces its entry;
+  // and a note screen that ends any way but back (deleted, swiped away)
+  // unwinds all of its entries, so a later back never lands on a step that
+  // changes nothing. The marker survives a reload, so nothing acts on it
+  // until the session has restored the note it names.
+  const noteScreen = phone && Boolean(openId) && !sidebarVisible;
+  const entryIds = useMemo(
+    () => new Set(entries.map((entry) => entry.id)),
+    [entries],
+  );
+  const entryIdsRef = useRef(entryIds);
+  entryIdsRef.current = entryIds;
+  /** The note a back or forward is opening; its entry is already current. */
+  const arriving = useRef<string | null>(null);
+  /** A back that only closed a sheet, undone; its forward is not news. */
+  const swallowPop = useRef(false);
+  /** A history.go() back to the list is under way. */
+  const unwinding = useRef(false);
+  /**
+   * The depth of the current entry, to tell a back from a forward: the page
+   * as it loaded is -1, the list's own step 0, a note its count above that.
+   * The list has a step of its own so that Back on it has something to
+   * close — a sheet, a dialog — before it leaves Studio.
+   */
+  const lastDepth = useRef(-1);
+  useEffect(() => {
+    if (!phone || !restoreDone) return;
+    const state = history.state ?? {};
+    const marked: string | undefined = state.studioNote;
+    const depth = studioDepthOf(state);
+    lastDepth.current = depth;
+    if (!noteScreen && depth < 0) {
+      history.pushState({ ...state, studioList: true, studioDepth: 0 }, '');
+      lastDepth.current = 0;
+      return;
+    }
+    if (noteScreen) {
+      // A note still on its way in: its step is taken when it arrives, not
+      // for the one it replaces.
+      if (busyKey?.startsWith('open-') && busyKey !== `open-${openId}`) return;
+      if (arriving.current) {
+        if (arriving.current === openId) arriving.current = null;
+        return;
+      }
+      if (!marked) {
+        history.pushState({ ...state, studioNote: openId, studioDepth: 1 }, '');
+        lastDepth.current = 1;
+      } else if (
+        marked !== openId &&
+        // The same note under a new name is not somewhere new.
+        busyKey !== `rename-${marked}` &&
+        entryIdsRef.current.has(marked)
+      ) {
+        history.pushState(
+          { ...state, studioNote: openId, studioDepth: depth + 1 },
+          '',
+        );
+        lastDepth.current = depth + 1;
+      } else if (marked !== openId)
+        history.replaceState({ ...state, studioNote: openId }, '');
+    } else if (marked && !unwinding.current) {
+      unwinding.current = true;
+      history.go(-depth);
+    }
+  }, [phone, restoreDone, noteScreen, openId, busyKey]);
+  useEffect(() => {
+    if (!phone) return;
+    const onPop = (event: PopStateEvent) => {
+      unwinding.current = false;
+      if (swallowPop.current) {
+        swallowPop.current = false;
+        return;
+      }
+      // Back with something on top — a sheet, a dialog, a popover, a menu —
+      // closes that, as it does in any app: Escape closes it, and the step
+      // back is taken forward again. Only a step that left a note can be
+      // retaken; a forward gesture is let through.
+      const left = studioDepthOf(event.state);
+      const modal = document.querySelector(
+        '[role="alertdialog"], .studio-sheet-layer.is-open [role="dialog"], .studio-palette-overlay [role="dialog"], .studio-editor-popover, .studio-menu[role="menu"]',
+      );
+      if (modal && left < lastDepth.current) {
+        modal.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        );
+        swallowPop.current = true;
+        // If the forward never lands, a later back is not swallowed by it.
+        window.setTimeout(() => (swallowPop.current = false), 600);
+        history.forward();
+        return;
+      }
+      const from = lastDepth.current;
+      lastDepth.current = left;
+      const target: string | undefined = event.state?.studioNote;
+      if (target && entryIdsRef.current.has(target)) {
+        arriving.current = target;
+        setSidebarCollapsed(true);
+        void openNote(target, undefined, { focus: false }).finally(() => {
+          // Opened or failed, the arrival is over either way.
+          if (arriving.current === target) arriving.current = null;
+        });
+        return;
+      }
+      setSidebarCollapsed(false);
+      if (left < 0) {
+        // Back past the list's own step: leaving Studio, which one more step
+        // does. Arriving here from a note instead (one restored straight
+        // after a load, with no list step under it) puts that step back.
+        if (from === 0) history.back();
+        else {
+          history.pushState(
+            { ...event.state, studioList: true, studioDepth: 0 },
+            '',
+          );
+          lastDepth.current = 0;
+        }
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [phone, setSidebarCollapsed, openNote]);
+  /** The note's "‹ Notes": all the way back to the list, through history. */
+  const showList = useCallback(() => {
+    const depth: number = history.state?.studioDepth || 1;
+    if (phone && history.state?.studioNote) history.go(-depth);
+    else setSidebarCollapsed(false);
+  }, [phone, setSidebarCollapsed]);
+  // A note started from compose is named by what it turns out to be about:
+  // when you leave it, its file takes the name of its title line, so the
+  // list, its address and its title agree — not "untitled 3" for good.
+  const autoNamed = useRef<Map<string, { body: string; seen: boolean }>>();
+  // Kept in this browser too, so a reload (or iOS closing the tab) before
+  // the note is left does not leave it "untitled" for good.
+  autoNamed.current ??= new Map(
+    readAutoNamed().map((id) => [id, { body: '', seen: false }]),
+  );
+  const writing = Boolean(openId) && (!phone || noteScreen);
+  const composing = openId ? autoNamed.current!.get(openId) : undefined;
+  if (composing) {
+    composing.body = body;
+    // Only a note that has been on screen can be left; one still opening
+    // (the list not yet out of the way) is not finished being written.
+    if (writing) composing.seen = true;
+  }
+  useEffect(() => {
+    const pending = autoNamed.current!;
+    for (const [id, note] of pending) {
+      if (!note.seen || (id === openId && writing)) continue;
+      pending.delete(id);
+      writeAutoNamed([...pending.keys()]);
+      const title = /^#[ \t]+(.+?)[ \t]*$/m.exec(note.body)?.[1];
+      const entry = entries.find((candidate) => candidate.id === id);
+      const slug = title ? gardenSlug(title) : '';
+      // A title that is empty, or whose name another note already has,
+      // leaves the file as it is; nothing is ever renamed over.
+      if (!entry || !slug || entries.some((candidate) => candidate.id === slug))
+        continue;
+      void mutations.renameEntryInline(entry, title!);
+    }
+  }, [openId, writing]);
+
+  // Arriving on a note, focus goes to its way back: somewhere a screen
+  // reader can start from, that does not raise the keyboard.
+  useEffect(() => {
+    if (!noteScreen) return;
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (
+        active &&
+        active !== document.body &&
+        !sidebarRef.current?.contains(active)
+      )
+        return;
+      document
+        .querySelector<HTMLElement>('.studio-bar__back')
+        ?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [noteScreen, openId]);
   useEffect(() => {
     if (!phone || !sidebarVisible) return;
     const focused = document.activeElement;
-    if (focused instanceof HTMLElement && focused.closest('.studio-workbench'))
-      focused.blur();
+    const fromNote =
+      focused instanceof HTMLElement && focused.closest('.studio-workbench');
+    if (fromNote) focused.blur();
+    // Coming back from a note, or after one was deleted out from under the
+    // focus: it lands on the list, not on the page body.
+    if (fromNote || focused === document.body) {
+      // Back on the list, focus lands on the open note's row — where you
+      // came from — or the list's heading, so a screen reader says where
+      // it now is.
+      requestAnimationFrame(() =>
+        (
+          sidebarRef.current?.querySelector<HTMLElement>(
+            '.studio-mfiles__open[aria-current="true"]',
+          ) ?? sidebarRef.current?.querySelector<HTMLElement>('h2[tabindex]')
+        )?.focus({ preventScroll: true }),
+      );
+    }
   }, [phone, sidebarVisible]);
 
   const sidebarStyle =
@@ -611,7 +891,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       >
         {phone && (
           <div
-            className={`studio-scrim ${sidebarVisible ? 'is-open' : ''}`}
+            className={`studio-scrim ${sidebarVisible ? 'is-open' : ''} ${
+              openId ? '' : 'is-home'
+            }`}
             ref={scrimRef}
             aria-hidden="true"
             onClick={() => setSidebarCollapsed(true)}
@@ -621,7 +903,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           <section
             className={`studio-sidebar ${phone ? 'studio-sidebar--drawer' : ''} ${
               sidebarVisible ? 'is-open' : ''
-            }`}
+            } ${phone && !openId ? 'is-home' : ''}`}
             ref={sidebarRef}
             aria-label="Files explorer"
             aria-hidden={phone && !sidebarVisible}
@@ -668,6 +950,18 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onQueryChange={setQuery}
                 onRefresh={refreshFiles}
                 onRequestClose={() => setSidebarCollapsed(true)}
+                home={!openId}
+                noteActionsRequest={noteActionsRequest}
+                onChangeIcon={() => setIconPickerRequest((n) => n + 1)}
+                onQuickCreate={(folder) => {
+                  // A blank page whose title line waits to be written,
+                  // the way a notes app starts one.
+                  const id = mutations.uniqueItemId('untitled');
+                  autoNamed.current!.set(id, { body: '', seen: false });
+                  writeAutoNamed([...autoNamed.current!.keys()]);
+                  return mutations.createEntryInFolder(folder, id, '# \n');
+                }}
+                publishedUrl={publishedUrl}
                 onNotice={setNotice}
                 onSelectFolder={setActiveFolder}
                 onEditEntry={editEntry}
@@ -869,7 +1163,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   commandsRef={commandsRef}
                   focusRef={focusRef}
                   suggestions={suggestions}
-                  onShowSidebar={() => setSidebarCollapsed(false)}
+                  onShowSidebar={showList}
+                  onNoteActions={() => setNoteActionsRequest((n) => n + 1)}
+                  iconPickerRequest={iconPickerRequest}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {
                     doc.setBody(value);
@@ -909,6 +1205,10 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         </div>
       )}
 
+      <StudioShortcuts
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
       <StudioCommandPalette
         open={paletteOpen}
         entries={entries}

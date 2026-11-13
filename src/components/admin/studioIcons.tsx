@@ -5,6 +5,10 @@
 const PATHS = {
   'chevron-right': <path d="m8 5 5 5-5 5" />,
   'chevron-left': <path d="m12 5-5 5 5 5" />,
+  'chevron-down': <path d="m5 8 5 5 5-5" />,
+  doc: (
+    <path d="M6 3.75h5.25L15 7.5v7.75a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.75a1 1 0 0 1 1-1zM11 3.75V7.5h4M7.75 11h4.5M7.75 13.75h3" />
+  ),
   close: <path d="m5.5 5.5 9 9m0-9-9 9" />,
   plus: <path d="M10 4.5v11M4.5 10h11" />,
   check: <path d="m4.75 10.5 3.5 3.5 7-7.5" />,
@@ -57,6 +61,113 @@ const PATHS = {
   ),
   'sign-out': (
     <path d="M8 16.25H5a1.25 1.25 0 0 1-1.25-1.25V5A1.25 1.25 0 0 1 5 3.75h3M12.75 13.5 16.25 10l-3.5-3.5M16 10H8" />
+  ),
+  // --- Blocks: what the slash menu, Turn into and the phone's bar make ---
+  text: <path d="M5 5.25h10M10 5.25v10" />,
+  'list-bullet': (
+    <>
+      <path d="M8.5 6h7.5M8.5 10h7.5M8.5 14h7.5" />
+      <circle className="is-fill" cx="4.75" cy="6" r="1.1" />
+      <circle className="is-fill" cx="4.75" cy="10" r="1.1" />
+      <circle className="is-fill" cx="4.75" cy="14" r="1.1" />
+    </>
+  ),
+  'list-ordered': (
+    <path d="M9 6.25h7M9 13.25h7M4.25 4.75l1.25-.75v4.25M4 11.75c.15-.6.6-.95 1.2-.95.65 0 1.1.4 1.1 1 0 .95-2.3 1.65-2.3 3.2h2.4" />
+  ),
+  task: (
+    <>
+      <rect x="3.75" y="3.75" width="12.5" height="12.5" rx="3" />
+      <path d="m7 10.25 2 2 4-4.5" />
+    </>
+  ),
+  quote: <path d="M4.75 4.75v10.5M8.5 6.5h7M8.5 10h7M8.5 13.5h4.5" />,
+  code: <path d="M7.5 6.5 4 10l3.5 3.5M12.5 6.5 16 10l-3.5 3.5" />,
+  table: (
+    <>
+      <rect x="3" y="4" width="14" height="12" rx="2" />
+      <path d="M3 8.25h14M3 12.25h14M10 8.25V16" />
+    </>
+  ),
+  divider: <path d="M3.5 10h13M6.5 5.75h7M6.5 14.25h7" />,
+  video: (
+    <>
+      <rect x="2.75" y="4.5" width="14.5" height="11" rx="2.5" />
+      <path d="M8.75 7.75v4.5L12.5 10z" />
+    </>
+  ),
+  'note-link': (
+    <path d="M4.5 4.75H3v10.5h1.5M8.75 4.75h-1.5v10.5h1.5M11.25 4.75h1.5v10.5h-1.5M15.5 4.75H17v10.5h-1.5" />
+  ),
+  link: (
+    <path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.3-2.3a3 3 0 0 0-4.2-4.2l-1 1M11.5 8.5a3 3 0 0 0-4.2 0L5 10.8a3 3 0 0 0 4.2 4.2l1-1" />
+  ),
+  calendar: (
+    <>
+      <rect x="3.5" y="4.5" width="13" height="12" rx="2" />
+      <path d="M3.5 8.5h13M7 3v3M13 3v3" />
+    </>
+  ),
+  // --- Actions ---
+  copy: (
+    <>
+      <rect x="7" y="7" width="9" height="9" rx="1.75" />
+      <path d="M13 7V5.25A1.25 1.25 0 0 0 11.75 4h-6.5A1.25 1.25 0 0 0 4 5.25v6.5A1.25 1.25 0 0 0 5.25 13H7" />
+    </>
+  ),
+  'arrow-up': <path d="M10 15.5v-11M5.5 9 10 4.5 14.5 9" />,
+  'arrow-down': <path d="M10 4.5v11M5.5 11l4.5 4.5 4.5-4.5" />,
+  columns: (
+    <>
+      <rect x="3" y="4" width="14" height="12" rx="2" />
+      <path d="M10 4v12" />
+    </>
+  ),
+  'columns-3': (
+    <>
+      <rect x="3" y="4" width="14" height="12" rx="2" />
+      <path d="M7.75 4v12M12.25 4v12" />
+    </>
+  ),
+  'column-wide-left': (
+    <>
+      <rect x="3" y="4" width="14" height="12" rx="2" />
+      <path d="M12 4v12" />
+    </>
+  ),
+  'column-wide-right': (
+    <>
+      <rect x="3" y="4" width="14" height="12" rx="2" />
+      <path d="M8 4v12" />
+    </>
+  ),
+  stack: (
+    <>
+      <rect x="4" y="3.75" width="12" height="5.5" rx="1.5" />
+      <rect x="4" y="10.75" width="12" height="5.5" rx="1.5" />
+    </>
+  ),
+  hash: <path d="M8.25 4 6.75 16M13.25 4l-1.5 12M4.5 7.75h11.5M4 12.25h11.5" />,
+  expand: <path d="m6.5 7.75 3.5-3.5 3.5 3.5M6.5 12.25l3.5 3.5 3.5-3.5" />,
+  collapse: <path d="m6.5 4.25 3.5 3.5 3.5-3.5M6.5 15.75l3.5-3.5 3.5 3.5" />,
+  pencil: <path d="M12.5 4.5 15.5 7.5 7.5 15.5H4.5v-3zM10.75 6.25l3 3" />,
+  folder: (
+    <path d="M3.5 6.25c0-.69.56-1.25 1.25-1.25h3.5l1.5 1.75h5.5c.69 0 1.25.56 1.25 1.25v6.75c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25z" />
+  ),
+  'turn-into': <path d="M4.5 7.25h11l-3-3M15.5 12.75h-11l3 3" />,
+  undo: <path d="M7.25 5 4 8.25l3.25 3.25M4.5 8.25h7.25a4 4 0 0 1 0 8H9.5" />,
+  redo: (
+    <path d="M12.75 5 16 8.25l-3.25 3.25M15.5 8.25H8.25a4 4 0 0 0 0 8h2.25" />
+  ),
+  indent: <path d="M4 4.75h12M9.5 10H16M4 15.25h12M4 7.75 6.75 10 4 12.25" />,
+  outdent: (
+    <path d="M4 4.75h12M9.5 10H16M4 15.25h12M6.75 7.75 4 10l2.75 2.25" />
+  ),
+  keyboard: (
+    <>
+      <rect x="2.75" y="3.25" width="14.5" height="9.5" rx="1.75" />
+      <path d="M6 6.5h.01M8.67 6.5h.01M11.33 6.5h.01M14 6.5h.01M6.75 9.5h6.5M7.5 15.25 10 17.25l2.5-2" />
+    </>
   ),
 } as const;
 

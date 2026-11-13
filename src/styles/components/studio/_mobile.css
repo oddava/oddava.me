@@ -46,6 +46,24 @@
     width: 32px;
     height: 36px;
   }
+
+  .admin-page .studio-table-tools button {
+    min-height: var(--st-touch);
+  }
+}
+
+/* A phone's grip lives in the page margin: as wide as the margin, as tall
+   as a fingertip, and quiet until the block is touched. */
+@media (max-width: 720px) {
+  .admin-page .studio-rich-handle {
+    padding-top: 0;
+  }
+
+  .admin-page .studio-rich-handle button {
+    width: 24px;
+    height: var(--st-touch);
+    margin-top: -8px;
+  }
 }
 
 @media (max-width: 900px) and (min-width: 721px) {
@@ -132,6 +150,18 @@
     transform: translate3d(0, 0, 0);
   }
 
+  /* No note open: the list is the screen, edge to edge, like a notes app's
+     root list rather than a drawer over nothing. */
+  .admin-page .studio-sidebar.is-home {
+    width: 100%;
+    padding-right: env(safe-area-inset-right);
+    border-right: 0;
+  }
+
+  .admin-page .studio-scrim.is-home {
+    display: none;
+  }
+
   /* Under a finger, the drawer follows it frame by frame. */
   .admin-page .studio-sidebar.is-dragging {
     transition: none;
@@ -183,9 +213,10 @@
     margin: 0;
   }
 
-  /* The page keeps a gutter on the left for the one grip a phone shows. */
+  /* Even margins: the text column sits in the middle of the screen, and
+     the one grip a phone shows floats in the left margin. */
   .admin-page .studio-rich-scroll {
-    padding: 24px 20px 96px 40px;
+    padding: 20px 24px 96px;
     scrollbar-gutter: auto;
   }
 
@@ -194,8 +225,8 @@
   }
 
   .admin-page .studio-rich-drop {
-    right: 20px;
-    left: 40px;
+    right: 24px;
+    left: 24px;
   }
 
   /* Typing: the bar shrinks to the title and Done, and the page gets the
@@ -337,6 +368,14 @@
 
 .admin-page .studio-mfiles__icon {
   padding: 0;
+}
+
+/* The root of the list takes a large title, the way a notes app's home
+   screen does; a subfolder keeps the compact one beside its back arrow. */
+.admin-page .studio-mfiles__title.is-large {
+  padding-left: 10px;
+  font-size: 24px;
+  letter-spacing: -0.01em;
 }
 
 .admin-page .studio-mfiles__word {
@@ -691,6 +730,7 @@
   border-radius: var(--st-radius-float) var(--st-radius-float) 0 0;
   outline: none;
   background: var(--st-raised);
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.7);
   color: var(--st-text);
   transform: translate3d(0, 100%, 0);
   pointer-events: auto;
@@ -763,7 +803,8 @@
   overscroll-behavior: contain;
 }
 
-.admin-page .studio-sheet__body > button {
+.admin-page .studio-sheet__body > button,
+.admin-page .studio-sheet__body > a.studio-sheet__link {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -781,7 +822,8 @@
   transition: background-color var(--st-fast) var(--st-ease);
 }
 
-.admin-page .studio-sheet__body > button:active:not(:disabled) {
+.admin-page .studio-sheet__body > button:active:not(:disabled),
+.admin-page .studio-sheet__body > a.studio-sheet__link:active {
   background: var(--st-press);
 }
 
@@ -846,5 +888,479 @@
   .admin-page .studio-sheet,
   .admin-page .studio-sheet__scrim {
     transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Phone navigation: two screens, the list and the note.
+
+   The list is not a drawer over the note but a screen of its own, edge to
+   edge; opening a note slides it away, and the note's "‹ Notes" (or a swipe
+   in from the left edge, the platform's own back gesture) brings it back.
+   One way in, one way back, no half-covered page behind a dim.
+--------------------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .admin-page .studio-sidebar {
+    width: 100%;
+    padding-right: env(safe-area-inset-right);
+    border-right: 0;
+  }
+
+  .admin-page .studio-scrim {
+    display: none;
+  }
+
+  /* The note, as the list arrives over it, drifts back a little — the
+     depth cue of a navigation stack, without a dim. */
+  .admin-page .studio-workbench {
+    transition: transform var(--st-slow) var(--st-ease-move);
+  }
+
+  .admin-page .studio-grid:not(.studio-grid--collapsed) .studio-workbench {
+    transform: translate3d(28%, 0, 0);
+  }
+
+  /* --- The note's bar ---------------------------------------------------- */
+
+  .admin-page .studio-bar__back {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0;
+    min-height: var(--st-touch);
+    padding: 0 10px 0 2px;
+    border: 0;
+    border-radius: var(--st-radius);
+    background: transparent;
+    color: var(--st-accent-text);
+    font: inherit;
+    font-size: var(--st-size-lg);
+    cursor: pointer;
+  }
+
+  .admin-page .studio-bar__back .studio-glyph {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.75;
+  }
+
+  .admin-page .studio-bar__back:active {
+    opacity: 0.6;
+  }
+
+  .admin-page .studio-bar__more {
+    width: var(--st-touch);
+    height: var(--st-touch);
+  }
+
+  /* The name moves into the bar once the page's own title has scrolled
+     under it — until then the page says it, once. */
+  .admin-page .studio-bar__title strong {
+    font-weight: 700;
+    transition: opacity var(--st-base) var(--st-ease);
+  }
+
+  .admin-page .studio-editor:not(.is-past-title) .studio-bar__title strong {
+    opacity: 0;
+  }
+
+  /* --- The list ---------------------------------------------------------- */
+
+  .admin-page .studio-mfiles__bar {
+    min-height: 52px;
+    padding: 0 6px 0 4px;
+  }
+
+  .admin-page .studio-mfiles__title.is-large {
+    padding: 6px 12px 0;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .admin-page .studio-mfiles__back {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    max-width: 40%;
+    min-height: var(--st-touch);
+    padding: 0 8px 0 2px;
+    border: 0;
+    border-radius: var(--st-radius);
+    background: transparent;
+    color: var(--st-accent-text);
+    font: inherit;
+    font-size: var(--st-size-lg);
+    cursor: pointer;
+  }
+
+  .admin-page .studio-mfiles__back span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-page .studio-mfiles__back .studio-glyph {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.75;
+  }
+
+  .admin-page .studio-mfiles__back:active {
+    opacity: 0.6;
+  }
+
+  /* In a subfolder the name sits centred between back and ⋯, like any
+     pushed screen; the root's large title stays left. */
+  .admin-page .studio-mfiles__title:not(.is-large) {
+    text-align: center;
+  }
+
+  /* A filled field with its glyph, the platform's search look. */
+  .admin-page .studio-mfiles__search {
+    padding: 6px 16px 10px;
+  }
+
+  .admin-page .studio-mfiles__search > .studio-glyph {
+    position: absolute;
+    top: 50%;
+    left: 28px;
+    width: 18px;
+    height: 18px;
+    margin-top: -11px;
+    color: var(--st-text-3);
+    pointer-events: none;
+  }
+
+  .admin-page .studio-mfiles__search input.admin-input {
+    min-height: 40px;
+    padding-left: 40px;
+    border: 0;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+  }
+
+  .admin-page .studio-mfiles__search input.admin-input::placeholder {
+    color: var(--st-text-3);
+  }
+
+  .admin-page .studio-mfiles__clear {
+    top: 4px;
+    right: 14px;
+  }
+
+  /* Rows: the ⋯ stays (a tap is the one way to the actions that is not a
+     gesture) but recedes until the row is the one being looked at. */
+  .admin-page .studio-mfiles__more {
+    color: var(--st-text-4);
+  }
+
+  .admin-page .studio-mfiles__item.is-active .studio-mfiles__more {
+    color: var(--st-text-3);
+  }
+
+  .admin-page .studio-mfiles__list {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* New note: a compose button where the thumb rests. */
+  .admin-page .studio-mfiles__compose {
+    position: absolute;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 0;
+    border-radius: 18px;
+    background: var(--st-accent-text);
+    color: var(--st-on-accent);
+    box-shadow:
+      0 8px 24px rgb(0 0 0 / 0.6),
+      0 2px 6px rgb(0 0 0 / 0.5);
+    cursor: pointer;
+    transition: transform var(--st-fast) var(--st-ease);
+  }
+
+  .admin-page .studio-mfiles__compose .studio-glyph {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.75;
+  }
+
+  .admin-page .studio-mfiles__compose:active {
+    transform: scale(0.94);
+  }
+}
+
+/* --- Sheets: grouped actions ---------------------------------------------- */
+
+/* The grip and the heading are one drag target, tall enough for a thumb. */
+.admin-page .studio-sheet__drag {
+  flex: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.admin-page .studio-sheet__drag:active {
+  cursor: grabbing;
+}
+
+.admin-page .studio-sheet__grip {
+  padding: 10px 0 6px;
+}
+
+.admin-page .studio-sheet__grip span {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text-primary) 28%, transparent);
+}
+
+.admin-page .studio-sheet__head {
+  padding: 2px 20px 14px;
+  border-bottom: 0;
+}
+
+.admin-page .studio-sheet__body {
+  gap: 12px;
+  padding: 0 12px 16px;
+}
+
+/* Grouped, the body is a column of cards that never shrink: a long list
+   scrolls rather than squeezing a card shut over its own rows. */
+.admin-page .studio-sheet__body:has(> .studio-sheet__group) {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-page .studio-sheet__group {
+  display: grid;
+  flex: none;
+  overflow: hidden;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+}
+
+.admin-page .studio-sheet__action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--st-text);
+  font: inherit;
+  font-size: var(--st-size-lg);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--st-fast) var(--st-ease);
+}
+
+/* Hairlines between rows start where the text does, not at the card edge. */
+.admin-page .studio-sheet__action + .studio-sheet__action {
+  background-image: linear-gradient(var(--st-line), var(--st-line));
+  background-position: 50px 0;
+  background-repeat: no-repeat;
+  background-size: calc(100% - 50px) 1px;
+}
+
+.admin-page .studio-sheet__action:active:not(:disabled) {
+  background-color: var(--st-press);
+}
+
+.admin-page .studio-sheet__action:disabled {
+  color: var(--st-text-4);
+  cursor: default;
+}
+
+.admin-page .studio-sheet__action .studio-glyph {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--st-text-2);
+}
+
+.admin-page .studio-sheet__action.is-danger,
+.admin-page .studio-sheet__action.is-danger .studio-glyph {
+  color: var(--st-danger);
+}
+
+@media (hover: hover) {
+  .admin-page .studio-sheet__action:hover:not(:disabled) {
+    background-color: var(--st-hover);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page .studio-workbench {
+    transition: none;
+  }
+}
+
+/* Reading, a phone's margin is empty; the grip arrives with the caret. */
+@media (max-width: 720px) {
+  .admin-page .studio-rich-scroll:not(:focus-within) .studio-rich-handle {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* --- Round 4: list polish ------------------------------------------------- */
+
+@media (max-width: 720px) {
+  /* One black for both screens, so the seam between them disappears. */
+  .admin-page .studio-sidebar {
+    background: var(--st-canvas);
+  }
+
+  /* A pushed screen's name sits at the true centre, whatever the widths
+     of back and the actions either side of it. */
+  .admin-page .studio-mfiles__bar:has(.studio-mfiles__back) {
+    position: relative;
+  }
+
+  .admin-page
+    .studio-mfiles__bar:has(.studio-mfiles__back)
+    .studio-mfiles__title {
+    position: absolute;
+    left: 50%;
+    max-width: 44%;
+    padding: 0;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .admin-page
+    .studio-mfiles__bar:has(.studio-mfiles__back)
+    .studio-mfiles__word {
+    margin-left: auto;
+  }
+
+  .admin-page
+    .studio-mfiles__bar:has(.studio-mfiles__back):not(
+      :has(.studio-mfiles__word)
+    )
+    .studio-mfiles__icon {
+    margin-left: auto;
+  }
+
+  .admin-page .studio-mfiles__title:focus {
+    outline: none;
+  }
+
+  /* "Browse" beside a note that has notes inside it. */
+  .admin-page .studio-mfiles__into {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--st-touch);
+    border: 0;
+    border-radius: var(--st-radius);
+    background: transparent;
+    color: var(--st-text-3);
+    cursor: pointer;
+  }
+
+  .admin-page .studio-mfiles__into:active {
+    background: var(--st-press);
+  }
+
+  /* Compose: quiet until pressed — the accent is the pencil, not a slab. */
+  .admin-page .studio-mfiles__compose {
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--st-line-strong);
+    border-radius: 16px;
+    background: var(--st-raised);
+    color: var(--st-accent-text);
+  }
+
+  /* Typing: the back button keeps its name for a screen reader, not its
+     width on screen. */
+  .admin-page .studio.is-keyboard-open .studio-bar__back span {
+    display: inline;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The note's icon arrives with its name, not before the page scrolls. */
+  .admin-page .studio-bar .studio-note-icon {
+    transition: opacity var(--st-base) var(--st-ease);
+  }
+
+  .admin-page
+    .studio-editor:not(.is-past-title)
+    .studio-bar
+    .studio-note-icon:not(:focus-visible) {
+    opacity: 0;
+  }
+}
+
+/* Two actions side by side: the reorder pair, one row instead of two. */
+.admin-page .studio-sheet__split {
+  display: grid;
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.admin-page .studio-sheet__split > .studio-sheet__action {
+  justify-content: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+}
+
+/* The sheet runs on below the screen's edge, so lifting it never shows a
+   gap under it. */
+.admin-page .studio-sheet::after {
+  position: absolute;
+  top: 100%;
+  right: -1px;
+  left: -1px;
+  height: 80px;
+  border-inline: 1px solid var(--st-line-strong);
+  background: var(--st-raised);
+  content: '';
+}
+
+/* The frame sits on the part of the page that is on screen: when iOS pans
+   the layout under the keyboard, it moves down with the view. */
+@media (max-width: 720px) {
+  .admin-page .admin-shell.admin-shell--full {
+    translate: 0 var(--studio-vv-top, 0px);
+  }
+}
+
+/* The sheet layer covers the visible viewport, not the layout one: with the
+   keyboard up, a sheet's name field rises above it instead of under it. */
+@media (max-width: 720px) {
+  .admin-page .studio-sheet-layer {
+    top: var(--studio-vv-top, 0px);
+    bottom: auto;
+    height: var(--studio-vh, 100dvh);
+  }
+
+  .admin-page .studio-sheet {
+    max-height: calc(var(--studio-vh, 100dvh) * 0.85);
+  }
+
+  /* A focus ring inside the button: at the screen's edge an outer ring is
+     cut off. */
+  .admin-page .studio-bar :is(button, a):focus-visible {
+    outline-offset: -2px;
   }
 }

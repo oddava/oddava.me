@@ -12,7 +12,10 @@ import {
 } from './useStudioRichSuggestions';
 import type { ImageEditRequest } from './StudioImageDialog';
 import StudioSlashMenu from './StudioSlashMenu';
-import StudioInlineToolbar from './StudioInlineToolbar';
+import StudioInlineToolbar, {
+  focusFormattingToolbar,
+} from './StudioInlineToolbar';
+import StudioKeyboardBar from './StudioKeyboardBar';
 import StudioBlockHandle from './StudioBlockHandle';
 import StudioRichBlockMenu from './StudioRichBlockMenu';
 import StudioImageMenu from './StudioImageMenu';
@@ -51,6 +54,7 @@ import {
   pointAt,
   sideDropStyle,
   toolbarPoint,
+  topBlock,
   type Point,
 } from './studioRichGeometry';
 import { wikiTarget } from './studioRichSuggestions';
@@ -65,12 +69,52 @@ interface Props {
   suggestions: WikiSuggestion[];
   uploading: boolean;
   compact: boolean;
+  /** A phone's on-screen keyboard is up: the writing tools ride above it. */
+  keyboardOpen?: boolean;
   visible: boolean;
   onChange: (next: string) => void;
   onSave: () => void;
   uploadImage: (file: File) => Promise<string | null>;
   onRequestImage: (request?: ImageEditRequest) => void;
   onNotice: (message: string) => void;
+}
+
+/** Whether the selection's block already is what `target` would make. */
+function isBlockType(editor: Editor, target: TurnTarget): boolean {
+  switch (target.type) {
+    case 'heading':
+      return editor.isActive('heading', { level: target.depth ?? 1 });
+    case 'list':
+      return editor.isActive(target.ordered ? 'orderedList' : 'bulletList');
+    case 'task':
+      return editor.isActive('taskList');
+    case 'quote':
+      return editor.isActive('blockquote');
+    case 'code':
+      return editor.isActive('codeBlock');
+    case 'paragraph':
+      return (
+        editor.isActive('paragraph') &&
+        !editor.isActive('bulletList') &&
+        !editor.isActive('orderedList') &&
+        !editor.isActive('taskList') &&
+        !editor.isActive('blockquote')
+      );
+    default:
+      return false;
+  }
+}
+
+/** The selection's block, named as the Formatting bar's Turn into names it. */
+function currentBlockType(editor: Editor): string {
+  for (const level of [1, 2, 3, 4, 5, 6])
+    if (editor.isActive('heading', { level })) return `Heading ${level}`;
+  if (editor.isActive('taskList')) return 'To-do list';
+  if (editor.isActive('orderedList')) return 'Numbered list';
+  if (editor.isActive('bulletList')) return 'Bulleted list';
+  if (editor.isActive('blockquote')) return 'Quote';
+  if (editor.isActive('codeBlock')) return 'Code';
+  return 'Text';
 }
 
 /** One continuous editing surface: the DOM and its selection belong to ProseMirror. */
@@ -87,6 +131,19 @@ export default function StudioRichEditor(props: Props) {
   const suggestions = useStudioRichSuggestions();
   const { slash, setSlash, wiki, setWiki, slashRef, wikiRef } = suggestions;
   const [selectionPoint, setSelectionPoint] = useState<Point | null>(null);
+  // Bumped on each refresh while the phone's writing tools are up, so their
+  // enabled and pressed states follow the caret.
+  const [, setTick] = useState(0);
+  /**
+   * Where the phone's + put a "/" of its own, so a menu dismissed without a
+   * choice takes that line away again instead of leaving a stray slash.
+   */
+  const barSlash = useRef<{
+    from: number;
+    ownLine: boolean;
+    /** Where the caret was before the press, to go back to. */
+    caret: number;
+  } | null>(null);
   const menu = useStudioMenu<number>();
   const imageMenu = useStudioMenu<PMNode>();
   const imageMenuRef = useRef(imageMenu);
@@ -114,17 +171,45 @@ export default function StudioRichEditor(props: Props) {
     const { from, to, empty } = selection;
     blocks.syncHandle(editor);
     const matched = suggestions.update(editor, live.current.suggestions);
-    if (!empty && selection instanceof TextSelection && editor.isFocused)
+    const inBar = Boolean(
+      document.activeElement?.closest?.('.studio-inline-toolbar'),
+    );
+    if (
+      !empty &&
+      selection instanceof TextSelection &&
+      (editor.isFocused || inBar)
+    )
       setSelectionPoint(toolbarPoint(editor, from, to));
     else setSelectionPoint(null);
     editor.view.dom.setAttribute('aria-expanded', String(matched));
+    if (live.current.compact && live.current.keyboardOpen)
+      setTick((tick) => tick + 1);
   }
   refreshRef.current = refresh;
+
+  /**
+   * Keep the caret's line in view when the page under it gets shorter — the
+   * phone's slash panel opening, or the keyboard bar arriving.
+   */
+  function keepCaretVisible() {
+    const editor = editorRef.current;
+    const pane = scroller.current;
+    if (!editor || editor.isDestroyed || !pane || !editor.isFocused) return;
+    const caret = editor.view.coordsAtPos(editor.state.selection.head);
+    const box = pane.getBoundingClientRect();
+    if (caret.bottom > box.bottom - 16)
+      pane.scrollTop += caret.bottom - box.bottom + 32;
+    else if (caret.top < box.top + 8)
+      pane.scrollTop -= box.top - caret.top + 32;
+  }
 
   useEffect(() => {
     const pane = scroller.current;
     if (!pane) return;
-    const observer = new ResizeObserver(() => refreshRef.current());
+    const observer = new ResizeObserver(() => {
+      refreshRef.current();
+      if (live.current.compact) keepCaretVisible();
+    });
     observer.observe(pane);
     if (host.current) observer.observe(host.current);
     return () => observer.disconnect();
@@ -310,7 +395,12 @@ export default function StudioRichEditor(props: Props) {
       },
       onSelectionUpdate: () => refreshRef.current(),
       onFocus: () => refreshRef.current(),
-      onBlur: () => setSelectionPoint(null),
+      onBlur: ({ event }) => {
+        // Focus stepping into the Formatting bar (Alt+F10) keeps it up.
+        const next = (event as FocusEvent).relatedTarget as Element | null;
+        if (next?.closest?.('.studio-inline-toolbar')) return;
+        setSelectionPoint(null);
+      },
     });
     editorRef.current = editor;
     editor.commands.setContent(
@@ -391,14 +481,99 @@ export default function StudioRichEditor(props: Props) {
 
   useSuggestionAria(editorRef, slash, wiki);
 
-  function turnInto(target: TurnTarget) {
+  useEffect(() => {
+    scroller.current
+      ?.closest('.studio-editor')
+      ?.classList.remove('is-scrolled', 'is-past-title');
+  }, []);
+
+  useEffect(() => {
+    if (slash) return;
+    const placed = barSlash.current;
+    barSlash.current = null;
+    const editor = editorRef.current;
+    if (!placed || !editor || editor.isDestroyed) return;
+    const node = editor.state.doc.nodeAt(placed.from);
+    if (node?.type.name !== 'paragraph' || node.textContent !== '/') return;
+    const { head } = editor.state.selection;
+    const onLine = head > placed.from && head < placed.from + node.nodeSize;
+    const tr = placed.ownLine
+      ? editor.state.tr.delete(placed.from, placed.from + node.nodeSize)
+      : editor.state.tr.delete(placed.from + 1, placed.from + 2);
+    if (onLine) {
+      const caret = Math.min(tr.mapping.map(placed.caret), tr.doc.content.size);
+      tr.setSelection(TextSelection.near(tr.doc.resolve(caret), -1));
+    }
+    tr.setMeta('addToHistory', false);
+    editor.view.dispatch(tr);
+  }, [slash]);
+
+  /** The phone's +: the block menu at the caret, or away again. */
+  function toggleBarSlash() {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (slash) {
+      // Closing is dismissing: the effect above tidies up after the button.
+      suggestions.dismissed.current = slash.from;
+      setSlash(null);
+      editor.commands.focus();
+      return;
+    }
+    const { $from, empty } = editor.state.selection;
+    const parent = $from.parent;
+    // An empty line becomes the menu; anywhere else the menu opens on a new
+    // line under the current block, the way the desktop's + does.
+    if (empty && parent.type.name === 'paragraph' && !parent.content.size) {
+      const from = $from.before();
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          tr.setMeta('addToHistory', false);
+          return true;
+        })
+        .insertContent('/')
+        .run();
+      barSlash.current = { from, ownLine: false, caret: from + 1 };
+      return;
+    }
+    const block = topBlock(editor);
+    if (!block) return;
+    const pos = block.from + block.node.nodeSize;
+    const caret = editor.state.selection.head;
+    editor
+      .chain()
+      .focus()
+      .command(({ tr }) => {
+        tr.setMeta('addToHistory', false);
+        return true;
+      })
+      .insertContentAt(pos, {
+        type: 'paragraph',
+        content: [{ type: 'text', text: '/' }],
+      })
+      .setTextSelection(pos + 2)
+      .run();
+    barSlash.current = { from: pos, ownLine: true, caret };
+  }
+
+  /**
+   * Turn a block into another kind: the block menu's block (at `menu.key`),
+   * or — from the Formatting bar — the blocks the selection is in.
+   */
+  function turnInto(target: TurnTarget, fromSelection = false) {
     const editor = editorRef.current;
     const from = menu.key;
-    if (!editor || from === null) return;
-    editor.commands.setTextSelection(from + 1);
+    if (!editor || (!fromSelection && from === null)) return;
+    if (!fromSelection) editor.commands.setTextSelection(from! + 1);
+    if (isBlockType(editor, target)) {
+      editor.commands.focus();
+      return;
+    }
     const commands = commandsRef.current!;
     if (target.type === 'heading')
       commands.heading((target.depth ?? 1) as 1 | 2 | 3 | 4 | 5 | 6);
+    else if (target.type === 'list' && target.ordered) commands.orderedList();
     else if (target.type === 'list') commands.bulletList();
     else if (target.type === 'task') commands.taskList();
     else if (target.type === 'quote') commands.quote();
@@ -423,6 +598,35 @@ export default function StudioRichEditor(props: Props) {
       <div
         className="studio-rich-scroll"
         ref={scroller}
+        // Shift+F10 or the Menu key: the block menu for the caret's block,
+        // the keyboard's way to the grip a mouse finds by hovering.
+        onKeyDown={(event) => {
+          // Alt+F10: into the Formatting bar, the toolbar pattern's way in.
+          if (event.altKey && event.key === 'F10' && selectionPoint) {
+            if (focusFormattingToolbar()) event.preventDefault();
+            return;
+          }
+          if (
+            !editor ||
+            !(
+              event.key === 'ContextMenu' ||
+              (event.shiftKey && event.key === 'F10')
+            )
+          )
+            return;
+          const block = topBlock(editor);
+          const dom = block
+            ? (editor.view.nodeDOM(block.from) as HTMLElement | null)
+            : null;
+          if (!block || !dom) return;
+          event.preventDefault();
+          const rect = dom.getBoundingClientRect();
+          menu.openAtPoint(
+            block.from,
+            { x: rect.left, y: Math.min(rect.bottom, rect.top + 32) + 4 },
+            editor.view.dom as HTMLElement,
+          );
+        }}
         onPointerDown={marquee.down}
         onPointerMove={marquee.move}
         onPointerUp={marquee.up}
@@ -438,13 +642,20 @@ export default function StudioRichEditor(props: Props) {
           )
         }
         onScroll={(event) => {
-          // The bar above draws its rule only once the page has slid under it.
-          event.currentTarget
-            .closest('.studio-editor')
-            ?.classList.toggle(
-              'is-scrolled',
-              event.currentTarget.scrollTop > 0,
-            );
+          // The bar above draws its rule only once the page has slid under it,
+          // and (on a phone) takes the note's name once its first block —
+          // usually the title — has gone under it.
+          const pane = event.currentTarget;
+          const frame = pane.closest('.studio-editor');
+          frame?.classList.toggle('is-scrolled', pane.scrollTop > 0);
+          const first = host.current?.querySelector('.studio-rich-content > *');
+          frame?.classList.toggle(
+            'is-past-title',
+            first
+              ? first.getBoundingClientRect().bottom <
+                  pane.getBoundingClientRect().top + 8
+              : pane.scrollTop > 80,
+          );
           blocks.paneScroll(props.compact || menu.key !== null);
           refreshRef.current();
         }}
@@ -492,6 +703,7 @@ export default function StudioRichEditor(props: Props) {
         grouped={!slash?.query}
         activeIndex={slash?.index ?? 0}
         position={slash?.point ?? null}
+        docked={props.compact}
         onHover={(index) => slash && setSlash({ ...slash, index })}
         onChoose={choose}
       />
@@ -509,6 +721,7 @@ export default function StudioRichEditor(props: Props) {
         items={wiki?.items ?? []}
         activeIndex={wiki?.index ?? 0}
         position={wiki?.point ?? null}
+        docked={props.compact}
         onHover={(index) => wiki && setWiki({ ...wiki, index })}
         onChoose={chooseWiki}
       />
@@ -516,7 +729,11 @@ export default function StudioRichEditor(props: Props) {
         <StudioInlineToolbar
           position={slash || link ? null : selectionPoint}
           docked={props.compact && Boolean(selectionPoint) && !slash && !link}
+          keyboardOpen={props.keyboardOpen}
           commands={activeCommands}
+          blockType={editor ? currentBlockType(editor) : undefined}
+          onTurnInto={(target) => turnInto(target, true)}
+          onDismiss={() => setSelectionPoint(null)}
           activeMarks={
             new Set(
               ['bold', 'italic', 'strike', 'code', 'link'].filter((mark) =>
@@ -526,6 +743,20 @@ export default function StudioRichEditor(props: Props) {
           }
         />
       )}
+      {props.visible &&
+        editor &&
+        props.compact &&
+        props.keyboardOpen &&
+        !selectionPoint &&
+        !link &&
+        !rawEdit && (
+          <StudioKeyboardBar
+            editor={editor}
+            slashOpen={Boolean(slash)}
+            onInsert={toggleBarSlash}
+            onLink={() => editor.chain().focus().insertContent('[[').run()}
+          />
+        )}
       <StudioRichBlockMenu
         editor={editor}
         menu={menu}

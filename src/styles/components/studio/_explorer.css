@@ -116,7 +116,9 @@
   min-height: var(--st-row);
   padding-right: 4px;
   border-radius: var(--st-radius);
-  color: var(--st-text-2);
+  /* Names at near-full strength: on black, the second grey reads as faint.
+     The icons beside them carry the quieter tone. */
+  color: color-mix(in srgb, var(--st-text) 88%, var(--st-text-2));
   font-size: var(--st-size-sm);
   cursor: default;
   user-select: none;
@@ -139,6 +141,7 @@
 .admin-page .studio-tree-row.is-active {
   background: var(--st-current);
   color: var(--st-text);
+  font-weight: 500;
 }
 
 .admin-page .studio-tree-row.is-selected {

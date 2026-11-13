@@ -10,12 +10,18 @@
 
    - Type: one face, the site's. Four sizes — 12 for metadata and hints, 13
      for chrome, 14 for primary chrome text, 16 for fields on touch (iOS zooms
-     the page under that) and dialog titles. Two weights: 400 and 700.
+     the page under that) and dialog titles. Three weights: 400 for text, 500
+     for labels that name a thing (the current row, a menu item's title, the
+     note in the bar), 700 for headings.
    - Shape: 8px for anything you press or type into, 12px for anything that
      floats. A row inside a floating menu sits 4px from its edge, so 12 = 8 + 4
      and the corners nest.
-   - Depth: none. Floating surfaces are told apart by a lighter fill and a
-     hairline, never a shadow.
+   - Depth: one step. Panes sit flat on the canvas. Anything that floats
+     over them — menus, popovers, the palette, sheets, toasts — takes a
+     lighter fill, a hairline, and one shadow (--st-shadow-float). On a black
+     canvas the shadow is not decoration: it is the dark band that keeps the
+     page's own lines (a table's grid, a heading) from running into the
+     menu's edge.
    - Colour: neutral greys. The accent is reserved for focus, the primary
      action, links, and the current selection.
    - Motion: colour changes in 120ms; things that arrive take 180ms; drawers
@@ -37,7 +43,7 @@
   /* Surfaces, darkest to lightest. */
   --st-canvas: var(--color-surface);
   --st-panel: var(--color-surface-raised);
-  --st-raised: #151515;
+  --st-raised: #191919;
   --st-field: var(--color-surface);
 
   /* Interaction fills: hover, press, and "this one" (current, highlighted). */
@@ -45,6 +51,10 @@
   --st-press: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
   --st-current: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
   --st-picked: color-mix(in srgb, var(--color-brand) 16%, transparent);
+
+  --st-shadow-float:
+    inset 0 1px 0 rgb(255 255 255 / 0.04), 0 2px 6px rgb(0 0 0 / 0.55),
+    0 16px 40px rgb(0 0 0 / 0.75);
 
   --st-line: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
   --st-line-strong: color-mix(

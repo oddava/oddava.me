@@ -9,7 +9,7 @@ import type { ComponentChildren } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
 import { FileIcon } from './studioFileIcons';
 import { Icon } from './studioIcons';
-import StudioSheet from './StudioSheet';
+import StudioSheet, { SheetAction, SheetGroup } from './StudioSheet';
 import { useLongPress } from './useLongPress';
 import type { StudioTreeItemRef } from './studioDragItems';
 import {
@@ -52,7 +52,12 @@ import {
 // missing here; the way in is just the one a thumb has.
 
 type SheetState =
-  | { kind: 'row'; item: StudioTreeItemRef }
+  | {
+      kind: 'row';
+      item: StudioTreeItemRef;
+      /** Opened from the note's own ⋯: the note is already open. */
+      fromNote?: boolean;
+    }
   | { kind: 'folder' }
   | {
       kind: 'name';
@@ -72,6 +77,26 @@ interface Props {
   onQueryChange: (query: string) => void;
   onRefresh: () => Promise<void>;
   onRequestClose: () => void;
+  /**
+   * Bumped by the note's ⋯ in the title bar: open this list's action sheet
+   * for the note on screen. The sheet is a portal, so it works whether or not
+   * the list itself is showing.
+   */
+  noteActionsRequest?: number;
+  /** The open note's published page, offered in that sheet. */
+  publishedUrl?: string;
+  /** The open note's icon picker, offered in that sheet. */
+  onChangeIcon?: () => void;
+  /**
+   * Compose: a blank note in this folder, open and ready, named later — the
+   * way a notes app starts a note, rather than asking for a name first.
+   */
+  onQuickCreate?: (folder: string) => Promise<boolean>;
+  /**
+   * No note is open: the list is the whole screen, with nothing behind it to
+   * close back to — the root list of a notes app, not a drawer.
+   */
+  home?: boolean;
   onNotice: (message: string) => void;
   onSelectFolder: (id: string) => void;
   onEditEntry: (entry: ContentEntryListItem) => void;
@@ -107,6 +132,11 @@ export default function StudioMobileFiles({
   onQueryChange,
   onRefresh,
   onRequestClose,
+  noteActionsRequest = 0,
+  publishedUrl = '',
+  onChangeIcon,
+  onQuickCreate,
+  home = false,
   onNotice,
   onSelectFolder,
   onEditEntry,
@@ -133,6 +163,7 @@ export default function StudioMobileFiles({
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const longPress = useLongPress();
 
   // --- What is on screen ----------------------------------------------------
@@ -158,6 +189,7 @@ export default function StudioMobileFiles({
 
   const crumbs = folderCrumbs(folderId);
   const here = crumbs[crumbs.length - 1]?.label ?? 'Notes';
+  const parentLabel = crumbs[crumbs.length - 2]?.label ?? 'Notes';
   /** The folder row for the folder we are standing *in*, which lives in its parent. */
   const hereNode = useMemo(() => {
     if (folderId === '') return undefined;
@@ -204,6 +236,9 @@ export default function StudioMobileFiles({
     if (searching) onQueryChange('');
     setFolderId(next);
     onSelectFolder(next);
+    requestAnimationFrame(() =>
+      titleRef.current?.focus({ preventScroll: true }),
+    );
   }
 
   // --- Sheets ---------------------------------------------------------------
@@ -228,6 +263,25 @@ export default function StudioMobileFiles({
   }
 
   /** Every action but naming closes its sheet first, so the result is visible. */
+  useEffect(() => {
+    if (!noteActionsRequest || !currentId) return;
+    const node = [...nodeByKey.values()].find((candidate) =>
+      candidate.kind === 'entry'
+        ? candidate.entry.id === currentId
+        : candidate.document?.id === currentId,
+    );
+    if (node) openSheet({ kind: 'row', item: nodeRef(node), fromNote: true });
+    // Only a new request opens it; the tree changing under it does not.
+  }, [noteActionsRequest]);
+
+  async function compose() {
+    if (!onQuickCreate) {
+      openNameSheet('file');
+      return;
+    }
+    if (await onQuickCreate(folderId)) onRequestClose();
+  }
+
   function act(action: () => void) {
     closeSheet();
     action();
@@ -344,7 +398,8 @@ export default function StudioMobileFiles({
       return;
     }
     if (node.kind === 'folder') {
-      goTo(node.folder.id);
+      if (node.document) openNode(node);
+      else goTo(node.folder.id);
       return;
     }
     onSelectFolder(node.entry.folder);
@@ -416,12 +471,23 @@ export default function StudioMobileFiles({
             </span>
             {detail && <small>{detail}</small>}
           </span>
-          {isFolder && !selecting && (
+          {isFolder && !selecting && !node.document && (
             <span className="studio-mfiles__chevron" aria-hidden="true">
               <Icon name="chevron-right" />
             </span>
           )}
         </button>
+        {isFolder && !selecting && node.document && (
+          // The row opens the note; this goes in among its subnotes.
+          <button
+            type="button"
+            className="studio-mfiles__into"
+            aria-label={`Browse ${label}`}
+            onClick={() => goTo(node.folder.id)}
+          >
+            <Icon name="chevron-right" />
+          </button>
+        )}
         {!selecting && (
           <button
             type="button"
@@ -444,134 +510,154 @@ export default function StudioMobileFiles({
       .join(' / ');
   }
 
-  function rowSheet(node: TreeNode): ComponentChildren {
+  function rowSheet(node: TreeNode, fromNote = false): ComponentChildren {
     const isFolder = node.kind === 'folder';
     const index = siblings.findIndex(
       (candidate) => nodeKey(candidate) === nodeKey(node),
     );
     // Reordering only means anything where the rows are in that order: not in
-    // a search, and not for a row that is not in the folder being shown.
-    const ordered = !searching && index >= 0;
+    // a search, not for a row outside the folder being shown, and not from
+    // the note's own menu, where the list is not on screen.
+    const ordered = !searching && index >= 0 && !fromNote;
     const up = ordered ? reorderSiblings(siblings, index, -1) : null;
     const down = ordered ? reorderSiblings(siblings, index, 1) : null;
     const page = isFolder ? node.document : node.entry;
 
     return (
       <>
-        <button
-          type="button"
-          onClick={() =>
-            act(() => (isFolder ? goTo(node.folder.id) : openNode(node)))
-          }
-        >
-          {isFolder ? 'Browse subnotes' : 'Open'}
-        </button>
-        {isFolder && (
-          <button type="button" onClick={() => act(() => openNode(node))}>
-            Open note
-          </button>
+        {fromNote && (
+          <SheetGroup>
+            {publishedUrl && (
+              <SheetAction
+                icon="external"
+                label="View published page"
+                href={publishedUrl}
+                onClick={() => closeSheet()}
+              />
+            )}
+            {onChangeIcon && (
+              <SheetAction
+                icon="image"
+                label="Change icon"
+                onClick={() => act(onChangeIcon)}
+              />
+            )}
+          </SheetGroup>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            setName('');
-            openSheet({
-              kind: 'name',
-              mode: 'file',
-              parent: isFolder ? node.folder.id : noteContainerPath(node.entry),
-            });
-          }}
-        >
-          Add subnote
-        </button>
-        <button type="button" onClick={() => openNameSheet('rename', node)}>
-          Rename
-        </button>
-        <button
-          type="button"
-          onClick={() => openSheet({ kind: 'move', items: [nodeRef(node)] })}
-        >
-          Move to…
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            act(
-              () =>
-                void (node.kind === 'entry'
-                  ? onDuplicateEntry(node.entry)
-                  : onDuplicateFolder(node.folder)),
-            )
-          }
-        >
-          Duplicate
-        </button>
-        {up && (
-          <button
-            type="button"
-            onClick={() =>
-              act(() => void onReorder(nodeRef(node), folderId, up))
-            }
-          >
-            Move up
-          </button>
+        {!fromNote && isFolder && (
+          <SheetGroup>
+            <SheetAction
+              icon="chevron-right"
+              label="Browse subnotes"
+              onClick={() => act(() => goTo(node.folder.id))}
+            />
+            {!node.document && (
+              // A folder without a page of its own gets one when opened.
+              <SheetAction
+                icon="doc"
+                label="Open as a note"
+                onClick={() => act(() => openNode(node))}
+              />
+            )}
+          </SheetGroup>
         )}
-        {down && (
-          <button
-            type="button"
-            onClick={() =>
-              act(() => void onReorder(nodeRef(node), folderId, down))
-            }
-          >
-            Move down
-          </button>
-        )}
-        <span />
-        <button
-          type="button"
-          onClick={() => act(() => startSelecting(nodeKey(node)))}
-        >
-          Select
-        </button>
-        {page && (
-          <button
-            type="button"
+        <SheetGroup>
+          <SheetAction
+            icon="plus"
+            label="Add subnote"
+            onClick={() => {
+              setName('');
+              openSheet({
+                kind: 'name',
+                mode: 'file',
+                parent: isFolder
+                  ? node.folder.id
+                  : noteContainerPath(node.entry),
+              });
+            }}
+          />
+          <SheetAction
+            icon="pencil"
+            label="Rename"
+            onClick={() => openNameSheet('rename', node)}
+          />
+          <SheetAction
+            icon="folder"
+            label="Move to…"
+            onClick={() => openSheet({ kind: 'move', items: [nodeRef(node)] })}
+          />
+          <SheetAction
+            icon="copy"
+            label="Duplicate"
             onClick={() =>
               act(
                 () =>
-                  void copyToClipboard(
-                    new URL(page.href, window.location.origin).toString(),
-                    'Link',
-                  ),
+                  void (node.kind === 'entry'
+                    ? onDuplicateEntry(node.entry)
+                    : onDuplicateFolder(node.folder)),
               )
             }
-          >
-            Copy link
-          </button>
+          />
+        </SheetGroup>
+        {(up || down) && (
+          <div className="studio-sheet__split" role="group" aria-label="Order">
+            <SheetAction
+              icon="arrow-up"
+              label="Move up"
+              disabled={!up}
+              onClick={() =>
+                up && act(() => void onReorder(nodeRef(node), folderId, up))
+              }
+            />
+            <SheetAction
+              icon="arrow-down"
+              label="Move down"
+              disabled={!down}
+              onClick={() =>
+                down && act(() => void onReorder(nodeRef(node), folderId, down))
+              }
+            />
+          </div>
         )}
-        <button
-          type="button"
-          onClick={() =>
-            act(() => void copyToClipboard(nodePath(node), 'Path'))
-          }
-        >
-          Copy path
-        </button>
-        <span />
-        <button
-          type="button"
-          className="is-danger"
-          onClick={() =>
-            act(
-              () =>
-                void (node.kind === 'entry'
-                  ? onDeleteEntry(node.entry)
-                  : onDeleteFolder(node.folder)),
-            )
-          }
-        >
-          Delete
-        </button>
+        <SheetGroup>
+          {page && (
+            <SheetAction
+              icon="link"
+              label="Copy link"
+              onClick={() =>
+                act(
+                  () =>
+                    void copyToClipboard(
+                      new URL(page.href, window.location.origin).toString(),
+                      'Link',
+                    ),
+                )
+              }
+            />
+          )}
+          {!fromNote && (
+            <SheetAction
+              icon="task"
+              label="Select"
+              onClick={() => act(() => startSelecting(nodeKey(node)))}
+            />
+          )}
+        </SheetGroup>
+        <SheetGroup>
+          <SheetAction
+            icon="trash"
+            label="Delete"
+            danger
+            onClick={() =>
+              act(
+                () =>
+                  void (node.kind === 'entry'
+                    ? onDeleteEntry(node.entry)
+                    : onDeleteFolder(node.folder)),
+              )
+            }
+          />
+        </SheetGroup>
       </>
     );
   }
@@ -579,32 +665,34 @@ export default function StudioMobileFiles({
   function folderSheet(): ComponentChildren {
     return (
       <>
-        {herePage && (
-          <button
-            type="button"
-            onClick={() => act(() => onEditEntry(herePage))}
-          >
-            Open this note
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={rows.length === 0}
-          onClick={() => act(() => startSelecting())}
-        >
-          Select items
-        </button>
-        <span />
-        <button
-          type="button"
-          disabled={refreshing}
-          onClick={() => act(() => void refresh())}
-        >
-          {refreshing ? 'Refreshing…' : 'Refresh notes'}
-        </button>
-        <button type="button" onClick={() => act(onRequestClose)}>
-          Close notes
-        </button>
+        <SheetGroup>
+          <SheetAction
+            icon="plus"
+            label="New note here"
+            onClick={() => act(() => void compose())}
+          />
+          {herePage && (
+            <SheetAction
+              icon="doc"
+              label="Open this note"
+              onClick={() => act(() => onEditEntry(herePage))}
+            />
+          )}
+        </SheetGroup>
+        <SheetGroup>
+          <SheetAction
+            icon="task"
+            label="Select notes"
+            disabled={rows.length === 0}
+            onClick={() => act(() => startSelecting())}
+          />
+          <SheetAction
+            icon="refresh"
+            label={refreshing ? 'Refreshing…' : 'Refresh notes'}
+            disabled={refreshing}
+            onClick={() => act(() => void refresh())}
+          />
+        </SheetGroup>
       </>
     );
   }
@@ -694,14 +782,16 @@ export default function StudioMobileFiles({
     if (sheet.kind === 'row') {
       const node = nodeByKey.get(itemKey(sheet.item));
       if (!node) return null;
+      const page = node.kind === 'entry' ? node.entry : node.document;
       return {
-        title: nodeLabel(node),
+        // From the note itself, the sheet uses the name the note's bar shows.
+        title: (sheet.fromNote && page?.title) || nodeLabel(node),
         detail: locationLabel(
           node.kind === 'folder'
             ? (node.folder.parentId ?? '')
             : node.entry.folder,
         ),
-        content: rowSheet(node),
+        content: rowSheet(node, sheet.fromNote),
       };
     }
     if (sheet.kind === 'folder') {
@@ -764,29 +854,26 @@ export default function StudioMobileFiles({
           </>
         ) : (
           <>
-            <button
-              type="button"
-              className="studio-mfiles__icon"
-              aria-label={
-                folderId === '' ? 'Close notes' : 'Back to parent note'
-              }
-              onClick={() =>
-                folderId === ''
-                  ? onRequestClose()
-                  : goTo(parentFolder(folderId))
-              }
+            {folderId !== '' && (
+              <button
+                type="button"
+                className="studio-mfiles__back"
+                aria-label={`Back to ${parentLabel}`}
+                onClick={() => goTo(parentFolder(folderId))}
+              >
+                <Icon name="chevron-left" />
+                <span aria-hidden="true">{parentLabel}</span>
+              </button>
+            )}
+            <h2
+              ref={titleRef}
+              tabIndex={-1}
+              className={`studio-mfiles__title ${
+                folderId === '' ? 'is-large' : ''
+              }`}
             >
-              <Icon name={folderId === '' ? 'close' : 'chevron-left'} />
-            </button>
-            <h2 className="studio-mfiles__title">{here}</h2>
-            <button
-              type="button"
-              className="studio-mfiles__word"
-              disabled={rows.length === 0}
-              onClick={() => startSelecting()}
-            >
-              Select
-            </button>
+              {here}
+            </h2>
             <button
               type="button"
               className="studio-mfiles__icon"
@@ -800,31 +887,12 @@ export default function StudioMobileFiles({
         )}
       </header>
 
-      {!searching && !selecting && crumbs.length > 1 && (
-        <nav className="studio-mfiles__crumbs" aria-label="Note path">
-          {crumbs.map((crumb, index) =>
-            index === crumbs.length - 1 ? (
-              <span key={crumb.id} aria-current="location">
-                {crumb.label}
-              </span>
-            ) : (
-              <button
-                key={crumb.id}
-                type="button"
-                onClick={() => goTo(crumb.id)}
-              >
-                {crumb.label}
-              </button>
-            ),
-          )}
-        </nav>
-      )}
-
       <div className="studio-mfiles__search">
+        <Icon name="search" />
         <input
           className="admin-input"
           type="search"
-          placeholder="Search all notes"
+          placeholder="Search"
           aria-label="Search every note by name, title or path"
           value={query}
           enterkeyhint="search"
@@ -898,16 +966,17 @@ export default function StudioMobileFiles({
           </button>
         </div>
       ) : (
-        <div className="studio-mfiles__actions">
-          <button
-            type="button"
-            className="studio-mfiles__new"
-            onClick={() => openNameSheet('file')}
-          >
-            <Icon name="plus" />
-            New note
-          </button>
-        </div>
+        // A compose button where the thumb rests, rather than a full-width
+        // bar: the list keeps the bottom of the screen.
+        <button
+          type="button"
+          className="studio-mfiles__compose"
+          aria-label="New note"
+          title="New note"
+          onClick={() => void compose()}
+        >
+          <Icon name="pencil" />
+        </button>
       )}
 
       <StudioSheet

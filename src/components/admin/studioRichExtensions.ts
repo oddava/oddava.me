@@ -76,8 +76,13 @@ export function studioRichExtensions({
     }),
     WikiLink,
     Placeholder.configure({
-      placeholder: ({ node }) =>
-        node.type.name === 'heading' ? 'Heading' : 'Type / for blocks…',
+      placeholder: ({ node, pos }) =>
+        node.type.name !== 'heading'
+          ? 'Type / for blocks…'
+          : // The page's first line is its title.
+            pos === 0
+            ? 'Untitled'
+            : 'Heading',
     }),
   ];
 }

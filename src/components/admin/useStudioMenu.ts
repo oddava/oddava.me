@@ -50,6 +50,16 @@ export interface StudioMenu<Key> {
   openUnder: (key: Key, trigger: HTMLElement) => void;
   /** What the ••• buttons do: a second press puts it away. */
   toggleUnder: (key: Key, trigger: HTMLElement) => void;
+  /**
+   * Open at a point on screen, handing focus back to `returnTo` when it
+   * closes — for a menu called up from the keyboard over something that
+   * cannot hold focus itself, like a block of text.
+   */
+  openAtPoint: (
+    key: Key,
+    point: { x: number; y: number },
+    returnTo: HTMLElement,
+  ) => void;
   close: () => void;
 }
 
@@ -101,6 +111,14 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
       openAt(next, { x: event.clientX, y: event.clientY, align: 'start' });
     },
     [openAt, openUnder],
+  );
+
+  const openAtPoint = useCallback(
+    (next: Key, point: { x: number; y: number }, returnTo: HTMLElement) => {
+      triggerRef.current = returnTo;
+      openAt(next, { x: point.x, y: point.y, align: 'start' });
+    },
+    [openAt],
   );
 
   const toggleUnder = useCallback(
@@ -158,11 +176,43 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
       setKey(null);
     }
     function onKeyDown(event: KeyboardEvent) {
+      const within = (document.activeElement as HTMLElement | null)?.closest(
+        'details[open]',
+      );
+      if (
+        event.key === 'Escape' &&
+        within instanceof HTMLDetailsElement &&
+        document.activeElement?.tagName !== 'SUMMARY'
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        within.open = false;
+        within.querySelector<HTMLElement>('summary')?.focus();
+        return;
+      }
       if (event.key === 'Escape' || event.key === 'Tab') {
         if (event.key === 'Escape') event.preventDefault();
         event.stopPropagation();
         setKey(null);
         triggerRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      // "Turn into" behaves like a submenu that opens in place: ArrowRight
+      // opens it onto its first choice, ArrowLeft folds it back.
+      const active = document.activeElement as HTMLElement | null;
+      const turn = active?.closest('details');
+      if (event.key === 'ArrowRight' && turn && active?.tagName === 'SUMMARY') {
+        event.preventDefault();
+        event.stopPropagation();
+        turn.open = true;
+        turn.querySelector<HTMLElement>('button')?.focus();
+        return;
+      }
+      if (event.key === 'ArrowLeft' && turn?.open) {
+        event.preventDefault();
+        event.stopPropagation();
+        turn.open = false;
+        turn.querySelector<HTMLElement>('summary')?.focus();
         return;
       }
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
@@ -208,6 +258,7 @@ export function useStudioMenu<Key>(): StudioMenu<Key> {
     openAtEvent,
     openUnder,
     toggleUnder,
+    openAtPoint,
     close,
   };
 }

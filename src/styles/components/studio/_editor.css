@@ -155,12 +155,61 @@
   padding-top: 0.45em;
 }
 
+/* Drawn rather than native: the platform's grey filled square reads as
+   disabled on black. An outline when open, the accent and a tick when done. */
 .studio-rich-content li[data-checked] > label input {
-  width: 16px;
-  height: 16px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  accent-color: var(--st-accent);
+  border: 1.5px solid var(--st-text-3);
+  border-radius: 5px;
+  background: transparent;
+  appearance: none;
   cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    border-color var(--st-fast) var(--st-ease);
+}
+
+.studio-rich-content li[data-checked] > label input:hover {
+  border-color: var(--st-text-2);
+}
+
+.studio-rich-content li[data-checked] > label input:checked {
+  border-color: var(--st-accent);
+  background: var(--st-accent);
+}
+
+.studio-rich-content li[data-checked] > label input:checked::after {
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: solid var(--st-on-accent);
+  border-width: 0 2px 2px 0;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.studio-rich-content li[data-checked] > label input:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 2px;
+}
+
+/* A fingertip needs 44px; the box keeps its size and place, the label
+   around it grows into the gutter. */
+@media (pointer: coarse) {
+  .studio-rich-content li[data-checked] > label {
+    margin: -12px -12px -12px -13px;
+    padding: calc(0.45em + 12px) 12px 12px 13px;
+  }
+
+  .studio-rich-content li[data-checked] > label input {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 .studio-rich-content li[data-checked] > div {
@@ -185,7 +234,8 @@
 /* The published table draws only row rules; while editing, faint cell edges
    show where an empty cell is, so there is somewhere to click. */
 .studio-rich-content :is(td, th) {
-  outline: 1px solid var(--st-line);
+  outline: 1px solid
+    color-mix(in srgb, var(--color-text-primary) 6%, transparent);
   outline-offset: -1px;
 }
 
@@ -241,10 +291,11 @@
 .studio-rich-content > :is(h5, h6, blockquote, pre).ProseMirror-selectednode,
 .studio-rich-content > :is(ul, ol).ProseMirror-selectednode,
 .studio-rich-content .studio-block-selected {
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--st-accent) 12%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--st-accent) 40%, transparent);
-  outline-offset: 2px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--st-accent) 14%, transparent);
+  /* The tint reaches past the text on every side, so the words have room
+     inside it rather than touching its edge. */
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--st-accent) 14%, transparent);
 }
 
 .admin-page .studio-block-marquee {
@@ -518,40 +569,45 @@
   z-index: 1200;
   display: grid;
   align-content: start;
-  width: 260px;
-  max-height: min(340px, 50dvh);
-  padding: 4px;
+  width: 320px;
+  max-height: min(380px, 60dvh);
+  padding: 6px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scroll-padding-block: 6px;
   scrollbar-width: thin;
 }
 
 /* Sentence case and quiet: a group label is a landmark, not a heading. */
 .admin-page .studio-slashmenu__group {
-  margin: 8px 10px 4px;
+  margin: 10px 10px 4px;
   color: var(--st-text-4);
   font-size: var(--st-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
-.admin-page .studio-slashmenu__group:first-child {
+.admin-page .studio-slashmenu__section:first-child .studio-slashmenu__group {
   margin-top: 4px;
+}
+
+.admin-page .studio-slashmenu__section {
+  display: grid;
 }
 
 .admin-page .studio-slashmenu__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: var(--st-control);
-  padding: 0 10px;
-  border: 0;
+  gap: 12px;
+  min-height: 46px;
+  padding: 4px 10px 4px 6px;
   border-radius: var(--st-radius);
-  background: transparent;
   color: var(--st-text-2);
-  font: inherit;
-  font-size: var(--st-size-sm);
-  text-align: left;
+  font-size: var(--st-size-md);
+  line-height: 1.25;
   cursor: pointer;
+  user-select: none;
+  transition: background-color var(--st-fast) var(--st-ease);
 }
 
 .admin-page .studio-slashmenu__row.is-active {
@@ -559,16 +615,104 @@
   color: var(--st-text);
 }
 
-.admin-page .studio-slashmenu__title {
+/* The block's tile: the same shape for an icon and for "H1". */
+.admin-page .studio-slashmenu__glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--radius-sm-2);
+  background: var(--st-hover);
+  color: var(--st-text-2);
+}
+
+.admin-page .studio-slashmenu__row.is-active .studio-slashmenu__glyph {
+  border-color: var(--st-line-strong);
+  color: var(--st-text);
+}
+
+.admin-page .studio-slashmenu__glyph .studio-glyph {
+  width: 20px;
+  height: 20px;
+}
+
+.admin-page .studio-slashmenu__glyph-text {
+  font-size: var(--st-size-sm);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.admin-page .studio-slashmenu__text {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 1px;
+  min-width: 0;
+}
+
+.admin-page .studio-slashmenu__title,
+.admin-page .studio-slashmenu__desc {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.admin-page .studio-slashmenu__title {
+  font-weight: 500;
+}
+
+.admin-page .studio-slashmenu__desc {
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+}
+
 /* The Markdown that makes the same block, so the menu teaches its way out. */
 .admin-page .studio-slashmenu .studio-slashmenu__hint {
   flex: none;
-  color: var(--st-text-4);
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-slashmenu__row.is-active .studio-slashmenu__hint {
+  color: var(--st-text-3);
+}
+
+/* Phone: a panel above the keyboard, the width of the screen. Part of the
+   layout like the keyboard bar under it, so the keyboard never crops it and
+   the line being typed stays in the page above. */
+.admin-page .studio-rich-shell > .studio-slashmenu.is-docked {
+  position: static;
+  flex: none;
+  width: auto;
+  max-height: min(300px, calc(var(--studio-vh, 100dvh) * 0.42));
+  padding: 6px max(8px, env(safe-area-inset-right)) 6px
+    max(8px, env(safe-area-inset-left));
+  border: 0;
+  border-top: 1px solid var(--st-line);
+  border-radius: 0;
+  background: var(--st-panel);
+  box-shadow: none;
+  animation: studio-fade var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio:not(.is-keyboard-open) .studio-slashmenu.is-docked,
+.admin-page .studio:not(.is-keyboard-open) .studio-wikimenu.is-docked {
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+}
+
+.admin-page .studio-slashmenu.is-docked .studio-slashmenu__row {
+  min-height: 52px;
+  font-size: var(--st-size-lg);
+}
+
+.admin-page .studio-slashmenu.is-docked .studio-slashmenu__desc {
+  font-size: var(--st-size-sm);
+}
+
+@media (pointer: coarse) {
+  .admin-page .studio-slashmenu .studio-slashmenu__hint {
+    display: none;
+  }
 }
 
 /* "Nothing matches" in the slash menu's place. */
@@ -598,17 +742,17 @@
 
 .admin-page .studio-wikimenu__row {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   flex: none;
-  min-height: 40px;
+  gap: 12px;
+  min-height: 44px;
   padding: 4px 10px;
   border: 0;
   border-radius: var(--st-radius);
   background: transparent;
   color: var(--st-text-2);
   font: inherit;
-  font-size: var(--st-size-sm);
+  font-size: var(--st-size-md);
   text-align: left;
   cursor: pointer;
 }
@@ -618,6 +762,19 @@
   color: var(--st-text);
 }
 
+.admin-page .studio-wikimenu__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-wikimenu__text {
+  display: grid;
+  min-width: 0;
+}
+
 .admin-page .studio-wikimenu__title,
 .admin-page .studio-wikimenu__folder {
   overflow: hidden;
@@ -625,9 +782,34 @@
   white-space: nowrap;
 }
 
+.admin-page .studio-wikimenu__title {
+  font-weight: 500;
+}
+
 .admin-page .studio-wikimenu__folder {
-  color: var(--st-text-4);
+  color: var(--st-text-3);
   font-size: var(--st-size-xs);
+}
+
+/* Phone: docked above the keyboard, like the slash panel. */
+.admin-page .studio-rich-shell > .studio-wikimenu.is-docked {
+  position: static;
+  flex: none;
+  width: auto;
+  max-height: min(260px, calc(var(--studio-vh, 100dvh) * 0.38));
+  padding: 6px max(8px, env(safe-area-inset-right)) 6px
+    max(8px, env(safe-area-inset-left));
+  border: 0;
+  border-top: 1px solid var(--st-line);
+  border-radius: 0;
+  background: var(--st-panel);
+  box-shadow: none;
+  animation: studio-fade var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-wikimenu.is-docked .studio-wikimenu__row {
+  min-height: 52px;
+  font-size: var(--st-size-lg);
 }
 
 /* --- Selection toolbar ---
@@ -717,9 +899,46 @@
   border-top: 1px solid var(--st-line);
   border-radius: 0;
   background: var(--st-panel);
+  box-shadow: none;
   transform: none;
   animation: none;
   transition: none;
+}
+
+/* With the keyboard down the bar is the bottom of the screen. */
+.admin-page .studio-rich-shell > .studio-inline-toolbar.is-bottom-edge {
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+}
+
+/* The writing tools above a phone's keyboard: one 44px row, so the page
+   keeps every pixel the keyboard and the title bar leave it. */
+.admin-page .studio-rich-shell > .studio-keybar.is-docked {
+  justify-content: space-between;
+  min-height: var(--st-touch);
+  padding-block: 1px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-page .studio-keybar .studio-keybar__tool {
+  flex: none;
+  width: 40px;
+}
+
+.admin-page .studio-keybar .studio-glyph,
+.admin-page .studio-inline-toolbar.is-docked .studio-glyph {
+  width: var(--st-glyph);
+  height: var(--st-glyph);
+}
+
+.admin-page .studio-inline-tool:disabled {
+  color: var(--st-text-4);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.admin-page .studio-inline-tool:disabled:hover {
+  background: transparent;
 }
 
 .admin-page .studio-inline-toolbar.is-docked .studio-inline-tool {
@@ -743,6 +962,7 @@
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
   animation: studio-arrive var(--st-base) var(--st-ease);
 }
 
@@ -774,6 +994,7 @@
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
   color: var(--st-text-2);
   font-size: var(--st-size-sm);
   animation: studio-arrive var(--st-base) var(--st-ease);
@@ -788,4 +1009,58 @@
   .admin-page .studio-rich-handle {
     animation: none;
   }
+}
+
+/* --- Turn into, at the head of the Formatting bar --- */
+
+.admin-page .studio-inline-tool.studio-inline-tool--turn {
+  display: inline-flex;
+  gap: 4px;
+  width: auto;
+  padding: 0 6px 0 10px;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.admin-page .studio-inline-tool--turn .studio-glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-inline-tool--turn[aria-expanded='true'] {
+  background: var(--st-current);
+  color: var(--st-text);
+}
+
+.admin-page .studio-inline-toolbar .studio-turnmenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+}
+
+.admin-page .studio-inline-toolbar .studio-turnmenu.is-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.admin-page .studio-inline-tool:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: -2px;
+}
+
+/* A page's empty first heading is its title-to-be: it shows "Untitled"
+   whether or not the caret is in it (other empty lines speak only when the
+   caret is on them). */
+.studio-rich-content
+  > h1:first-child:has(> br.ProseMirror-trailingBreak:only-child)::before {
+  float: left;
+  height: 0;
+  color: var(--st-text-4);
+  content: 'Untitled';
+  pointer-events: none;
 }

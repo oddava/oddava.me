@@ -61,6 +61,12 @@ export function useVisualViewportHeight(enabled: boolean): boolean {
         fullHeight - viewport.height > 120 && viewport.scale < 1.1;
       setKeyboardOpen((previous) => reduced && (editing || previous));
       root.style.setProperty('--studio-vh', `${Math.round(viewport.height)}px`);
+      // iOS can pan the page under the keyboard instead of shrinking it; the
+      // frame follows the visible part down rather than sliding off it.
+      root.style.setProperty(
+        '--studio-vv-top',
+        `${Math.max(0, Math.round(viewport.offsetTop))}px`,
+      );
     };
     apply();
     viewport.addEventListener('resize', apply);
@@ -72,6 +78,7 @@ export function useVisualViewportHeight(enabled: boolean): boolean {
       setKeyboardOpen(false);
       viewport.removeEventListener('scroll', apply);
       root.style.removeProperty('--studio-vh');
+      root.style.removeProperty('--studio-vv-top');
     };
   }, [enabled]);
   return keyboardOpen;
@@ -156,7 +163,12 @@ export function useDrawerSwipe({
         // Only a drag starting on the drawer itself pulls it back; a tap on
         // the scrim is a plain click, handled where the scrim is rendered.
         if (!panel.contains(event.target as Node)) return;
-      } else if (touch.clientX > EDGE_ZONE_PX) {
+      } else if (
+        touch.clientX > EDGE_ZONE_PX ||
+        // The block grip lives in the same margin; a drag that starts on it
+        // moves the block, not the drawer.
+        (event.target as Element | null)?.closest?.('.studio-rich-handle')
+      ) {
         return;
       }
       width = panel.getBoundingClientRect().width || 300;

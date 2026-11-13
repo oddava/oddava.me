@@ -38,6 +38,14 @@
   stroke-linejoin: round;
 }
 
+/* Dots are drawn filled. The rule above would otherwise win over the SVG's
+   own fill attribute and turn every dot into a ring. */
+.admin-page .studio-glyph[fill='currentColor'],
+.admin-page .studio-glyph .is-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
 /* --- Focus ---
    One ring for everything you can reach with Tab: solid, outside the control
    so it never covers a label. Rows and list items, which sit edge to edge,
@@ -281,6 +289,9 @@
 
 /* --- Keys --- */
 
+/* Key names are set in the interface's own face, numerals even, so a
+   shortcut reads the same in a menu, the palette and the shortcut sheet.
+   Only Markdown hints in the slash menu stay monospaced: those are syntax. */
 .admin-page .studio kbd,
 .admin-page .studio-menu kbd,
 .admin-page .studio-palette kbd,
@@ -289,10 +300,45 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--st-text-4);
-  font-family: var(--st-mono);
+  color: var(--st-text-3);
+  font-family: var(--st-font);
   font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+}
+
+.admin-page .studio-slashmenu kbd {
+  font-family: var(--st-mono);
+}
+
+/* M PLUS Rounded is drawn for reading at text sizes; at the 12–14px of
+   chrome it runs loose. Chrome tightens a hair; the page's prose keeps the
+   published spacing. */
+.admin-page
+  :is(
+    .studio-sidebar,
+    .studio-bar,
+    .studio-blank,
+    .studio-menu,
+    .studio-palette,
+    .studio-sheet,
+    .studio-slashmenu,
+    .studio-wikimenu,
+    .studio-inline-toolbar,
+    .studio-toast
+  ) {
+  letter-spacing: -0.01em;
+}
+
+.admin-page
+  :is(
+    .studio-explorer__heading,
+    .studio-sheet__head strong,
+    .studio-shortcuts__head h2,
+    .studio-blank strong,
+    .studio-mfiles__title
+  ) {
+  letter-spacing: -0.02em;
 }
 
 /* --- Floating surfaces ---
@@ -309,6 +355,7 @@
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   animation: studio-arrive var(--st-base) var(--st-ease);
 }
@@ -349,9 +396,9 @@
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 10px;
   min-height: var(--st-control);
-  padding: 0 10px;
+  padding: 0 10px 0 8px;
   border: 0;
   border-radius: var(--st-radius);
   background: transparent;
@@ -393,6 +440,61 @@
   color: var(--st-accent-text);
 }
 
+/* A row: icon, label, hint. The icon column is kept even where a row has
+   no icon, so labels line up down the menu. */
+.admin-page .studio-menu :is(button, summary) > .studio-glyph,
+.admin-page .studio-menu .studio-menu__icon-gap {
+  flex: none;
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-menu :is(button, summary):hover > .studio-glyph,
+.admin-page .studio-menu :is(button, summary):focus-visible > .studio-glyph {
+  color: var(--st-text);
+}
+
+.admin-page .studio-menu button.is-danger > .studio-glyph {
+  color: currentColor;
+}
+
+.admin-page .studio-menu__label {
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-page .studio-menu__hint {
+  margin-left: 16px;
+}
+
+/* "H2" set as type in the icon column of Turn into. */
+.admin-page .studio-menu__glyph-text {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  color: var(--st-text-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.admin-page .studio-menu__check {
+  display: grid;
+  margin-left: 16px;
+  color: var(--st-accent-text);
+}
+
+.admin-page .studio-menu__check .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+}
+
 /* Separators: the menus use an empty <span> or an explicit separator. */
 .admin-page .studio-menu > span:empty,
 .admin-page .studio-menu .studio-menu__divider,
@@ -403,9 +505,11 @@
 }
 
 .admin-page .studio-menu__hint {
-  color: var(--st-text-4);
-  font-family: var(--st-mono);
+  color: var(--st-text-3);
+  font-family: var(--st-font);
   font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 /* "Turn into" opens in place, so the menu never stacks a second menu. */
@@ -421,15 +525,17 @@
   display: none;
 }
 
-.admin-page .studio-menu-turn summary .studio-glyph {
-  width: var(--st-glyph-sm);
-  height: var(--st-glyph-sm);
+.admin-page .studio-menu-turn summary > .studio-glyph:last-child {
   color: var(--st-text-4);
   transition: transform var(--st-fast) var(--st-ease);
 }
 
-.admin-page .studio-menu-turn[open] summary .studio-glyph {
+.admin-page .studio-menu-turn[open] summary > .studio-glyph:last-child {
   transform: rotate(90deg);
+}
+
+.admin-page .studio-menu-turn > [role='group'] {
+  display: grid;
 }
 
 .admin-page .studio-menu-turn[open] {
@@ -438,8 +544,8 @@
   margin-bottom: 4px;
 }
 
-.admin-page .studio-menu-turn > button {
-  padding-left: 22px;
+.admin-page .studio-menu-turn [role='group'] > button {
+  padding-left: 20px;
 }
 
 /* --- Themed select (a native one paints its popup in OS chrome) --- */

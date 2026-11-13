@@ -82,8 +82,14 @@ export default function StudioCommandPalette({
       .map((row) => ({ kind: 'note' as const, ...row }));
 
     if (!trimmed) {
-      // Idle: commands first, then a handful of notes to jump to.
-      return [...commandRows, ...noteRows.slice(0, 8)];
+      // Idle: commands first, then a handful of notes to jump to. Nothing
+      // destructive is offered before it is asked for by name.
+      return [
+        ...commandRows.filter(
+          (row) => row.kind === 'command' && !row.command.danger,
+        ),
+        ...noteRows.slice(0, 8),
+      ];
     }
     return [...commandRows, ...noteRows]
       .sort((a, b) => b.score - a.score)
@@ -149,6 +155,7 @@ export default function StudioCommandPalette({
         }}
       >
         <div className="studio-palette__search">
+          <Icon name="search" />
           <input
             ref={inputRef}
             className="studio-palette__input"
@@ -202,44 +209,90 @@ export default function StudioCommandPalette({
               No note or command matches “{query.trim()}”.
             </p>
           ) : (
-            rows.map((row, index) => (
-              <button
-                type="button"
-                key={
-                  row.kind === 'command'
-                    ? row.command.id
-                    : `note:${row.entry.id}`
-                }
-                data-index={index}
-                id={`studio-palette-option-${index}`}
-                tabIndex={-1}
-                role="option"
-                aria-selected={index === active}
-                className={`studio-palette__row ${
-                  index === active ? 'is-active' : ''
-                } ${row.kind === 'command' && row.command.danger ? 'is-danger' : ''}`}
-                onMouseMove={() => setActive(index)}
-                onClick={() => choose(row)}
-              >
-                <span className="studio-palette__kind" aria-hidden="true">
-                  {row.kind === 'command' ? (
-                    <Icon name={row.command.icon} />
-                  ) : (
-                    <FileIcon icon={row.entry.icon} />
+            (() => {
+              const renderRow = (row: Row, index: number) => (
+                <button
+                  type="button"
+                  key={
+                    row.kind === 'command'
+                      ? row.command.id
+                      : `note:${row.entry.id}`
+                  }
+                  data-index={index}
+                  id={`studio-palette-option-${index}`}
+                  tabIndex={-1}
+                  role="option"
+                  aria-selected={index === active}
+                  className={`studio-palette__row ${
+                    index === active ? 'is-active' : ''
+                  } ${row.kind === 'command' && row.command.danger ? 'is-danger' : ''}`}
+                  onMouseMove={() => {
+                    if (index !== active) setActive(index);
+                  }}
+                  onClick={() => choose(row)}
+                >
+                  <span className="studio-palette__kind" aria-hidden="true">
+                    {row.kind === 'command' ? (
+                      <Icon name={row.command.icon} />
+                    ) : (
+                      <FileIcon icon={row.entry.icon} />
+                    )}
+                  </span>
+                  <span className="studio-palette__label">
+                    {row.kind === 'command'
+                      ? row.command.title
+                      : row.entry.title}
+                    {row.kind === 'note' && row.entry.folder && (
+                      <small>{row.entry.folder.replaceAll('/', ' / ')}</small>
+                    )}
+                  </span>
+                  {row.kind === 'command' && row.command.hint && (
+                    <kbd className="studio-palette__hint">
+                      {row.command.hint}
+                    </kbd>
                   )}
-                </span>
-                <span className="studio-palette__label">
-                  {row.kind === 'command' ? row.command.title : row.entry.title}
-                  {row.kind === 'note' && row.entry.folder && (
-                    <small>{row.entry.folder.replaceAll('/', ' / ')}</small>
-                  )}
-                </span>
-                {row.kind === 'command' && row.command.hint && (
-                  <kbd className="studio-palette__hint">{row.command.hint}</kbd>
-                )}
-              </button>
-            ))
+                </button>
+              );
+              // Once a query ranks the list, the best answer leads whatever
+              // it is; idle, it has two parts worth naming.
+              if (query.trim()) return rows.map(renderRow);
+              return (['command', 'note'] as const).map((kind) => {
+                const members = rows
+                  .map((row, index) => [row, index] as const)
+                  .filter(([row]) => row.kind === kind);
+                if (!members.length) return null;
+                const label = kind === 'command' ? 'Commands' : 'Notes';
+                return (
+                  <div
+                    key={kind}
+                    role="group"
+                    aria-labelledby={`studio-palette-group-${kind}`}
+                    className="studio-palette__section"
+                  >
+                    <p
+                      className="studio-palette__group"
+                      id={`studio-palette-group-${kind}`}
+                    >
+                      {label}
+                    </p>
+                    {members.map(([row, index]) => renderRow(row, index))}
+                  </div>
+                );
+              });
+            })()
           )}
+        </div>
+        <div className="studio-palette__footer" aria-hidden="true">
+          <span>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd> to move
+          </span>
+          <span>
+            <kbd>↵</kbd> to open
+          </span>
+          <span>
+            <kbd>esc</kbd> to close
+          </span>
         </div>
       </div>
     </div>,

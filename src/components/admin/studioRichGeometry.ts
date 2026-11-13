@@ -5,7 +5,16 @@ import type { SideDrop } from './studioSideDrop';
 // toolbar, and the markers a block drag draws. Everything here reads the
 // editor's layout and returns coordinates; nothing changes the document.
 
-export type Point = { top: number; left: number };
+export type Point = {
+  top: number;
+  left: number;
+  /**
+   * The caret line this point was taken from. A menu that knows its own size
+   * uses it to sit above or below the line without covering it (see
+   * useStudioCaretFloat); `top` is the estimate it starts from.
+   */
+  caret?: { top: number; bottom: number };
+};
 
 export function pointAt(editor: Editor, position: number, height = 310): Point {
   const rect = editor.view.coordsAtPos(position);
@@ -13,6 +22,7 @@ export function pointAt(editor: Editor, position: number, height = 310): Point {
   const bottom =
     (viewport?.height ?? window.innerHeight) + (viewport?.offsetTop ?? 0);
   return {
+    caret: { top: rect.top, bottom: rect.bottom },
     top: Math.max(
       8,
       rect.bottom + height + 8 > bottom
@@ -27,11 +37,13 @@ export function pointAt(editor: Editor, position: number, height = 310): Point {
 export function toolbarPoint(editor: Editor, from: number, to: number): Point {
   const a = editor.view.coordsAtPos(from);
   const b = editor.view.coordsAtPos(to);
+  const pane = editor.view.dom.closest('.studio-rich-scroll');
+  const ceiling = (pane?.getBoundingClientRect().top ?? 0) + 4;
   return {
-    top: Math.max(8, a.top - 46),
+    top: a.top - 46 >= ceiling ? a.top - 46 : b.bottom + 8,
     left: Math.max(
       8,
-      Math.min((a.left + b.left) / 2 - 110, window.innerWidth - 248),
+      Math.min((a.left + b.left) / 2 - 160, window.innerWidth - 348),
     ),
   };
 }

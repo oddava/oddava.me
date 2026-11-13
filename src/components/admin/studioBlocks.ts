@@ -1,3 +1,4 @@
+import type { IconName } from './studioIcons';
 import { readColumns } from '../../lib/garden/columns';
 // Lossless Markdown block parsing for RichDocument, plus the visual editor's
 // block labels and slash-command catalog. Editing and history belong to
@@ -248,6 +249,8 @@ export function parseBlocks(markdown: string): StudioBlock[] {
 export interface TurnTarget {
   type: BlockType;
   depth?: number;
+  /** For `list`: numbered rather than bulleted. */
+  ordered?: boolean;
 }
 
 export type SlashGroup = 'Basic' | 'Lists' | 'Blocks' | 'Insert';
@@ -269,7 +272,25 @@ export interface SlashCommand {
   caret?: number;
   /** Opens a dialog instead of inserting text. */
   action?: 'image' | 'link' | 'date' | 'youtube';
+  /** The row's glyph: an icon, or short type such as "H1". */
+  icon: SlashIcon;
+  /** One line under the title saying what the block is for. */
+  description: string;
+  /** Kept out of the unfiltered menu; found by searching for it. */
+  searchOnly?: boolean;
 }
+
+/** Headings draw as type: "H1" says more than any picture of one. */
+export type SlashIcon = { icon: IconName } | { text: string };
+
+const HEADING_DESCRIPTIONS = [
+  'Big section heading',
+  'Medium section heading',
+  'Small section heading',
+  'Subsection heading',
+  'Minor heading',
+  'Smallest heading',
+];
 
 const SLASH_GROUP_ORDER: SlashGroup[] = ['Basic', 'Lists', 'Blocks', 'Insert'];
 
@@ -281,6 +302,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'text paragraph plain body',
     group: 'Basic',
     insert: '',
+    icon: { icon: 'text' },
+    description: 'Just start writing',
   },
   ...[1, 2, 3, 4, 5, 6].map((level): SlashCommand => ({
     id: `h${level}`,
@@ -289,6 +312,10 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: `h${level} heading ${level === 1 ? 'title large' : 'section subsection small'}`,
     group: 'Basic',
     insert: '#'.repeat(level) + ' ',
+    icon: { text: `H${level}` },
+    description: HEADING_DESCRIPTIONS[level - 1]!,
+    // Three levels cover almost every note; the rest are a search away.
+    searchOnly: level > 3,
   })),
   {
     id: 'bullet',
@@ -297,6 +324,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'ul bullet list item unordered',
     group: 'Lists',
     insert: '- ',
+    icon: { icon: 'list-bullet' },
+    description: 'A simple bulleted list',
   },
   {
     id: 'ordered',
@@ -305,6 +334,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'ol ordered number list steps',
     group: 'Lists',
     insert: '1. ',
+    icon: { icon: 'list-ordered' },
+    description: 'A list with numbers',
   },
   {
     id: 'task',
@@ -313,6 +344,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'todo task checkbox check tick',
     group: 'Lists',
     insert: '- [ ] ',
+    icon: { icon: 'task' },
+    description: 'Track tasks with checkboxes',
   },
   {
     id: 'quote',
@@ -321,6 +354,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'quote blockquote cite pull',
     group: 'Blocks',
     insert: '> ',
+    icon: { icon: 'quote' },
+    description: 'Set a passage apart',
   },
   {
     id: 'code',
@@ -330,6 +365,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Blocks',
     insert: '```\n\n```',
     caret: 4,
+    icon: { icon: 'code' },
+    description: 'A block of monospaced code',
   },
   {
     id: 'table',
@@ -341,6 +378,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     insert:
       '| Column  | Column  |\n| ------- | ------- |\n| Cell    | Cell    |',
     caret: 2,
+    icon: { icon: 'table' },
+    description: 'Rows and columns',
   },
   {
     id: 'divider',
@@ -349,6 +388,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'divider rule hr separator line break',
     group: 'Blocks',
     insert: '---',
+    icon: { icon: 'divider' },
+    description: 'Separate sections with a rule',
   },
   {
     id: 'image',
@@ -358,6 +399,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Insert',
     insert: '',
     action: 'image',
+    icon: { icon: 'image' },
+    description: 'Upload or link a picture',
   },
   {
     id: 'youtube',
@@ -367,6 +410,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Insert',
     insert: '',
     action: 'youtube',
+    icon: { icon: 'video' },
+    description: 'Embed a video by its link',
   },
   {
     id: 'wikilink',
@@ -375,6 +420,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: 'wikilink note internal link backlink',
     group: 'Insert',
     insert: '[[',
+    icon: { icon: 'note-link' },
+    description: 'Link to another note',
   },
   {
     id: 'link',
@@ -384,6 +431,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Insert',
     insert: '[](https://)',
     caret: 1,
+    icon: { icon: 'link' },
+    description: 'Link to a web address',
   },
   {
     id: 'date',
@@ -393,6 +442,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Insert',
     insert: '',
     action: 'date',
+    icon: { icon: 'calendar' },
+    description: 'Insert today’s date',
   },
 ];
 
@@ -419,7 +470,7 @@ function slashScore(command: SlashCommand, needle: string): number | null {
 export function matchSlashCommands(query: string): SlashCommand[] {
   const needle = query.trim().toLowerCase();
   if (!needle) {
-    return SLASH_COMMANDS.toSorted(
+    return SLASH_COMMANDS.filter((command) => !command.searchOnly).toSorted(
       (a, b) =>
         SLASH_GROUP_ORDER.indexOf(a.group) - SLASH_GROUP_ORDER.indexOf(b.group),
     );
