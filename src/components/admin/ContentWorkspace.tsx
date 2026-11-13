@@ -16,6 +16,7 @@ import StudioShortcuts from './StudioShortcuts';
 import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
+import { buildNoteCommands } from './studioPaletteCommands';
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
 import StudioEditorPane, { type PaneCrumb } from './StudioEditorPane';
 import StudioHistoryPanel from './StudioHistoryPanel';
@@ -655,83 +656,34 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       run: () => setShortcutsOpen(true),
     },
   ];
+  // The open note's commands, built by a pure function (labels follow the
+  // note's state); the global ones above stay inline.
   if (openId) {
-    if (draft.state) {
-      paletteCommands.push({
-        id: 'toggle-draft',
-        title: draft.state === 'draft' ? 'Publish note' : 'Move note to drafts',
-        icon: draft.state === 'draft' ? 'eye' : 'eye-off',
-        run: draft.toggle,
-      });
-    }
     paletteCommands.push(
-      {
-        id: 'insert-image',
-        title: 'Insert image…',
-        icon: 'image',
-        run: () => setImageDialogOpen(true),
-      },
-      {
-        id: 'version-history',
-        title: 'Version history',
-        icon: 'history',
-        run: () => setHistoryOpen(true),
-      },
-      {
-        id: 'outline',
-        title: 'Outline',
-        icon: 'outline',
-        hint: shortcut('O', true),
-        // After the palette has handed focus back to the page.
-        run: () =>
-          requestAnimationFrame(() => commandsRef.current?.outline?.()),
-      },
-      {
-        id: 'find-in-note',
-        title: 'Find in note',
-        icon: 'search',
-        hint: shortcut('F'),
-        run: () => requestAnimationFrame(() => commandsRef.current?.find?.()),
-      },
-      {
-        id: 'focus-mode',
-        title: 'Focus mode',
-        icon: 'focus',
-        hint: shortcut('F', true),
-        run: calm.toggleFocus,
-      },
-      {
-        id: 'typewriter-scroll',
-        title: `Typewriter scroll: ${calm.typewriter ? 'on' : 'off'}`,
-        icon: 'focus',
-        run: calm.toggleTypewriter,
-      },
-      {
-        id: 'save-note',
-        title: 'Save now',
-        icon: 'save',
-        hint: shortcut('S'),
-        run: () => void saveNow(),
-      },
-      {
-        id: 'open-browser',
-        title:
-          draft.state === 'draft' ? 'Preview draft' : 'Open published page',
-        icon: 'external',
-        run: () => {
-          if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
+      ...buildNoteCommands({
+        draftState: draft.state,
+        typewriter: calm.typewriter,
+        actions: {
+          toggleDraft: draft.toggle,
+          insertImage: () => setImageDialogOpen(true),
+          openHistory: () => setHistoryOpen(true),
+          // After the palette has handed focus back to the page.
+          outline: () =>
+            requestAnimationFrame(() => commandsRef.current?.outline?.()),
+          find: () =>
+            requestAnimationFrame(() => commandsRef.current?.find?.()),
+          toggleFocus: calm.toggleFocus,
+          toggleTypewriter: calm.toggleTypewriter,
+          save: () => void saveNow(),
+          openPage: () => {
+            if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
+          },
+          deleteNote: () => {
+            const entry = entries.find((candidate) => candidate.id === openId);
+            if (entry) void mutations.removeEntry(entry);
+          },
         },
-      },
-      {
-        id: 'delete-note',
-        title: 'Delete current note',
-        icon: 'trash',
-        danger: true,
-        run: () => {
-          const entry = entries.find((candidate) => candidate.id === openId);
-          if (entry) void mutations.removeEntry(entry);
-        },
-      },
+      }),
     );
   }
 
