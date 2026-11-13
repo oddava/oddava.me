@@ -19,10 +19,17 @@ export interface NoteVersion {
 /** The note as Studio shows it. `dirty` means edits the store does not have. */
 export interface LocalNote extends NoteVersion {
   dirty: boolean;
+  /**
+   * The author is at work in it: the editor has focus and holds edits made
+   * since the note opened. Replacing the text under them would move the caret
+   * and take their undo history, so a newer version waits for them to choose
+   * even when everything they typed is saved.
+   */
+  editing?: boolean;
 }
 
 /** What Studio wrote or typed, kept apart from the store's revision. */
-export interface Draft {
+export interface LocalText {
   body: string;
   fields: Fields;
 }
@@ -33,19 +40,22 @@ export type Reading =
 
 export type ConflictState =
   | { kind: 'clear' }
-  /** The store moved on while there are unsaved edits; autosave is paused. */
+  /**
+   * The store moved on while there are unsaved edits, or while the author is
+   * editing; autosave is paused.
+   */
   | {
       kind: 'changed';
       theirs: NoteVersion;
       again: boolean;
-      aside: Draft | null;
+      aside: LocalText | null;
     }
   /** Deleted or moved elsewhere; autosave is paused. */
   | { kind: 'gone' }
   /** "Keep mine" was chosen and its save is on the way. */
   | { kind: 'overwriting'; theirs: NoteVersion }
   /** Their version was loaded and the author's text is held for recovery. */
-  | { kind: 'set-aside'; mine: Draft };
+  | { kind: 'set-aside'; mine: LocalText };
 
 export type ConflictEffect =
   | { type: 'none' }
@@ -55,8 +65,8 @@ export type ConflictEffect =
   | { type: 'load'; theirs: NoteVersion; quiet: boolean }
   /** Take their revision, then save the open text over it. */
   | { type: 'overwrite'; revision: string }
-  /** Put a set-aside draft back as an ordinary unsaved edit. */
-  | { type: 'restore'; draft: Draft }
+  /** Put set-aside text back as an ordinary unsaved edit. */
+  | { type: 'restore'; text: LocalText }
   /** The note is gone: write the open text back at its path. */
   | { type: 'recreate' }
   | { type: 'close' };
@@ -95,15 +105,15 @@ function stable(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
-export function sameContent(a: Draft, b: Draft): boolean {
+export function sameContent(a: LocalText, b: LocalText): boolean {
   return a.body === b.body && stable(a.fields) === stable(b.fields);
 }
 
-function draftOf(note: Draft): Draft {
+function setAsideText(note: LocalText): LocalText {
   return { body: note.body, fields: { ...note.fields } };
 }
 
-/** A resolved or obsolete conflict leaves a set-aside draft untouched. */
+/** A resolved or obsolete conflict leaves set-aside text untouched. */
 function settled(state: ConflictState): ConflictState {
   return state.kind === 'set-aside' ? state : CLEAR;
 }
@@ -136,7 +146,7 @@ export function observe(
       effect: { type: 'adopt-revision', revision: theirs.revision },
     };
   }
-  if (!local.dirty) {
+  if (!local.dirty && !local.editing) {
     return {
       state: settled(state),
       effect: { type: 'load', theirs, quiet: true },
@@ -165,9 +175,12 @@ export function choose(
 ): Outcome {
   if (state.kind === 'changed') {
     if (choice === 'load-theirs') {
-      const mine = sameContent(local, state.theirs)
-        ? state.aside
-        : draftOf(local);
+      // Text the store already has is in its history; only unsaved text
+      // needs setting aside.
+      const mine =
+        local.dirty && !sameContent(local, state.theirs)
+          ? setAsideText(local)
+          : state.aside;
       return {
         state: mine ? { kind: 'set-aside', mine } : CLEAR,
         effect: { type: 'load', theirs: state.theirs, quiet: false },
@@ -188,7 +201,7 @@ export function choose(
   }
   if (state.kind === 'set-aside') {
     if (choice === 'restore-mine') {
-      return { state: CLEAR, effect: { type: 'restore', draft: state.mine } };
+      return { state: CLEAR, effect: { type: 'restore', text: state.mine } };
     }
     if (choice === 'dismiss-aside') return { state: CLEAR, effect: NO_EFFECT };
   }

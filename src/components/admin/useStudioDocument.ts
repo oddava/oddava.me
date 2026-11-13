@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ContentEntryMove } from '../../lib/contracts';
 import { fetchContentEntry, updateContentEntry } from './api';
-import { titleFromBody } from './studioHelpers';
 import { AUTOSAVE_DELAY_MS, type SaveState } from './studioSession';
+
+/**
+ * The store now holds this note as `body` and `fields` under `revision`. Every
+ * path that adopts a stored version (a save, a restore, a conflict choice)
+ * reports through this one shape, so the list row is always derived the same
+ * way — see `rowPatchFromNote`.
+ */
+export type OnNoteStored = (
+  id: string,
+  revision: string,
+  body: string,
+  fields: Record<string, unknown>,
+) => void;
 
 // The open note, mirrored in a ref so the autosave loop always writes the
 // latest keystrokes without re-subscribing on every change.
@@ -17,11 +29,12 @@ export interface OpenDoc {
 interface Options {
   collectionId: string | null;
   /** A successful write — the workspace refreshes the entry's row from this. */
-  onSaved: (id: string, revision: string, title: string, icon?: string) => void;
+  onSaved: OnNoteStored;
   onError: (message: string | null) => void;
   /**
    * The store refused a save because the note changed (`stale`) or is gone
-   * (`gone`). Saving is already paused when this fires.
+   * (`gone`). This only reports: whether saving pauses is the conflict hook's
+   * call (`setPaused`), and it makes it before this returns.
    */
   onSaveRejected?: (reason: 'stale' | 'gone') => void;
 }
@@ -49,14 +62,33 @@ export interface StudioDocument {
   hasPendingWrites: () => boolean;
   /** A save request is on the wire. */
   isSaving: () => boolean;
-  /** While paused nothing is written, and the edits stay put. */
+  /**
+   * While paused nothing is written, and the edits stay put. One owner: the
+   * conflict hook (`useStudioConflict`) — nothing else pauses or resumes.
+   */
   setPaused: (paused: boolean) => void;
-  /** Replace the open note with the store's version; nothing is left unsaved. */
+  isPaused: () => boolean;
+  /**
+   * Replace the open note with the store's version: counters, save state and
+   * any scheduled save start over, and nothing is left unsaved. The one way to
+   * adopt a version the store wrote (a restore, their side of a conflict).
+   */
   replaceFromStore: (
     next: Pick<OpenDoc, 'fields' | 'body' | 'revision'>,
   ) => void;
-  /** Take the store's revision; `inSync` when the store already has our text. */
-  adoptRevision: (revision: string, inSync: boolean) => void;
+  /** Counts edits to the open note; a request remembers the one it carried. */
+  documentVersion: () => number;
+  /**
+   * Changes whenever a note is opened or closed — the same note reopened
+   * included — so a response can tell whether its note is still the one open.
+   */
+  generation: () => number;
+  /**
+   * Take the store's revision. `savedVersion` is the document version the store
+   * now holds: edits up to it are saved, later ones stay unsaved and autosave
+   * sends them. Without it, only the revision changes.
+   */
+  adoptRevision: (revision: string, savedVersion?: number) => void;
 }
 
 /**
@@ -82,6 +114,7 @@ export function useStudioDocument({
   const documentVersionRef = useRef(0);
   const persistedVersionRef = useRef(0);
   const openRequestRef = useRef(0);
+  const generationRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const saveNowRef = useRef<() => Promise<boolean>>(async () => true);
   // An unresolved conflict: writing now would bury someone else's version.
@@ -157,10 +190,8 @@ export function useStudioDocument({
         onSavedRef.current(
           snapshot.id,
           nextRevision,
-          titleFromBody(snapshot.body, snapshot.id),
-          typeof snapshot.fields.icon === 'string'
-            ? snapshot.fields.icon
-            : undefined,
+          snapshot.body,
+          snapshot.fields,
         );
         if (docRef.current?.id === snapshot.id) {
           docRef.current = { ...docRef.current, revision: nextRevision };
@@ -185,7 +216,7 @@ export function useStudioDocument({
           if (code === 'revision_conflict' || code === 'not_found') {
             // Retrying with the same revision can only fail the same way, so
             // this is a decision for the author rather than a save error.
-            pausedRef.current = true;
+            // The conflict hook pauses saving while it finds out what happened.
             setSaveState('dirty');
             onErrorRef.current(null);
             onSaveRejectedRef.current?.(
@@ -209,9 +240,9 @@ export function useStudioDocument({
     return saved;
   }, [clearScheduledSave, collectionId, scheduleSave]);
 
-  useEffect(() => {
-    saveNowRef.current = saveNow;
-  }, [saveNow]);
+  // Assigned while rendering, not in an effect: an autosave timer that fires
+  // before effects run must still reach this render's `saveNow`.
+  saveNowRef.current = saveNow;
 
   const hasUnsavedWork =
     saveState === 'dirty' || saveState === 'saving' || saveState === 'error';
@@ -316,7 +347,7 @@ export function useStudioDocument({
       };
       documentVersionRef.current = 0;
       persistedVersionRef.current = 0;
-      pausedRef.current = false;
+      generationRef.current += 1;
       setOpenId(id);
       setBody(entry.body ?? '');
       setSaveState('idle');
@@ -334,7 +365,7 @@ export function useStudioDocument({
       docRef.current = null;
       documentVersionRef.current = 0;
       persistedVersionRef.current = 0;
-      pausedRef.current = false;
+      generationRef.current += 1;
       setOpenId('');
       setBody('');
       setSaveState('idle');
@@ -353,11 +384,12 @@ export function useStudioDocument({
   const setPaused = useCallback(
     (paused: boolean) => {
       pausedRef.current = paused;
-      if (!paused && documentVersionRef.current > persistedVersionRef.current) {
+      if (paused) clearScheduledSave();
+      else if (documentVersionRef.current > persistedVersionRef.current) {
         scheduleSave();
       }
     },
-    [scheduleSave],
+    [clearScheduledSave, scheduleSave],
   );
 
   const replaceFromStore = useCallback(
@@ -374,15 +406,31 @@ export function useStudioDocument({
     [clearScheduledSave],
   );
 
-  const adoptRevision = useCallback((revision: string, inSync: boolean) => {
-    const doc = docRef.current;
-    if (!doc) return;
-    docRef.current = { ...doc, revision };
-    if (!inSync) return;
-    persistedVersionRef.current = documentVersionRef.current;
-    setSaveState('saved');
-    setSavedAt(Date.now());
-  }, []);
+  const isPaused = useCallback(() => pausedRef.current, []);
+  const documentVersion = useCallback(() => documentVersionRef.current, []);
+  const generation = useCallback(() => generationRef.current, []);
+
+  const adoptRevision = useCallback(
+    (revision: string, savedVersion?: number) => {
+      const doc = docRef.current;
+      if (!doc) return;
+      docRef.current = { ...doc, revision };
+      if (savedVersion === undefined) return;
+      persistedVersionRef.current = Math.max(
+        persistedVersionRef.current,
+        savedVersion,
+      );
+      if (documentVersionRef.current > persistedVersionRef.current) {
+        // Typed while the request was out: that text is not in the store yet.
+        setSaveState('dirty');
+        scheduleSave();
+        return;
+      }
+      setSaveState('saved');
+      setSavedAt(Date.now());
+    },
+    [scheduleSave],
+  );
 
   return {
     openId,
@@ -402,7 +450,10 @@ export function useStudioDocument({
     hasPendingWrites,
     isSaving,
     setPaused,
+    isPaused,
     replaceFromStore,
+    documentVersion,
+    generation,
     adoptRevision,
   };
 }

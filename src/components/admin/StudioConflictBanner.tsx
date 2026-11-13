@@ -55,8 +55,11 @@ function copyFor(state: ConflictState, dirty: boolean): Copy | null {
         title: state.again
           ? 'It changed again while you were deciding'
           : 'Someone edited this note elsewhere',
-        detail:
-          'What you typed is safe here. Saving is paused until you choose a version.',
+        // Not dirty: everything typed is saved, and the banner is only here
+        // because the author was mid-edit when the new version arrived.
+        detail: dirty
+          ? 'What you typed is safe here. Saving is paused until you choose a version.'
+          : 'Everything you typed is saved. Load theirs when you are ready, or keep yours.',
       };
     case 'gone':
       return {

@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { NoteRevisionMeta } from '../src/lib/history-contracts';
 import {
-  collapseDiff,
-  countWords,
-  diffWords,
   formatVersionAge,
   groupVersionsByDay,
-  summarizeDiff,
   versionTimestamp,
-} from '../src/components/admin/studioHistory';
-import type { DiffSegment } from '../src/components/admin/studioHistory';
+} from '../src/components/admin/studioHistoryTime';
+import {
+  collapseDiff,
+  diffWords,
+  summarizeDiff,
+} from '../src/components/admin/studioDiff';
+import type { DiffSegment } from '../src/components/admin/studioDiff';
+import { countWords } from '../src/components/admin/studioWordCount';
 
 // Local noon keeps every "same calendar day" assertion off midnight, whatever
 // timezone the tests run in.

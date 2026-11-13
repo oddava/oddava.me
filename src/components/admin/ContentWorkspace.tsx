@@ -16,6 +16,7 @@ import StudioShortcuts from './StudioShortcuts';
 import StudioCommandPalette, {
   type PaletteCommand,
 } from './StudioCommandPalette';
+import { buildNoteCommands } from './studioPaletteCommands';
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
 import StudioEditorPane, { type PaneCrumb } from './StudioEditorPane';
 import StudioHistoryPanel from './StudioHistoryPanel';
@@ -29,7 +30,7 @@ import { useContentMutations } from './useContentMutations';
 import { useStudioConnections } from './useStudioConnections';
 import { splitNotePath, unwrittenNoteBody } from './studioConnectionText';
 import { useSocialCardSync } from './useSocialCards';
-import { useStudioDocument } from './useStudioDocument';
+import { useStudioDocument, type OnNoteStored } from './useStudioDocument';
 import { useStudioDraft } from './useStudioDraft';
 import { noteEntryPath, notePreviewUrl } from '../../lib/note-preview-url';
 import { useStudioConflict } from './useStudioConflict';
@@ -42,6 +43,7 @@ import { useStudioFocusRoot } from './useStudioFocus';
 import {
   contentRequestError,
   noteHref,
+  rowPatchFromNote,
   shortcut,
   titleFromBody,
 } from './studioHelpers';
@@ -163,11 +165,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   // blocking it.
   const syncSocialCards = useSocialCardSync(Boolean(collection));
 
-  const onEntrySaved = useCallback(
-    (id: string, revision: string, title: string, icon?: string) => {
+  const onEntrySaved: OnNoteStored = useCallback(
+    (id, revision, storedBody, fields) => {
+      const patch = rowPatchFromNote(id, storedBody, fields);
       setEntries((items) =>
         items.map((entry) =>
-          entry.id === id ? { ...entry, title, revision, icon } : entry,
+          entry.id === id ? { ...entry, ...patch, revision } : entry,
         ),
       );
       syncSocialCards();
@@ -194,8 +197,17 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     },
     onNotice: setNotice,
     onError: reportError,
+    // The caret is in the note: a newer version asks rather than replacing
+    // the text (and the undo history) under it.
+    isEditing: () =>
+      Boolean(document.activeElement?.closest('.studio-rich-content')),
   });
   saveRejectedRef.current = conflict.handleSaveRejected;
+  // Writes the author asks for (a restore, publishing) wait while a conflict
+  // holds saving; this is what the disabled controls say.
+  const savePausedReason = isPaused(conflict.state)
+    ? 'Saving is paused until you choose a version in the banner above the note.'
+    : null;
   const {
     openId,
     body,
@@ -606,7 +618,9 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     title: currentTitle,
     entries,
     setEntries,
+    blockedReason: savePausedReason,
     notify: setNotice,
+    onError: reportError,
   });
   // Open the note's page: the live site for a published note, the admin-host
   // preview for a draft (the notes host never sees the admin session).
@@ -649,83 +663,34 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       run: () => setShortcutsOpen(true),
     },
   ];
+  // The open note's commands, built by a pure function (labels follow the
+  // note's state); the global ones above stay inline.
   if (openId) {
-    if (draft.state) {
-      paletteCommands.push({
-        id: 'toggle-draft',
-        title: draft.state === 'draft' ? 'Publish note' : 'Move note to drafts',
-        icon: draft.state === 'draft' ? 'eye' : 'eye-off',
-        run: draft.toggle,
-      });
-    }
     paletteCommands.push(
-      {
-        id: 'insert-image',
-        title: 'Insert image…',
-        icon: 'image',
-        run: () => setImageDialogOpen(true),
-      },
-      {
-        id: 'version-history',
-        title: 'Version history',
-        icon: 'history',
-        run: () => setHistoryOpen(true),
-      },
-      {
-        id: 'outline',
-        title: 'Outline',
-        icon: 'outline',
-        hint: shortcut('O', true),
-        // After the palette has handed focus back to the page.
-        run: () =>
-          requestAnimationFrame(() => commandsRef.current?.outline?.()),
-      },
-      {
-        id: 'find-in-note',
-        title: 'Find in note',
-        icon: 'search',
-        hint: shortcut('F'),
-        run: () => requestAnimationFrame(() => commandsRef.current?.find?.()),
-      },
-      {
-        id: 'focus-mode',
-        title: 'Focus mode',
-        icon: 'focus',
-        hint: shortcut('F', true),
-        run: calm.toggleFocus,
-      },
-      {
-        id: 'typewriter-scroll',
-        title: `Typewriter scroll: ${calm.typewriter ? 'on' : 'off'}`,
-        icon: 'focus',
-        run: calm.toggleTypewriter,
-      },
-      {
-        id: 'save-note',
-        title: 'Save now',
-        icon: 'save',
-        hint: shortcut('S'),
-        run: () => void saveNow(),
-      },
-      {
-        id: 'open-browser',
-        title:
-          draft.state === 'draft' ? 'Preview draft' : 'Open published page',
-        icon: 'external',
-        run: () => {
-          if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
+      ...buildNoteCommands({
+        draftState: draft.state,
+        typewriter: calm.typewriter,
+        actions: {
+          toggleDraft: draft.toggle,
+          insertImage: () => setImageDialogOpen(true),
+          openHistory: () => setHistoryOpen(true),
+          // After the palette has handed focus back to the page.
+          outline: () =>
+            requestAnimationFrame(() => commandsRef.current?.outline?.()),
+          find: () =>
+            requestAnimationFrame(() => commandsRef.current?.find?.()),
+          toggleFocus: calm.toggleFocus,
+          toggleTypewriter: calm.toggleTypewriter,
+          save: () => void saveNow(),
+          openPage: () => {
+            if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
+          },
+          deleteNote: () => {
+            const entry = entries.find((candidate) => candidate.id === openId);
+            if (entry) void mutations.removeEntry(entry);
+          },
         },
-      },
-      {
-        id: 'delete-note',
-        title: 'Delete current note',
-        icon: 'trash',
-        danger: true,
-        run: () => {
-          const entry = entries.find((candidate) => candidate.id === openId);
-          if (entry) void mutations.removeEntry(entry);
-        },
-      },
+      }),
     );
   }
 
@@ -1071,7 +1036,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 onChangeIcon={() => setIconPickerRequest((n) => n + 1)}
                 draft={
                   draft.state
-                    ? { state: draft.state, onChange: draft.set }
+                    ? {
+                        state: draft.state,
+                        onChange: draft.set,
+                        blockedReason: draft.blockedReason,
+                      }
                     : null
                 }
                 onQuickCreate={(folder) => {
@@ -1298,6 +1267,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   onHistory={() => setHistoryOpen(true)}
                   draftState={draft.state}
                   onDraftChange={draft.set}
+                  draftBlockedReason={draft.blockedReason}
                   iconPickerRequest={iconPickerRequest}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {
@@ -1369,6 +1339,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         title={currentTitle}
         compact={phone}
         onSaved={onEntrySaved}
+        blockedReason={savePausedReason}
         onNotice={setNotice}
         onClose={closeHistory}
       />

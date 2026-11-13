@@ -190,7 +190,25 @@ describe('observe', () => {
     });
   });
 
-  it('leaves a set-aside draft alone when a quiet refresh happens', () => {
+  it('does not reload quietly under an author who is editing', () => {
+    const outcome = observe(CLEAR, found(note('r2', 'theirs')), {
+      ...local('r1', 'mine, all saved', false),
+      editing: true,
+    });
+    expect(outcome.effect).toEqual({ type: 'none' });
+    expect(outcome.state).toMatchObject({ kind: 'changed', again: false });
+    expect(isPaused(outcome.state)).toBe(true);
+    // Their version loads when asked; saved text needs no setting aside.
+    const loaded = choose(
+      outcome.state,
+      'load-theirs',
+      local('r1', 'mine, all saved', false),
+    );
+    expect(loaded.state).toEqual(CLEAR);
+    expect(loaded.effect).toMatchObject({ type: 'load', quiet: false });
+  });
+
+  it('leaves set-aside text alone when a quiet refresh happens', () => {
     const aside: ConflictState = {
       kind: 'set-aside',
       mine: { body: 'mine', fields: {} },
@@ -246,18 +264,18 @@ describe('choose', () => {
     expect(saved(changed)).toBe(changed);
   });
 
-  it('restore-mine puts the draft back as an edit', () => {
+  it('restore-mine puts the set-aside text back as an edit', () => {
     const aside = { body: 'my words', fields: {} };
     const outcome = choose(
       { kind: 'set-aside', mine: aside },
       'restore-mine',
       local('r2', 'theirs', false),
     );
-    expect(outcome.effect).toEqual({ type: 'restore', draft: aside });
+    expect(outcome.effect).toEqual({ type: 'restore', text: aside });
     expect(outcome.state).toEqual(CLEAR);
   });
 
-  it('dismissing the set-aside notice forgets the draft', () => {
+  it('dismissing the set-aside notice forgets that text', () => {
     const outcome = choose(
       { kind: 'set-aside', mine: { body: 'x', fields: {} } },
       'dismiss-aside',

@@ -64,10 +64,53 @@ export function nextDraftState(state: DraftState): DraftState {
   return state === 'draft' ? 'published' : 'draft';
 }
 
-/** The radio the arrow keys land on, wrapping like a native radio group. */
+/**
+ * The option an arrow key moves focus to. It stops at either end rather than
+ * wrapping: with two options a wrap turns every arrow press into "the other
+ * one", and the arrows only ever move focus — choosing takes Space or Enter.
+ */
 export function stepDraftState(state: DraftState, step: 1 | -1): DraftState {
-  const index = DRAFT_STATES.indexOf(state);
-  return DRAFT_STATES[
-    (index + step + DRAFT_STATES.length) % DRAFT_STATES.length
-  ]!;
+  const index = DRAFT_STATES.indexOf(state) + step;
+  return DRAFT_STATES[Math.max(0, Math.min(DRAFT_STATES.length - 1, index))]!;
+}
+
+/** Who can see each state, for the control's tooltips and the phone sheet. */
+export const DRAFT_HINTS: Record<DraftState, string> = {
+  draft: 'Only you can see drafts.',
+  published: 'Anyone can read published notes.',
+};
+
+/**
+ * A restore brings back words, never visibility: the note keeps its own draft
+ * flag, whatever the version had. (The server applies the same rule; this is
+ * the client's side of it for responses that do not say.)
+ */
+export function keepDraftState(
+  restored: Record<string, unknown>,
+  current: Record<string, unknown>,
+): Record<string, unknown> {
+  return withDraftState(restored, draftStateOf(current));
+}
+
+const NEW_DRAFT_NOTICE_KEY = 'oddava.studio.newDraftNoticeSeen';
+
+export const NEW_DRAFT_NOTICE =
+  'New notes start as drafts — publish when you’re ready.';
+
+/**
+ * The friendly word about drafts, the first time Studio makes one, and never
+ * again on this browser. Storage that cannot be read or written (private mode)
+ * says nothing rather than repeating itself on every note.
+ */
+export function takeNewDraftNotice(
+  storage?: Pick<Storage, 'getItem' | 'setItem'> | null,
+): string | null {
+  try {
+    const store = storage === undefined ? globalThis.localStorage : storage;
+    if (!store || store.getItem(NEW_DRAFT_NOTICE_KEY)) return null;
+    store.setItem(NEW_DRAFT_NOTICE_KEY, '1');
+    return NEW_DRAFT_NOTICE;
+  } catch {
+    return null;
+  }
 }

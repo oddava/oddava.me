@@ -19,7 +19,7 @@ import {
 } from './api';
 import { gardenSlug } from '../../lib/garden/utils';
 import { remapFolderPath } from './studioHelpers';
-import { NEW_NOTE_FIELDS } from './studioDraft';
+import { NEW_NOTE_FIELDS, takeNewDraftNotice } from './studioDraft';
 import type { StudioTreeItemRef } from './studioDragItems';
 import type { TabPlacement } from './studioTabStrip';
 import type { StudioDocument } from './useStudioDocument';
@@ -190,6 +190,9 @@ export function useContentMutations({
       // A file you just made is one you meant to open: it gets its own tab
       // rather than the one browsing hands round.
       await openNote(id, folder, { placement: 'permanent' });
+      // Said once per browser: why the new note's pill reads "Draft".
+      const firstDraft = takeNewDraftNotice();
+      if (firstDraft) setNotice(firstDraft);
       return true;
     } catch (caught) {
       setError(

@@ -5,6 +5,8 @@ import type {
   NoteRevisionMeta,
 } from '../../lib/history-contracts';
 import { fetchNoteVersion, fetchNoteVersions, restoreNoteVersion } from './api';
+import { draftStateOf, keepDraftState } from './studioDraft';
+import type { OnNoteStored, StudioDocument } from './useStudioDocument';
 
 export type HistoryStatus = 'loading' | 'ready' | 'error';
 
@@ -16,7 +18,72 @@ interface Options {
   flush: () => Promise<boolean>;
   /** The revision the open note has now — what a restore must replace. */
   currentRevision: () => string;
-  onRestored: (entry: ContentEntryDetail) => void;
+  /**
+   * Why a restore cannot be written right now (saving is paused by a
+   * conflict), or null. Checked when the restore starts, not only rendered.
+   */
+  blockedReason: () => string | null;
+  /**
+   * `fields` is what the note holds after the restore, when the server says
+   * (it keeps the note's own draft flag and order); otherwise derive it.
+   */
+  onRestored: (
+    entry: ContentEntryDetail,
+    fields: Record<string, unknown> | undefined,
+  ) => void;
+}
+
+/** The restore response, with the resulting fields once the server sends them. */
+type RestoreResponse = Awaited<ReturnType<typeof restoreNoteVersion>> & {
+  fields?: Record<string, unknown>;
+};
+
+export type RestoreAdoption = 'replaced' | 'edited-meanwhile' | 'not-open';
+
+/**
+ * Make a restored version the open note. It goes through `replaceFromStore`,
+ * like their side of a conflict, so counters, save state and any scheduled
+ * save start over rather than describing the text it replaced.
+ *
+ * Text typed while the restore was out is not replaced: it is not in the
+ * store, and its next save is refused against the restored revision, which
+ * brings up the conflict banner with both versions. The row is refreshed in
+ * every case, since the store has the restored note either way.
+ */
+export function adoptRestoredVersion(
+  doc: Pick<
+    StudioDocument,
+    'docRef' | 'hasPendingWrites' | 'replaceFromStore' | 'markDirty'
+  >,
+  entry: ContentEntryDetail,
+  resultingFields: Record<string, unknown> | undefined,
+  onStored: OnNoteStored,
+): RestoreAdoption {
+  const open = doc.docRef.current;
+  if (!open || open.id !== entry.id) {
+    onStored(
+      entry.id,
+      entry.revision,
+      entry.body,
+      resultingFields ?? entry.fields,
+    );
+    return 'not-open';
+  }
+  // A restore never changes who can read the note. A server that says what
+  // it wrote is taken at its word; otherwise the note keeps its own flag.
+  const fields = resultingFields ?? keepDraftState(entry.fields, open.fields);
+  onStored(entry.id, entry.revision, entry.body, fields);
+  if (doc.hasPendingWrites()) return 'edited-meanwhile';
+  doc.replaceFromStore({
+    body: entry.body,
+    fields: resultingFields ?? entry.fields,
+    revision: entry.revision,
+  });
+  // The store took the version's flag; autosave writes the note's own back.
+  if (draftStateOf(fields) !== draftStateOf(resultingFields ?? entry.fields)) {
+    doc.markDirty({ fields });
+  }
+  return 'replaced';
 }
 
 function messageOf(error: unknown, fallback: string): string {
@@ -38,6 +105,7 @@ export function useStudioHistory({
   noteId,
   flush,
   currentRevision,
+  blockedReason,
   onRestored,
 }: Options) {
   const [status, setStatus] = useState<HistoryStatus>('loading');
@@ -54,8 +122,8 @@ export function useStudioHistory({
 
   // Mirrored so the load effect depends on the panel opening, not on callbacks
   // that change identity with every keystroke in the note behind it.
-  const latest = useRef({ flush, currentRevision, onRestored });
-  latest.current = { flush, currentRevision, onRestored };
+  const latest = useRef({ flush, currentRevision, blockedReason, onRestored });
+  latest.current = { flush, currentRevision, blockedReason, onRestored };
 
   useEffect(() => {
     if (!open || !collectionId || !noteId) return;
@@ -119,19 +187,23 @@ export function useStudioHistory({
     setRestoring(true);
     setRestoreError('');
     try {
+      // Said for what it is: "not saved yet" would send the author waiting
+      // for a save that cannot happen until they choose.
+      const blocked = latest.current.blockedReason();
+      if (blocked) throw new Error(blocked);
       if (!(await latest.current.flush())) {
         throw new Error(
           'Your latest changes are not saved yet, so nothing was restored. Try again in a moment.',
         );
       }
-      const response = await restoreNoteVersion(
+      const response: RestoreResponse = await restoreNoteVersion(
         collectionId,
         noteId,
         selectedId,
         latest.current.currentRevision(),
       );
       if (!response.entry) throw new Error('The restore returned no note.');
-      latest.current.onRestored(response.entry);
+      latest.current.onRestored(response.entry, response.fields);
     } catch (caught) {
       setRestoreError(messageOf(caught, 'Could not restore that version.'));
     } finally {

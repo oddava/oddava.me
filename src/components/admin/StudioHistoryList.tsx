@@ -6,7 +6,7 @@ import {
   formatVersionExact,
   groupVersionsByDay,
   versionTimestamp,
-} from './studioHistory';
+} from './studioHistoryTime';
 
 interface Props {
   versions: NoteRevisionMeta[];

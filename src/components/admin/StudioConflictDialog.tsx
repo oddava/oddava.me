@@ -2,7 +2,7 @@ import { createPortal } from 'preact/compat';
 import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import { Icon } from './studioIcons';
-import { diffRows, foldUnchanged, hasChanges } from './studioTextDiff';
+import { diffRows, foldUnchanged, hasChanges } from './studioDiff';
 
 interface Props {
   mine: string;

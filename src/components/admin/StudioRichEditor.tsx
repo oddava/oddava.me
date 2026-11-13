@@ -6,6 +6,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import type { TagCount } from '../../lib/garden/connections';
 import { EditorState, TextSelection } from '@tiptap/pm/state';
 import { BlockSelection } from './studioBlockSelection';
+import { carrySelection } from './studioCarrySelection';
 import { useStudioBlockMarquee } from './useStudioBlockMarquee';
 import { useStudioBlockHandle } from './useStudioBlockHandle';
 import {
@@ -461,6 +462,11 @@ export default function StudioRichEditor(props: Props) {
       isOurs(emissions.current, props.body)
     )
       return;
+    // The pane is keyed by note, so this is the same note replaced from
+    // outside: keep the caret and the scroll where they were (see
+    // `carrySelection`) rather than sending both to the top.
+    const { anchor, head } = editor.state.selection;
+    const scrollTop = scroller.current?.scrollTop ?? 0;
     source.current = new RichDocument();
     editor.commands.setContent(source.current.parse(editor, props.body), {
       emitUpdate: false,
@@ -470,8 +476,10 @@ export default function StudioRichEditor(props: Props) {
       EditorState.create({
         doc: editor.state.doc,
         plugins: editor.state.plugins,
+        selection: carrySelection(editor.state.doc, { anchor, head }),
       }),
     );
+    if (scroller.current) scroller.current.scrollTop = scrollTop;
     source.current.remember(editor, props.body);
     emitted.current = props.body;
     emissions.current = emissionsFrom(props.body);

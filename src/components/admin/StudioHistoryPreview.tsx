@@ -1,12 +1,8 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { NoteRevisionDetail } from '../../lib/history-contracts';
-import {
-  collapseDiff,
-  countWords,
-  diffWords,
-  summarizeDiff,
-} from './studioHistory';
-import type { DiffRow } from './studioHistory';
+import { collapseDiff, diffWords, summarizeDiff } from './studioDiff';
+import type { WordRow } from './studioDiff';
+import { countWords } from './studioWordCount';
 
 type Mode = 'changes' | 'text';
 
@@ -16,7 +12,7 @@ interface Props {
   currentBody: string;
 }
 
-function Changes({ rows }: { rows: DiffRow[] }) {
+function Changes({ rows }: { rows: WordRow[] }) {
   return (
     <>
       {rows.map((row, index) => {
