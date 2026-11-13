@@ -60,6 +60,14 @@ const MARKER = new RegExp(
   'i',
 );
 const QUOTED_LINE = /^ {0,3}>[ \t]?(.*)$/;
+/** A cheap first-line test that never looks past the opening `[!`. */
+const OPENING_PREFIX = /^ {0,3}>[ \t]?\[!/;
+
+/** Where the line starting at `start` ends: its `\n`, or the end of `source`. */
+export function lineEnd(source: string, start: number): number {
+  const end = source.indexOf('\n', start);
+  return end < 0 ? source.length : end;
+}
 
 export interface CalloutSource {
   kind: CalloutKind;
@@ -76,19 +84,28 @@ export interface CalloutSource {
  * being half-understood. The body is the run of `>` lines that follows.
  */
 export function readCallout(source: string): CalloutSource | null {
-  const lines = source.split('\n');
-  const opening = MARKER.exec(lines[0] ?? '');
+  // Marked offers this every block of every note with the whole rest of the
+  // note as `source`, so it must cost what the callout costs, not what the
+  // note costs: reject on the first line, then walk lines by index rather
+  // than splitting everything after them.
+  if (!OPENING_PREFIX.test(source)) return null;
+  const firstEnd = lineEnd(source, 0);
+  const opening = MARKER.exec(source.slice(0, firstEnd));
   if (!opening) return null;
   const body: string[] = [];
-  for (let index = 1; index < lines.length; index += 1) {
-    const quoted = QUOTED_LINE.exec(lines[index]!);
+  let end = firstEnd;
+  for (let start = firstEnd + 1; start <= source.length;) {
+    const next = lineEnd(source, start);
+    const quoted = QUOTED_LINE.exec(source.slice(start, next));
     if (!quoted) break;
     body.push(quoted[1]!);
+    end = next;
+    start = next + 1;
   }
   return {
     kind: opening[1]!.toLowerCase() as CalloutKind,
     body: body.join('\n').replace(/\n+$/, ''),
-    raw: lines.slice(0, body.length + 1).join('\n'),
+    raw: source.slice(0, end),
   };
 }
 

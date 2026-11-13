@@ -5,11 +5,14 @@
 // straight into HTML ids and hrefs with no escaping, and anything fancier
 // (`[^a note]`) simply stays source, losslessly, in the editor.
 
+import { lineEnd } from './callouts';
+
 export const FOOTNOTE_ID = '[\\w-]+';
 
 const REFERENCE = new RegExp(`^\\[\\^(${FOOTNOTE_ID})\\](?!:)`);
 const DEFINITION = new RegExp(`^ {0,3}\\[\\^(${FOOTNOTE_ID})\\]:[ \\t]*(.*)$`);
 const INDENTED = /^(?: {2,}|\t)/;
+const OPENING_PREFIX = /^ {0,3}\[\^/;
 
 /** The `[^id]` reference at the start of `source`, or null. */
 export function readFootnoteReference(
@@ -35,27 +38,34 @@ const dedent = (line: string): string => line.replace(/^(?: {1,4}|\t)/, '');
  * follows — and ends at the first line that is neither.
  */
 export function readFootnoteDefinition(source: string): FootnoteSource | null {
-  const lines = source.split('\n');
-  const opening = DEFINITION.exec(lines[0] ?? '');
+  // Marked offers this every block of every note with the whole rest of the
+  // note as `source`, so reject on the first line and walk lines by index:
+  // splitting the rest up front made ordinary notes quadratic to render.
+  if (!OPENING_PREFIX.test(source)) return null;
+  const firstEnd = lineEnd(source, 0);
+  const opening = DEFINITION.exec(source.slice(0, firstEnd));
   if (!opening) return null;
   const body = [opening[2]!];
-  let last = 0;
-  for (let index = 1; index < lines.length; index += 1) {
-    const line = lines[index]!;
+  // Blank lines are held back until indented text confirms they belong to
+  // the definition; a definition never ends on them.
+  let pendingBlanks = 0;
+  let end = firstEnd;
+  for (let start = firstEnd + 1; start <= source.length;) {
+    const next = lineEnd(source, start);
+    const line = source.slice(start, next);
     if (line.trim() === '') {
-      const next = lines.slice(index + 1).find((later) => later.trim() !== '');
-      if (next === undefined || !INDENTED.test(next)) break;
-      body.push('');
+      pendingBlanks += 1;
     } else if (INDENTED.test(line)) {
+      for (; pendingBlanks > 0; pendingBlanks -= 1) body.push('');
       body.push(dedent(line));
-      last = index;
+      end = next;
     } else break;
+    start = next + 1;
   }
-  const kept = last + 1;
   return {
     id: opening[1]!,
-    body: body.slice(0, kept).join('\n').trim(),
-    raw: lines.slice(0, kept).join('\n'),
+    body: body.join('\n').trim(),
+    raw: source.slice(0, end),
   };
 }
 
