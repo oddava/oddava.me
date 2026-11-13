@@ -34,6 +34,11 @@ interface Props {
    * part of the tap that opened the sheet and raises its keyboard.
    */
   initialFocus?: RefObject<HTMLElement>;
+  /**
+   * Where the sheet rises from. `right` is a drawer for a screen with room
+   * beside the note: it does not drag away, so it names its own way out.
+   */
+  side?: 'bottom' | 'right';
   onClose: () => void;
   children: ComponentChildren;
 }
@@ -43,6 +48,7 @@ export default function StudioSheet({
   title,
   detail,
   initialFocus,
+  side = 'bottom',
   onClose,
   children,
 }: Props) {
@@ -174,15 +180,20 @@ export default function StudioSheet({
   }
 
   const dragging = gesture.current !== null && drag !== 0;
-  const dragHandlers = {
-    onPointerDown: onDragStart,
-    onPointerMove: onDragMove,
-    onPointerUp: onDragEnd,
-    onPointerCancel: onDragEnd,
-  };
+  const drawer = side === 'right';
+  const dragHandlers = drawer
+    ? {}
+    : {
+        onPointerDown: onDragStart,
+        onPointerMove: onDragMove,
+        onPointerUp: onDragEnd,
+        onPointerCancel: onDragEnd,
+      };
 
   return createPortal(
-    <div className={`studio-sheet-layer ${shown ? 'is-open' : ''}`}>
+    <div
+      className={`studio-sheet-layer ${drawer ? 'studio-sheet-layer--right' : ''} ${shown ? 'is-open' : ''}`}
+    >
       <div
         className="studio-sheet__scrim"
         aria-hidden="true"
@@ -205,12 +216,24 @@ export default function StudioSheet({
         }
       >
         <div className="studio-sheet__drag" {...dragHandlers}>
-          <div className="studio-sheet__grip">
-            <span aria-hidden="true" />
-          </div>
+          {!drawer && (
+            <div className="studio-sheet__grip">
+              <span aria-hidden="true" />
+            </div>
+          )}
           <header className="studio-sheet__head">
             <strong>{title}</strong>
             {detail && <span>{detail}</span>}
+            {drawer && (
+              <button
+                type="button"
+                className="studio-icon-button studio-sheet__close"
+                aria-label="Close"
+                onClick={onClose}
+              >
+                <Icon name="close" />
+              </button>
+            )}
           </header>
         </div>
         <div className="studio-sheet__body">{children}</div>

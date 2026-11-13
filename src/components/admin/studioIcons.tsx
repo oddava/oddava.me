@@ -163,6 +163,9 @@ const PATHS = {
   outdent: (
     <path d="M4 4.75h12M9.5 10H16M4 15.25h12M6.75 7.75 4 10l2.75 2.25" />
   ),
+  history: (
+    <path d="M3.75 10a6.25 6.25 0 1 0 1.9-4.45M3.75 4v3.75h3.75M10 6.5V10l2.5 1.5" />
+  ),
   keyboard: (
     <>
       <rect x="2.75" y="3.25" width="14.5" height="9.5" rx="1.75" />

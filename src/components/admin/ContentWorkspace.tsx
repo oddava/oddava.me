@@ -18,6 +18,7 @@ import StudioCommandPalette, {
 } from './StudioCommandPalette';
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
 import StudioEditorPane, { type PaneCrumb } from './StudioEditorPane';
+import StudioHistoryPanel from './StudioHistoryPanel';
 import { Icon } from './studioIcons';
 import { folderCrumbs } from './studioMobileTree';
 import type { TabPlacement } from './studioTabStrip';
@@ -105,6 +106,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageEdit, setImageEdit] = useState<ImageEditRequest | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const [session, setSession] = useState<StudioSession>(DEFAULT_SESSION);
   const [sessionRestored, setSessionRestored] = useState(false);
@@ -130,6 +132,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
   const keyboardOpen = useVisualViewportHeight(phone);
 
   const reportError = useCallback((message: string) => setError(message), []);
+  // The note gets the keyboard back unless the sheet already returned it to
+  // the button that opened it; a palette command leaves nothing to return to.
+  const closeHistory = useCallback(() => {
+    setHistoryOpen(false);
+    requestAnimationFrame(() => {
+      if (document.activeElement === document.body) focusRef.current?.();
+    });
+  }, []);
   const library = useContentLibrary(reportError);
   const { collection, entries, setEntries, folders, loading, refreshTree } =
     library;
@@ -600,6 +610,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         title: 'Insert image…',
         icon: 'image',
         run: () => setImageDialogOpen(true),
+      },
+      {
+        id: 'version-history',
+        title: 'Version history',
+        icon: 'history',
+        run: () => setHistoryOpen(true),
       },
       {
         id: 'save-note',
@@ -1165,6 +1181,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   suggestions={suggestions}
                   onShowSidebar={showList}
                   onNoteActions={() => setNoteActionsRequest((n) => n + 1)}
+                  onHistory={() => setHistoryOpen(true)}
                   iconPickerRequest={iconPickerRequest}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {
@@ -1218,6 +1235,16 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           setPaletteOpen(false);
           editEntry(entry);
         }}
+      />
+      <StudioHistoryPanel
+        open={historyOpen && Boolean(openId)}
+        collectionId={collection?.id ?? null}
+        doc={doc}
+        title={currentTitle}
+        compact={phone}
+        onSaved={onEntrySaved}
+        onNotice={setNotice}
+        onClose={closeHistory}
       />
       <StudioImageDialog
         open={imageDialogOpen}

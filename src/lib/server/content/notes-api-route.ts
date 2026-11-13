@@ -29,6 +29,7 @@ import {
   withRedisContentMutationLock,
 } from './redis-store';
 import type { NotesStore } from './note-archive';
+import { withNoteRevisions } from './revisions-hook';
 
 // Same snapshot barrier as the Studio content route: a reader retries until
 // the content version is unchanged across the read, so a folder move in
@@ -73,7 +74,7 @@ async function withStore(
     );
   }
 
-  const provider = createRedisContentProvider();
+  const provider = withNoteRevisions(createRedisContentProvider());
   if (!mutation) {
     for (let attempt = 0; ; attempt += 1) {
       const version = await readStableContentVersion();

@@ -8,6 +8,7 @@ import {
 import { handleContentFolders } from './folders';
 import { methodNotAllowed } from './http';
 import { handleContentMedia } from './media';
+import { handleContentRevisions } from './revisions-api';
 import type { ContentProvider } from './types';
 
 const CONTENT_API_PREFIX = '/api/admin/content/';
@@ -49,6 +50,9 @@ export function dispatchContentRequest(
   }
 
   const [collection, action, extra] = segments;
+  if (segments.length === 3 && extra === 'history') {
+    return handleContentRevisions(provider, collection, action, request);
+  }
   if (!collection || extra) return notFound();
   if (!action) {
     return handleContentCollection(provider, collection, request);

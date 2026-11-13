@@ -41,6 +41,8 @@ interface Props {
   onShowSidebar: () => void;
   /** Phone: the note's ⋯ — its actions, as a sheet. */
   onNoteActions?: () => void;
+  /** Opens the note's version history. */
+  onHistory?: () => void;
   /** Bumped to open the icon picker from elsewhere (the phone's ⋯ sheet). */
   iconPickerRequest?: number;
   onSave: () => void;
@@ -78,6 +80,7 @@ export default function StudioEditorPane({
   suggestions,
   onShowSidebar,
   onNoteActions,
+  onHistory,
   iconPickerRequest = 0,
   onSave,
   onBodyChange,
@@ -186,6 +189,18 @@ export default function StudioEditorPane({
                 iconOnly={compact}
                 onSave={onSave}
               />
+              {onHistory && (
+                <button
+                  type="button"
+                  className="studio-icon-button"
+                  aria-label="Version history"
+                  title="Version history"
+                  aria-haspopup="dialog"
+                  onClick={onHistory}
+                >
+                  <Icon name="history" />
+                </button>
+              )}
               {compact && onNoteActions && (
                 <button
                   type="button"
