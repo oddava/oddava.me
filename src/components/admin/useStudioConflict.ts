@@ -175,10 +175,10 @@ export function useStudioConflict({
           setBusy(false);
         }
       } else if (effect.type === 'restore') {
-        current.setBody(effect.draft.body);
+        current.setBody(effect.text.body);
         current.markDirty({
-          body: effect.draft.body,
-          fields: effect.draft.fields,
+          body: effect.text.body,
+          fields: effect.text.fields,
         });
       } else if (effect.type === 'recreate') {
         setBusy(true);
