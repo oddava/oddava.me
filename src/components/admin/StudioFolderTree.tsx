@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
 import type { ContentEntryListItem, ContentFolder } from '../../lib/contracts';
+import { Doodle, DoodleSprout } from './studioDoodles';
 import { Icon } from './studioIcons';
 import { shortcut } from './studioHelpers';
 import { MENU_TRIGGER_PROPS, useStudioMenu } from './useStudioMenu';
@@ -77,6 +78,15 @@ interface Props {
   ) => Promise<boolean>;
   onBulkMove: (items: StudioTreeItemRef[], folder: string) => Promise<boolean>;
   onBulkDelete: (items: StudioTreeItemRef[]) => Promise<boolean>;
+}
+
+/** "7 notes · 2 drafts": the sidebar's one line of small print. */
+function gardenCount(entries: ContentEntryListItem[]): string {
+  const drafts = entries.filter((entry) => entry.draft).length;
+  const notes = `${entries.length} ${entries.length === 1 ? 'note' : 'notes'}`;
+  return drafts
+    ? `${notes} · ${drafts} ${drafts === 1 ? 'draft' : 'drafts'}`
+    : notes;
 }
 
 export default function StudioFolderTree({
@@ -487,6 +497,7 @@ export default function StudioFolderTree({
         )}
         {tree.itemCount === 0 && !creating && !searching && (
           <div className="studio-tree-empty">
+            <DoodleSprout />
             <p>No notes yet.</p>
             <button type="button" onClick={() => beginCreate('')}>
               New note
@@ -494,6 +505,16 @@ export default function StudioFolderTree({
           </div>
         )}
       </div>
+
+      {/* How big the garden is, in the corner where a notebook has its
+          page count. Silent while several rows are picked: their bar is
+          there instead. */}
+      {entries.length > 0 && selectedItems.length === 0 && (
+        <p className="studio-explorer__foot">
+          <Doodle name="leaf" size={14} />
+          <span>{gardenCount(entries)}</span>
+        </p>
+      )}
 
       {selectedItems.length > 0 && (
         <StudioTreeBulkBar

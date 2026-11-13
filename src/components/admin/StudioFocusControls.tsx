@@ -13,9 +13,9 @@ interface Choice<T extends string> {
 }
 
 const SIZE_CHOICES: Choice<FocusPrefs['textSize']>[] = [
-  { value: 'sm', label: 'S', name: 'Small' },
-  { value: 'md', label: 'M', name: 'Medium' },
-  { value: 'lg', label: 'L', name: 'Large' },
+  { value: 'sm', label: 'A', name: 'Small' },
+  { value: 'md', label: 'A', name: 'Medium' },
+  { value: 'lg', label: 'A', name: 'Large' },
 ];
 const MEASURE_LABELS: Record<FocusPrefs['measure'], string> = {
   narrow: 'Narrow',
@@ -53,7 +53,7 @@ function Segments<T extends string>({
   onChange: (next: T) => void;
 }) {
   return (
-    <fieldset className="studio-reading__group">
+    <fieldset className="studio-reading__group" data-group={name}>
       <legend>{legend}</legend>
       {hint && <p className="studio-reading__hint">{hint}</p>}
       <div className="studio-reading__segments">

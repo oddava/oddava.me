@@ -7,8 +7,7 @@
 --------------------------------------------------------------------------- */
 
 .admin-page:has(.studio) {
-  /* The writing surface is the site's own black, so a note in Studio is the
-     note on the page. */
+  /* The room is the desk; the note is a sheet of paper on it. */
   --admin-bg: var(--st-canvas);
 }
 
@@ -147,7 +146,7 @@
   overflow: hidden;
   color: var(--st-text);
   font-size: var(--st-size-sm);
-  font-weight: 500;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -377,14 +376,16 @@
   justify-content: center;
   gap: 8px;
   padding: 32px 24px;
+  background:
+    var(--st-dots) 0 0 / 20px 20px,
+    var(--st-canvas);
   text-align: center;
 }
 
 .admin-page .studio-blank__title {
-  margin: 0;
+  margin: 12px 0 0;
   color: var(--st-text);
-  font-size: var(--st-size-lg);
-  font-weight: 700;
+  font-size: 20px;
 }
 
 .admin-page .studio-blank__hint {
@@ -392,7 +393,7 @@
   text-wrap: balance;
   margin: 0;
   color: var(--st-text-3);
-  font-size: var(--st-size-sm);
+  font-size: var(--st-size-md);
 }
 
 .admin-page .studio-blank__actions {
@@ -401,6 +402,11 @@
   justify-content: center;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* A scene: one of the larger drawings, over an empty state's words. */
+.admin-page .studio-doodle--scene {
+  color: var(--st-text-3);
 }
 
 /* --- Sidebar, still loading --- */
@@ -450,7 +456,7 @@
   width: max-content;
   max-width: min(calc(100vw - 32px), 480px);
   min-height: 40px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
@@ -460,7 +466,7 @@
   line-height: 1.45;
   overflow-wrap: anywhere;
   transform: translateX(-50%);
-  animation: studio-toast-in var(--st-base) var(--st-ease);
+  animation: studio-toast-in var(--st-slow) var(--st-spring);
 }
 
 .admin-page .studio-toast[data-tone='error'] {

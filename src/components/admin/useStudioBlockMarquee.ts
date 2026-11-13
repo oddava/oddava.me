@@ -40,7 +40,7 @@ export function useStudioBlockMarquee(
     const target = event.target as HTMLElement;
     if (
       !target.matches(
-        '.studio-rich-scroll, .studio-rich-page, .studio-rich-content, .note-columns, .note-column',
+        '.studio-rich-scroll, .studio-paper, .studio-rich-page, .studio-rich-content, .note-columns, .note-column',
       )
     )
       return;

@@ -20,6 +20,7 @@ import { buildNoteCommands } from './studioPaletteCommands';
 import StudioImageDialog, { type ImageEditRequest } from './StudioImageDialog';
 import StudioEditorPane, { type PaneCrumb } from './StudioEditorPane';
 import StudioHistoryPanel from './StudioHistoryPanel';
+import { DoodleBlankPage, DoodleCloudy } from './studioDoodles';
 import { Icon } from './studioIcons';
 import { folderCrumbs } from './studioMobileTree';
 import type { TabPlacement } from './studioTabStrip';
@@ -1183,6 +1184,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
             >
               {!openId || !collection ? (
                 <div className="studio-blank">
+                  {!loading &&
+                    (library.loadError ? (
+                      <DoodleCloudy />
+                    ) : (
+                      <DoodleBlankPage />
+                    ))}
                   <p
                     className="studio-blank__title"
                     role={loading ? 'status' : undefined}

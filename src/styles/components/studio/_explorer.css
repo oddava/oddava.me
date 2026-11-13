@@ -15,7 +15,6 @@
 .admin-page .studio-explorer__heading strong {
   color: var(--st-text);
   font-size: var(--st-size-md);
-  font-weight: 700;
 }
 
 .admin-page .studio-explorer__actions {
@@ -94,6 +93,20 @@
   padding: 0 8px 24px;
 }
 
+/* The sidebar's small print: a leaf and a count, where a notebook has its
+   page number. */
+.admin-page .studio-explorer__foot {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 18px 12px;
+  color: var(--st-text-4);
+  font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
 .admin-page .studio-folder-tree ul {
   margin: 0;
   padding: 0;
@@ -116,7 +129,7 @@
   min-height: var(--st-row);
   padding-right: 4px;
   border-radius: var(--st-radius);
-  /* Names at near-full strength: on black, the second grey reads as faint.
+  /* Names at near-full strength: on a dark desk the second grey reads as faint.
      The icons beside them carry the quieter tone. */
   color: color-mix(in srgb, var(--st-text) 88%, var(--st-text-2));
   font-size: var(--st-size-sm);

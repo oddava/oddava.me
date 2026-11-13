@@ -31,8 +31,8 @@
 }
 
 /* --- The popover ---
-   A small floating card under its button: one body with the menus and the
-   inline toolbar (raised fill, hairline, larger radius, one shadow). */
+   A small floating panel under its button: one body with the menus and the
+   inline toolbar (raised fill, hairline, larger radius, the one shadow). */
 
 .admin-page .studio-reading__panel {
   position: absolute;
@@ -40,17 +40,16 @@
   right: 0;
   z-index: 30;
   display: grid;
-  gap: 14px;
+  gap: 16px;
   width: min(304px, calc(100vw - 24px));
-  padding: 14px;
+  padding: 16px;
   border: 1px solid var(--st-line-strong);
   border-radius: var(--st-radius-float);
   background: var(--st-raised);
   box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   font-size: var(--st-size-sm);
-  letter-spacing: -0.01em;
-  animation: studio-arrive var(--st-base) var(--st-ease);
+  animation: studio-arrive var(--st-base) var(--st-spring);
 }
 
 /* A phone's button sits mid-bar, so a card hung from it would start off the
@@ -93,25 +92,18 @@
 
 .admin-page .studio-reading__rule {
   height: 1px;
-  margin-inline: -14px;
+  margin-inline: -16px;
   background: var(--st-line);
 }
 
-/* A row of pills that reads as one control: the chosen one is lit, the
-   rest sit in the tray. The radios underneath are real, so the arrow keys
-   move the choice. */
-.admin-page .studio-reading__segments {
-  display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  gap: 2px;
-}
-
-/* The look is the shared segmented control's (_primitives.css). */
+/* One row, one choice: the look is the shared "choices" row's
+   (_primitives.css). The radios underneath are real, so the arrow keys move
+   the choice. */
 .admin-page .studio-reading__segment {
   position: relative;
   display: grid;
   place-items: center;
+  padding: 6px 4px;
 }
 
 .admin-page .studio-reading__segment input,
@@ -130,15 +122,56 @@
 
 /* S, M and L are drawn at their own sizes: the control shows what it does. */
 .admin-page .studio-reading__segment [data-choice='sm'] {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .admin-page .studio-reading__segment [data-choice='md'] {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .admin-page .studio-reading__segment [data-choice='lg'] {
-  font-size: 19px;
+  font-size: 22px;
+}
+
+/* The three sizes share a baseline, like letters on a line. */
+.admin-page [data-group='studio-text-size'] .studio-reading__segment {
+  align-items: end;
+  min-height: 40px;
+  line-height: 1.2;
+}
+
+/* Line width shows itself too: three rules as wide as the column will be. */
+.admin-page [data-group='studio-measure'] .studio-reading__segment span {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  font-size: var(--st-size-xs);
+}
+
+.admin-page
+  [data-group='studio-measure']
+  .studio-reading__segment
+  span::before {
+  width: 14px;
+  height: 9px;
+  border-block: 1.5px solid currentColor;
+  background: linear-gradient(currentColor, currentColor) center / 100% 1.5px
+    no-repeat;
+  content: '';
+}
+
+.admin-page
+  [data-group='studio-measure']
+  .studio-reading__segment
+  [data-choice='comfortable']::before {
+  width: 22px;
+}
+
+.admin-page
+  [data-group='studio-measure']
+  .studio-reading__segment
+  [data-choice='wide']::before {
+  width: 30px;
 }
 
 .admin-page .studio-reading__switch {
@@ -259,6 +292,12 @@
   .studio.is-keyboard-open
   .studio-rich-scroll {
   padding-bottom: calc(var(--studio-vh, 100dvh) * 0.45);
+}
+
+/* The paper runs on through that space, so the last line is still written
+   on the sheet rather than on the desk under it. */
+.admin-page[data-studio-typewriter='on'] .studio-paper {
+  --studio-paper-bottom: calc(var(--studio-vh, 100dvh) * 0.45 - 32px);
 }
 
 /* --- Focus mode --- */
@@ -388,4 +427,24 @@
       opacity var(--st-slow) var(--st-ease),
       padding-left 0s;
   }
+}
+
+/* Focus mode takes the room down to the paper: the desk's dots, the sheet's
+   edge and every strip of tape step out with the rest of the chrome. */
+.admin-page :is(.studio-workbench, .studio-editor, .studio-bar) {
+  transition: background-color var(--st-slow) var(--st-ease);
+}
+
+.admin-page[data-studio-focus='on']
+  :is(.studio-workbench, .studio-editor, .studio-bar, .studio-rich-scroll) {
+  background: var(--st-sheet);
+}
+
+.admin-page[data-studio-focus='on'] .studio-paper {
+  border-color: transparent;
+}
+
+.admin-page[data-studio-focus='on']
+  :is(.studio-paper, .studio-rich-content .callout)::before {
+  opacity: 0;
 }

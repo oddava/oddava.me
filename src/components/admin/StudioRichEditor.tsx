@@ -697,41 +697,46 @@ export default function StudioRichEditor(props: Props) {
         onDragOver={(event) => blocks.paneDragOver(event, editor)}
         onDrop={(event) => blocks.paneDrop(event, editor)}
       >
-        <div className="studio-rich-page">
-          <NotePageIcon icon={props.icon} />
-          <div ref={host} />
-          {marquee.box && (
-            <div
-              className="studio-block-marquee"
-              style={marquee.box}
-              aria-hidden="true"
-            />
+        {/* The sheet of paper the note is written on. It is only a painted
+            box: negative margins and matching padding leave every block where
+            the pane's own padding put it. */}
+        <div className="studio-paper">
+          <div className="studio-rich-page">
+            <NotePageIcon icon={props.icon} />
+            <div ref={host} />
+            {marquee.box && (
+              <div
+                className="studio-block-marquee"
+                style={marquee.box}
+                aria-hidden="true"
+              />
+            )}
+            {handle && (
+              <StudioBlockHandle
+                handle={handle}
+                editor={editor}
+                menu={menu}
+                controls={blocks}
+              />
+            )}
+            {sideDrop && scroller.current && (
+              <div
+                className="studio-rich-side-drop"
+                aria-hidden="true"
+                style={sideDropStyle(sideDrop, scroller.current)}
+              />
+            )}
+            {dropLine !== null && (
+              <div className="studio-rich-drop" style={dropLine} />
+            )}
+          </div>
+          {props.uploading && (
+            <p className="studio-vsurface__uploading" role="status">
+              Uploading image…
+            </p>
           )}
-          {handle && (
-            <StudioBlockHandle
-              handle={handle}
-              editor={editor}
-              menu={menu}
-              controls={blocks}
-            />
-          )}
-          {sideDrop && scroller.current && (
-            <div
-              className="studio-rich-side-drop"
-              aria-hidden="true"
-              style={sideDropStyle(sideDrop, scroller.current)}
-            />
-          )}
-          {dropLine !== null && (
-            <div className="studio-rich-drop" style={dropLine} />
-          )}
+          {props.footer}
         </div>
-        {props.uploading && (
-          <p className="studio-vsurface__uploading" role="status">
-            Uploading image…
-          </p>
-        )}
-        {props.footer}
       </div>
       {props.visible &&
         nav.editor &&

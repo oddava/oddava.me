@@ -126,15 +126,13 @@
   .admin-page
     .studio-draft-toggle[data-variant='bar']
     .studio-draft-toggle__option[aria-pressed='true'] {
-    background: var(--st-raised);
-    box-shadow: 0 0 0 1px var(--st-line-strong);
+    background: var(--st-draft-tint);
   }
 
   .admin-page
     .studio-draft-toggle[data-variant='bar']
     .studio-draft-toggle__option[data-option='published'][aria-pressed='true'] {
     background: var(--st-picked);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--st-accent) 32%, transparent);
   }
 }
 
@@ -294,6 +292,26 @@
   .admin-page .studio-rich-scroll {
     padding: 20px 24px 96px;
     scrollbar-gutter: auto;
+    background: var(--st-sheet);
+  }
+
+  /* A phone has no desk to show: the screen is the sheet, edge to edge, and
+     the bar above it is part of the same paper. */
+  .admin-page .studio-paper {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .admin-page .studio-paper::before {
+    content: none;
+  }
+
+  .admin-page :is(.studio-workbench, .studio-editor, .studio-bar) {
+    background: var(--st-sheet);
   }
 
   .admin-page .studio-rich-handle button:first-child:not(:only-child) {
@@ -420,7 +438,6 @@
   overflow: hidden;
   color: var(--st-text);
   font-size: var(--st-size-lg);
-  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -806,7 +823,7 @@
   border-radius: var(--st-radius-float) var(--st-radius-float) 0 0;
   outline: none;
   background: var(--st-raised);
-  box-shadow: 0 -12px 40px color-mix(in srgb, var(--st-shade) 70%, transparent);
+  box-shadow: var(--st-shadow-float);
   color: var(--st-text);
   transform: translate3d(0, 100%, 0);
   pointer-events: auto;
@@ -856,7 +873,6 @@
 .admin-page .studio-sheet__head strong {
   overflow: hidden;
   font-size: var(--st-size-lg);
-  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1018,7 +1034,7 @@
   .admin-page .studio-bar__back .studio-glyph {
     width: 24px;
     height: 24px;
-    stroke-width: 1.75;
+    stroke-width: 1.5;
   }
 
   .admin-page .studio-bar__back:active {
@@ -1123,7 +1139,7 @@
     flex: none;
     width: 24px;
     height: 24px;
-    stroke-width: 1.75;
+    stroke-width: 1.5;
   }
 
   .admin-page .studio-mfiles__back:active {
@@ -1153,11 +1169,11 @@
   }
 
   .admin-page .studio-mfiles__search input.admin-input {
-    min-height: 40px;
+    min-height: var(--st-touch);
     padding-left: 40px;
     border: 0;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+    border-radius: var(--st-radius-float);
+    background: var(--st-current);
   }
 
   .admin-page .studio-mfiles__search input.admin-input::placeholder {
@@ -1183,7 +1199,8 @@
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
-  /* New note: a compose button where the thumb rests. */
+  /* New note: a compose button where the thumb rests. The one filled
+     accent on the screen, because it is the one thing the screen is for. */
   .admin-page .studio-mfiles__compose {
     position: absolute;
     right: max(20px, env(safe-area-inset-right));
@@ -1191,28 +1208,26 @@
     z-index: 2;
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     padding: 0;
     border: 0;
-    border-radius: 18px;
+    border-radius: var(--st-radius-sheet);
     background: var(--st-accent-text);
     color: var(--st-on-accent);
-    box-shadow:
-      0 8px 24px color-mix(in srgb, var(--st-shade) 60%, transparent),
-      0 2px 6px color-mix(in srgb, var(--st-shade) 50%, transparent);
+    box-shadow: var(--st-shadow-float);
     cursor: pointer;
-    transition: transform var(--st-fast) var(--st-ease);
+    transition: transform var(--st-base) var(--st-spring);
   }
 
   .admin-page .studio-mfiles__compose .studio-glyph {
     width: 24px;
     height: 24px;
-    stroke-width: 1.75;
+    stroke-width: 1.5;
   }
 
   .admin-page .studio-mfiles__compose:active {
-    transform: scale(0.94);
+    transform: scale(var(--st-press-scale));
   }
 }
 
@@ -1262,8 +1277,8 @@
   display: grid;
   flex: none;
   overflow: hidden;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+  border-radius: var(--st-radius-float);
+  background: var(--st-hover);
 }
 
 .admin-page .studio-sheet__action {
@@ -1336,7 +1351,8 @@
 /* --- Round 4: list polish ------------------------------------------------- */
 
 @media (max-width: 720px) {
-  /* One black for both screens, so the seam between them disappears. */
+  /* The list is the desk and the note is the sheet, so going from one to
+     the other reads as picking a page up. */
   .admin-page .studio-sidebar {
     background: var(--st-canvas);
   }
@@ -1393,16 +1409,6 @@
     background: var(--st-press);
   }
 
-  /* Compose: quiet until pressed — the accent is the pencil, not a slab. */
-  .admin-page .studio-mfiles__compose {
-    width: 52px;
-    height: 52px;
-    border: 1px solid var(--st-line-strong);
-    border-radius: 16px;
-    background: var(--st-raised);
-    color: var(--st-accent-text);
-  }
-
   /* Typing: the back button keeps its name for a screen reader, not its
      width on screen. */
   .admin-page .studio.is-keyboard-open .studio-bar__back span {
@@ -1438,8 +1444,8 @@
 
 .admin-page .studio-sheet__split > .studio-sheet__action {
   justify-content: center;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+  border-radius: var(--st-radius-float);
+  background: var(--st-hover);
 }
 
 /* The sheet runs on below the screen's edge, so lifting it never shows a

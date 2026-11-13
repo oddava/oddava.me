@@ -25,16 +25,65 @@
 }
 
 /* The page column is the published note's width, centred, with a gutter on
-   the left wide enough for the block handle. */
+   the left wide enough for the block handle. The pane itself is the desk: a
+   flat fill with a dot every 20px, which stays put while the paper slides
+   over it. */
 .admin-page .studio-rich-scroll {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  padding: 40px max(72px, calc((100% - var(--max-width)) / 2)) 120px;
+  padding: 72px max(72px, calc((100% - var(--max-width)) / 2)) 120px;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  background: var(--st-canvas);
+  background:
+    var(--st-dots) 0 0 / 20px 20px,
+    var(--st-canvas);
+}
+
+/* The sheet of paper. It reaches a gutter past the column on each side and
+   gives the same back as padding, so nothing inside it moves: the pane's own
+   padding still places every block. The one thing in Studio drawn as an
+   object, and still flat: a fill and a hairline. */
+.admin-page .studio-paper {
+  --studio-paper-gutter: 56px;
+  --studio-paper-top: 48px;
+  --studio-paper-bottom: 88px;
+
+  box-sizing: border-box;
+  /* A short note is still a whole sheet. */
+  min-height: calc(100% + var(--studio-paper-top) + var(--studio-paper-bottom));
+  margin: calc(var(--studio-paper-top) * -1)
+    calc(var(--studio-paper-gutter) * -1) calc(var(--studio-paper-bottom) * -1);
+  padding: calc(var(--studio-paper-top) - 1px)
+    calc(var(--studio-paper-gutter) - 1px)
+    calc(var(--studio-paper-bottom) - 1px);
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius-sheet);
+  background: var(--st-sheet);
+  transition:
+    border-color var(--st-slow) var(--st-ease),
+    background-color var(--st-slow) var(--st-ease);
+}
+
+/* A strip of tape holds the sheet to the desk. Placed from the pane (the
+   paper is not a positioned box, so the handles keep measuring from the
+   pane), and it scrolls away with the top of the page. */
+.admin-page .studio-paper::before {
+  position: absolute;
+  top: 13px;
+  left: calc(50% - 46px);
+  width: 92px;
+  content: '';
+  transition: opacity var(--st-slow) var(--st-ease);
+}
+
+/* A draft's tape is amber, like its sticker. */
+.admin-page
+  .studio-editor:has(.studio-draft-toggle[data-state='draft'])
+  .studio-paper::before {
+  --studio-tape: var(--st-draft-tape);
+  --studio-tape-stripe: var(--st-draft-tint);
 }
 
 .admin-page .studio-rich-page {
@@ -156,7 +205,8 @@
 }
 
 /* Drawn rather than native: the platform's grey filled square reads as
-   disabled on black. An outline when open, the accent and a tick when done. */
+   disabled on a dark page. An outline when open, the accent and a tick when
+   done. */
 .studio-rich-content li[data-checked] > label input {
   position: relative;
   display: grid;
@@ -568,23 +618,23 @@
   position: fixed;
   z-index: 1200;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  width: 320px;
+  width: 300px;
   max-height: min(380px, 60dvh);
-  padding: 6px;
+  padding: 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scroll-padding-block: 6px;
+  scroll-padding-block: 4px;
   scrollbar-width: thin;
 }
 
 /* Sentence case and quiet: a group label is a landmark, not a heading. */
 .admin-page .studio-slashmenu__group {
   margin: 10px 10px 4px;
-  color: var(--st-text-4);
+  color: var(--st-text-3);
   font-size: var(--st-size-xs);
   font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .admin-page .studio-slashmenu__section:first-child .studio-slashmenu__group {
@@ -593,17 +643,18 @@
 
 .admin-page .studio-slashmenu__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .admin-page .studio-slashmenu__row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 46px;
-  padding: 4px 10px 4px 6px;
+  gap: 10px;
+  min-height: var(--st-control);
+  padding: 0 10px 0 8px;
   border-radius: var(--st-radius);
   color: var(--st-text-2);
-  font-size: var(--st-size-md);
+  font-size: var(--st-size-sm);
   line-height: 1.25;
   cursor: pointer;
   user-select: none;
@@ -616,38 +667,39 @@
 }
 
 /* The block's tile: the same shape for an icon and for "H1". */
+/* The block's mark: an icon, or its name set in type ("H1"). Bare, in the
+   icon column every other menu keeps. */
 .admin-page .studio-slashmenu__glyph {
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--st-line);
-  border-radius: var(--radius-sm-2);
-  background: var(--st-hover);
-  color: var(--st-text-2);
+  width: var(--st-glyph);
+  height: var(--st-glyph);
+  color: var(--st-text-3);
 }
 
 .admin-page .studio-slashmenu__row.is-active .studio-slashmenu__glyph {
-  border-color: var(--st-line-strong);
   color: var(--st-text);
 }
 
 .admin-page .studio-slashmenu__glyph .studio-glyph {
-  width: 20px;
-  height: 20px;
+  width: var(--st-glyph);
+  height: var(--st-glyph);
 }
 
 .admin-page .studio-slashmenu__glyph-text {
-  font-size: var(--st-size-sm);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
+/* One line a row: the name, and beside it — for the row you are on — what it
+   makes. A dozen grey subtitles at once was a wall; one at a time is a hint. */
 .admin-page .studio-slashmenu__text {
-  display: grid;
+  display: flex;
   flex: 1 1 auto;
-  gap: 1px;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -659,12 +711,23 @@
 }
 
 .admin-page .studio-slashmenu__title {
+  flex: none;
   font-weight: 500;
 }
 
 .admin-page .studio-slashmenu__desc {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
+  opacity: 0;
+  transition: opacity var(--st-fast) var(--st-ease);
+}
+
+.admin-page
+  .studio-slashmenu__row:is(.is-active, .studio-slashmenu.is-docked *)
+  .studio-slashmenu__desc {
+  opacity: 1;
 }
 
 /* The Markdown that makes the same block, so the menu teaches its way out. */
@@ -701,7 +764,7 @@
 }
 
 .admin-page .studio-slashmenu.is-docked .studio-slashmenu__row {
-  min-height: 52px;
+  min-height: 48px;
   font-size: var(--st-size-lg);
 }
 
@@ -744,15 +807,15 @@
   display: flex;
   align-items: center;
   flex: none;
-  gap: 12px;
-  min-height: 44px;
-  padding: 4px 10px;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 10px 4px 8px;
   border: 0;
   border-radius: var(--st-radius);
   background: transparent;
   color: var(--st-text-2);
   font: inherit;
-  font-size: var(--st-size-md);
+  font-size: var(--st-size-sm);
   text-align: left;
   cursor: pointer;
 }
