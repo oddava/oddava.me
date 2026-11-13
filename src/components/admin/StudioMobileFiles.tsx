@@ -95,6 +95,8 @@ interface Props {
     onChange: (next: DraftState) => void;
     blockedReason?: string | null;
   } | null;
+  /** The open note's version history, offered in that sheet. */
+  onHistory?: () => void;
   /**
    * Compose: a blank note in this folder, open and ready, named later — the
    * way a notes app starts a note, rather than asking for a name first.
@@ -144,6 +146,7 @@ export default function StudioMobileFiles({
   publishedUrl = '',
   onChangeIcon,
   draft = null,
+  onHistory,
   onQuickCreate,
   home = false,
   onNotice,
@@ -556,6 +559,13 @@ export default function StudioMobileFiles({
                 icon="image"
                 label="Change icon"
                 onClick={() => act(onChangeIcon)}
+              />
+            )}
+            {onHistory && (
+              <SheetAction
+                icon="history"
+                label="Version history"
+                onClick={() => act(onHistory)}
               />
             )}
             {draft && (

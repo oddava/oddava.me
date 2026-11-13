@@ -54,6 +54,13 @@ export default function StudioHistoryPanel({
           : 'Restored. The version it replaced is still in history.',
       );
       onClose();
+      // The bar's history icon turns once, anticlockwise (see _history.css).
+      const button = document.querySelector('.studio-bar__history');
+      button?.setAttribute('data-studio-restored', '');
+      window.setTimeout(
+        () => button?.removeAttribute('data-studio-restored'),
+        600,
+      );
     },
   });
   const { status, versions, detail } = history;
@@ -86,8 +93,10 @@ export default function StudioHistoryPanel({
             <span className="studio-history__bubble" aria-hidden="true">
               <Icon name="history" />
             </span>
-            <p className="studio-history__lead">The history would not open.</p>
-            <p className="studio-history__hint">{history.error}</p>
+            <p className="studio-history__lead">Couldn’t open the history</p>
+            <p className="studio-history__hint">
+              Your note is fine — try again in a moment.
+            </p>
             <button
               type="button"
               className="studio-btn press"

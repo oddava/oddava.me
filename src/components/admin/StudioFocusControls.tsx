@@ -164,6 +164,18 @@ export default function StudioFocusControls({ compact }: Props) {
         if (open && next && !root.current?.contains(next)) setOpen(false);
       }}
     >
+      <button
+        ref={trigger}
+        type="button"
+        className="studio-icon-button studio-reading__trigger"
+        aria-label="Page style"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        title="Page style"
+        onClick={() => setOpen((was) => !was)}
+      >
+        <Icon name="text-size" />
+      </button>
       {!compact && (
         <button
           type="button"
@@ -176,18 +188,6 @@ export default function StudioFocusControls({ compact }: Props) {
           <Icon name="focus" />
         </button>
       )}
-      <button
-        ref={trigger}
-        type="button"
-        className="studio-icon-button studio-reading__trigger"
-        aria-label="Page style"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        title="Page style"
-        onClick={() => setOpen((was) => !was)}
-      >
-        <span aria-hidden="true">Aa</span>
-      </button>
       {open && (
         <div
           className="studio-reading__panel"

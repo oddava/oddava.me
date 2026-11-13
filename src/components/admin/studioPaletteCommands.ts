@@ -11,6 +11,7 @@ export interface NoteCommandActions {
   find: () => void;
   toggleFocus: () => void;
   toggleTypewriter: () => void;
+  pageStyle: () => void;
   save: () => void;
   openPage: () => void;
   deleteNote: () => void;
@@ -84,6 +85,12 @@ export function buildNoteCommands({
       title: `Typewriter scroll: ${typewriter ? 'on' : 'off'}`,
       icon: 'focus',
       run: actions.toggleTypewriter,
+    },
+    {
+      id: 'page-style',
+      title: 'Page style…',
+      icon: 'text-size',
+      run: actions.pageStyle,
     },
     {
       id: 'save-note',

@@ -1,7 +1,9 @@
 import { createPortal } from 'preact/compat';
 import type { ComponentChildren } from 'preact';
-import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
+import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import StudioSheet from './StudioSheet';
 import { Icon } from './studioIcons';
+import { PHONE_QUERY } from './studioMobile';
 import { diffRows, foldUnchanged, hasChanges } from './studioDiff';
 
 interface Props {
@@ -33,8 +35,13 @@ export default function StudioConflictDialog({
   closeNow.current = onClose;
   const rows = useMemo(() => diffRows(mine, theirs), [mine, theirs]);
   const folded = useMemo(() => foldUnchanged(rows), [rows]);
+  // A phone gets the sheet history and the note's actions rise in, which
+  // brings its own focus handling and Escape. Asked once, as this opens: the
+  // layout does not change under an open comparison.
+  const [compact] = useState(() => window.matchMedia(PHONE_QUERY).matches);
 
   useLayoutEffect(() => {
+    if (compact) return;
     const previous = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
@@ -66,7 +73,58 @@ export default function StudioConflictDialog({
       document.removeEventListener('keydown', onKeyDown, true);
       previous?.focus({ preventScroll: true });
     };
-  }, []);
+  }, [compact]);
+
+  const comparison = (
+    <>
+      <div className="studio-diff__legend" aria-hidden="true">
+        <span data-side="mine">{labels.mine}</span>
+        <span data-side="theirs">{labels.theirs}</span>
+      </div>
+      {/* Focusable so the arrow keys can scroll a long comparison. */}
+      <div
+        className="studio-diff"
+        tabIndex={0}
+        role="region"
+        aria-label={`${labels.mine} compared with ${labels.theirs}`}
+      >
+        {!hasChanges(rows) && (
+          <p className="studio-diff__same">The words are the same.</p>
+        )}
+        {hasChanges(rows) &&
+          folded.map((row, index) =>
+            row.kind === 'gap' ? (
+              <p key={index} className="studio-diff__gap">
+                {row.count} unchanged {row.count === 1 ? 'line' : 'lines'}
+              </p>
+            ) : (
+              <div
+                key={index}
+                className="studio-diff__row"
+                data-kind={row.kind}
+              >
+                <DiffCell side="mine" label={labels.mine} text={row.mine} />
+                <DiffCell
+                  side="theirs"
+                  label={labels.theirs}
+                  text={row.theirs}
+                />
+              </div>
+            ),
+          )}
+      </div>
+    </>
+  );
+
+  if (compact)
+    return (
+      <StudioSheet open title="What changed" onClose={onClose}>
+        <div className="studio-conflict-sheet">
+          {comparison}
+          <footer className="studio-conflict-dialog__foot">{children}</footer>
+        </div>
+      </StudioSheet>
+    );
 
   return createPortal(
     <div
@@ -95,42 +153,7 @@ export default function StudioConflictDialog({
             <Icon name="close" />
           </button>
         </header>
-        <div className="studio-diff__legend" aria-hidden="true">
-          <span data-side="mine">{labels.mine}</span>
-          <span data-side="theirs">{labels.theirs}</span>
-        </div>
-        {/* Focusable so the arrow keys can scroll a long comparison. */}
-        <div
-          className="studio-diff"
-          tabIndex={0}
-          role="region"
-          aria-label={`${labels.mine} compared with ${labels.theirs}`}
-        >
-          {!hasChanges(rows) && (
-            <p className="studio-diff__same">The words are the same.</p>
-          )}
-          {hasChanges(rows) &&
-            folded.map((row, index) =>
-              row.kind === 'gap' ? (
-                <p key={index} className="studio-diff__gap">
-                  {row.count} unchanged {row.count === 1 ? 'line' : 'lines'}
-                </p>
-              ) : (
-                <div
-                  key={index}
-                  className="studio-diff__row"
-                  data-kind={row.kind}
-                >
-                  <DiffCell side="mine" label={labels.mine} text={row.mine} />
-                  <DiffCell
-                    side="theirs"
-                    label={labels.theirs}
-                    text={row.theirs}
-                  />
-                </div>
-              ),
-            )}
-        </div>
+        {comparison}
         <footer className="studio-conflict-dialog__foot">{children}</footer>
       </div>
     </div>,

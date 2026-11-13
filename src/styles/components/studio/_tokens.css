@@ -25,7 +25,12 @@
    - Colour: neutral greys. The accent is reserved for focus, the primary
      action, links, and the current selection.
    - Motion: colour changes in 120ms; things that arrive take 180ms; drawers
-     and sheets, the only large movements, take 280ms.
+     and sheets, the only large movements, take 280ms. One spring, for the few
+     things that settle rather than stop, and one depth for a press.
+   - Theme: every colour here is worked out from the site's own tokens, so a
+     second theme only has to restate those. The exception is --st-shade, what
+     shadows and scrims are made of: black suits a dark canvas, and a light
+     theme will want it (and the strengths that use it) restated.
 --------------------------------------------------------------------------- */
 
 /* M PLUS Rounded draws the ellipsis as three centred dots, the CJK form, so
@@ -43,7 +48,11 @@
   /* Surfaces, darkest to lightest. */
   --st-canvas: var(--color-surface);
   --st-panel: var(--color-surface-raised);
-  --st-raised: #191919;
+  --st-raised: color-mix(
+    in srgb,
+    var(--color-text-primary) 3.5%,
+    var(--color-surface-elevated)
+  );
   --st-field: var(--color-surface);
 
   /* Interaction fills: hover, press, and "this one" (current, highlighted). */
@@ -52,9 +61,13 @@
   --st-current: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
   --st-picked: color-mix(in srgb, var(--color-brand) 16%, transparent);
 
+  --st-shade: #000;
+  --st-scrim: color-mix(in srgb, var(--st-shade) 36%, transparent);
+  --st-scrim-strong: color-mix(in srgb, var(--st-shade) 60%, transparent);
   --st-shadow-float:
-    inset 0 1px 0 rgb(255 255 255 / 0.04), 0 2px 6px rgb(0 0 0 / 0.55),
-    0 16px 40px rgb(0 0 0 / 0.75);
+    inset 0 1px 0 color-mix(in srgb, var(--color-text-primary) 4%, transparent),
+    0 2px 6px color-mix(in srgb, var(--st-shade) 55%, transparent),
+    0 16px 40px color-mix(in srgb, var(--st-shade) 75%, transparent);
 
   --st-line: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
   --st-line-strong: color-mix(
@@ -63,11 +76,24 @@
     transparent
   );
 
-  /* Text, brightest to faintest. The faintest still clears 4.5:1 on black. */
+  /* Text, brightest to faintest: the page's ink, stepped back towards its
+     canvas. The faintest still clears 4.5:1 on black. */
   --st-text: var(--color-text-primary);
-  --st-text-2: #c9c9c9;
-  --st-text-3: #9b9b9b;
-  --st-text-4: #787878;
+  --st-text-2: color-mix(
+    in srgb,
+    var(--color-text-primary) 82%,
+    var(--color-surface)
+  );
+  --st-text-3: color-mix(
+    in srgb,
+    var(--color-text-primary) 63.3%,
+    var(--color-surface)
+  );
+  --st-text-4: color-mix(
+    in srgb,
+    var(--color-text-primary) 49%,
+    var(--color-surface)
+  );
 
   --st-accent: var(--color-brand);
   --st-accent-text: var(--color-brand-strong);
@@ -76,6 +102,21 @@
   --st-danger-tint: color-mix(
     in srgb,
     var(--color-text-error) 12%,
+    transparent
+  );
+  /* What a change adds and what it takes away, wherever two texts are
+     compared. Green and red rather than the ink, so the pair never collapses
+     into one hue under a pink or a red accent. */
+  --st-added: var(--color-text-success);
+  --st-added-tint: color-mix(
+    in srgb,
+    var(--color-text-success) 16%,
+    transparent
+  );
+  --st-removed: var(--color-text-error);
+  --st-removed-tint: color-mix(
+    in srgb,
+    var(--color-text-error) 16%,
     transparent
   );
   --st-focus: var(--color-focus-ring);
@@ -98,6 +139,9 @@
 
   --st-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --st-ease-move: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Overshoots a touch, then settles. */
+  --st-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --st-press-scale: 0.96;
   --st-fast: 120ms;
   --st-base: 180ms;
   --st-slow: 280ms;
@@ -116,5 +160,8 @@
     --st-fast: 1ms;
     --st-base: 1ms;
     --st-slow: 1ms;
+    /* Nothing overshoots and nothing dips. */
+    --st-spring: var(--st-ease);
+    --st-press-scale: 1;
   }
 }

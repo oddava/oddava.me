@@ -171,7 +171,7 @@ export default function StudioConflictBanner({
     actions = (
       <>
         {choice('Load their version', 'load-theirs', { primary: true })}
-        {choice('Keep mine (overwrite)', 'keep-mine')}
+        {choice('Keep mine', 'keep-mine')}
         {quiet('See what changed', () => setComparing(true))}
       </>
     );
@@ -241,7 +241,7 @@ export default function StudioConflictBanner({
                   void pick('keep-mine');
                 }}
               >
-                Keep mine (overwrite)
+                Keep mine
               </button>
             </>
           )}

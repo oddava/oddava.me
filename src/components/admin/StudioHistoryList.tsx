@@ -65,7 +65,14 @@ export default function StudioHistoryList({
                   dateTime={new Date(timestamp).toISOString()}
                   title={formatVersionExact(timestamp)}
                 >
-                  {formatVersionAge(timestamp, now)}
+                  {/* Under "Yesterday" or a date, the row is the time of
+                      day: the heading has already said which day. */}
+                  {group.label === 'Today'
+                    ? formatVersionAge(timestamp, now)
+                    : new Date(timestamp).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
                 </time>
                 {version.reason === 'pre-restore' && (
                   <span className="studio-history__tag">Before a restore</span>

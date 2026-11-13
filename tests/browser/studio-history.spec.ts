@@ -136,17 +136,39 @@ async function setup(
   return { restores, puts };
 }
 
+/**
+ * Opens the history the way the layout offers it: the bar's button, or on a
+ * phone the row in the note's ⋯ sheet. Returns what focus comes back to.
+ */
+async function openHistory(page: Page, isMobile: boolean) {
+  if (!isMobile) {
+    const button = page.getByRole('button', { name: 'Version history' });
+    await button.click();
+    return button;
+  }
+  const more = page.getByRole('button', { name: 'Note actions', exact: true });
+  await more.click();
+  await page
+    .locator('.studio-sheet')
+    .getByRole('button', { name: 'Version history' })
+    .click();
+  return more;
+}
+
 test('history lists versions, shows what restoring changes, and restores', async ({
   page,
+  isMobile,
 }, info) => {
   const { restores } = await setup(page);
-  const open = page.getByRole('button', { name: 'Version history' });
-  await open.click();
+  const open = await openHistory(page, isMobile);
 
   const dialog = page.getByRole('dialog', { name: 'Version history' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Today', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Before a restore')).toBeVisible();
+  // Under its day's heading a version is a time of day; the day is not said twice.
+  await expect(dialog.getByText('Yesterday', { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/Yesterday,/)).toHaveCount(0);
 
   // The newest version is selected, and its changes are against the note on screen.
   await expect(dialog.locator('ins')).toContainText(
@@ -173,10 +195,12 @@ test('history lists versions, shows what restoring changes, and restores', async
   await expect(open).toBeFocused();
 });
 
-test('escape closes the history and gives focus back', async ({ page }) => {
+test('escape closes the history and gives focus back', async ({
+  page,
+  isMobile,
+}) => {
   await setup(page);
-  const open = page.getByRole('button', { name: 'Version history' });
-  await open.click();
+  const open = await openHistory(page, isMobile);
   await expect(
     page.getByRole('dialog', { name: 'Version history' }),
   ).toBeVisible();
@@ -187,14 +211,14 @@ test('escape closes the history and gives focus back', async ({ page }) => {
   await expect(open).toBeFocused();
 });
 
-test('a note with no history says so kindly', async ({ page }) => {
+test('a note with no history says so kindly', async ({ page, isMobile }) => {
   await setup(page, false);
-  await page.getByRole('button', { name: 'Version history' }).click();
+  await openHistory(page, isMobile);
   await expect(page.getByText('Nothing to go back to yet')).toBeVisible();
 });
 
 test('the palette opens the history', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'The phone reaches history from the bar.');
+  test.skip(isMobile, 'The phone reaches history from the note actions.');
   await setup(page);
   await page.keyboard.press('Control+p');
   await page.getByRole('combobox').fill('version hist');

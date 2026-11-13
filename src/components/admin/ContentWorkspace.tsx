@@ -692,13 +692,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
           toggleDraft: draft.toggle,
           insertImage: () => setImageDialogOpen(true),
           openHistory: () => setHistoryOpen(true),
-          // After the palette has handed focus back to the page.
-          outline: () =>
-            requestAnimationFrame(() => commandsRef.current?.outline?.()),
-          find: () =>
-            requestAnimationFrame(() => commandsRef.current?.find?.()),
+          // The palette runs a command only after it has handed focus back.
+          outline: () => commandsRef.current?.outline?.(),
+          find: () => commandsRef.current?.find?.(),
           toggleFocus: calm.toggleFocus,
           toggleTypewriter: calm.toggleTypewriter,
+          pageStyle: () =>
+            document
+              .querySelector<HTMLButtonElement>('.studio-reading__trigger')
+              ?.click(),
           save: () => void saveNow(),
           openPage: () => {
             if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
@@ -1050,6 +1052,7 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 home={!openId}
                 noteActionsRequest={noteActionsRequest}
                 onChangeIcon={() => setIconPickerRequest((n) => n + 1)}
+                onHistory={() => setHistoryOpen(true)}
                 draft={
                   draft.state
                     ? {

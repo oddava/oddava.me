@@ -186,6 +186,11 @@ export default function StudioEditorPane({
             </nav>
           )}
           <strong title={title}>{title}</strong>
+          {/* A phone has no room for the pill; its note actions hold the
+              control, and this says what state the note is in. */}
+          {compact && draftState === 'draft' && (
+            <span className="studio-draft-mark">draft</span>
+          )}
         </div>
         <div className="studio-bar__actions">
           {compact && keyboardOpen ? (
@@ -216,7 +221,9 @@ export default function StudioEditorPane({
             </>
           ) : (
             <>
-              <StudioFocusControls compact={compact} />
+              {/* Left to right: how the note stands, the ways to look at
+                  it, its past, who can read it, and the way out to the
+                  published page. */}
               <StudioSaveIndicator
                 state={saveState}
                 savedAt={savedAt}
@@ -226,45 +233,34 @@ export default function StudioEditorPane({
                 onResolve={onResolveSave}
                 onSave={onSave}
               />
-              {onHistory && (
+              <div className="studio-bar__group">
                 <button
                   type="button"
                   className="studio-icon-button"
+                  aria-label="Outline"
+                  title={`Outline (${shortcut('O', true)})`}
+                  aria-haspopup="dialog"
+                  // The panel's outside-press watcher leaves this alone, so a
+                  // second press closes the panel instead of reopening it.
+                  data-studio-nav-trigger
+                  onClick={() => commandsRef.current?.outline?.()}
+                >
+                  <Icon name="outline" />
+                </button>
+                <StudioFocusControls compact={compact} />
+              </div>
+              {/* A phone keeps its bar for the note's name: history is a row
+                  in the note's actions there. */}
+              {!compact && onHistory && (
+                <button
+                  type="button"
+                  className="studio-icon-button studio-bar__history"
                   aria-label="Version history"
                   title="Version history"
                   aria-haspopup="dialog"
                   onClick={onHistory}
                 >
                   <Icon name="history" />
-                </button>
-              )}
-              {/* A phone has no room for the pill; its note actions hold the
-                  control, and this says what state the note is in. */}
-              {compact && draftState === 'draft' && (
-                <span className="studio-draft-mark">draft</span>
-              )}
-              <button
-                type="button"
-                className="studio-icon-button"
-                aria-label="Outline"
-                title={`Outline (${shortcut('O', true)})`}
-                aria-haspopup="dialog"
-                // The panel's outside-press watcher leaves this alone, so a
-                // second press closes the panel instead of reopening it.
-                data-studio-nav-trigger
-                onClick={() => commandsRef.current?.outline?.()}
-              >
-                <Icon name="outline" />
-              </button>
-              {compact && onNoteActions && (
-                <button
-                  type="button"
-                  className="studio-icon-button studio-bar__more"
-                  aria-label="Note actions"
-                  aria-haspopup="dialog"
-                  onClick={onNoteActions}
-                >
-                  <Icon name="more" />
                 </button>
               )}
               {!compact && draftState && onDraftChange && (
@@ -293,6 +289,17 @@ export default function StudioEditorPane({
                     {draftState === 'draft' ? 'Preview draft' : 'View page'}
                   </span>
                 </a>
+              )}
+              {compact && onNoteActions && (
+                <button
+                  type="button"
+                  className="studio-icon-button studio-bar__more"
+                  aria-label="Note actions"
+                  aria-haspopup="dialog"
+                  onClick={onNoteActions}
+                >
+                  <Icon name="more" />
+                </button>
               )}
             </>
           )}

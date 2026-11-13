@@ -14,8 +14,17 @@ function read(editor: Editor): string {
  * A quiet "412 words · 2 min" in the page's corner, which becomes the
  * selection's count while text is selected. It owns its own state, so a
  * keystroke re-renders this one line and nothing around it.
+ *
+ * `inline` is the same line as plain text, for a panel's heading: a phone has
+ * no corner that is not over the words, so its count rides in the outline.
  */
-export default function StudioWordCount({ editor }: { editor: Editor }) {
+export default function StudioWordCount({
+  editor,
+  inline = false,
+}: {
+  editor: Editor;
+  inline?: boolean;
+}) {
   const [text, setText] = useState(() => read(editor));
 
   useEffect(() => {
@@ -35,6 +44,7 @@ export default function StudioWordCount({ editor }: { editor: Editor }) {
     };
   }, [editor]);
 
+  if (inline) return <span className="studio-outline__count">{text}</span>;
   return (
     <div className="studio-wordcount">
       <span>{text}</span>

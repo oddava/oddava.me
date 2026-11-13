@@ -2,7 +2,7 @@
    Getting around a long note: the outline, find-in-note, and the word count.
 
    Built from the same parts as every other floating Studio surface — the
-   raised fill, the hairline, the one shadow — with one addition: a small
+   raised fill, the hairline, the one shadow — with one addition: the shared
    spring on press, so the buttons answer a finger a little playfully. Colours
    come from the ink (--st-accent) and the neutral scale, never a fixed hue, so
    the highlights follow whichever ink the site is wearing.
@@ -10,9 +10,6 @@
 
 .admin-page .studio-outline,
 .admin-page .studio-find {
-  /* Overshoots a touch, then settles: the press and the release. */
-  --st-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
   position: absolute;
   top: 8px;
   right: 20px;
@@ -54,7 +51,7 @@
     .studio-find .studio-icon-button,
     .studio-find .studio-btn
   ):active:not(:disabled) {
-  transform: scale(0.95);
+  transform: scale(var(--st-press-scale));
 }
 
 /* --- Outline --- */
@@ -79,6 +76,19 @@
   letter-spacing: -0.01em;
 }
 
+/* A phone's word count: beside the panel's name rather than over the page. */
+.admin-page .studio-outline__count {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 6px;
+  overflow: hidden;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-page .studio-outline__body {
   position: relative;
   min-height: 0;
@@ -88,12 +98,20 @@
   scrollbar-width: thin;
 }
 
+/* One column no wider than the panel: an `auto` track would grow to fit the
+   longest heading and push the rows out through the panel's side. */
 .admin-page .studio-outline__list {
+  position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.admin-page .studio-outline__list > li {
+  min-width: 0;
 }
 
 .admin-page .studio-outline__item {
@@ -143,16 +161,31 @@
   font-weight: 500;
 }
 
-.admin-page .studio-outline__item[aria-current='location']::before {
+/* The pill is the list's, not the row's: one mark that slides to the row you
+   are on (every row is one --st-row tall, a pixel apart) instead of one that
+   fades out here and in there. */
+.admin-page .studio-outline__list::before {
   position: absolute;
   top: 8px;
-  bottom: 8px;
   left: 3px;
+  z-index: 1;
   width: 3px;
-  border-radius: 3px;
+  height: calc(var(--st-row) - 16px);
+  border-radius: var(--radius-sm);
   background: var(--st-accent);
   content: '';
-  animation: studio-fade var(--st-base) var(--st-ease);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(
+    calc(var(--studio-outline-at, 0) * (var(--st-row) + 1px))
+  );
+  transition:
+    transform var(--st-base) var(--st-spring),
+    opacity var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-outline__list:has([aria-current='location'])::before {
+  opacity: 1;
 }
 
 .admin-page .studio-outline__empty {
@@ -222,7 +255,7 @@
    you are on gets a stronger fill and a ring. */
 
 .studio-rich-content .studio-find-match {
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--st-accent) 22%, transparent);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -246,8 +279,12 @@
 
 /* --- Word count ---
    Takes no room: a zero-height strip under the page that its text hangs
-   from, so it sits above whatever the phone docks below (find, the keyboard
-   bar) without being laid out among them. */
+   from. Where the window is wide the corner is empty margin and the count is
+   bare words; where the column reaches the corner it becomes a chip, a
+   surface of its own, so it is never text printed over text. The page's
+   bottom padding is taller than the chip, so the last line always scrolls
+   clear of it. A phone has no spare corner at all: its count is in the
+   outline's heading (see .studio-outline__count). */
 
 .admin-page .studio-wordcount {
   position: relative;
@@ -255,6 +292,7 @@
   flex: none;
   height: 0;
   pointer-events: none;
+  transition: opacity var(--st-slow) var(--st-ease);
 }
 
 .admin-page .studio-wordcount span {
@@ -262,13 +300,33 @@
   right: 22px;
   bottom: 10px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--st-canvas) 90%, transparent);
   color: var(--st-text-4);
   font-family: var(--st-font);
   font-size: var(--st-size-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .admin-page .studio-wordcount span {
+    border-color: var(--st-line);
+    background: var(--st-raised);
+    color: var(--st-text-3);
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-page .studio-wordcount {
+    display: none;
+  }
+}
+
+/* Writing in focus mode, the count steps back with the rest. */
+.admin-page[data-studio-focus='on'] .studio-wordcount {
+  opacity: 0.5;
 }
 
 /* --- Phone ---
@@ -320,10 +378,4 @@
 
 .admin-page .studio-find.is-docked .studio-find__row--replace {
   padding-left: 40px;
-}
-
-@media (max-width: 720px) {
-  .admin-page .studio-wordcount span {
-    right: 12px;
-  }
 }

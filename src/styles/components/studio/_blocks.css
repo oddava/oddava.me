@@ -106,10 +106,14 @@
    The reference is a numbered pill; the definition is a soft strip at the foot
    of the note, numbered the same way, with a button back to where it is used. */
 
+/* Inline, not inline-block: an inline-block is a place a line may break, and
+   the pill would start the next line on its own. As plain inline text it
+   stays joined to the word it marks; the word joiner in front holds it there
+   even after a space. */
 .studio-rich-content .studio-footnote-ref {
-  display: inline-block;
-  min-width: 1.5em;
-  padding: 0.18em 0.4em;
+  display: inline;
+  padding: 0.18em 0.55em;
+  white-space: nowrap;
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--st-accent) 16%, transparent);
   color: var(--st-accent-text);
@@ -123,7 +127,7 @@
 }
 
 .studio-rich-content .studio-footnote-ref::before {
-  content: attr(data-footnote-number);
+  content: '\2060' attr(data-footnote-number);
 }
 
 .studio-rich-content .studio-footnote-ref:hover {

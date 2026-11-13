@@ -2,9 +2,10 @@
    "This note changed elsewhere": a soft strip above the page, the comparison
    it opens, and the save indicator's "Paused".
 
-   Nothing here is an error and nothing is red. The author's text is safe, so
-   the strip borrows the accent's calm tint (neutral when there is no choice
-   to make) and uses the shared buttons for its choices.
+   Nothing here is an error and the strip is never red. The author's text is
+   safe, so it borrows the accent's calm tint (neutral when there is no choice
+   to make) and uses the shared buttons for its choices. The comparison marks
+   its two sides the way every comparison in Studio does (_primitives.css).
 --------------------------------------------------------------------------- */
 
 .admin-page .studio-conflict {
@@ -121,26 +122,31 @@
   gap: 8px;
 }
 
+/* Lined up with the columns inside the box below: its margin, hairline and
+   padding, then a cell's own indent. */
 .admin-page .studio-diff__legend {
   flex: none;
-  padding: 10px 24px 0;
+  padding: 12px 25px 0;
   color: var(--st-text-3);
   font-size: var(--st-size-xs);
   font-weight: 500;
 }
 
+.admin-page .studio-diff__legend span {
+  padding-left: 24px;
+}
+
+/* The box and its type are the history preview's (_primitives.css). */
 .admin-page .studio-diff {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   gap: 2px;
   min-height: 0;
-  padding: 8px 16px 12px;
+  margin: 8px 16px 14px;
+  padding: 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  font-family: var(--st-mono);
-  font-size: var(--st-size-sm);
-  line-height: 1.5;
 }
 
 .admin-page .studio-diff__same {
@@ -159,31 +165,87 @@
 }
 
 .admin-page .studio-diff__cell {
+  position: relative;
   min-width: 0;
-  padding: 1px 8px;
-  border-radius: 4px;
+  padding: 2px 8px 2px 24px;
+  border-radius: var(--radius-sm);
   color: var(--st-text-2);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* Colour is never the only cue: each changed side also has its own edge. */
+/* Colour is never the only cue: each changed side also has its own sign, the
+   same + and − the history counts its changes with. */
 .admin-page .studio-diff__row[data-kind='changed'] .studio-diff__cell {
   color: var(--st-text);
 }
 
 .admin-page
   .studio-diff__row[data-kind='changed']
+  .studio-diff__cell:not([data-empty])::after {
+  position: absolute;
+  top: 2px;
+  left: 8px;
+  font-weight: 700;
+}
+
+.admin-page
+  .studio-diff__row[data-kind='changed']
   .studio-diff__cell[data-side='mine']:not([data-empty]) {
-  border-left: 2px solid var(--st-text-4);
-  background: var(--st-current);
+  background: var(--st-removed-tint);
+}
+
+.admin-page
+  .studio-diff__row[data-kind='changed']
+  .studio-diff__cell[data-side='mine']:not([data-empty])::after {
+  color: var(--st-removed);
+  content: '−';
+  content: '−' / '';
 }
 
 .admin-page
   .studio-diff__row[data-kind='changed']
   .studio-diff__cell[data-side='theirs']:not([data-empty]) {
-  border-left: 2px solid var(--st-accent);
-  background: var(--st-picked);
+  background: var(--st-added-tint);
+}
+
+.admin-page
+  .studio-diff__row[data-kind='changed']
+  .studio-diff__cell[data-side='theirs']:not([data-empty])::after {
+  color: var(--st-added);
+  content: '+';
+  content: '+' / '';
+}
+
+/* --- On a phone: the comparison as a sheet ---
+   The same sheet history and the note's actions rise in, with the grabber;
+   the text scrolls and the choices stay under the thumb. */
+
+.admin-page .studio-sheet__body:has(> .studio-conflict-sheet) {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-page .studio-sheet:has(.studio-conflict-sheet) {
+  height: calc(var(--studio-vh, 100dvh) * 0.85);
+}
+
+.admin-page .studio-conflict-sheet {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.admin-page .studio-conflict-sheet .studio-diff {
+  margin: 4px 12px 12px;
+}
+
+/* The sheet already clears the home indicator. */
+.admin-page .studio-conflict-sheet .studio-conflict-dialog__foot {
+  padding: 12px;
 }
 
 @media (max-width: 720px) {
@@ -226,9 +288,15 @@
     display: block;
     color: var(--st-text-3);
     content: attr(data-label);
-    font-family: var(--st-font);
     font-size: var(--st-size-xs);
     font-weight: 500;
+  }
+
+  /* The sign sits beside the text, under the name of who wrote it. */
+  .admin-page
+    .studio-diff__row[data-kind='changed']
+    .studio-diff__cell:not([data-empty])::after {
+    top: calc(2px + var(--st-size-xs) * 1.65);
   }
 
   .admin-page .studio-conflict-dialog__foot {

@@ -118,7 +118,7 @@ test('replace all is one undo step and saves the replaced Markdown', async ({
   await find.getByRole('textbox', { name: 'Find in note' }).fill('needle');
   await find.getByRole('button', { name: 'Replace', exact: true }).click();
   await find.getByRole('textbox', { name: 'Replace with' }).fill('pebble');
-  await find.getByRole('button', { name: 'All', exact: true }).click();
+  await find.getByRole('button', { name: 'Replace all', exact: true }).click();
   await expect(find.getByRole('status')).toHaveText('Replaced 5');
   await expect(editor).toContainText('Opening words with a pebble in them.');
   await expect(editor).not.toContainText('needle');
@@ -183,9 +183,22 @@ test('the outline lists headings, jumps, follows the scroll and closes with Esc'
 
 test('the word count follows the note and then the selection', async ({
   page,
+  isMobile,
 }) => {
   const { editor } = await setup(page);
   const count = page.locator('.studio-wordcount');
+  if (isMobile) {
+    // A phone has no corner that is not over the words, so the count rides
+    // in the outline's heading instead of floating on the page.
+    await expect(count).toBeHidden();
+    await page.getByRole('button', { name: 'Outline' }).click();
+    await expect(
+      page
+        .getByRole('dialog', { name: 'Outline' })
+        .locator('.studio-outline__count'),
+    ).toContainText(/\d+ words · \d+ min/);
+    return;
+  }
   await expect(count).toContainText(/\d+ words · \d+ min/);
   await editor.click();
   await page.keyboard.press('Control+Home');
