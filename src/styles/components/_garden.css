@@ -953,3 +953,25 @@ details[open] > summary > .note-wayfinder__chevron {
     transition: none;
   }
 }
+
+/* The owner's preview of an unlisted note. It must read as "not live" at a
+   glance without competing with the page it sits above. */
+.draft-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+  margin: 0 0 var(--space-md);
+  padding: 0.625rem 0.875rem;
+  border: 1px dashed color-mix(in srgb, var(--color-brand) 55%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-brand) 9%, transparent);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.draft-banner strong {
+  color: var(--color-brand-strong);
+  font-weight: 700;
+}

@@ -1,4 +1,5 @@
 import { currentNotesBase } from '../notes-url';
+import { parseDraftFlag } from '../content/noteDraft';
 import { noteDataSchema } from '../content/schemas';
 import {
   parseContentDocument,
@@ -11,6 +12,7 @@ import type { RetiredNoteIndex } from '../server/content/note-archive';
 import { buildGardenIndex } from './build';
 import { GardenBusyError, GardenUnavailableError } from './errors';
 import type { GardenIndex, NoteSource } from './types';
+import { hasDrafts, publicNoteSources } from './visibility';
 
 async function loadNoteSources(): Promise<NoteSource[]> {
   return (await readRedisNoteFiles()).map((file) => {
@@ -27,7 +29,14 @@ async function loadNoteSources(): Promise<NoteSource[]> {
     }
     return {
       id: file.sourceId,
-      data: parsed.success ? parsed.data : {},
+      // A note that fails validation must still keep its draft flag: falling
+      // back to bare defaults would publish a half-written note because of an
+      // unrelated typo in its frontmatter.
+      data: parsed.success
+        ? parsed.data
+        : parseDraftFlag(document.fields.draft)
+          ? { draft: true }
+          : {},
       body: document.body,
       updatedAt: file.updatedAt,
     };
@@ -36,11 +45,35 @@ async function loadNoteSources(): Promise<NoteSource[]> {
 
 // One index per notes base: every href in it is built with the base of the
 // request that built it, and the notes host links root-relative while the
-// apex links under `/notes`.
-const cachedGardenIndexes = new Map<
-  string,
-  { version: string; index: GardenIndex }
->();
+// apex links under `/notes`. Both audiences are built from the same stable
+// snapshot so a version never pairs a public index with a newer owner one;
+// with no drafts they are the same object.
+interface CachedGardenIndexes {
+  version: string;
+  index: GardenIndex;
+  ownerIndex: GardenIndex;
+}
+
+const cachedGardenIndexes = new Map<string, CachedGardenIndexes>();
+
+function buildAudienceIndexes(
+  sources: NoteSource[],
+): Pick<CachedGardenIndexes, 'index' | 'ownerIndex'> {
+  const index = buildGardenIndex(publicNoteSources(sources));
+  return {
+    index,
+    ownerIndex: hasDrafts(sources) ? buildGardenIndex(sources) : index,
+  };
+}
+
+export interface GardenIndexOptions {
+  /**
+   * Drafts are in the owner's index only. Pass this solely from a route that
+   * has already proved an admin session (or is itself admin-only); every
+   * public surface takes the default.
+   */
+  includeDrafts?: boolean;
+}
 
 const STABLE_READ_ATTEMPTS = 20;
 const STABLE_READ_RETRY_MS = 100;
@@ -58,9 +91,13 @@ export async function readPublicNoteRetirement(): Promise<
   }
 }
 
-export async function getGardenIndex(): Promise<GardenIndex> {
+export async function getGardenIndex({
+  includeDrafts = false,
+}: GardenIndexOptions = {}): Promise<GardenIndex> {
   const base = currentNotesBase();
   const cachedGardenIndex = cachedGardenIndexes.get(base);
+  const pick = (cached: CachedGardenIndexes): GardenIndex =>
+    includeDrafts ? cached.ownerIndex : cached.index;
   // The index must be built from one stable snapshot. The mutation
   // lock covers compound Studio operations; checking the version again after
   // the build also catches a write that began between the first check and the
@@ -70,40 +107,41 @@ export async function getGardenIndex(): Promise<GardenIndex> {
     try {
       version = await readStableContentVersion();
     } catch (error) {
-      if (cachedGardenIndex) return cachedGardenIndex.index;
+      if (cachedGardenIndex) return pick(cachedGardenIndex);
       throw error;
     }
     if (version === null) {
-      if (cachedGardenIndex) return cachedGardenIndex.index;
+      if (cachedGardenIndex) return pick(cachedGardenIndex);
       await delay(STABLE_READ_RETRY_MS);
       continue;
     }
     if (cachedGardenIndex?.version === version) {
-      return cachedGardenIndex.index;
+      return pick(cachedGardenIndex);
     }
 
-    let index: GardenIndex;
+    let built: Pick<CachedGardenIndexes, 'index' | 'ownerIndex'>;
     try {
-      index = buildGardenIndex(await loadNoteSources());
+      built = buildAudienceIndexes(await loadNoteSources());
     } catch (error) {
-      if (cachedGardenIndex) return cachedGardenIndex.index;
+      if (cachedGardenIndex) return pick(cachedGardenIndex);
       throw error;
     }
     let confirmedVersion: string | null;
     try {
       confirmedVersion = await readStableContentVersion();
     } catch (error) {
-      if (cachedGardenIndex) return cachedGardenIndex.index;
+      if (cachedGardenIndex) return pick(cachedGardenIndex);
       throw error;
     }
     if (confirmedVersion === version) {
-      cachedGardenIndexes.set(base, { version, index });
-      return index;
+      const cached = { version, ...built };
+      cachedGardenIndexes.set(base, cached);
+      return pick(cached);
     }
     await delay(STABLE_READ_RETRY_MS);
   }
 
-  if (cachedGardenIndex) return cachedGardenIndex.index;
+  if (cachedGardenIndex) return pick(cachedGardenIndex);
   throw new GardenBusyError();
 }
 
@@ -114,9 +152,11 @@ export type GardenIndexResult =
 // runtime cannot reach is a content-store state, not a crash. Every route that
 // reaches the index loads it through this guard so those states read as 503
 // "not ready" instead of a 500. Any other failure is a real bug and still throws.
-export async function getGardenIndexOrUnavailable(): Promise<GardenIndexResult> {
+export async function getGardenIndexOrUnavailable(
+  options?: GardenIndexOptions,
+): Promise<GardenIndexResult> {
   try {
-    return { ok: true, index: await getGardenIndex() };
+    return { ok: true, index: await getGardenIndex(options) };
   } catch (error) {
     if (
       error instanceof GardenUnavailableError ||

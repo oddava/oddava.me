@@ -322,6 +322,62 @@ describe('notes API writes', () => {
     expect(parseContentDocument(updatedNote.content).body).toContain('more');
   });
 
+  it('keeps a draft a draft until a client explicitly publishes it', async () => {
+    const provider = new MemoryContentProvider();
+    const created = await handleCreateNote(
+      provider.asProvider(),
+      request('POST', `${ORIGIN}/api/notes`, {
+        path: 'diary/wip.md',
+        content: '---\ndraft: true\n---\n\n# wip\n',
+      }),
+    );
+    expect(created.status).toBe(201);
+    expect(
+      ((await bodyOf(created)).note as Record<string, unknown>).draft,
+    ).toBe(true);
+
+    // A client that has never heard of drafts must not publish it by saving.
+    const edited = await handleUpdateNote(
+      provider.asProvider(),
+      'diary/wip.md',
+      request('PUT', `${ORIGIN}/api/notes/diary/wip.md`, {
+        content: '# wip\n\nmore words',
+      }),
+    );
+    const editedNote = (await bodyOf(edited)).note as Record<string, unknown>;
+    expect(editedNote.draft).toBe(true);
+    expect(fieldsOf(String(editedNote.content)).draft).toBe(true);
+
+    const published = await handleUpdateNote(
+      provider.asProvider(),
+      'diary/wip.md',
+      request('PUT', `${ORIGIN}/api/notes/diary/wip.md`, {
+        content: '---\ndraft: false\n---\n\n# wip\n\nmore words',
+      }),
+    );
+    const publishedNote = (await bodyOf(published)).note as Record<
+      string,
+      unknown
+    >;
+    expect('draft' in publishedNote).toBe(false);
+    expect('draft' in fieldsOf(String(publishedNote.content))).toBe(false);
+
+    // And once published, a later draft-unaware save keeps it published.
+    const resaved = await handleUpdateNote(
+      provider.asProvider(),
+      'diary/wip.md',
+      request('PUT', `${ORIGIN}/api/notes/diary/wip.md`, {
+        content: '# wip\n\neven more',
+      }),
+    );
+    expect('draft' in ((await bodyOf(resaved)).note as object)).toBe(false);
+
+    const listed = await bodyOf(await handleListNotes(provider.asProvider()));
+    expect(listed.notes as Record<string, unknown>[]).toEqual([
+      expect.not.objectContaining({ draft: true }),
+    ]);
+  });
+
   it('replaces a client updated timestamp and drops unknown frontmatter', async () => {
     const provider = new MemoryContentProvider();
     const created = await handleCreateNote(

@@ -1,3 +1,4 @@
+import { parseDraftFlag } from '../../content/noteDraft';
 import { isNoteIcon } from '../../content/noteIcon';
 import {
   entryFolderFromPath,
@@ -74,6 +75,7 @@ function toListItem(
     id,
     title: titleFromDocument(id, fields, body),
     ...(isNoteIcon(fields.icon) ? { icon: fields.icon } : {}),
+    ...(parseDraftFlag(fields.draft) ? { draft: true } : {}),
     folder,
     path: file.path,
     href: noteHref(folder, id),

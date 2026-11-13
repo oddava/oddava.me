@@ -181,6 +181,8 @@ export interface ContentEntryMove {
 
 export interface ContentEntryListItem {
   icon?: string;
+  /** Unlisted: hidden from the public garden until published. */
+  draft?: boolean;
   id: string;
   title: string;
   folder: string;

@@ -82,13 +82,33 @@ Studio looks a note up by its file name, so `diary/hello.md` and
 `reading/hello.md` cannot both exist. The second create returns `409` with
 `code: "slug_exists"`.
 
-Frontmatter may only contain `title`, `icon`, `order`, and `updated`. Other
+Frontmatter may only contain `title`, `icon`, `order`, `draft`, and `updated`. Other
 keys (Obsidian tags, aliases, and so on) are dropped on save. The writing
 itself lives in the Markdown body. The first heading becomes the title when
 `title` is omitted. On every save the server sets `updated` to the current
 time. On create, a missing `order` is filled in so the note sorts at the end
 of its folder in Studio. On update, a missing `order` keeps the stored value
 so a client that does not know about `order` does not reshuffle the folder.
+
+## Drafts
+
+`draft: true` in the frontmatter unlists a note. It stays in Studio and in this
+API, but the public garden acts as if it does not exist: its page is `404`, and
+it is absent from the tree, search, tags, the graph, backlinks, the sitemap, the
+feed and social cards. Only the signed-in owner can open its page, as a preview.
+A wikilink to a draft stays unlinked for everyone else.
+
+- A note with no `draft` key is published. Notes made through this API are
+  published unless you say otherwise: send `draft: true` on create to start one
+  unlisted. Studio starts the notes it creates as drafts, because it autosaves
+  to the live site while you write.
+- On update, an omitted `draft` keeps the stored value, so a client that does
+  not know about drafts cannot publish a draft by saving it. To publish, send
+  `draft: false` (the key is then removed from the stored frontmatter); to
+  unlist a published note, send `draft: true`.
+- List and detail responses carry `"draft": true` on unlisted notes and omit
+  the key on published ones.
+- The Notes root (`index.md`) cannot be unlisted; the flag is ignored there.
 
 New folders do not need to exist first. Saving `projects/idea.md` creates the
 folder in the store. It does not create a folder page (`projects.md`). Add
@@ -163,6 +183,13 @@ curl -s https://oddava.me/api/notes \
       "title": "hello",
       "updated": "2026-10-29T18:00:00.000Z",
       "revision": "r6f1c0a"
+    },
+    {
+      "path": "diary/half-written.md",
+      "title": "half written",
+      "updated": "2026-10-30T09:12:00.000Z",
+      "revision": "r2b9d4e",
+      "draft": true
     }
   ],
   "deleted": []

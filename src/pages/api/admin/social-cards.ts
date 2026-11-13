@@ -40,7 +40,9 @@ function isPng(bytes: Uint8Array): boolean {
 }
 
 async function loadCards() {
-  const garden = await getGardenIndexOrUnavailable();
+  // Cards are drawn ahead of publishing, so the day a draft goes live its
+  // preview is already stored; /og/* still hides a draft's card from visitors.
+  const garden = await getGardenIndexOrUnavailable({ includeDrafts: true });
   return garden.ok ? garden.index.documents.map(noteSocialCard) : null;
 }
 

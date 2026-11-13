@@ -37,7 +37,8 @@ async function loadNoteCount(): Promise<number> {
     // worth logging. A counter on a dashboard is not worth failing the
     // dashboard for, so a real error still degrades to zero — but it is the
     // only thing that reaches the log line.
-    const garden = await getGardenIndexOrUnavailable();
+    // The owner's count: drafts are notes too.
+    const garden = await getGardenIndexOrUnavailable({ includeDrafts: true });
     return garden.ok ? garden.index.documents.length : 0;
   } catch (error) {
     console.error('[admin-overview] Note metrics failed.', error);
