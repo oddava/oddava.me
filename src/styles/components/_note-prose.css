@@ -452,6 +452,14 @@
   margin-bottom: 0.75em;
 }
 
+/* The card is already padded; a list needs less air than it gets in running text. */
+.prose .callout__body :is(ul, ol) {
+  margin: 0.5em 0 0.75em;
+}
+.prose .callout__body li {
+  margin-bottom: 0.25em;
+}
+
 /* --- Footnotes --- */
 
 .prose .footnote-ref {
