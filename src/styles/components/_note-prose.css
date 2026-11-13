@@ -399,8 +399,24 @@
   height: 0.8rem;
   border-radius: 3px;
   background: color-mix(in srgb, var(--callout-tone) 38%, transparent);
-  transform: rotate(-2.5deg);
+  transform: rotate(var(--callout-tape-tilt, -2.5deg));
   pointer-events: none;
+}
+
+/* Stuck on by hand: no two in a row sit at the same angle, and the tape
+   shifts a degree under the pointer. */
+.prose .callout:nth-of-type(even) {
+  --callout-tape-tilt: 1.5deg;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .prose .callout::before {
+    transition: transform 0.18s var(--ease-draw);
+  }
+
+  .prose .callout:hover::before {
+    transform: rotate(calc(var(--callout-tape-tilt, -2.5deg) + 1deg));
+  }
 }
 
 .prose .callout--tip {
@@ -467,10 +483,13 @@
   line-height: 0;
 }
 
+/* Inline, not inline-block: an inline-block is a place a line may break, and
+   the pill would start the next line on its own. As plain inline text it
+   stays joined to the word it marks. */
 .prose .footnote-ref a {
-  display: inline-block;
-  min-width: 1.5em;
-  padding: 0.18em 0.4em;
+  display: inline;
+  padding: 0.18em 0.55em;
+  white-space: nowrap;
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--color-brand) 16%, transparent);
   font-weight: 700;
