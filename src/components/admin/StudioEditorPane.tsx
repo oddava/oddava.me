@@ -276,12 +276,18 @@ export default function StudioEditorPane({
                   href={publishedUrl}
                   target="_blank"
                   rel="noreferrer"
-                  title="Open the published page in a new tab"
+                  title={
+                    draftState === 'draft'
+                      ? 'Preview this draft in a new tab'
+                      : 'Open the published page in a new tab'
+                  }
                 >
                   <Icon name="external" />
                   {/* Clipped rather than removed where the bar is narrow, so
                       the link keeps the name you can see on a wide one. */}
-                  <span className="studio-bar__open-label">View page</span>
+                  <span className="studio-bar__open-label">
+                    {draftState === 'draft' ? 'Preview draft' : 'View page'}
+                  </span>
                 </a>
               )}
             </>

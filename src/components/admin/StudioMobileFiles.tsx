@@ -538,7 +538,11 @@ export default function StudioMobileFiles({
             {publishedUrl && (
               <SheetAction
                 icon="external"
-                label="View published page"
+                label={
+                  draft?.state === 'draft'
+                    ? 'Preview draft'
+                    : 'View published page'
+                }
                 href={publishedUrl}
                 onClick={() => closeSheet()}
               />

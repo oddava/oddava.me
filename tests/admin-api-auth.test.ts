@@ -475,3 +475,102 @@ describe('admin API auth matrix', () => {
     }
   });
 });
+
+/**
+ * Admin *pages* (src/pages/admin/**.astro) cannot be imported here, so each
+ * one is held to a declared gate instead: the source must call it before it
+ * renders anything, and the gates themselves are exercised below.
+ */
+const ADMIN_PAGES: Record<string, { gate: RegExp; why?: string }> = {
+  'files.astro': { gate: /await isAdminRequest\(Astro\.cookies\)/ },
+  'index.astro': { gate: /await isAdminRequest\(Astro\.cookies\)/ },
+  'login.astro': {
+    gate: /^/,
+    why: 'the sign-in page cannot require the session it creates',
+  },
+  'studio.astro': {
+    gate: /return Astro\.redirect\('\/admin\/files', 301\)/,
+    why: 'a permanent redirect to the gated files page',
+  },
+  'preview/[...path].astro': {
+    gate: /const denied = await requireAdminPage\(Astro\.cookies, Astro\.url\);\s*if \(denied\) return denied;/,
+  },
+};
+
+describe('admin page auth matrix', () => {
+  const ADMIN_PAGE_DIR = path.join(ROOT, 'src', 'pages', 'admin');
+
+  async function pageFiles(directory: string, prefix = ''): Promise<string[]> {
+    const files: string[] = [];
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        files.push(
+          ...(await pageFiles(path.join(directory, entry.name), relative)),
+        );
+      } else if (/\.(astro|ts)$/.test(entry.name)) {
+        files.push(relative);
+      }
+    }
+    return files;
+  }
+
+  it('declares a gate for every admin page', async () => {
+    expect((await pageFiles(ADMIN_PAGE_DIR)).toSorted()).toEqual(
+      Object.keys(ADMIN_PAGES).toSorted(),
+    );
+  });
+
+  it.each(Object.entries(ADMIN_PAGES))(
+    '%s calls its gate',
+    async (file, page) => {
+      const { readFile } = await import('node:fs/promises');
+      const source = await readFile(path.join(ADMIN_PAGE_DIR, file), 'utf8');
+      expect(source).toMatch(page.gate);
+    },
+  );
+
+  describe('requireAdminPage', () => {
+    const url = new URL(`${ORIGIN}/admin/preview/diary/secret`);
+
+    afterEach(() => {
+      delete process.env.ADMIN_PANEL_TOKEN;
+      delete process.env.COMMUNITY_SIGNING_SECRET;
+    });
+
+    it('sends a visitor with no session to sign in, then back', async () => {
+      process.env.ADMIN_PANEL_TOKEN = ADMIN_TOKEN;
+      process.env.COMMUNITY_SIGNING_SECRET = SIGNING_SECRET;
+      const { requireAdminPage } = await import('../src/lib/server/admin/auth');
+      const denied = await requireAdminPage(
+        cookieJar(undefined).api as never,
+        url,
+      );
+      expect(denied?.status).toBe(302);
+      expect(denied?.headers.get('Location')).toBe(
+        '/admin/login?next=%2Fadmin%2Fpreview%2Fdiary%2Fsecret',
+      );
+      expect(denied?.headers.get('Cache-Control')).toBe('no-store');
+    });
+
+    it('lets the signed-in owner through', async () => {
+      process.env.ADMIN_PANEL_TOKEN = ADMIN_TOKEN;
+      process.env.COMMUNITY_SIGNING_SECRET = SIGNING_SECRET;
+      const { createAdminSessionValue, requireAdminPage } =
+        await import('../src/lib/server/admin/auth');
+      const cookie = await createAdminSessionValue(ADMIN_TOKEN);
+      expect(
+        await requireAdminPage(cookieJar(cookie).api as never, url),
+      ).toBeNull();
+    });
+
+    it('is a plain 404 where admin is not configured', async () => {
+      const { requireAdminPage } = await import('../src/lib/server/admin/auth');
+      const denied = await requireAdminPage(
+        cookieJar(undefined).api as never,
+        url,
+      );
+      expect(denied?.status).toBe(404);
+    });
+  });
+});

@@ -31,6 +31,7 @@ import { splitNotePath, unwrittenNoteBody } from './studioConnectionText';
 import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
 import { useStudioDraft } from './useStudioDraft';
+import { noteEntryPath, notePreviewUrl } from '../../lib/note-preview-url';
 import { useStudioConflict } from './useStudioConflict';
 import StudioConflictBanner, {
   focusConflictBanner,
@@ -599,8 +600,6 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // --- Command palette actions --------------------------------------------
 
-  // Open the published note page — the live site is the preview surface.
-  const publishedUrl = openId ? noteHref(entries, openId) : '';
   const draft = useStudioDraft({
     doc,
     openId,
@@ -609,6 +608,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     setEntries,
     notify: setNotice,
   });
+  // Open the note's page: the live site for a published note, the admin-host
+  // preview for a draft (the notes host never sees the admin session).
+  const pageEntry = entries.find((entry) => entry.id === openId);
+  const publishedUrl = !openId
+    ? ''
+    : draft.state === 'draft' && pageEntry
+      ? notePreviewUrl(noteEntryPath(pageEntry))
+      : noteHref(entries, openId);
 
   // On a phone the note's own screen is the one with the sidebar closed.
   const calm = useStudioFocusRoot({
