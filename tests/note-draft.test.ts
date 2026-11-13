@@ -71,6 +71,29 @@ describe('draft flag', () => {
     });
     expect('draft' in published).toBe(false);
   });
+
+  it('reads unparseable frontmatter as a draft, never as published', () => {
+    const content = '---\ndraft: true\nimage: [\n---\n\n# TOP SECRET';
+    const parsed = parseContentDocument(content);
+    expect(parsed).toEqual({
+      fields: { draft: true },
+      body: '# TOP SECRET',
+      frontmatterError: true,
+    });
+    // Studio lists it as a draft so the owner can see why it is hidden.
+    expect(
+      toDetail(NOTES_COLLECTION, {
+        path: 'src/content/notes/top-secret.md',
+        content,
+        revision: 'r1',
+      }).draft,
+    ).toBe(true);
+    // A valid block keeps its meaning and is not flagged.
+    expect(parseContentDocument('---\ntitle: ok\n---\n\n# ok')).toEqual({
+      fields: { title: 'ok' },
+      body: '# ok',
+    });
+  });
 });
 
 describe('public visibility', () => {
@@ -157,8 +180,35 @@ describe('garden runtime audiences', () => {
         updatedAt: '2026-01-03',
       },
       { sourceId: 'live', content: '# live', updatedAt: '2026-01-04' },
+      {
+        // YAML cannot parse this block, so its draft flag is unknowable.
+        sourceId: 'broken',
+        content: '---\ndraft: true\nimage: [\n---\n\n# TOP SECRET',
+        updatedAt: '2026-01-05',
+      },
+      {
+        // No draft key at all: still unlisted until the owner repairs it.
+        sourceId: 'mangled',
+        content: '---\ntitle: "unterminated\n---\n\n# mangled',
+        updatedAt: '2026-01-06',
+      },
     ];
     vi.resetModules();
+  });
+
+  it('keeps notes with unparseable frontmatter out of every public surface', async () => {
+    const { getGardenIndex } = await import('../src/lib/garden/runtime');
+    const index = await getGardenIndex();
+    expect(index.byId.has('broken')).toBe(false);
+    expect(index.byId.has('mangled')).toBe(false);
+    expect(searchNotes(index.documents, 'secret', 8)).toEqual([]);
+    expect(deriveNoteGraph(index).nodes.map((node) => node.id)).not.toContain(
+      'broken',
+    );
+
+    const owner = await getGardenIndex({ includeDrafts: true });
+    expect(owner.byId.get('broken')?.title).toBe('TOP SECRET');
+    expect(owner.byId.has('mangled')).toBe(true);
   });
 
   it('serves visitors the public index and the owner the full one', async () => {
@@ -169,12 +219,19 @@ describe('garden runtime audiences', () => {
     const ownerIds = (await getGardenIndex({ includeDrafts: true })).documents
       .map((d) => d.id)
       .toSorted();
-    expect(ownerIds).toEqual(['index', 'live', 'typo', 'wip']);
+    expect(ownerIds).toEqual([
+      'broken',
+      'index',
+      'live',
+      'mangled',
+      'typo',
+      'wip',
+    ]);
   });
 
   it('shares one index when nothing is a draft', async () => {
     runtime.files = runtime.files.filter(
-      (file) => !file.content.includes('draft'),
+      (file) => !file.content.startsWith('---'),
     );
     const { getGardenIndex } = await import('../src/lib/garden/runtime');
     expect(await getGardenIndex()).toBe(

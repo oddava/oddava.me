@@ -17,6 +17,17 @@ import { hasDrafts, publicNoteSources } from './visibility';
 async function loadNoteSources(): Promise<NoteSource[]> {
   return (await readRedisNoteFiles()).map((file) => {
     const document = parseContentDocument(file.content);
+    if (document.frontmatterError) {
+      console.warn(
+        `[garden] Unparseable frontmatter for note "${file.sourceId}"; keeping it unlisted until it is repaired.`,
+      );
+      return {
+        id: file.sourceId,
+        data: { draft: true },
+        body: document.body,
+        updatedAt: file.updatedAt,
+      };
+    }
     // Field-level validation failures (a hand-edited `order: 1.5`, an
     // unparseable `updated`) degrade this one note to defaults rather than
     // throwing out of the shared index build and 500-ing the whole garden.
