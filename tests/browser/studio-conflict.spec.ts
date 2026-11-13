@@ -185,3 +185,50 @@ test('a note deleted elsewhere keeps the text and says so kindly', async ({
     'paused',
   );
 });
+
+test('a newer version waits for an author who is typing, even when all is saved', async ({
+  page,
+}) => {
+  const store = await setup(page);
+  await typeAtEnd(page, ' Saved words.');
+  await expect(page.locator('.studio-save')).toHaveAttribute(
+    'data-tone',
+    'saved',
+  );
+  store.revision = 'r9';
+  store.body = '# Shared note\n\nWritten in Obsidian.\n';
+
+  // The caret is still in the note: no quiet swap under it.
+  await expect(editor(page)).toBeFocused();
+  await revalidate(page);
+  await expect(banner(page)).toContainText(
+    'Someone edited this note elsewhere',
+  );
+  await expect(banner(page)).toContainText('Everything you typed is saved');
+  await expect(editor(page)).toContainText('Saved words.');
+
+  await banner(page)
+    .getByRole('button', { name: 'Load their version' })
+    .click();
+  await expect(editor(page)).toContainText('Written in Obsidian.');
+  // What was saved is in the store's history; nothing needed setting aside.
+  await expect(banner(page)).toHaveCount(0);
+
+  // The caret was carried into the new text rather than sent to the top.
+  // (Read from the editor's state: it is what the editor's own focus
+  // restores, where a bare element.focus() would let the browser choose.)
+  const before = await page.evaluate(() => {
+    const view = (
+      document.querySelector('.ProseMirror') as HTMLElement & {
+        editor?: {
+          state: {
+            selection: { from: number };
+            doc: { textBetween: (from: number, to: number) => string };
+          };
+        };
+      }
+    ).editor!.state;
+    return view.doc.textBetween(0, view.selection.from);
+  });
+  expect(before.endsWith('Written in Obsidian.')).toBe(true);
+});
