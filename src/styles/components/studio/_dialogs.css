@@ -14,7 +14,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 16px 16px;
-  background: color-mix(in srgb, #000 70%, transparent);
+  background: color-mix(in srgb, var(--st-shade) 70%, transparent);
   animation: studio-fade var(--st-base) var(--st-ease);
 }
 
