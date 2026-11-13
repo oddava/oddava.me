@@ -921,10 +921,31 @@ test('images keep text below and clicking underneath continues writing', async (
     path: `test-results/image-selection-${info.project.name}.png`,
   });
 
+  // "Write below image" puts the caret in the new paragraph through
+  // Tiptap's focus(), which waits a frame; keys typed before then go to the
+  // button, and the first letters are lost. Type once the caret is there.
+  const caretInEmptyParagraph = () =>
+    expect
+      .poll(() =>
+        editor.evaluate((node) => {
+          const anchor = window.getSelection()?.anchorNode;
+          const element =
+            anchor instanceof Element ? anchor : anchor?.parentElement;
+          const paragraph = element?.closest('p');
+          return (
+            document.activeElement === node &&
+            Boolean(paragraph && node.contains(paragraph)) &&
+            paragraph!.textContent === ''
+          );
+        }),
+      )
+      .toBe(true);
+
   await editor
     .getByRole('button', { name: 'Write below image' })
     .first()
     .click();
+  await caretInEmptyParagraph();
   await page.keyboard.type('Between images');
   await expect(editor.locator('p')).toHaveText('Between images');
   const first = await editor
@@ -936,6 +957,7 @@ test('images keep text below and clicking underneath continues writing', async (
     .getByRole('button', { name: 'Write below image' })
     .last()
     .click();
+  await caretInEmptyParagraph();
   await page.keyboard.type('After the last image');
   await expect(editor.locator('p').last()).toHaveText('After the last image');
   const last = await editor
