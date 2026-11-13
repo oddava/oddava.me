@@ -4,6 +4,7 @@ import {
   rankTagSuggestions,
   tagUsageLabel,
 } from '../src/components/admin/studioTagSuggestions';
+import { acceptsTagOnEnter } from '../src/components/admin/studioRichSuggestions';
 import {
   backlinksHeading,
   orderOutbound,
@@ -33,6 +34,13 @@ describe('matchTagQuery', () => {
     expect(matchTagQuery('#done ')).toBeNull();
   });
 
+  it('waits for a letter, so numbers and rankings are left to the writer', () => {
+    expect(matchTagQuery('fixed in #12')).toBeNull();
+    expect(matchTagQuery('#1 priority')).toBeNull();
+    expect(matchTagQuery('#2012')).toBeNull();
+    expect(matchTagQuery('#v2')?.query).toBe('v2');
+  });
+
   it('keeps the characters the garden allows in a tag', () => {
     expect(matchTagQuery('x #area/sub-topic_1')?.query).toBe(
       'area/sub-topic_1',
@@ -48,15 +56,26 @@ describe('rankTagSuggestions', () => {
     { tag: 'reflection', count: 4 },
   ];
 
-  it('ranks by usage, words starting like the query before words containing it', () => {
+  it('offers only tags that start with the query, most used first', () => {
     expect(rankTagSuggestions('re', tags).map((row) => row.id)).toEqual([
       'reading',
       'reflection',
       'regarding',
     ]);
-    expect(rankTagSuggestions('ard', tags).map((row) => row.id)).toEqual([
-      'regarding',
-      'garden',
+    // A tag that merely contains the query is not a completion of it.
+    expect(rankTagSuggestions('ard', tags)).toEqual([]);
+  });
+
+  it('puts the tag typed in full first, however much more a longer one is used', () => {
+    const design = [
+      { tag: 'design-systems', count: 12 },
+      { tag: 'design', count: 3 },
+      { tag: 'designers', count: 5 },
+    ];
+    expect(rankTagSuggestions('design', design).map((row) => row.id)).toEqual([
+      'design',
+      'design-systems',
+      'designers',
     ]);
   });
 
@@ -84,6 +103,14 @@ describe('rankTagSuggestions', () => {
     }));
     expect(rankTagSuggestions('t', many)).toHaveLength(8);
     expect(rankTagSuggestions('t', many)[0]?.id).toBe('t11');
+  });
+
+  it('lets Enter take a tag only after the arrows picked one', () => {
+    const items = rankTagSuggestions('re', tags);
+    expect(acceptsTagOnEnter({ items })).toBe(false);
+    expect(acceptsTagOnEnter({ items, moved: false })).toBe(false);
+    expect(acceptsTagOnEnter({ items, moved: true })).toBe(true);
+    expect(acceptsTagOnEnter({ items: [], moved: true })).toBe(false);
   });
 
   it('says how many notes use a tag', () => {
