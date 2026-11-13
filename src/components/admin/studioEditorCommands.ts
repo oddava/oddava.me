@@ -18,6 +18,10 @@ export interface EditorCommands {
   insertBlock(markup: string): void;
   /** Raw insert at the caret, preserving undo. Used by paste/drop image upload. */
   insertInline(snippet: string): void;
+  /** Show or hide the note's outline; the rich editor supplies it. */
+  outline?(): void;
+  /** Open find-in-note; the rich editor supplies it. */
+  find?(): void;
 }
 
 // --- Image markup builder (shared by dialog + quick insert) ---------------

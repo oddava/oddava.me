@@ -602,6 +602,22 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         run: () => setImageDialogOpen(true),
       },
       {
+        id: 'outline',
+        title: 'Outline',
+        icon: 'outline',
+        hint: shortcut('O', true),
+        // After the palette has handed focus back to the page.
+        run: () =>
+          requestAnimationFrame(() => commandsRef.current?.outline?.()),
+      },
+      {
+        id: 'find-in-note',
+        title: 'Find in note',
+        icon: 'search',
+        hint: shortcut('F'),
+        run: () => requestAnimationFrame(() => commandsRef.current?.find?.()),
+      },
+      {
         id: 'save-note',
         title: 'Save now',
         icon: 'save',

@@ -1,0 +1,309 @@
+/* ---------------------------------------------------------------------------
+   Getting around a long note: the outline, find-in-note, and the word count.
+
+   Built from the same parts as every other floating Studio surface — the
+   raised fill, the hairline, the one shadow — with one addition: a small
+   spring on press, so the buttons answer a finger a little playfully. Colours
+   come from the ink (--st-accent) and the neutral scale, never a fixed hue, so
+   the highlights follow whichever ink the site is wearing.
+--------------------------------------------------------------------------- */
+
+.admin-page .studio-outline,
+.admin-page .studio-find {
+  /* Overshoots a touch, then settles: the press and the release. */
+  --st-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  position: absolute;
+  top: 8px;
+  right: 20px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--st-radius-float);
+  background: var(--st-raised);
+  box-shadow: var(--st-shadow-float);
+  color: var(--st-text);
+  font-family: var(--st-font);
+  animation: studio-arrive var(--st-base) var(--st-ease);
+}
+
+.admin-page :is(.studio-outline, .studio-find) :focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 1px;
+}
+
+/* A press dips and rebounds. Held to the controls these two panels own. */
+.admin-page
+  :is(
+    .studio-outline__item,
+    .studio-outline .studio-icon-button,
+    .studio-find .studio-icon-button,
+    .studio-find .studio-btn
+  ) {
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease),
+    transform var(--st-base) var(--st-spring);
+}
+
+.admin-page
+  :is(
+    .studio-outline__item,
+    .studio-outline .studio-icon-button,
+    .studio-find .studio-icon-button,
+    .studio-find .studio-btn
+  ):active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* --- Outline --- */
+
+.admin-page .studio-outline {
+  width: min(300px, calc(100% - 40px));
+  max-height: min(26rem, calc(100% - 16px));
+}
+
+.admin-page .studio-outline__head {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+  padding: 6px 6px 2px 14px;
+}
+
+.admin-page .studio-outline__head strong {
+  flex: 1 1 auto;
+  font-size: var(--st-size-sm);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.admin-page .studio-outline__body {
+  position: relative;
+  min-height: 0;
+  padding: 2px 4px 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.admin-page .studio-outline__list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-page .studio-outline__item {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: var(--st-row);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-page .studio-outline__item span {
+  display: block;
+  overflow: hidden;
+  line-height: var(--st-row);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Each level in is a step in; the list stays readable at four. */
+.admin-page .studio-outline__item.is-depth-1 {
+  padding-left: 22px;
+}
+.admin-page .studio-outline__item.is-depth-2 {
+  padding-left: 34px;
+}
+.admin-page .studio-outline__item.is-depth-3 {
+  padding-left: 46px;
+}
+
+.admin-page .studio-outline__item:hover {
+  background: var(--st-hover);
+  color: var(--st-text);
+}
+
+/* Where you are: the ink's soft tint and a small pill on the left edge. */
+.admin-page .studio-outline__item[aria-current='location'] {
+  background: var(--st-picked);
+  color: var(--st-text);
+  font-weight: 500;
+}
+
+.admin-page .studio-outline__item[aria-current='location']::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 3px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--st-accent);
+  content: '';
+  animation: studio-fade var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-outline__empty {
+  margin: 0;
+  padding: 8px 10px 10px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+  line-height: 1.5;
+}
+
+/* --- Find --- */
+
+.admin-page .studio-find {
+  width: min(420px, calc(100% - 40px));
+  padding: 4px;
+  gap: 2px;
+}
+
+.admin-page .studio-find__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.admin-page .studio-find__input {
+  flex: 1 1 8rem;
+  width: auto;
+}
+
+/* Under the find row's own input: lined up with it, past the chevron. */
+.admin-page .studio-find__row--replace {
+  padding-left: calc(var(--st-control) + 2px);
+}
+
+.admin-page .studio-find__count {
+  flex: none;
+  min-width: 4.5em;
+  padding: 0 6px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.admin-page .studio-find__count.is-empty {
+  color: var(--st-danger);
+}
+
+.admin-page .studio-find__case {
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+}
+
+.admin-page .studio-find__case[aria-pressed='true'] {
+  background: var(--st-picked);
+  color: var(--st-accent-text);
+}
+
+.admin-page .studio-find .studio-btn {
+  min-height: var(--st-control);
+}
+
+/* --- Matches, drawn in the page itself ---
+   Soft by default, so a one-letter search is not a wall of colour; the one
+   you are on gets a stronger fill and a ring. */
+
+.studio-rich-content .studio-find-match {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--st-accent) 22%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.studio-rich-content .studio-find-match.is-active {
+  background: color-mix(in srgb, var(--st-accent) 48%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--st-accent) 48%, transparent);
+}
+
+@media (forced-colors: active) {
+  .studio-rich-content .studio-find-match {
+    background: Mark;
+    color: MarkText;
+  }
+
+  .studio-rich-content .studio-find-match.is-active {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* --- Word count ---
+   Takes no room: a zero-height strip under the page that its text hangs
+   from, so it sits above whatever the phone docks below (find, the keyboard
+   bar) without being laid out among them. */
+
+.admin-page .studio-wordcount {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  height: 0;
+  pointer-events: none;
+}
+
+.admin-page .studio-wordcount span {
+  position: absolute;
+  right: 22px;
+  bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--st-canvas) 82%, transparent);
+  color: var(--st-text-4);
+  font-family: var(--st-font);
+  font-size: var(--st-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- Phone ---
+   Find becomes a row of the layout, above the keyboard bar, so it never
+   covers the words it is finding; the outline spans the screen. The classes
+   say which layout the workspace chose, so this never disagrees with it. */
+
+.admin-page .studio-outline.is-compact {
+  right: 8px;
+  left: 8px;
+  width: auto;
+  max-height: min(26rem, 60%);
+}
+
+.admin-page .studio-rich-shell > .studio-find.is-docked {
+  position: static;
+  flex: none;
+  width: auto;
+  padding: 4px max(8px, env(safe-area-inset-right)) 4px
+    max(8px, env(safe-area-inset-left));
+  border: 0;
+  border-top: 1px solid var(--st-line);
+  border-radius: 0;
+  background: var(--st-panel);
+  box-shadow: none;
+  animation: none;
+}
+
+/* 16px: iOS zooms the page into anything smaller. */
+.admin-page .studio-find.is-docked .studio-find__input {
+  font-size: var(--st-size-lg);
+}
+
+@media (max-width: 720px) {
+  .admin-page .studio-wordcount span {
+    right: 12px;
+  }
+}
