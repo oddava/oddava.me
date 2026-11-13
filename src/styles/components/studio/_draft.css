@@ -120,6 +120,14 @@
   padding: 8px 16px;
 }
 
+/* Hairlines between a card's rows start at the text, as the actions' do. */
+.admin-page .studio-sheet__action + .studio-draft-row {
+  background-image: linear-gradient(var(--st-line), var(--st-line));
+  background-position: 16px 0;
+  background-repeat: no-repeat;
+  background-size: calc(100% - 16px) 1px;
+}
+
 .admin-page .studio-draft-row__text {
   display: grid;
   gap: 2px;

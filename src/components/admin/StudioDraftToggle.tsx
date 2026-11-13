@@ -15,8 +15,8 @@ interface Props {
 }
 
 const HINTS: Record<DraftState, string> = {
-  draft: 'Only you can see this note.',
-  published: 'Anyone can read this note.',
+  draft: 'Only you can see it.',
+  published: 'Anyone can read it.',
 };
 
 const ARROW_STEPS: Record<string, 1 | -1> = {
