@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import type { Editor } from '@tiptap/core';
+import type { TagCount } from '../../lib/garden/connections';
 import { matchSlashCommands } from './studioBlocks';
 import { pointAt } from './studioRichGeometry';
 import {
@@ -9,6 +10,7 @@ import {
   type Suggestion,
   type WikiState,
 } from './studioRichSuggestions';
+import { matchTagQuery, rankTagSuggestions } from './studioTagSuggestions';
 import { SLASH_MENU_ID, slashOptionId } from './StudioSlashMenu';
 import {
   WIKI_MENU_ID,
@@ -33,7 +35,11 @@ export function useStudioRichSuggestions() {
   const dismissed = useRef<number | null>(null);
 
   /** Re-read both menus at the caret; true when either one matched. */
-  function update(editor: Editor, suggestions: WikiSuggestion[]): boolean {
+  function update(
+    editor: Editor,
+    suggestions: WikiSuggestion[],
+    tags: readonly TagCount[],
+  ): boolean {
     const { $from, from, empty } = editor.state.selection;
     const before = $from.parent.textBetween(
       0,
@@ -60,10 +66,23 @@ export function useStudioRichSuggestions() {
     }
     const wikiMatch =
       empty && !editor.isActive('codeBlock') && /\[\[([^\]\n|]*)$/.exec(before);
+    // A #tag is prose: not in a heading (where # is syntax) or in code. The
+    // popup only opens while some existing tag could complete it, so a brand
+    // new tag never has Enter taken away from it.
+    const tagMatch =
+      !wikiMatch &&
+      empty &&
+      !editor.isActive('codeBlock') &&
+      !editor.isActive('code') &&
+      !editor.isActive('heading') &&
+      matchTagQuery(before);
+    const tagItems = tagMatch ? rankTagSuggestions(tagMatch.query, tags) : [];
+    const tagFrom = tagMatch ? from - tagMatch.length : -1;
     if (wikiMatch && dismissed.current !== from - wikiMatch[0].length) {
       const query = wikiMatch[1]!;
       const items = rankWikiSuggestions(query, suggestions);
       setWiki((prev) => ({
+        kind: 'note',
         from: from - wikiMatch[0].length,
         to: from,
         query,
@@ -71,8 +90,19 @@ export function useStudioRichSuggestions() {
         point: pointAt(editor, from),
         index: keptIndex(prev, query, items.length),
       }));
+    } else if (tagMatch && tagItems.length && dismissed.current !== tagFrom) {
+      const query = tagMatch.query;
+      setWiki((prev) => ({
+        kind: 'tag',
+        from: tagFrom,
+        to: from,
+        query,
+        items: tagItems,
+        point: pointAt(editor, from),
+        index: keptIndex(prev, query, tagItems.length),
+      }));
     } else setWiki(null);
-    return Boolean(slashMatch || wikiMatch);
+    return Boolean(slashMatch || wikiMatch || (tagMatch && tagItems.length));
   }
 
   return {
