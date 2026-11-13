@@ -1,6 +1,7 @@
 import { adminJson } from '../admin/response';
 import { readJsonBody, requestBodyErrorResponse } from '../core/body';
 import type {
+  NoteRestoreResponse,
   NoteRevisionResponse,
   NoteRevisionsResponse,
 } from '../../history-contracts';
@@ -23,6 +24,18 @@ import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError } from './types';
 import type { ContentProvider } from './types';
 
+/**
+ * Fields that describe where a note stands now rather than what it said:
+ * a restore keeps the current value (or its absence) instead of the old one.
+ *
+ * - `order`: where a note sits among its siblings is the tree's business.
+ * - `draft`: publishing is a deliberate act, not part of a note's text.
+ *   Versions saved before drafts existed carry no key, so restoring one would
+ *   silently publish a draft; restoring an old draft version would just as
+ *   silently pull a live note.
+ */
+const CURRENT_STATE_FIELDS = ['order', 'draft'] as const;
+
 function missingVersion(): Response {
   return adminJson(
     {
@@ -30,6 +43,17 @@ function missingVersion(): Response {
       code: 'version_not_found',
     },
     { status: 404 },
+  );
+}
+
+function undoCopyUnavailable(): Response {
+  return adminJson(
+    {
+      error:
+        'This version was not restored: the current note could not be saved to history first, so the restore could not be undone. Nothing was changed.',
+      code: 'restore_backup_failed',
+    },
+    { status: 409 },
   );
 }
 
@@ -94,19 +118,26 @@ export async function handleContentRevisions(
 
   // Unlike the best-effort record a plain save leaves, this one is the promise
   // that a restore can be undone: if it cannot be made, nothing is overwritten.
-  await revisions.snapshot({
+  // A thrown error and a declined copy (a note over the history size cap, or
+  // one that changed under us) are the same broken promise.
+  const outcome = await revisions.snapshot({
     id,
     filePath: existing.path,
     expectedRevision: existing.revision,
     force: true,
     reason: 'pre-restore',
   });
+  if (outcome !== 'recorded' && outcome !== 'unchanged') {
+    return undoCopyUnavailable();
+  }
 
   const restored = parseContentDocument(version.content);
-  // Where a note sits among its siblings is the tree's business, not part of
-  // what its text was.
-  const { order } = parseContentDocument(existing.content).fields;
-  const fields: Record<string, unknown> = { ...restored.fields, order };
+  const current = parseContentDocument(existing.content).fields;
+  const fields: Record<string, unknown> = { ...restored.fields };
+  for (const key of CURRENT_STATE_FIELDS) {
+    if (Object.hasOwn(current, key)) fields[key] = current[key];
+    else delete fields[key];
+  }
   fields.updated = new Date().toISOString();
 
   let validated: Record<string, unknown>;
@@ -124,6 +155,9 @@ export async function handleContentRevisions(
       existing.revision,
     );
     return adminJson({
+      // The fields actually written, so Studio can resync its draft pill even
+      // when the store returns no revision to build `entry` from.
+      fields: validated,
       entry: result.revision
         ? toDetail(collection, {
             path: existing.path,
@@ -132,7 +166,7 @@ export async function handleContentRevisions(
           })
         : null,
       result,
-    });
+    } satisfies NoteRestoreResponse);
   } catch (error) {
     return contentConflictResponse(error);
   }
