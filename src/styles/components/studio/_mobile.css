@@ -147,6 +147,17 @@
   .admin-page .studio-bar__history {
     display: none;
   }
+
+  /* "Paused" and "Retry save" keep their colour and their tooltip, and give
+     their word's room to the name, as they do on a phone. */
+  .admin-page .studio-bar .studio-btn.studio-save > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 /* The smallest tablets give the list its narrowest column as well. */
