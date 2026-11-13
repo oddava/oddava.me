@@ -66,8 +66,8 @@ function Scene({
       className="studio-doodle studio-doodle--scene"
       data-doodle={name}
       viewBox="0 0 120 88"
-      width="120"
-      height="88"
+      width="150"
+      height="110"
       aria-hidden="true"
       focusable="false"
     >
@@ -76,18 +76,23 @@ function Scene({
   );
 }
 
-/** A sheet of paper, taped down, a few lines written. Shared by the scenes. */
+/**
+ * A sheet of paper, taped down, a few lines written. Shared by the scenes.
+ * Its edges bow a little and its lines are not quite level: drawn by hand,
+ * not with a ruler.
+ */
 function Sheet({ lines = 3 }: { lines?: number }) {
   return (
     <>
       <path
         className="is-paper"
-        d="M38 20.5c0-1.9 1.6-3.5 3.5-3.5h37c1.9 0 3.5 1.6 3.5 3.5v49c0 1.9-1.6 3.5-3.5 3.5h-37c-1.9 0-3.5-1.6-3.5-3.5z"
+        d="M41.5 17.4c12.2-.9 24.9-.7 37.1.1 1.9.1 3.3 1.6 3.4 3.5.6 16.2.5 32.7-.1 49-.1 1.9-1.5 3.3-3.4 3.4-12.3.7-24.8.6-37.1 0-1.9-.1-3.3-1.5-3.4-3.4-.6-16.3-.7-32.7 0-49 .1-1.9 1.6-3.4 3.5-3.6z"
       />
-      <path className="is-ink" d="M52 14.5l16-1.5.6 6-16 1.5z" />
-      {lines > 0 && <path d="M46 32h18" />}
-      {lines > 1 && <path d="M46 41h28" />}
-      {lines > 2 && <path d="M46 50h22" />}
+      <path className="is-ink" d="M52 14.6l16-1.7.7 6.1-16 1.7z" />
+      <path className="is-ink" d="M56.2 14.2l1.3 6M61 13.7l1.3 6" />
+      {lines > 0 && <path d="M46 32.4c6-.9 12-.8 18-.2" />}
+      {lines > 1 && <path d="M46 41.3c9.3-1 18.7-.9 28 .1" />}
+      {lines > 2 && <path d="M46 50.2c7.3-.7 14.7-.7 22 0" />}
     </>
   );
 }
