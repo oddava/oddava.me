@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'preact/hooks';
 import type { Point } from './studioRichGeometry';
 import { FileIcon } from './studioFileIcons';
 import { useStudioCaretFloat } from './useStudioCaretFloat';
+import { tagUsageLabel } from './studioTagSuggestions';
+
 export interface WikiSuggestion {
   id: string;
   title: string;
@@ -10,10 +12,14 @@ export interface WikiSuggestion {
   href?: string;
   insert: string;
   icon?: string;
+  /** Set on a #tag row: how many notes use it. A note row has no count. */
+  count?: number;
 }
 
 interface Props {
   open: boolean;
+  /** The menu offers #tags rather than notes. */
+  kind?: 'note' | 'tag';
   items: WikiSuggestion[];
   activeIndex: number;
   position: Point | null;
@@ -32,6 +38,7 @@ export function wikiOptionId(index: number): string {
 
 export default function WikiLinkAutocomplete({
   open,
+  kind = 'note',
   items,
   activeIndex,
   position,
@@ -57,7 +64,7 @@ export default function WikiLinkAutocomplete({
       id={WIKI_MENU_ID}
       className={`studio-wikimenu ${docked ? 'is-docked' : ''}`}
       role="listbox"
-      aria-label="Link to a note"
+      aria-label={kind === 'tag' ? 'Add a tag' : 'Link to a note'}
       style={
         docked
           ? undefined
@@ -82,7 +89,11 @@ export default function WikiLinkAutocomplete({
           onMouseMove={() => onHover(index)}
         >
           <span className="studio-wikimenu__icon" aria-hidden="true">
-            <FileIcon icon={item.icon} />
+            {item.count === undefined ? (
+              <FileIcon icon={item.icon} />
+            ) : (
+              <span className="studio-wikimenu__hash">#</span>
+            )}
           </span>
           <span className="studio-wikimenu__text">
             <span className="studio-wikimenu__title">
@@ -94,6 +105,11 @@ export default function WikiLinkAutocomplete({
               </span>
             )}
           </span>
+          {item.count !== undefined && (
+            <span className="studio-wikimenu__count">
+              {tagUsageLabel(item.count)}
+            </span>
+          )}
         </button>
       ))}
     </div>

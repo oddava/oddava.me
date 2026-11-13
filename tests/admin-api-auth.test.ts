@@ -90,6 +90,13 @@ const ADMIN_ROUTES: {
     sameOrigin: false,
   },
   {
+    file: 'content/connections.ts',
+    module: '../src/pages/api/admin/content/connections',
+    method: 'GET',
+    auth: true,
+    sameOrigin: false,
+  },
+  {
     file: 'content/media.ts',
     module: '../src/pages/api/admin/content/media',
     method: 'POST',

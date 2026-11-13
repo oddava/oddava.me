@@ -1,0 +1,205 @@
+/* ---------------------------------------------------------------------------
+   Connections
+
+   What links to a note and what it links to, under the page, and the #tag
+   menu's extra columns. Everything is quiet until asked for: two collapsed
+   rows at rest, soft cards when open.
+--------------------------------------------------------------------------- */
+
+.admin-page .studio-connections {
+  display: grid;
+  gap: 4px;
+  margin-top: 56px;
+  padding-top: 12px;
+  border-top: 1px solid var(--st-line);
+}
+
+.admin-page .studio-connections__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: var(--st-control);
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: var(--st-radius);
+  background: transparent;
+  color: var(--st-text-3);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-connections__toggle:hover {
+  background: var(--st-hover);
+  color: var(--st-text);
+}
+
+.admin-page .studio-connections__toggle .studio-glyph {
+  width: var(--st-glyph-sm);
+  height: var(--st-glyph-sm);
+  transition: transform var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-connections__toggle[aria-expanded='true'] .studio-glyph {
+  transform: rotate(90deg);
+}
+
+/* "1 not written yet": a nudge, not an alarm — the accent, tinted. */
+.admin-page .studio-connections__badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--st-picked);
+  color: var(--st-accent-text);
+  font-size: var(--st-size-xs);
+  font-weight: 500;
+}
+
+.admin-page .studio-connections__panel:not([hidden]) {
+  padding: 4px 0 12px;
+  animation: studio-fade var(--st-base) var(--st-ease);
+}
+
+.admin-page .studio-connections__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 6px;
+  list-style: none;
+}
+
+.admin-page .studio-connections__empty,
+.admin-page .studio-connections__quiet {
+  margin: 0;
+  padding: 4px 6px 0;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+  line-height: 1.5;
+}
+
+.admin-page .studio-connection-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--st-touch);
+  padding: 10px 12px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius-float);
+  background: var(--st-panel);
+  color: var(--st-text-2);
+  font: inherit;
+  text-align: left;
+  transition:
+    background-color var(--st-fast) var(--st-ease),
+    border-color var(--st-fast) var(--st-ease),
+    transform var(--st-base) var(--st-ease);
+}
+
+.admin-page button.studio-connection-card {
+  cursor: pointer;
+}
+
+.admin-page button.studio-connection-card:hover {
+  border-color: var(--st-line-strong);
+  background: var(--st-hover);
+  transform: translateY(-1px);
+}
+
+.admin-page button.studio-connection-card:active {
+  transform: none;
+}
+
+/* A note that is only a promise so far: dashed, like a place saved for it. */
+.admin-page .studio-connection-card.is-unwritten {
+  flex-wrap: wrap;
+  border-style: dashed;
+  background: transparent;
+}
+
+.admin-page .studio-connection-card__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--st-text-3);
+}
+
+.admin-page .studio-connection-card__text {
+  display: grid;
+  flex: 1 1 0;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-page .studio-connection-card__title {
+  overflow: hidden;
+  color: var(--st-text);
+  font-size: var(--st-size-md);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-page .studio-connection-card__sentence {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--st-text-3);
+  font-size: var(--st-size-sm);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.admin-page
+  .studio-connection-card.is-unwritten
+  .studio-connection-card__sentence {
+  display: block;
+  font-style: italic;
+}
+
+.admin-page .studio-connection-card__create {
+  flex: none;
+  margin-left: auto;
+  color: var(--st-accent-text);
+}
+
+/* --- #tag menu ---
+   The note menu's rows, with a hash where the page icon sits and a usage
+   count at the far edge. */
+
+.admin-page .studio-wikimenu__hash {
+  color: var(--st-accent-text);
+  font-size: var(--st-size-lg);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-page .studio-wikimenu__count {
+  flex: none;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  white-space: nowrap;
+}
+
+@media (hover: none) {
+  .admin-page button.studio-connection-card:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page button.studio-connection-card:hover {
+    transform: none;
+  }
+}

@@ -15,7 +15,11 @@ export type Suggestion = {
   items: SlashCommand[];
 };
 
-export type WikiState = Omit<Suggestion, 'items'> & { items: WikiSuggestion[] };
+export type WikiState = Omit<Suggestion, 'items'> & {
+  items: WikiSuggestion[];
+  /** `[[` offers notes; `#` offers tags. Both share this menu and its keys. */
+  kind: 'note' | 'tag';
+};
 
 /** The best eight notes for a [[ query, by fuzzy score. */
 export function rankWikiSuggestions(
