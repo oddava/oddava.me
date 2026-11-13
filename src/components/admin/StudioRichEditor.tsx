@@ -1,7 +1,9 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import type { TagCount } from '../../lib/garden/connections';
 import { EditorState, TextSelection } from '@tiptap/pm/state';
 import { BlockSelection } from './studioBlockSelection';
 import { useStudioBlockMarquee } from './useStudioBlockMarquee';
@@ -67,6 +69,10 @@ interface Props {
   commandsRef: MutableRef<EditorCommands | null>;
   focusRef: MutableRef<(() => void) | null>;
   suggestions: WikiSuggestion[];
+  /** Every tag in use, for the # autocomplete. */
+  tags: TagCount[];
+  /** Rendered under the page, inside the same scroll. */
+  footer?: ComponentChildren;
   uploading: boolean;
   compact: boolean;
   /** A phone's on-screen keyboard is up: the writing tools ride above it. */
@@ -170,7 +176,11 @@ export default function StudioRichEditor(props: Props) {
     const { selection } = editor.state;
     const { from, to, empty } = selection;
     blocks.syncHandle(editor);
-    const matched = suggestions.update(editor, live.current.suggestions);
+    const matched = suggestions.update(
+      editor,
+      live.current.suggestions,
+      live.current.tags,
+    );
     const inBar = Boolean(
       document.activeElement?.closest?.('.studio-inline-toolbar'),
     );
@@ -281,17 +291,18 @@ export default function StudioRichEditor(props: Props) {
     const current = wikiRef.current;
     const item = current?.items[index];
     if (!editor || !current || !item) return;
-    const target = wikiTarget(item);
+    // A tag stays the plain text the garden index reads; only a note is a node.
+    const content =
+      current.kind === 'tag'
+        ? { type: 'text', text: item.insert }
+        : {
+            type: 'wikiLink',
+            attrs: { target: wikiTarget(item), label: item.title },
+          };
     editor
       .chain()
       .focus()
-      .insertContentAt(
-        { from: current.from, to: current.to },
-        {
-          type: 'wikiLink',
-          attrs: { target, label: item.title },
-        },
-      )
+      .insertContentAt({ from: current.from, to: current.to }, content)
       .run();
     setWiki(null);
   }
@@ -696,6 +707,7 @@ export default function StudioRichEditor(props: Props) {
             Uploading image…
           </p>
         )}
+        {props.footer}
       </div>
       <StudioSlashMenu
         open={Boolean(slash)}
@@ -718,6 +730,7 @@ export default function StudioRichEditor(props: Props) {
       )}
       <WikiLinkAutocomplete
         open={Boolean(wiki?.items.length)}
+        kind={wiki?.kind}
         items={wiki?.items ?? []}
         activeIndex={wiki?.index ?? 0}
         position={wiki?.point ?? null}

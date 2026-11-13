@@ -25,6 +25,8 @@ import type { EditorCommands } from './studioEditorCommands';
 import { useDialogConfirm } from './useDialogConfirm';
 import { useContentLibrary } from './useContentLibrary';
 import { useContentMutations } from './useContentMutations';
+import { useStudioConnections } from './useStudioConnections';
+import { splitNotePath, unwrittenNoteBody } from './studioConnectionText';
 import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
 import { useStudioTabs } from './useStudioTabs';
@@ -652,6 +654,22 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         })
     : [];
 
+  // Links and tags come from stored notes, so they are looked up when a note
+  // opens and again after each save, never per keystroke.
+  const connections = useStudioConnections(
+    openEntry
+      ? [openEntry.folder, openEntry.id].filter(Boolean).join('/')
+      : null,
+    doc.savedAt,
+  );
+  function openConnected(path: string) {
+    const { folder, id } = splitNotePath(path);
+    const entry = entries.find(
+      (candidate) => candidate.id === id && candidate.folder === folder,
+    );
+    if (entry) editEntry(entry);
+  }
+
   // --- Render --------------------------------------------------------------
 
   // On a phone with no note open the list is the home screen: nothing to
@@ -1163,6 +1181,15 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   commandsRef={commandsRef}
                   focusRef={focusRef}
                   suggestions={suggestions}
+                  connections={connections}
+                  onOpenConnected={openConnected}
+                  onCreateConnected={(link) =>
+                    mutations.createEntryInFolder(
+                      link.folder,
+                      link.title,
+                      unwrittenNoteBody(link.title),
+                    )
+                  }
                   onShowSidebar={showList}
                   onNoteActions={() => setNoteActionsRequest((n) => n + 1)}
                   iconPickerRequest={iconPickerRequest}

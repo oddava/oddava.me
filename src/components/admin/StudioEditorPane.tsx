@@ -7,6 +7,9 @@ import { useEffect, useState } from 'preact/hooks';
 import type { MutableRef } from 'preact/hooks';
 import StudioSaveIndicator from './StudioSaveIndicator';
 import StudioRichEditor from './StudioRichEditor';
+import StudioConnections from './StudioConnections';
+import type { ConnectionsState } from './useStudioConnections';
+import type { OutboundLink } from '../../lib/garden/connections';
 import type { EditorCommands } from './studioEditorCommands';
 import type { WikiSuggestion } from './WikiLinkAutocomplete';
 import type { SaveState } from './studioSession';
@@ -38,6 +41,12 @@ interface Props {
   commandsRef: MutableRef<EditorCommands | null>;
   focusRef: MutableRef<(() => void) | null>;
   suggestions: WikiSuggestion[];
+  /** Backlinks, outgoing links and tags, fetched for the open note. */
+  connections: ConnectionsState;
+  onOpenConnected: (path: string) => void;
+  onCreateConnected: (
+    link: Extract<OutboundLink, { kind: 'unwritten' }>,
+  ) => Promise<boolean>;
   onShowSidebar: () => void;
   /** Phone: the note's ⋯ — its actions, as a sheet. */
   onNoteActions?: () => void;
@@ -76,6 +85,9 @@ export default function StudioEditorPane({
   commandsRef,
   focusRef,
   suggestions,
+  connections,
+  onOpenConnected,
+  onCreateConnected,
   onShowSidebar,
   onNoteActions,
   iconPickerRequest = 0,
@@ -233,6 +245,14 @@ export default function StudioEditorPane({
           visible={!(compact && sidebarVisible)}
           focusRef={focusRef}
           suggestions={suggestions}
+          tags={connections.tags}
+          footer={
+            <StudioConnections
+              state={connections}
+              onOpen={onOpenConnected}
+              onCreate={onCreateConnected}
+            />
+          }
           uploading={uploading}
           compact={compact}
           keyboardOpen={keyboardOpen}
