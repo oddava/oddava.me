@@ -26,6 +26,8 @@ function sections(): { title: string; rows: Row[] }[] {
         ['Find in note', shortcut('F')],
         ['Next / previous match', 'Enter / Shift+Enter'],
         ['Outline', shortcut('O', true)],
+        ['Focus mode', shortcut('F', true)],
+        ['Leave focus mode', 'Esc'],
         ['Back / forward', `${altShortcut('←')} / ${altShortcut('→')}`],
         ['Keyboard shortcuts', shortcut('/')],
       ],

@@ -30,6 +30,7 @@ import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
 import { useStudioDraft } from './useStudioDraft';
 import { useStudioTabs } from './useStudioTabs';
+import { useStudioFocusRoot } from './useStudioFocus';
 import {
   contentRequestError,
   noteHref,
@@ -586,6 +587,12 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     notify: setNotice,
   });
 
+  // On a phone the note's own screen is the one with the sidebar closed.
+  const calm = useStudioFocusRoot({
+    enabled: Boolean(openId) && !(phone && !session.sidebarCollapsed),
+    compact: phone,
+  });
+
   const paletteCommands: PaletteCommand[] = [
     {
       id: 'new-note',
@@ -649,6 +656,19 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
         icon: 'search',
         hint: shortcut('F'),
         run: () => requestAnimationFrame(() => commandsRef.current?.find?.()),
+      },
+      {
+        id: 'focus-mode',
+        title: 'Focus mode',
+        icon: 'focus',
+        hint: shortcut('F', true),
+        run: calm.toggleFocus,
+      },
+      {
+        id: 'typewriter-scroll',
+        title: `Typewriter scroll: ${calm.typewriter ? 'on' : 'off'}`,
+        icon: 'focus',
+        run: calm.toggleTypewriter,
       },
       {
         id: 'save-note',
