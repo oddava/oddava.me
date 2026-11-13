@@ -778,6 +778,21 @@ describe('footnotes', () => {
     expect(footnoteIds(editor.state.doc).sort()).toEqual(['1', '1', '2', '2']);
   });
 
+  it('puts the reference at the end of the words above an empty line', () => {
+    const { editor, document } = open('Claim.');
+    editor.commands.insertContentAt(editor.state.doc.content.size, {
+      type: 'paragraph',
+    });
+    editor.commands.focus('end');
+    expect(insertFootnote(editor)).toBe(true);
+    expect(editor.state.doc.childCount).toBe(2);
+    expect(document.serialize(editor)).toBe('Claim.[^1]\n\n[^1]:');
+    expect(editor.state.selection.$from.parent.type.name).toBe('paragraph');
+    expect(editor.state.selection.$from.node(-1).type.name).toBe(
+      'footnoteDefinition',
+    );
+  });
+
   it('will not put a reference inside code', () => {
     const { editor } = open('```\ncode\n```');
     editor.commands.setTextSelection(3);

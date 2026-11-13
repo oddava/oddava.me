@@ -52,8 +52,8 @@ export interface PickerRequest {
   current: string | null;
   searchable?: boolean;
   /**
-   * An option to offer when what was typed matches nothing exactly — the way
-   * to name a language the list does not know.
+   * An option to offer when what was typed matches nothing — the way to name
+   * a language the list does not know.
    */
   custom?: (query: string) => PickerOption | null;
   onPick: (id: string) => void;
@@ -108,9 +108,11 @@ export function openPicker(request: PickerRequest): () => void {
 
   function visible(query: string): PickerOption[] {
     const matches = filterPickerOptions(request.options, query);
-    const extra = query.trim() ? request.custom?.(query.trim()) : null;
-    const taken = extra && matches.some((option) => option.id === extra.id);
-    return extra && !taken ? [...matches, extra] : matches;
+    // Only when the list has nothing for it: a near miss is a typo for a
+    // listed language far more often than a new one.
+    const extra =
+      !matches.length && query.trim() ? request.custom?.(query.trim()) : null;
+    return extra ? [extra] : matches;
   }
 
   function highlight(next: number) {

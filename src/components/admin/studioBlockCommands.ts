@@ -20,7 +20,17 @@ export function insertFootnote(editor: Editor): boolean {
     .chain()
     .focus()
     .command(({ tr }) => {
-      tr.replaceSelectionWith(footnoteRef!.create({ id }), false);
+      const reference = footnoteRef!.create({ id });
+      const { $from: caret } = tr.selection;
+      const previous = caret.parent.content.size
+        ? null
+        : tr.doc.resolve(caret.before()).nodeBefore;
+      if (previous?.isTextblock && !previous.type.spec.code) {
+        // The slash menu only opens on an empty line, but a reference belongs
+        // to the words above it: it goes at their end and the line is spent.
+        tr.delete(caret.before(), caret.after());
+        tr.insert(caret.before() - 1, reference);
+      } else tr.replaceSelectionWith(reference, false);
       const end = tr.doc.content.size;
       tr.insert(end, footnoteDefinition!.create({ id }, paragraph!.create()));
       // +2 steps over the definition's and its paragraph's opening tokens.
