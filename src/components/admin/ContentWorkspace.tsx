@@ -28,6 +28,7 @@ import { useContentLibrary } from './useContentLibrary';
 import { useContentMutations } from './useContentMutations';
 import { useSocialCardSync } from './useSocialCards';
 import { useStudioDocument } from './useStudioDocument';
+import { useStudioDraft } from './useStudioDraft';
 import { useStudioTabs } from './useStudioTabs';
 import {
   contentRequestError,
@@ -576,6 +577,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
 
   // Open the published note page — the live site is the preview surface.
   const publishedUrl = openId ? noteHref(entries, openId) : '';
+  const draft = useStudioDraft({
+    doc,
+    openId,
+    title: currentTitle,
+    entries,
+    setEntries,
+    notify: setNotice,
+  });
 
   const paletteCommands: PaletteCommand[] = [
     {
@@ -604,6 +613,14 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
     },
   ];
   if (openId) {
+    if (draft.state) {
+      paletteCommands.push({
+        id: 'toggle-draft',
+        title: draft.state === 'draft' ? 'Publish note' : 'Move note to drafts',
+        icon: draft.state === 'draft' ? 'eye' : 'eye-off',
+        run: draft.toggle,
+      });
+    }
     paletteCommands.push(
       {
         id: 'insert-image',
@@ -626,7 +643,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
       },
       {
         id: 'open-browser',
-        title: 'Open published page',
+        title:
+          draft.state === 'draft' ? 'Preview draft' : 'Open published page',
         icon: 'external',
         run: () => {
           if (publishedUrl) window.open(publishedUrl, '_blank', 'noreferrer');
@@ -969,6 +987,11 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                 home={!openId}
                 noteActionsRequest={noteActionsRequest}
                 onChangeIcon={() => setIconPickerRequest((n) => n + 1)}
+                draft={
+                  draft.state
+                    ? { state: draft.state, onChange: draft.set }
+                    : null
+                }
                 onQuickCreate={(folder) => {
                   // A blank page whose title line waits to be written,
                   // the way a notes app starts one.
@@ -1182,6 +1205,8 @@ export function ContentWorkspace({ fullWidth = false }: ContentWorkspaceProps) {
                   onShowSidebar={showList}
                   onNoteActions={() => setNoteActionsRequest((n) => n + 1)}
                   onHistory={() => setHistoryOpen(true)}
+                  draftState={draft.state}
+                  onDraftChange={draft.set}
                   iconPickerRequest={iconPickerRequest}
                   onSave={() => void doc.saveNow()}
                   onBodyChange={(value) => {

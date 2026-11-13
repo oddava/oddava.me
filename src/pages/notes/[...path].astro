@@ -4,8 +4,10 @@ import GardenDocumentPage from '../../components/garden/GardenDocumentPage.astro
 import {
   decidePublicNote,
   getGardenIndexOrUnavailable,
+  isDraftNote,
   readPublicNoteRetirement,
 } from '@lib/garden';
+import { isAdminRequest } from '@lib/server/admin';
 import { noteSocialCardImage } from '@lib/garden/og-card';
 import { resolveNoteSocialImage } from '@lib/garden/utils';
 import { NOTE_FALLBACK_DESCRIPTION } from '@lib/site';
@@ -17,9 +19,30 @@ const requestedPath = Astro.params.path ?? '';
 
 const garden = await getGardenIndexOrUnavailable();
 if (!garden.ok) return Astro.rewrite('/503');
-const index = garden.index;
+let index = garden.index;
 
-const document = index.documents.find((entry) => entry.path === requestedPath);
+let document = index.documents.find((entry) => entry.path === requestedPath);
+
+// A draft is not in the public index, so a visitor reaches the 404 below. The
+// signed-in owner gets to read it as the page it will become — from the
+// owner's index, so its own links and backlinks resolve too. Asked only after
+// a miss: a visitor opening a live note never pays for the session check.
+let draftPreview = false;
+if (!document && (await isAdminRequest(Astro.cookies).catch(() => false))) {
+  const owner = await getGardenIndexOrUnavailable({ includeDrafts: true });
+  const draft = owner.ok
+    ? owner.index.documents.find(
+        (entry) => entry.path === requestedPath && isDraftNote(entry.data),
+      )
+    : undefined;
+  if (owner.ok && draft) {
+    index = owner.index;
+    document = draft;
+    draftPreview = true;
+    // The owner's page must never be stored where a visitor could be served it.
+    Astro.response.headers.set('Cache-Control', 'private, no-store');
+  }
+}
 
 // A live note renders below. Anything else — a rename, a removal, the old
 // bare-filename alias — is decided once the retirement snapshot is in hand.
@@ -88,7 +111,14 @@ const description = document
       modifiedTime={document.updated}
       wide
     >
+      {draftPreview && <meta slot="head" name="robots" content="noindex" />}
       <div class="garden-page">
+        {draftPreview && (
+          <p class="draft-banner" role="status">
+            <strong>draft</strong>
+            only you can see this page. publish it from Studio to share it.
+          </p>
+        )}
         <GardenDocumentPage document={document} index={index} />
       </div>
     </NotesShell>

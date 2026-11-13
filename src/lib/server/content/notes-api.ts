@@ -36,6 +36,8 @@ export interface NoteSummary {
   title: string;
   updated: string;
   revision: string;
+  /** Present, and true, only for an unlisted note. */
+  draft?: true;
 }
 
 export interface NoteRecord extends NoteSummary {
@@ -80,6 +82,7 @@ function summarize(file: ContentSourceFile): NoteSummary {
     title: detail.title,
     updated: updatedOf(file, detail.fields),
     revision: file.revision,
+    ...(detail.draft ? { draft: true as const } : {}),
   };
 }
 
@@ -234,7 +237,9 @@ function markdownContent(body: WriteBody): string | Response {
  *
  * On update, an omitted `order` keeps the order already stored. Obsidian
  * does not know about that field, and dropping it would reshuffle the note
- * in Studio.
+ * in Studio. An omitted `draft` is kept for a worse reason: a client that has
+ * never heard of drafts would otherwise publish a note the first time it saved
+ * it. Publishing from here is explicit — send `draft: false`.
  */
 function fieldsForWrite(
   content: string,
@@ -248,6 +253,13 @@ function fieldsForWrite(
   ) {
     const current = toDetail(NOTES_COLLECTION, existing).order;
     if (current !== undefined) fields.order = current;
+  }
+  if (
+    !Object.prototype.hasOwnProperty.call(parsed.fields, 'draft') &&
+    existing &&
+    toDetail(NOTES_COLLECTION, existing).draft
+  ) {
+    fields.draft = true;
   }
 
   let validated: Record<string, unknown>;

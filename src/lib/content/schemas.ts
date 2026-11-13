@@ -1,4 +1,5 @@
 import { z } from 'astro/zod';
+import { parseDraftFlag } from './noteDraft';
 import { isNoteIcon } from './noteIcon';
 
 const MAX_IMAGE_ALT_LENGTH = 200;
@@ -18,12 +19,21 @@ export function isNoteImageUrl(value: unknown): value is string {
 
 // Invalid cover metadata must never fail a save: it is dropped instead.
 // `cover` is an alias of `image`; `image` wins when both are valid.
-function sanitizeCoverFields(input: unknown): unknown {
+//
+// `draft` is normalised the same way: only a true draft survives, so
+// publishing removes the key rather than writing `draft: false`, and a
+// malformed value can neither fail a save nor — worse — fail the garden's
+// per-note validation, which would fall back to defaults and publish the note.
+function sanitizeNoteFields(input: unknown): unknown {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
-  const { cover, image, image_alt, ...rest } = input as Record<string, unknown>;
+  const { cover, image, image_alt, draft, ...rest } = input as Record<
+    string,
+    unknown
+  >;
   const url = [image, cover].find(isNoteImageUrl);
   return {
     ...rest,
+    ...(parseDraftFlag(draft) ? { draft: true } : {}),
     ...(url ? { image: url } : {}),
     ...(typeof image_alt === 'string' &&
     image_alt.trim() &&
@@ -44,6 +54,8 @@ const noteFieldsSchema = z.object({
     .refine(isNoteIcon, 'Choose an emoji or upload an icon image.')
     .optional(),
   order: z.number().int().optional(),
+  // Unlisted: reachable only by the signed-in owner. See `garden/visibility`.
+  draft: z.boolean().optional(),
   updated: z.coerce
     .date()
     .transform((value) => value.toISOString())
@@ -51,6 +63,6 @@ const noteFieldsSchema = z.object({
 });
 
 export const noteDataSchema = z.preprocess(
-  sanitizeCoverFields,
+  sanitizeNoteFields,
   noteFieldsSchema,
 );

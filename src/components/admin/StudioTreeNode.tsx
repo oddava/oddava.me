@@ -272,6 +272,9 @@ function StudioTreeNode({
               <span>{renderLabel(node, view.query)}</span>
               {searching && <small>{nodePath(node)}</small>}
             </span>
+            {(node.kind === 'entry' ? node.entry : node.document)?.draft && (
+              <span className="studio-draft-mark">draft</span>
+            )}
           </span>
         )}
 

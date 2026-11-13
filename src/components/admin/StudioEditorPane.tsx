@@ -11,6 +11,8 @@ import type { EditorCommands } from './studioEditorCommands';
 import type { WikiSuggestion } from './WikiLinkAutocomplete';
 import type { SaveState } from './studioSession';
 import { shortcut } from './studioHelpers';
+import StudioDraftToggle from './StudioDraftToggle';
+import type { DraftState } from './studioDraft';
 
 /** One step of the path above the note: a parent it can jump to. */
 export interface PaneCrumb {
@@ -43,6 +45,9 @@ interface Props {
   onNoteActions?: () => void;
   /** Opens the note's version history. */
   onHistory?: () => void;
+  /** Absent when the note cannot be unlisted (the Notes root). */
+  draftState?: DraftState | null;
+  onDraftChange?: (next: DraftState) => void;
   /** Bumped to open the icon picker from elsewhere (the phone's ⋯ sheet). */
   iconPickerRequest?: number;
   onSave: () => void;
@@ -81,6 +86,8 @@ export default function StudioEditorPane({
   onShowSidebar,
   onNoteActions,
   onHistory,
+  draftState = null,
+  onDraftChange,
   iconPickerRequest = 0,
   onSave,
   onBodyChange,
@@ -201,6 +208,11 @@ export default function StudioEditorPane({
                   <Icon name="history" />
                 </button>
               )}
+              {/* A phone has no room for the pill; its note actions hold the
+                  control, and this says what state the note is in. */}
+              {compact && draftState === 'draft' && (
+                <span className="studio-draft-mark">draft</span>
+              )}
               {compact && onNoteActions && (
                 <button
                   type="button"
@@ -211,6 +223,12 @@ export default function StudioEditorPane({
                 >
                   <Icon name="more" />
                 </button>
+              )}
+              {!compact && draftState && onDraftChange && (
+                <StudioDraftToggle
+                  state={draftState}
+                  onChange={onDraftChange}
+                />
               )}
               {publishedUrl && !compact && (
                 <a

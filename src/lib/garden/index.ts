@@ -7,8 +7,10 @@ export {
 export {
   getGardenIndexOrUnavailable,
   readPublicNoteRetirement,
+  type GardenIndexOptions,
   type GardenIndexResult,
 } from './runtime';
+export { isDraftNote } from '../content/noteDraft';
 export { decidePublicNote, type PublicNoteDecision } from './retired';
 export {
   buildAffinityPaths,

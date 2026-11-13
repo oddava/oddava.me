@@ -11,6 +11,8 @@ import { FileIcon } from './studioFileIcons';
 import { Icon } from './studioIcons';
 import StudioSheet, { SheetAction, SheetGroup } from './StudioSheet';
 import { useLongPress } from './useLongPress';
+import StudioDraftToggle from './StudioDraftToggle';
+import type { DraftState } from './studioDraft';
 import type { StudioTreeItemRef } from './studioDragItems';
 import {
   buildTree,
@@ -87,6 +89,8 @@ interface Props {
   publishedUrl?: string;
   /** The open note's icon picker, offered in that sheet. */
   onChangeIcon?: () => void;
+  /** The open note's draft state, offered in that sheet; absent for the root. */
+  draft?: { state: DraftState; onChange: (next: DraftState) => void } | null;
   /**
    * Compose: a blank note in this folder, open and ready, named later — the
    * way a notes app starts a note, rather than asking for a name first.
@@ -135,6 +139,7 @@ export default function StudioMobileFiles({
   noteActionsRequest = 0,
   publishedUrl = '',
   onChangeIcon,
+  draft = null,
   onQuickCreate,
   home = false,
   onNotice,
@@ -471,6 +476,9 @@ export default function StudioMobileFiles({
             </span>
             {detail && <small>{detail}</small>}
           </span>
+          {(node.kind === 'entry' ? node.entry : node.document)?.draft && (
+            <span className="studio-draft-mark">draft</span>
+          )}
           {isFolder && !selecting && !node.document && (
             <span className="studio-mfiles__chevron" aria-hidden="true">
               <Icon name="chevron-right" />
@@ -540,6 +548,13 @@ export default function StudioMobileFiles({
                 icon="image"
                 label="Change icon"
                 onClick={() => act(onChangeIcon)}
+              />
+            )}
+            {draft && (
+              <StudioDraftToggle
+                variant="sheet"
+                state={draft.state}
+                onChange={(next) => act(() => draft.onChange(next))}
               />
             )}
           </SheetGroup>

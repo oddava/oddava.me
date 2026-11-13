@@ -1,0 +1,187 @@
+/* ---------------------------------------------------------------------------
+   Drafts
+
+   The Draft / Published pill, and the small "draft" marker that follows an
+   unlisted note wherever it is listed. Both lean on the Studio tokens only:
+   the thumb is the current-row tint and the published tint is the selection
+   colour, so every ink and both themes come along for free.
+--------------------------------------------------------------------------- */
+
+.admin-page {
+  /* A little overshoot on arrival — the pill settles rather than snaps. */
+  --st-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+/* --- The pill --- */
+
+.admin-page .studio-draft-toggle {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  padding: 2px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--st-field);
+  transition: transform var(--st-fast) var(--st-ease);
+}
+
+/* A press squeezes the whole pill; releasing lets it spring back. */
+.admin-page .studio-draft-toggle:has(.studio-draft-toggle__option:active) {
+  transform: scale(0.96);
+}
+
+.admin-page .studio-draft-toggle__thumb {
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  width: calc(50% - 2px);
+  border-radius: var(--radius-pill);
+  background: var(--st-current);
+  transition:
+    transform var(--st-slow) var(--st-spring),
+    background-color var(--st-base) var(--st-ease);
+}
+
+.admin-page
+  .studio-draft-toggle[data-state='published']
+  .studio-draft-toggle__thumb {
+  background: var(--st-picked);
+  transform: translateX(100%);
+}
+
+.admin-page .studio-draft-toggle__option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: calc(var(--st-control) - 8px);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--st-text-3);
+  font: inherit;
+  font-size: var(--st-size-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--st-fast) var(--st-ease);
+}
+
+.admin-page .studio-draft-toggle__option::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity var(--st-base) var(--st-ease),
+    transform var(--st-slow) var(--st-spring);
+}
+
+.admin-page .studio-draft-toggle__option[aria-checked='true'] {
+  color: var(--st-text);
+  font-weight: 500;
+}
+
+.admin-page .studio-draft-toggle__option[aria-checked='true']::before {
+  opacity: 1;
+  transform: none;
+}
+
+.admin-page
+  .studio-draft-toggle__option[data-option='published'][aria-checked='true'] {
+  color: var(--st-accent-text);
+}
+
+@media (hover: hover) {
+  .admin-page .studio-draft-toggle__option[aria-checked='false']:hover {
+    color: var(--st-text-2);
+  }
+}
+
+/* The pill is a rounded shape; the ring follows it instead of boxing it. */
+.admin-page .studio .studio-draft-toggle__option:focus-visible {
+  outline-offset: 0;
+}
+
+/* --- On a phone: the note's actions sheet --- */
+
+.admin-page .studio-draft-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 16px;
+}
+
+/* Hairlines between a card's rows start at the text, as the actions' do. */
+.admin-page .studio-sheet__action + .studio-draft-row {
+  background-image: linear-gradient(var(--st-line), var(--st-line));
+  background-position: 16px 0;
+  background-repeat: no-repeat;
+  background-size: calc(100% - 16px) 1px;
+}
+
+.admin-page .studio-draft-row__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--st-size-lg);
+}
+
+.admin-page .studio-draft-row__text strong {
+  font-weight: 500;
+}
+
+.admin-page .studio-draft-row__text small {
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+}
+
+.admin-page
+  .studio-draft-toggle[data-variant='sheet']
+  .studio-draft-toggle__option {
+  min-height: calc(var(--st-touch) - 8px);
+  font-size: var(--st-size-md);
+}
+
+/* --- The marker --- */
+
+/* Dashed, like a sketch not yet inked. It states a fact and asks for
+   nothing, so it stays the quietest thing on its row. */
+.admin-page .studio-draft-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 0 7px;
+  border: 1px dashed var(--st-line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--st-text-3);
+  font-size: var(--st-size-xs);
+  font-style: normal;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* The tree row's label is a two-column grid (glyph, name); the marker takes a
+   third rather than squeezing into the ellipsised name. */
+.admin-page .studio-tree-row__label:has(> .studio-draft-mark) {
+  grid-template-columns: var(--st-glyph-sm) minmax(0, 1fr) auto;
+}
+
+.admin-page .studio-palette__row .studio-draft-mark,
+.admin-page .studio-mfiles__open .studio-draft-mark {
+  margin-left: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page .studio-draft-toggle:has(.studio-draft-toggle__option:active) {
+    transform: none;
+  }
+}
