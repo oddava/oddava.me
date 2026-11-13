@@ -27,10 +27,19 @@ const REFRESH_MS = 45_000;
 /** How long a star placed here outlasts reads of the sky that lack it. */
 const PLACED_GRACE_MS = 5 * 60_000;
 const COMPOSER_WIDTH = 320;
-/** The composer's height, near enough, for choosing above or below. */
+/** The composer's height until it has been measured, for above or below. */
 const COMPOSER_HEIGHT = 196;
-/** Below this width the composer sits under the sky instead of on it. */
-const DOCK_BELOW = 560;
+/** Space kept between the composer and the sky's sides. */
+const COMPOSER_INSET = 12;
+/** How far the composer sits from its ghost, above or below. */
+const COMPOSER_GAP = 26;
+/**
+ * Below this width (a phone) the page moves to keep the whole composer in
+ * view, above the keyboard once it is up.
+ */
+const NARROW = 560;
+/** Room kept between the composer and the edge of what can be seen. */
+const VIEW_MARGIN = 12;
 const TIP_GAP = 16;
 /** Half the label's widest, so it never runs off either edge. */
 const TIP_HALF = 132;
@@ -138,6 +147,8 @@ export default function SkyField() {
   const [active, setActive] = useState<string | null>(null);
   const [pinned, setPinned] = useState(false);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+  /** The open composer's height, measured: an error line makes it taller. */
+  const [composerH, setComposerH] = useState(COMPOSER_HEIGHT);
   const [word, setWord] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -355,7 +366,87 @@ export default function SkyField() {
 
   // ---- placing --------------------------------------------------------
   const size = renderer.current?.size() ?? { w: 0, h: 0 };
-  const docked = size.w > 0 && size.w < DOCK_BELOW;
+  const narrow = size.w > 0 && size.w < NARROW;
+  const open = ghost !== null;
+
+  useEffect(() => {
+    const form = composerRef.current;
+    if (!open || !form) return;
+    const watch = new ResizeObserver(() => {
+      if (form.offsetHeight > 0) setComposerH(form.offsetHeight);
+    });
+    watch.observe(form);
+    return () => watch.disconnect();
+  }, [open]);
+
+  /**
+   * On a phone the composer floats on the sky by its ghost, as on a wide
+   * screen, and the page moves just enough to show all of it (and the
+   * ghost, when both fit) in what can be seen: once it opens, and again
+   * whenever the keyboard comes up or goes down, which shrinks the visual
+   * viewport, not the page.
+   */
+  const ghostRef = useRef(ghost);
+  ghostRef.current = ghost;
+  const keepComposerInView = useCallback((smooth: boolean) => {
+    const form = composerRef.current;
+    if (!form) return;
+    const view = window.visualViewport;
+    const viewTop = (view?.offsetTop ?? 0) + VIEW_MARGIN;
+    const viewBottom =
+      (view?.offsetTop ?? 0) +
+      (view?.height ?? window.innerHeight) -
+      VIEW_MARGIN;
+    const box = form.getBoundingClientRect();
+    let top = box.top;
+    let bottom = box.bottom;
+    const ghostAt = ghostRef.current
+      ? renderer.current?.project(ghostRef.current)
+      : null;
+    const sky = surfaceRef.current?.getBoundingClientRect();
+    if (ghostAt && sky) {
+      const ghostY = sky.top + ghostAt.y;
+      const withGhostTop = Math.min(top, ghostY - VIEW_MARGIN);
+      const withGhostBottom = Math.max(bottom, ghostY + VIEW_MARGIN);
+      if (withGhostBottom - withGhostTop <= viewBottom - viewTop) {
+        top = withGhostTop;
+        bottom = withGhostBottom;
+      }
+    }
+    // The bottom first (the keyboard covers it), but never past the top.
+    let delta = 0;
+    if (bottom > viewBottom) delta = bottom - viewBottom;
+    if (top - delta < viewTop) delta = top - viewTop;
+    if (Math.abs(delta) < 1) return;
+    window.scrollBy({
+      top: delta,
+      behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto',
+    });
+  }, []);
+
+  // The keyboard coming up or going down.
+  useEffect(() => {
+    const view = window.visualViewport;
+    if (!open || !narrow || !view) return;
+    let frame = 0;
+    const onViewResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => keepComposerInView(false));
+    };
+    view.addEventListener('resize', onViewResize);
+    return () => {
+      cancelAnimationFrame(frame);
+      view.removeEventListener('resize', onViewResize);
+    };
+  }, [open, narrow, keepComposerInView]);
+
+  // Opened, moved ("somewhere else", a tap elsewhere on the sky), or grown
+  // (an error line): show all of it.
+  useEffect(() => {
+    if (!ghost || !narrow) return;
+    const frame = requestAnimationFrame(() => keepComposerInView(true));
+    return () => cancelAnimationFrame(frame);
+  }, [ghost, composerH, narrow, keepComposerInView]);
 
   const openComposer = (point: { x: number; y: number }) => {
     setGhost(point);
@@ -363,15 +454,9 @@ export default function SkyField() {
     setPinned(false);
     setFormError(null);
     setNotice(null);
-    // Focus once the composer is in; under the sky it also scrolls into view.
+    // Focus once the composer is in.
     requestAnimationFrame(() => {
       inputRef.current?.focus({ preventScroll: true });
-      if (docked) {
-        composerRef.current?.scrollIntoView({
-          block: 'nearest',
-          behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-        });
-      }
     });
   };
 
@@ -560,6 +645,35 @@ export default function SkyField() {
     return () => removeEventListener('keydown', onKey);
   }, [active, ghost]);
 
+  const closeLabel = () => {
+    clearTimeout(hideTimer.current);
+    setActive(null);
+    setPinned(false);
+  };
+
+  // So does a click or tap anywhere off the sky: the page, the bar, the
+  // header. On the sky, `onClick` decides (another star opens its label;
+  // open sky closes this one), and the label closes on its own click (see
+  // the tip): closed on pointerdown, it would be gone before the click,
+  // and a tap's click would land on the sky under it and start a star.
+  // Pointerdown, not click, for the rest: Safari on iOS sends the document
+  // no click for a tap on plain text.
+  useEffect(() => {
+    if (!active || ghost) return;
+    const onDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        (surfaceRef.current?.contains(target) || target.closest('.sky-tip'))
+      ) {
+        return;
+      }
+      closeLabel();
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [active, ghost]);
+
   const onClick = (event: MouseEvent) => {
     if (event.target !== surfaceRef.current) return;
     const point = pointFrom(event);
@@ -645,20 +759,30 @@ export default function SkyField() {
   const ghostPos =
     ghost && renderer.current ? renderer.current.project(ghost) : null;
 
-  // On the sky beside the ghost; above it when there is room.
+  // On the sky beside the ghost: above it when there is room, else below;
+  // when neither fits (a short sky on a phone), whichever side has more.
+  // On a phone it spans the sky less an inset each side: wider is shorter
+  // (the hint keeps to one line), so it more often fits beside the ghost.
+  const composerW = narrow
+    ? size.w - COMPOSER_INSET * 2
+    : Math.min(COMPOSER_WIDTH, size.w - COMPOSER_INSET * 2);
+  const roomAbove = ghostPos ? ghostPos.y - COMPOSER_GAP - 8 : 0;
+  const roomBelow = ghostPos ? size.h - ghostPos.y - COMPOSER_GAP - 8 : 0;
   const composerAbove =
-    ghostPos !== null && ghostPos.y - 26 - COMPOSER_HEIGHT >= 8;
-  const composerStyle: JSX.CSSProperties | undefined =
-    ghostPos && !docked
-      ? {
-          left: `${Math.min(
-            Math.max(12, ghostPos.x - COMPOSER_WIDTH / 2),
-            size.w - COMPOSER_WIDTH - 12,
-          )}px`,
-          top: composerAbove ? `${ghostPos.y - 26}px` : `${ghostPos.y + 26}px`,
-          transform: composerAbove ? 'translateY(-100%)' : undefined,
-        }
-      : undefined;
+    ghostPos !== null &&
+    (roomAbove >= composerH ||
+      (roomBelow < composerH && roomAbove > roomBelow));
+  const composerStyle: JSX.CSSProperties | undefined = ghostPos
+    ? {
+        left: `${Math.min(
+          Math.max(COMPOSER_INSET, ghostPos.x - composerW / 2),
+          size.w - composerW - COMPOSER_INSET,
+        )}px`,
+        top: `${ghostPos.y + (composerAbove ? -COMPOSER_GAP : COMPOSER_GAP)}px`,
+        transform: composerAbove ? 'translateY(-100%)' : undefined,
+        width: narrow ? `${composerW}px` : undefined,
+      }
+    : undefined;
 
   const count = stars.length;
   const lede = !loaded
@@ -682,7 +806,7 @@ export default function SkyField() {
   const composer = ghost && (
     <form
       ref={composerRef}
-      class={`sky-composer ${docked ? 'is-docked' : ''} ${shake ? 'is-shaking' : ''}`}
+      class={`sky-composer ${shake ? 'is-shaking' : ''}`}
       style={composerStyle}
       onSubmit={submit}
       onKeyDown={(event) => {
@@ -821,15 +945,14 @@ export default function SkyField() {
             onPointerLeave={() => {
               if (!pinned) releaseLabel();
             }}
+            onClick={closeLabel}
           >
             <StarLabel star={activeStar} own={mineById.get(activeStar.id)} />
           </div>
         )}
 
-        {!docked && composer}
+        {composer}
       </div>
-
-      {docked && composer}
 
       <div class="sky-bar">
         {writable && (
@@ -878,8 +1001,8 @@ export default function SkyField() {
   );
 }
 
+/** A star's word (or that it has none) and when it was left: nothing more. */
 function StarLabel({ star, own }: { star: PublicStar; own?: MyStar }) {
-  const pending = !star.word && own?.word;
   const shown = star.word ?? own?.word;
   return (
     <>
@@ -887,11 +1010,6 @@ function StarLabel({ star, own }: { star: PublicStar; own?: MyStar }) {
         {shown ? `“${shown}”` : 'a quiet star'}
       </p>
       <p class="sky-tip__when">left {whenLeft(star.createdAt)}</p>
-      {own && (
-        <p class="sky-tip__mine">
-          {pending ? 'yours · its word shows once read' : 'yours'}
-        </p>
-      )}
     </>
   );
 }

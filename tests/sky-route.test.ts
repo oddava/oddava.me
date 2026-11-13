@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { StarRecord } from '../src/lib/contracts';
 
 // Route-level coverage for the sky's anonymous write path. Like the
 // guestbook's, what only a route test can pin is the order of the guard
@@ -25,6 +26,8 @@ interface Overrides {
   ) => Promise<Response | null>;
   appendStar?: () => Promise<'ok' | 'full'>;
   readStars?: () => Promise<unknown[]>;
+  /** Whether the request carries a signed-in admin session. */
+  isAdminRequest?: () => Promise<boolean>;
 }
 
 async function loadRoute(overrides: Overrides = {}) {
@@ -70,8 +73,20 @@ async function loadRoute(overrides: Overrides = {}) {
       ]),
   }));
 
+  const isAdminRequest = vi.fn(overrides.isAdminRequest ?? (async () => false));
+  vi.doMock('../src/lib/server/admin', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../src/lib/server/admin')>()),
+    isAdminRequest,
+  }));
+
   const route = await import('../src/pages/api/sky');
-  return { ...route, enforceRedisRateLimit, refundRedisRateLimit, appendStar };
+  return {
+    ...route,
+    enforceRedisRateLimit,
+    refundRedisRateLimit,
+    appendStar,
+    isAdminRequest,
+  };
 }
 
 describe('sky route', () => {
@@ -176,6 +191,61 @@ describe('sky route', () => {
     expect(appendStar).toHaveBeenCalledWith(
       expect.objectContaining({ word: 'hello', status: 'pending' }),
     );
+  });
+
+  it('shows the moderator’s own word to everyone at once', async () => {
+    const { POST, appendStar, isAdminRequest } = await loadRoute({
+      isAdminRequest: async () => true,
+    });
+    const cookies = { get: () => undefined };
+    const response = await POST({
+      request: post({ x: 0.5, y: 0.25, word: 'goodnight' }),
+      cookies,
+    } as never);
+    expect(response.status).toBe(201);
+    expect(isAdminRequest).toHaveBeenCalledWith(cookies);
+    const body = await response.json();
+    expect(body.wordPending).toBe(false);
+    expect(body.star).toMatchObject({ word: 'goodnight' });
+    const [stored] = appendStar.mock.calls[0] as unknown as [StarRecord];
+    expect(stored).toMatchObject({ word: 'goodnight', status: 'approved' });
+
+    // Every other visitor's read of the sky carries the word.
+    vi.resetModules();
+    const { GET: read } = await loadRoute({ readStars: async () => [stored] });
+    const sky = await read({
+      url: new URL(`${ORIGIN}/api/sky`),
+      locals: {},
+    } as never);
+    const { stars } = await sky.json();
+    expect(stars).toEqual([
+      expect.objectContaining({ id: stored.id, word: 'goodnight' }),
+    ]);
+  });
+
+  it('keeps a visitor’s word pending when the admin session does not verify', async () => {
+    const { POST, appendStar } = await loadRoute({
+      isAdminRequest: async () => {
+        throw new Error('no signing secret');
+      },
+    });
+    const response = await POST({
+      request: post({ x: 0.5, y: 0.25, word: 'hi' }),
+      cookies: { get: () => undefined },
+    } as never);
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      wordPending: true,
+    });
+    expect(appendStar).toHaveBeenCalledWith(
+      expect.objectContaining({ word: 'hi', status: 'pending' }),
+    );
+  });
+
+  it('does not look for a session when the star has no word', async () => {
+    const { POST, isAdminRequest } = await loadRoute();
+    await POST({ request: post({ x: 0.5, y: 0.25 }) } as never);
+    expect(isAdminRequest).not.toHaveBeenCalled();
   });
 
   it('closes for a while when everyone together is placing too many', async () => {

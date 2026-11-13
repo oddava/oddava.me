@@ -117,6 +117,18 @@ describe('creating a star', () => {
     expect(record.ipFingerprint).toBe('fingerprint');
     expect(record).not.toHaveProperty('userAgent');
   });
+
+  it('approves the moderator’s own word as it lands', async () => {
+    const createStar = await loadCreateStar();
+    const record = await createStar(
+      new Request('https://x.test'),
+      0.1,
+      0.2,
+      'hello',
+      { byModerator: true },
+    );
+    expect(record).toMatchObject({ word: 'hello', status: 'approved' });
+  });
 });
 
 describe('normalizing stored stars', () => {

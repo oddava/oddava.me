@@ -441,13 +441,6 @@ body:has(.sky-page) {
   text-wrap: balance;
 }
 
-[data-site='portfolio'] .sky-tip__mine {
-  margin-top: 2px;
-  color: var(--accent);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
 /* ---- buttons ----------------------------------------------------------
    The guestbook's buttons: filled ink for the one that does the thing, a
    plain label on the hover tint for the rest. */
@@ -554,7 +547,9 @@ body:has(.sky-page) {
 
 /* ---- the composer -----------------------------------------------------
    The site's panel (the appearance panel's surface), floating beside the
-   ghost on the sky; on a phone it sits under the sky, in the page. */
+   ghost on the sky, a phone's included: there it takes the sky's width
+   less an inset each side (SkyField keeps the same inset), and the page
+   moves to keep all of it above the keyboard. */
 
 [data-site='portfolio'] .sky-composer {
   position: absolute;
@@ -562,20 +557,13 @@ body:has(.sky-page) {
   display: grid;
   gap: 12px;
   width: 320px;
+  max-width: calc(100% - 24px);
   padding: 16px 16px 14px;
   border: 1px solid var(--line);
   border-radius: var(--sky-radius);
   background: var(--panel);
   box-shadow: var(--panel-shadow);
   color: var(--ink);
-}
-
-[data-site='portfolio'] .sky-composer.is-docked {
-  position: static;
-  width: auto;
-  margin-top: 12px;
-  background: var(--surface-2);
-  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {

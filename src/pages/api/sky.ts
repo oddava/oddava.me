@@ -15,6 +15,7 @@ import {
   requestBodyErrorResponse,
   withBriefEdgeCache,
 } from '../../lib/server/core';
+import { isAdminRequest } from '../../lib/server/admin';
 import {
   appendStar,
   createStar,
@@ -85,7 +86,7 @@ async function readSky(): Promise<Response> {
  * site-wide hourly cap is counted only for a well-formed star, so junk
  * cannot close the sky for everyone.
  */
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   const sameOriginError = ensureSameOrigin(request);
   if (sameOriginError) return sameOriginError;
 
@@ -168,7 +169,14 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    const star = await createStar(request, x, y, word);
+    // Words wait for the moderator, so a star the moderator leaves (signed
+    // in to the admin) is read already: its word shows to everyone at once
+    // instead of only in the browser that placed it. A session that does
+    // not verify is just a visitor's star.
+    const byModerator = word
+      ? await isAdminRequest(cookies).catch(() => false)
+      : false;
+    const star = await createStar(request, x, y, word, { byModerator });
     if ((await appendStar(star)) === 'full') {
       await Promise.all([refundVisitor(), refundEveryone()]);
       return reply(

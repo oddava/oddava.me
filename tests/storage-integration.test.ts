@@ -225,6 +225,26 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       expect(ids).not.toContain('filler-7');
     });
 
+    it('shows the moderator’s own word to every reader of the sky', async () => {
+      const { appendStar, createStar, getPublicStars, readStars } =
+        await import('../src/lib/server/sky');
+      await cleanupClient.flushDb();
+
+      const request = new Request('https://oddava.me/api/sky');
+      const own = await createStar(request, 0.4, 0.4, 'goodnight', {
+        byModerator: true,
+      });
+      const visitor = await createStar(request, 0.6, 0.6, 'hello');
+      await appendStar(own);
+      await appendStar(visitor);
+
+      // A fresh read, as any other visitor's isolate would make it.
+      expect(getPublicStars(await readStars())).toEqual([
+        expect.not.objectContaining({ word: expect.anything() }),
+        expect.objectContaining({ id: own.id, word: 'goodnight' }),
+      ]);
+    });
+
     it("rejects everything one visitor left, and nobody else's", async () => {
       const { appendStar, readStars, updateVisitorStarStatus } =
         await import('../src/lib/server/sky');

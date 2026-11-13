@@ -67,13 +67,16 @@ export function sanitizeStarWord(value: unknown): string {
 /**
  * A new star. With no word there is nothing to read, so it is approved at
  * once; a word waits for the moderator, and the star shines without it
- * until then.
+ * until then. The moderator's own star (`byModerator`, a signed-in admin
+ * session) has already been read by the one who would read it: its word
+ * is approved as it lands and shows to everyone straight away.
  */
 export async function createStar(
   request: Request,
   x: number,
   y: number,
   word: string,
+  { byModerator = false }: { byModerator?: boolean } = {},
 ): Promise<StarRecord> {
   return {
     id: crypto.randomUUID(),
@@ -81,7 +84,7 @@ export async function createStar(
     y,
     ...(word ? { word } : {}),
     createdAt: new Date().toISOString(),
-    status: word ? 'pending' : 'approved',
+    status: word && !byModerator ? 'pending' : 'approved',
     // Kept so a moderator can take back everything one visitor left. The
     // user agent is not: a star gives a moderator nothing to judge it by.
     ipFingerprint: await getClientFingerprint(request),
