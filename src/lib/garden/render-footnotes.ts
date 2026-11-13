@@ -39,6 +39,15 @@ export function trackFootnote(token: Token, state: FootnoteState): void {
   else if (isRef(token)) token.state = state;
 }
 
+/**
+ * The id of a footnote's `use`th reference. One rendered note per page (the
+ * note page, Studio's preview), so no per-render scope is needed; a page
+ * that ever showed two would prefix these, and the heading ids, together.
+ */
+function referenceAnchor(number: number, use: number): string {
+  return use === 1 ? `fnref-${number}` : `fnref-${number}-${use}`;
+}
+
 function noteNumber(state: FootnoteState, id: string): number {
   let index = state.referenced.indexOf(id);
   if (index < 0) index = state.referenced.push(id) - 1;
@@ -64,7 +73,10 @@ const footnoteRefExtension = {
     const number = noteNumber(state, id);
     const uses = (state.uses.get(id) ?? 0) + 1;
     state.uses.set(id, uses);
-    const anchor = uses === 1 ? `fnref-${id}` : `fnref-${id}-${uses}`;
+    // Named by number, not id: ids may contain dashes, so `[^a]` used twice
+    // and `[^a-2]` both made `fnref-a-2`. Numbers are integers, so
+    // `fnref-<number>-<use>` can never meet another footnote's anchor.
+    const anchor = referenceAnchor(number, uses);
     return `<sup class="footnote-ref"><a href="#fn-${id}" id="${anchor}" role="doc-noteref" aria-label="Footnote ${number}">${number}</a></sup>`;
   },
 };
@@ -106,7 +118,7 @@ export function renderFootnotes(
   for (let index = 0; index < state.referenced.length; index += 1) {
     const id = state.referenced[index]!;
     const number = index + 1;
-    const backlink = `<a href="#fnref-${id}" class="footnote-backref" role="doc-backlink" aria-label="Back to reference ${number}">↩︎</a>`;
+    const backlink = `<a href="#${referenceAnchor(number, 1)}" class="footnote-backref" role="doc-backlink" aria-label="Back to reference ${number}">↩︎</a>`;
     const body = renderBlocks(state.definitions.get(id)!.blocks).trimEnd();
     items.push(
       `<li id="fn-${id}" role="doc-endnote">${
