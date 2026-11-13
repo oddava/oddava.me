@@ -246,6 +246,9 @@ export default function StudioCommandPalette({
                       <small>{row.entry.folder.replaceAll('/', ' / ')}</small>
                     )}
                   </span>
+                  {row.kind === 'note' && row.entry.draft && (
+                    <span className="studio-draft-mark">draft</span>
+                  )}
                   {row.kind === 'command' && row.command.hint && (
                     <kbd className="studio-palette__hint">
                       {row.command.hint}

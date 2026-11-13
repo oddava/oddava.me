@@ -19,6 +19,7 @@ import {
 } from './api';
 import { gardenSlug } from '../../lib/garden/utils';
 import { remapFolderPath } from './studioHelpers';
+import { NEW_NOTE_FIELDS } from './studioDraft';
 import type { StudioTreeItemRef } from './studioDragItems';
 import type { TabPlacement } from './studioTabStrip';
 import type { StudioDocument } from './useStudioDocument';
@@ -179,7 +180,8 @@ export function useContentMutations({
       await createContentEntry(collection.id, {
         slug: id,
         folder,
-        fields: {},
+        // Unlisted until the writer publishes: autosave is live on every pause.
+        fields: { ...NEW_NOTE_FIELDS },
         body: body ?? `# ${id.replaceAll('-', ' ')}\n\n`,
       });
       setActiveFolder(folder);
