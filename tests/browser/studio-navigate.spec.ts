@@ -195,3 +195,22 @@ test('the word count follows the note and then the selection', async ({
   await page.keyboard.press('ArrowLeft');
   await expect(count).toContainText(/words · /);
 });
+
+test('the command palette opens the outline and find', async ({ page }) => {
+  await setup(page);
+  await page.keyboard.press('Control+p');
+  await page.keyboard.type('outline');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Outline' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Outline' })).toHaveCount(0);
+
+  await page.keyboard.press('Control+p');
+  await page.keyboard.type('find in note');
+  await page.keyboard.press('Enter');
+  await expect(
+    page
+      .getByRole('search', { name: 'Find in note' })
+      .getByRole('textbox', { name: 'Find in note' }),
+  ).toBeFocused();
+});

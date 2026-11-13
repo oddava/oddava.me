@@ -73,7 +73,9 @@ export function useStudioNavigate(
     if (!editor) return;
     setSeed((current) => ({
       nonce: current.nonce + 1,
-      text: selectedSearchText(editor),
+      // Pressed again from inside the bar, it only re-selects the box: the
+      // page's selection must not overwrite what was typed there.
+      text: panel === 'find' ? null : selectedSearchText(editor),
     }));
     open('find');
   }
