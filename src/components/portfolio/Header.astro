@@ -4,9 +4,9 @@
  * the appearance icon. The sky is left out on purpose: it is an easter egg,
  * reached through the footer's visitor line.
  *
- * On the portfolio pages notes is the separate notes site, so it is a plain
- * outbound link (a new tab when it is on another origin) and never the
- * current page. The notes pages wear this same header (NotesLayout): there
+ * On the portfolio pages notes may live on its own origin, but it is still
+ * this site, so it opens in the same tab like the other pages and is never
+ * the current page. The notes pages wear this same header (NotesLayout): there
  * `section="notes"` marks notes as where you are, `origin` points the other
  * links back at the personal site when the page is served on the notes host,
  * and the `tools` slot holds note search beside the appearance icon.
@@ -14,7 +14,6 @@
 import LoadingIndicator from '../LoadingIndicator.astro';
 import AppearanceControl from './AppearanceControl.astro';
 import { NOTES_ROUTE_PREFIX, notesIndexUrl } from '../../lib/notes-url';
-import { externalLinkAttrs } from '../../lib/portfolio/links';
 
 interface Props {
   /** Prefix for the personal site's own pages: '' on the apex. */
@@ -46,9 +45,6 @@ const notesCurrent = inNotes
     ? ('page' as const)
     : ('true' as const)
   : undefined;
-const notesAttrs: ReturnType<typeof externalLinkAttrs> = inNotes
-  ? {}
-  : externalLinkAttrs(notesHref);
 ---
 
 <header class="pf-header">
@@ -71,15 +67,8 @@ const notesAttrs: ReturnType<typeof externalLinkAttrs> = inNotes
           </a>
         ))
       }
-      <a
-        href={notesHref}
-        {...notesAttrs}
-        aria-current={notesCurrent}
-        data-page-preview-ignore
-      >
-        notes{
-          notesAttrs.target && <span class="sr-only"> (opens in new tab)</span>
-        }
+      <a href={notesHref} aria-current={notesCurrent} data-page-preview-ignore>
+        notes
       </a>
     </nav>
     <slot name="tools" />
