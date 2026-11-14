@@ -1,84 +1,181 @@
-/* Phones: the same object, condensed to a 34px strip. The homepage nav can sit
-   as little as 43px above the bottom edge (360x640), so the strip must stay
-   this short. Title and artist share one line; the eyebrow and the time go,
-   the orbit's strokes thicken so the smaller ring still reads as progress,
-   and the minimize control comes off the rim to sit at the strip's end.
-   Matches MOBILE_MINIMIZE_QUERY in minimizedState.ts. */
+/* Phones: the same card, condensed to a 34px strip, folded or not. The
+   homepage nav can sit as little as 43px above the bottom edge (360x640),
+   so nothing here may grow past 34px. The sticker label, the bars and the
+   time go; the photo sits level in a thin frame, still taped at its corner,
+   with the note sticker on it saying "music" in the label's place. Title
+   and artist share one line with the wave under them, and the minimize
+   control comes off the corner to sit at the strip's end. Matches
+   MOBILE_MINIMIZE_QUERY in minimizedState.ts. */
 @media (max-width: 640px) {
+  /* Docked, the strip can't be moved off the page's last line, so while it
+     is showing the footer ends with room for it (8px dock + 34px strip). */
+  [data-site='portfolio'] body:has(.spotify-widget-positioner) .pf-footer,
+  body:has(.spotify-widget-positioner) .site-footer {
+    padding-bottom: 44px;
+  }
+
   .spotify-widget-positioner {
-    --moon: 28px;
+    --art: 28px;
+    border-radius: 14px;
   }
 
   .listening.is-minimized {
-    --moon: 34px;
+    --art: 28px;
   }
 
   .listening__card {
-    grid-template-columns: var(--moon) 1fr auto;
-    column-gap: 8px;
-    padding: 2px 4px 2px 2px;
+    grid-template-columns: var(--art) 1fr auto;
+    column-gap: 10px;
+    padding: 2px 3px 2px 2px;
+    border-radius: 14px;
   }
 
   .listening.is-minimized .listening__card {
-    grid-template-columns: var(--moon) 0fr auto;
+    grid-template-columns: var(--art) 0fr auto;
     padding: 2px;
+    border-radius: 50%;
   }
 
+  .listening__eyebrow,
+  .listening__out {
+    display: none;
+  }
+
+  /* Corners nest: the strip's 14px less its 2px inset is the photo's 12px,
+     less the 2px frame the cover's 10px. */
+  /* At this size a white frame in the dark is the brightest thing in the
+     strip and outshines the title, so there it drops to the hairline. */
+  .listening__photo {
+    padding: 2px;
+    border-radius: 12px;
+    background: light-dark(var(--listening-frame), var(--listening-line));
+    rotate: 0deg;
+    translate: none;
+  }
+
+  .listening__cover,
+  .listening__glyph {
+    border-radius: 10px;
+  }
+
+  .listening.is-minimized .listening__photo {
+    padding: 0;
+  }
+
+  /* A scrap of tape over the photo's corner, kept inside the strip's own
+     box: anything poking above it would eat the nav's clearance, and
+     anything left of it would touch the screen's edge. */
+  .listening__tape,
+  .listening.is-minimized .listening__tape {
+    top: 2px;
+    left: -5px;
+    width: 20px;
+    height: 8px;
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        var(--listening-tape-stripe) 0 3px,
+        transparent 3px 6px
+      ),
+      var(--listening-tape);
+    rotate: -32deg;
+  }
+
+  .listening__note,
+  .listening.is-minimized .listening__note {
+    right: -4px;
+    bottom: -3px;
+    width: 13px;
+    height: 13px;
+    scale: 1;
+  }
+
+  /* Title and artist share the line; the wave runs under both. Two tracks
+     that grow to their text: while both fit, neither is cut. When they
+     don't, the artist stops at 5.5rem and the title, which is the news,
+     takes the rest. (Percentage caps can't do this: in a row sized by its
+     own content they resolve against themselves and clip a short line.) */
   .listening__text {
-    flex-direction: row;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, max-content) fit-content(5.5rem);
     align-items: baseline;
-    gap: 8px;
+    column-gap: 7px;
     min-width: 0;
     max-width: min(15rem, calc(100vw - 104px));
   }
 
-  .listening__eyebrow,
-  .listening__out,
-  .listening__echo {
-    display: none;
+  .listening__text:has(.listening__wave) {
+    padding-bottom: 9px;
   }
 
   .listening__title {
-    flex: 0 1 auto;
     min-width: 0;
-    margin: 0;
+    margin-top: 0;
     font-size: 0.8125rem;
+    line-height: 1.25;
   }
 
-  /* Never more than ~two-fifths of the line, so the title keeps the room. */
+  /* The whole line is the link's tap target, not just its 16px of type. */
+  .listening__title::after {
+    content: '';
+    position: absolute;
+    inset: -4px 0;
+  }
+
   .listening__artist {
-    flex: 0 1 auto;
-    max-width: 42%;
-    margin: 0;
+    padding-top: 0;
     font-size: 0.72rem;
   }
 
+  .listening__wave {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 10px;
+    margin: 0;
+  }
+
+  .listening__wave .is-full {
+    display: none;
+  }
+
+  .listening__wave .is-flat {
+    display: inline;
+  }
+
+  /* Read at arm's length outdoors, the unplayed wave needs a little more
+     pencil here than on a desk. */
+  .listening__pencil path {
+    stroke: light-dark(
+      color-mix(in srgb, var(--listening-ink) 22%, transparent),
+      color-mix(in srgb, var(--listening-ink) 24%, transparent)
+    );
+  }
+
+  .listening__bead {
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    box-shadow: 0 0 0 1.5px var(--listening-paper);
+  }
+
+  /* The desktop's round button, off the corner and at the strip's end. */
   .listening__control {
     position: relative;
     top: auto;
     right: auto;
     width: 24px;
     height: 24px;
-    border: 0;
+    border-color: color-mix(in srgb, var(--listening-ink) 22%, transparent);
     background: transparent;
-    box-shadow: none;
-    opacity: 0.85;
+    color: var(--listening-ink);
+    opacity: 1;
     transform: none;
   }
 
   .listening__control::after {
-    inset: -6px;
-  }
-
-  .listening__track {
-    stroke-width: 1.6;
-  }
-
-  .listening__elapsed {
-    stroke-width: 2.6;
-  }
-
-  .listening__star {
-    scale: 1.25;
+    inset: -5px;
   }
 }
