@@ -1,22 +1,31 @@
-import type {
-  GuestbookEntry as GuestbookEntryContract,
-  PublicGuestbookEntry,
+import {
+  parseHoldReason,
+  type GuestbookEntry as GuestbookEntryContract,
+  type PublicGuestbookEntry,
 } from '../../contracts';
-import { getClientFingerprint } from '../core';
+import { getClientFingerprint, screenText } from '../core';
 
 export type GuestbookEntry = GuestbookEntryContract;
 
+/**
+ * A new entry. It publishes at once unless its name or message trips the
+ * screen (core/screening.ts); then it waits for the moderator, with the
+ * reason kept for the inbox. Storage can still hold a clean entry back
+ * (guestbook/storage.ts).
+ */
 export async function createGuestbookEntry(
   request: Request,
   name: string,
   message: string,
 ): Promise<GuestbookEntry> {
+  const held = screenText(message) ?? screenText(name);
   return {
     id: crypto.randomUUID(),
     name,
     message,
     createdAt: new Date().toISOString(),
-    status: 'pending',
+    status: held ? 'pending' : 'approved',
+    ...(held ? { held } : {}),
     ipFingerprint: await getClientFingerprint(request),
     userAgent: request.headers.get('user-agent')?.slice(0, 160) || undefined,
   };
@@ -34,6 +43,7 @@ export function normalizeGuestbookEntry(entry: unknown): GuestbookEntry | null {
     return null;
   }
 
+  const held = parseHoldReason(candidate.held);
   return {
     id: String(candidate.id),
     name: String(candidate.name),
@@ -43,6 +53,7 @@ export function normalizeGuestbookEntry(entry: unknown): GuestbookEntry | null {
       candidate.status === 'approved' || candidate.status === 'rejected'
         ? candidate.status
         : 'pending',
+    ...(held ? { held } : {}),
     ipFingerprint: candidate.ipFingerprint
       ? String(candidate.ipFingerprint)
       : undefined,

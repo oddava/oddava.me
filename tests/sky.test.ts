@@ -105,7 +105,7 @@ describe('creating a star', () => {
     expect(record).not.toHaveProperty('word');
   });
 
-  it('holds a star with a word for the moderator', async () => {
+  it('publishes a clean word at once', async () => {
     const createStar = await loadCreateStar();
     const record = await createStar(
       new Request('https://x.test'),
@@ -113,21 +113,37 @@ describe('creating a star', () => {
       0.2,
       'hello',
     );
-    expect(record).toMatchObject({ word: 'hello', status: 'pending' });
+    expect(record).toMatchObject({ word: 'hello', status: 'approved' });
+    expect(record).not.toHaveProperty('held');
     expect(record.ipFingerprint).toBe('fingerprint');
     expect(record).not.toHaveProperty('userAgent');
   });
 
-  it('approves the moderator’s own word as it lands', async () => {
+  it('holds a word the screen flags, with the reason', async () => {
     const createStar = await loadCreateStar();
     const record = await createStar(
       new Request('https://x.test'),
       0.1,
       0.2,
-      'hello',
+      'casino.com',
+    );
+    expect(record).toMatchObject({
+      word: 'casino.com',
+      status: 'pending',
+      held: 'link',
+    });
+  });
+
+  it('never screens the moderator’s own word', async () => {
+    const createStar = await loadCreateStar();
+    const record = await createStar(
+      new Request('https://x.test'),
+      0.1,
+      0.2,
+      'casino.com',
       { byModerator: true },
     );
-    expect(record).toMatchObject({ word: 'hello', status: 'approved' });
+    expect(record).toMatchObject({ word: 'casino.com', status: 'approved' });
   });
 });
 

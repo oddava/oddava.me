@@ -13,5 +13,8 @@ export {
   clearUnapprovedGuestbookEntries,
   guestbookModeration,
   readGuestbookEntries,
+  REPEAT_MIN_LENGTH,
   updateGuestbookEntryStatus,
+  updateGuestbookStatusSince,
+  updateVisitorGuestbookStatus,
 } from './guestbook/storage';

@@ -169,22 +169,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   try {
-    // Words wait for the moderator, so a star the moderator leaves (signed
-    // in to the admin) is read already: its word shows to everyone at once
-    // instead of only in the browser that placed it. A session that does
-    // not verify is just a visitor's star.
+    // A word shows to everyone at once unless the screen or the store holds
+    // it for the moderator. The moderator's own star (signed in to the
+    // admin) is never held. A session that does not verify is just a
+    // visitor's star.
     const byModerator = word
       ? await isAdminRequest(cookies).catch(() => false)
       : false;
     const star = await createStar(request, x, y, word, { byModerator });
-    if ((await appendStar(star)) === 'full') {
+    const stored = await appendStar(star, { byModerator });
+    if (stored === 'full') {
       await Promise.all([refundVisitor(), refundEveryone()]);
       return reply(
         { error: 'The sky is full tonight.', code: 'sky_full' },
         409,
       );
     }
-    const wordPending = star.status === 'pending';
+    if (stored === 'held') star.status = 'pending';
+    const wordPending = Boolean(star.word) && star.status === 'pending';
     return reply(
       {
         star: toPublicStar(star),

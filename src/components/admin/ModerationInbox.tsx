@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { describeAgent, formatDate, formatRelative } from './format';
 import { SkeletonRow } from '../ui/Skeleton';
 import { VisuallyHidden } from '../ui/VisuallyHidden';
-import type { GuestbookStatus } from '../../lib/contracts';
+import type { GuestbookStatus, HoldReason } from '../../lib/contracts';
 import { errorMessage, useToast } from './toast';
 import { useDialogConfirm } from './useDialogConfirm';
 
@@ -26,6 +26,8 @@ const fold = () =>
 export interface ModeratedEntry {
   id: string;
   status: GuestbookStatus;
+  /** Why it waits instead of having published on its own. */
+  held?: HoldReason;
   createdAt: string;
   ipFingerprint?: string;
   userAgent?: string;
@@ -61,6 +63,15 @@ export interface ModerationInboxProps<T extends ModeratedEntry> {
    */
   rejectLastHour?: () => Promise<number>;
 }
+
+/** The inbox line for why an entry was held. */
+const HELD: Record<HoldReason, string> = {
+  link: 'held: has a link',
+  contact: 'held: contact details',
+  word: 'held: blocked word',
+  visitor: 'held: network rejected before',
+  repeat: 'held: repeated message',
+};
 
 const FILTERS: GuestbookStatus[] = ['pending', 'approved', 'rejected'];
 
@@ -503,6 +514,9 @@ export function ModerationInbox<T extends ModeratedEntry>({
                       </time>
                     </p>
                     {body(entry)}
+                    {entry.status === 'pending' && entry.held && (
+                      <p className="adm-entry__meta">{HELD[entry.held]}</p>
+                    )}
                     {meta.length > 0 && (
                       <p
                         className="adm-entry__meta"

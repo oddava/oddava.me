@@ -21,9 +21,26 @@ export function readStars(): Promise<StarRecord[]> {
   return stars.read();
 }
 
-/** Answers 'full' when the sky already holds MAX_STARS. */
-export function appendStar(star: StarRecord): Promise<'ok' | 'full'> {
-  return stars.append(star, MAX_STARS);
+/**
+ * Answers 'full' when the sky already holds MAX_STARS. A clean word still
+ * waits for the moderator when its network had a star rejected before:
+ * then the answer is 'held', and `star` is marked pending to match what was
+ * stored. A star with no word has nothing to hold, and the moderator's own
+ * (`byModerator`) is never held.
+ */
+export async function appendStar(
+  star: StarRecord,
+  { byModerator = false }: { byModerator?: boolean } = {},
+): Promise<'ok' | 'held' | 'full'> {
+  const result = await stars.append(star, {
+    maxRecords: MAX_STARS,
+    holdIf:
+      star.word && !byModerator
+        ? [{ field: 'ipFingerprint', status: 'rejected', reason: 'visitor' }]
+        : [],
+  });
+  if (result === 'held') star.status = 'pending';
+  return result;
 }
 
 export function updateStarStatus(

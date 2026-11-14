@@ -15,7 +15,33 @@ export type ModerationStatus = 'pending' | 'approved' | 'rejected';
 export interface ModeratedRecord {
   id: string;
   status: ModerationStatus;
+  /** Why the record waits for a moderator instead of publishing. */
+  held?: string;
 }
+
+/**
+ * Holds an approved record back as pending when a stored record has the
+ * same non-empty value in `field` (and, with `status`, that status): a
+ * network whose earlier submission was rejected, or a message that was
+ * already posted. The new record is stored with `held: reason`.
+ */
+export interface HoldRule {
+  field: string;
+  status?: ModerationStatus;
+  reason: string;
+}
+
+export interface AppendOptions {
+  /**
+   * A ceiling on the whole list: a list already holding that many is left
+   * alone and the call answers `'full'`.
+   */
+  maxRecords?: number;
+  holdIf?: HoldRule[];
+}
+
+/** `'held'`: stored, but as pending, because a hold rule matched. */
+export type AppendResult = 'ok' | 'held' | 'full';
 
 export function parseModerationStatus(
   value: string | null | undefined,
@@ -42,10 +68,10 @@ export interface ModeratedListOptions<T extends ModeratedRecord> {
 export interface ModeratedList<T extends ModeratedRecord> {
   read(): Promise<T[]>;
   /**
-   * Prepends `record`. With `maxRecords`, a list already holding that many
-   * is left alone and the call answers `'full'`.
+   * Prepends `record`, held back as pending when one of `holdIf` matches,
+   * unless the list is at `maxRecords`.
    */
-  append(record: T, maxRecords?: number): Promise<'ok' | 'full'>;
+  append(record: T, options?: AppendOptions): Promise<AppendResult>;
   setStatus(id: string, status: ModerationStatus): Promise<boolean>;
   /**
    * Sets `status` on every record whose `field` matches that field on the
@@ -74,7 +100,41 @@ export interface ModeratedList<T extends ModeratedRecord> {
 // hold no place under it: at the ceiling they (and anything undecodable) are
 // dropped first, so a moderator rejecting spam frees room. Still at the
 // ceiling after that, nothing is pushed and the script answers 'full'.
+//
+// ARGV[4] is a JSON array of hold rules (HoldRule). They run first, before
+// the ceiling drops any rejected record they need to see: an approved record
+// sharing a rule's field value with a stored one (of the rule's status, when
+// it names one) is pushed as pending with held = the rule's reason, and the
+// script answers 'held' instead of 'ok'.
 const APPEND_SCRIPT = `
+  local record = ARGV[1]
+  local result = 'ok'
+  local rules = cjson.decode(ARGV[4] or '[]')
+  if #rules > 0 then
+    local new = cjson.decode(record)
+    if new.status == 'approved' then
+      local values = redis.call('LRANGE', KEYS[1], 0, -1)
+      for _, raw in ipairs(values) do
+        local ok, entry = pcall(cjson.decode, raw)
+        if ok and type(entry) == 'table' then
+          for _, rule in ipairs(rules) do
+            local value = new[rule.field]
+            if type(value) == 'string' and value ~= ''
+              and entry[rule.field] == value
+              and (rule.status == nil or entry.status == rule.status) then
+              new.status = 'pending'
+              new.held = rule.reason
+              result = 'held'
+              break
+            end
+          end
+        end
+        if result == 'held' then break end
+      end
+      if result == 'held' then record = cjson.encode(new) end
+    end
+  end
+
   local ceiling = tonumber(ARGV[3] or '0')
   if ceiling > 0 and redis.call('LLEN', KEYS[1]) >= ceiling then
     local values = redis.call('LRANGE', KEYS[1], 0, -1)
@@ -89,9 +149,9 @@ const APPEND_SCRIPT = `
     if dropped > 0 then redis.call('LREM', KEYS[1], 0, '__evicted__') end
     if redis.call('LLEN', KEYS[1]) >= ceiling then return 'full' end
   end
-  redis.call('LPUSH', KEYS[1], ARGV[1])
+  redis.call('LPUSH', KEYS[1], record)
   local limit = tonumber(ARGV[2])
-  if redis.call('LLEN', KEYS[1]) <= limit then return 'ok' end
+  if redis.call('LLEN', KEYS[1]) <= limit then return result end
 
   local values = redis.call('LRANGE', KEYS[1], 0, -1)
   local approved = {}
@@ -101,7 +161,7 @@ const APPEND_SCRIPT = `
     approved[index] = ok and type(entry) == 'table' and entry.status == 'approved'
     if not approved[index] then unapproved = unapproved + 1 end
   end
-  if unapproved <= limit then return 'ok' end
+  if unapproved <= limit then return result end
 
   -- Mark the oldest unapproved records, then remove the marks in one pass.
   -- The marker is not JSON, so it cannot collide with a stored record.
@@ -114,7 +174,7 @@ const APPEND_SCRIPT = `
     end
   end
   redis.call('LREM', KEYS[1], 0, '__evicted__')
-  return 'ok'
+  return result
 `;
 
 const SET_STATUS_SCRIPT = `
@@ -216,7 +276,7 @@ export function createModeratedList<T extends ModeratedRecord>({
         .filter((record): record is T => Boolean(record));
     },
 
-    async append(record, maxRecords = 0) {
+    async append(record, { maxRecords = 0, holdIf = [] } = {}) {
       const result = await redisCommand<string>([
         'EVAL',
         APPEND_SCRIPT,
@@ -225,8 +285,9 @@ export function createModeratedList<T extends ModeratedRecord>({
         JSON.stringify(record),
         unapprovedLimit,
         maxRecords,
+        JSON.stringify(holdIf),
       ]);
-      return result === 'full' ? 'full' : 'ok';
+      return result === 'full' || result === 'held' ? result : 'ok';
     },
 
     async setStatus(id, status) {

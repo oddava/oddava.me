@@ -24,7 +24,7 @@ interface Overrides {
     windowMs?: number,
     options?: { everyone?: boolean },
   ) => Promise<Response | null>;
-  appendStar?: () => Promise<'ok' | 'full'>;
+  appendStar?: () => Promise<'ok' | 'held' | 'full'>;
   readStars?: () => Promise<unknown[]>;
   /** Whether the request carries a signed-in admin session. */
   isAdminRequest?: () => Promise<boolean>;
@@ -176,21 +176,49 @@ describe('sky route', () => {
     expect(body.star).not.toHaveProperty('ipFingerprint');
     expect(appendStar).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'approved' }),
+      { byModerator: false },
     );
   });
 
-  it('holds a word for the moderator and does not echo it publicly', async () => {
+  it('publishes a clean word to everyone at once', async () => {
     const { POST, appendStar } = await loadRoute();
     const response = await POST({
       request: post({ x: 0.5, y: 0.25, word: '  hello  ' }),
     } as never);
     expect(response.status).toBe(201);
     const body = await response.json();
+    expect(body.wordPending).toBe(false);
+    expect(body.star).toMatchObject({ word: 'hello' });
+    expect(appendStar).toHaveBeenCalledWith(
+      expect.objectContaining({ word: 'hello', status: 'approved' }),
+      { byModerator: false },
+    );
+  });
+
+  it('holds a flagged word for the moderator and does not echo it', async () => {
+    const { POST, appendStar } = await loadRoute();
+    const response = await POST({
+      request: post({ x: 0.5, y: 0.25, word: 'casino.com' }),
+    } as never);
+    expect(response.status).toBe(201);
+    const body = await response.json();
     expect(body.wordPending).toBe(true);
     expect(body.star).not.toHaveProperty('word');
     expect(appendStar).toHaveBeenCalledWith(
-      expect.objectContaining({ word: 'hello', status: 'pending' }),
+      expect.objectContaining({ status: 'pending', held: 'link' }),
+      { byModerator: false },
     );
+  });
+
+  it('holds a clean word the store holds back, without echoing it', async () => {
+    const { POST } = await loadRoute({ appendStar: async () => 'held' });
+    const response = await POST({
+      request: post({ x: 0.5, y: 0.25, word: 'hello' }),
+    } as never);
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.wordPending).toBe(true);
+    expect(body.star).not.toHaveProperty('word');
   });
 
   it('shows the moderator’s own word to everyone at once', async () => {
@@ -207,8 +235,12 @@ describe('sky route', () => {
     const body = await response.json();
     expect(body.wordPending).toBe(false);
     expect(body.star).toMatchObject({ word: 'goodnight' });
-    const [stored] = appendStar.mock.calls[0] as unknown as [StarRecord];
+    const [stored, options] = appendStar.mock.calls[0] as unknown as [
+      StarRecord,
+      { byModerator: boolean },
+    ];
     expect(stored).toMatchObject({ word: 'goodnight', status: 'approved' });
+    expect(options).toEqual({ byModerator: true });
 
     // Every other visitor's read of the sky carries the word.
     vi.resetModules();
@@ -223,14 +255,14 @@ describe('sky route', () => {
     ]);
   });
 
-  it('keeps a visitor’s word pending when the admin session does not verify', async () => {
+  it('screens a visitor’s word when the admin session does not verify', async () => {
     const { POST, appendStar } = await loadRoute({
       isAdminRequest: async () => {
         throw new Error('no signing secret');
       },
     });
     const response = await POST({
-      request: post({ x: 0.5, y: 0.25, word: 'hi' }),
+      request: post({ x: 0.5, y: 0.25, word: 'casino.com' }),
       cookies: { get: () => undefined },
     } as never);
     expect(response.status).toBe(201);
@@ -238,7 +270,8 @@ describe('sky route', () => {
       wordPending: true,
     });
     expect(appendStar).toHaveBeenCalledWith(
-      expect.objectContaining({ word: 'hi', status: 'pending' }),
+      expect.objectContaining({ word: 'casino.com', status: 'pending' }),
+      { byModerator: false },
     );
   });
 
