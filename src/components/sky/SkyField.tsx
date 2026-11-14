@@ -886,7 +886,7 @@ export default function SkyField() {
         </button>
       </div>
       <p id="sky-word-hint" class="sky-composer__hint">
-        stars stay. words show once they have been read.
+        stars stay, and so do their words.
       </p>
     </form>
   );
@@ -978,7 +978,7 @@ export default function SkyField() {
                   : `the ${formatCount(company)} fireflies are the others here right now.`
               : mine.length > 0
                 ? 'yours are ringed in the sky.'
-                : 'stars stay. a word shows once it has been read.')}
+                : 'stars stay, and so do their words.')}
         </p>
       </div>
 

@@ -3,6 +3,8 @@ export {
   fetchGuestbookEntries,
   updateGuestbookEntryStatus,
   clearUnapprovedGuestbookEntries,
+  updateVisitorGuestbookStatus,
+  updateRecentGuestbookStatus,
   fetchStarEntries,
   updateStarStatus,
   updateVisitorStarStatus,

@@ -84,5 +84,5 @@ export async function submitGuestbookEntry({
     throw new Error(guestbookErrorMessage(data));
   }
 
-  return data.message ?? 'Thanks. Your note will appear soon.';
+  return data.message ?? 'Thanks for the note.';
 }

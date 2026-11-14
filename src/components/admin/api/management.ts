@@ -50,6 +50,30 @@ export function clearUnapprovedGuestbookEntries(): Promise<GuestbookResponse> {
   );
 }
 
+/** Sets `status` on every entry the network behind `id` left. */
+export async function updateVisitorGuestbookStatus(
+  id: string,
+  status: GuestbookStatus,
+): Promise<number> {
+  const data = await readJson<{ updated: number }>(
+    '/api/guestbook/admin',
+    jsonBody('POST', { action: 'visitor', id, status }),
+  );
+  return data.updated;
+}
+
+/** Sets `status` on every entry posted in the last `minutes`. */
+export async function updateRecentGuestbookStatus(
+  minutes: number,
+  status: GuestbookStatus,
+): Promise<number> {
+  const data = await readJson<{ updated: number }>(
+    '/api/guestbook/admin',
+    jsonBody('POST', { action: 'since', minutes, status }),
+  );
+  return data.updated;
+}
+
 const SKY_ADMIN_PATH = '/api/admin/sky';
 
 export async function fetchStarEntries(

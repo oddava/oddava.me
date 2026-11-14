@@ -1,9 +1,14 @@
-import type { PublicStar, StarRecord } from '../../contracts';
+import {
+  parseHoldReason,
+  type PublicStar,
+  type StarRecord,
+} from '../../contracts';
 import { graphemes } from '../../graphemes';
 import {
   getClientFingerprint,
   parseModerationStatus,
   sanitizePlainText,
+  screenText,
 } from '../core';
 
 export type { StarRecord };
@@ -65,11 +70,10 @@ export function sanitizeStarWord(value: unknown): string {
 }
 
 /**
- * A new star. With no word there is nothing to read, so it is approved at
- * once; a word waits for the moderator, and the star shines without it
- * until then. The moderator's own star (`byModerator`, a signed-in admin
- * session) has already been read by the one who would read it: its word
- * is approved as it lands and shows to everyone straight away.
+ * A new star, approved as it lands: its word shows to everyone at once.
+ * A word that trips the screen (core/screening.ts) waits for the moderator
+ * instead, and the star shines without it until then. The moderator's own
+ * star (`byModerator`, a signed-in admin session) is never screened.
  */
 export async function createStar(
   request: Request,
@@ -78,13 +82,15 @@ export async function createStar(
   word: string,
   { byModerator = false }: { byModerator?: boolean } = {},
 ): Promise<StarRecord> {
+  const held = word && !byModerator ? screenText(word) : null;
   return {
     id: crypto.randomUUID(),
     x,
     y,
     ...(word ? { word } : {}),
     createdAt: new Date().toISOString(),
-    status: word && !byModerator ? 'pending' : 'approved',
+    status: held ? 'pending' : 'approved',
+    ...(held ? { held } : {}),
     // Kept so a moderator can take back everything one visitor left. The
     // user agent is not: a star gives a moderator nothing to judge it by.
     ipFingerprint: await getClientFingerprint(request),
@@ -100,6 +106,7 @@ export function normalizeStar(value: unknown): StarRecord | null {
     return null;
   }
   const word = candidate.word ? String(candidate.word) : '';
+  const held = parseHoldReason(candidate.held);
   return {
     id: String(candidate.id),
     x,
@@ -107,6 +114,7 @@ export function normalizeStar(value: unknown): StarRecord | null {
     ...(word ? { word } : {}),
     createdAt: String(candidate.createdAt),
     status: parseModerationStatus(candidate.status) ?? 'pending',
+    ...(held ? { held } : {}),
     ipFingerprint: candidate.ipFingerprint
       ? String(candidate.ipFingerprint)
       : undefined,

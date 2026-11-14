@@ -8,8 +8,9 @@ export interface PublicGuestbookEntry {
 export interface GuestbookApiResponse {
   entries?: PublicGuestbookEntry[];
   writable?: boolean;
-  reviewRequired?: boolean;
   submitted?: boolean;
+  /** The posted entry, when it published at once. */
+  entry?: PublicGuestbookEntry;
   status?: GuestbookStatus;
   message?: string;
   error?: string;
@@ -38,8 +39,28 @@ export interface SpotifyNowPlaying {
 
 export type GuestbookStatus = 'pending' | 'approved' | 'rejected';
 
+/**
+ * Why a visitor's submission waits for the moderator instead of publishing
+ * at once: it carries a link, contact details or a blocked word, its
+ * network had something rejected before, or it repeats an earlier message.
+ */
+export type HoldReason = 'link' | 'contact' | 'word' | 'visitor' | 'repeat';
+
+export const HOLD_REASONS: readonly HoldReason[] = [
+  'link',
+  'contact',
+  'word',
+  'visitor',
+  'repeat',
+];
+
+export function parseHoldReason(value: unknown): HoldReason | undefined {
+  return HOLD_REASONS.find((reason) => reason === value);
+}
+
 export interface GuestbookEntry extends PublicGuestbookEntry {
   status: GuestbookStatus;
+  held?: HoldReason;
   ipFingerprint?: string;
   userAgent?: string;
 }
@@ -116,7 +137,7 @@ export interface OverviewResponse {
 /**
  * A star someone left in the sky. Position is a fraction of the sky's width
  * and height (0–1), so it lands in the same place on every screen. The word
- * is present only once a moderator has approved it.
+ * is present only once it is approved: at once, unless it was held.
  */
 export interface PublicStar {
   id: string;
@@ -134,6 +155,7 @@ export interface StarRecord {
   word?: string;
   createdAt: string;
   status: GuestbookStatus;
+  held?: HoldReason;
   ipFingerprint?: string;
   userAgent?: string;
 }

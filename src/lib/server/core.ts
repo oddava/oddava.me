@@ -34,9 +34,12 @@ export {
   rejectIfSigningUnavailable,
 } from './core/signing';
 export { sanitizePlainText } from './core/sanitize';
+export { screenText, type TextHoldReason } from './core/screening';
 export {
   createModeratedList,
   parseModerationStatus,
+  type AppendResult,
+  type HoldRule,
   type ModeratedList,
   type ModeratedRecord,
   type ModerationStatus,

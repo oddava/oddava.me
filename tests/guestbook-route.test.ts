@@ -18,6 +18,10 @@ function post(body: unknown, origin = ORIGIN): Request {
 
 interface Overrides {
   enforceRedisRateLimit?: () => Promise<Response | null>;
+  /** What the screen made of the entry. */
+  status?: 'pending' | 'approved';
+  /** What storage answered on append. */
+  appendResult?: 'ok' | 'held';
 }
 
 async function loadRoute(overrides: Overrides = {}) {
@@ -36,8 +40,12 @@ async function loadRoute(overrides: Overrides = {}) {
     enforceRedisRateLimit,
   }));
 
-  const appendGuestbookEntry = vi.fn(async () => {});
-  vi.doMock('../src/lib/server/guestbook', () => ({
+  const appendGuestbookEntry = vi.fn(
+    async () => overrides.appendResult ?? 'ok',
+  );
+  // The real projections, so the response is checked for private fields.
+  vi.doMock('../src/lib/server/guestbook', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../src/lib/server/guestbook')>()),
     appendGuestbookEntry,
     createGuestbookEntry: async (
       _request: Request,
@@ -48,11 +56,10 @@ async function loadRoute(overrides: Overrides = {}) {
       name,
       message,
       createdAt: '2026-07-17T00:00:00.000Z',
-      status: 'pending',
+      status: overrides.status ?? 'pending',
+      ipFingerprint: 'private',
     }),
-    getApprovedGuestbookEntries: (entries: unknown[]) => entries,
     readGuestbookEntries: async () => [],
-    toPublicGuestbookEntries: (entries: unknown[]) => entries,
   }));
 
   const { POST } = await import('../src/pages/api/guestbook');
@@ -123,7 +130,43 @@ describe('guestbook POST route', () => {
     expect(appendGuestbookEntry).not.toHaveBeenCalled();
   });
 
-  it('accepts a valid submission as pending', async () => {
+  it('publishes a clean submission at once, without private fields', async () => {
+    const { POST, appendGuestbookEntry } = await loadRoute({
+      status: 'approved',
+    });
+
+    const response = await POST({
+      request: post({ name: 'Ada', message: 'hello from the test' }),
+    } as never);
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      submitted: true,
+      status: 'approved',
+      entry: { id: 'generated', name: 'Ada', message: 'hello from the test' },
+    });
+    expect(body.entry).not.toHaveProperty('ipFingerprint');
+    expect(appendGuestbookEntry).toHaveBeenCalledOnce();
+  });
+
+  it('answers pending when storage holds a clean submission back', async () => {
+    const { POST } = await loadRoute({
+      status: 'approved',
+      appendResult: 'held',
+    });
+
+    const response = await POST({
+      request: post({ name: 'Ada', message: 'hello from the test' }),
+    } as never);
+
+    expect(response.status).toBe(202);
+    const body = await response.json();
+    expect(body).toMatchObject({ submitted: true, status: 'pending' });
+    expect(body).not.toHaveProperty('entry');
+  });
+
+  it('accepts a flagged submission as pending', async () => {
     const { POST, appendGuestbookEntry } = await loadRoute();
 
     const response = await POST({

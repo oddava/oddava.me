@@ -171,6 +171,95 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       });
     });
 
+    it('holds a clean entry from a rejected network, or one pasted again', async () => {
+      const {
+        appendGuestbookEntry,
+        readGuestbookEntries,
+        updateGuestbookEntryStatus,
+      } = await import('../src/lib/server/guestbook');
+      await cleanupClient.flushDb();
+
+      const entry = (id: string, ipFingerprint: string, message: string) => ({
+        id,
+        name: 'tester',
+        message,
+        createdAt: new Date(2026, 10, 1).toISOString(),
+        status: 'approved' as const,
+        ipFingerprint,
+      });
+      const pasted = 'visit my wonderful page for great deals today';
+
+      await expect(
+        appendGuestbookEntry(entry('spam', 'flooder', 'first try')),
+      ).resolves.toBe('ok');
+      expect(await updateGuestbookEntryStatus('spam', 'rejected')).toBe(true);
+      const again = entry('again', 'flooder', 'second try');
+      await expect(appendGuestbookEntry(again)).resolves.toBe('held');
+      expect(again.status).toBe('pending');
+
+      await expect(
+        appendGuestbookEntry(entry('paste-1', 'someone', pasted)),
+      ).resolves.toBe('ok');
+      await expect(
+        appendGuestbookEntry(entry('paste-2', 'another', pasted)),
+      ).resolves.toBe('held');
+      // A short message repeats by coincidence and publishes.
+      await expect(
+        appendGuestbookEntry(entry('hi-1', 'someone', 'hello!')),
+      ).resolves.toBe('ok');
+      await expect(
+        appendGuestbookEntry(entry('hi-2', 'another', 'hello!')),
+      ).resolves.toBe('ok');
+
+      const stored = Object.fromEntries(
+        (await readGuestbookEntries()).map((e) => [e.id, [e.status, e.held]]),
+      );
+      expect(stored).toEqual({
+        spam: ['rejected', undefined],
+        again: ['pending', 'visitor'],
+        'paste-1': ['approved', undefined],
+        'paste-2': ['pending', 'repeat'],
+        'hi-1': ['approved', undefined],
+        'hi-2': ['approved', undefined],
+      });
+    });
+
+    it("holds a word from a network whose star was rejected, never the moderator's", async () => {
+      const { appendStar, readStars, updateStarStatus } =
+        await import('../src/lib/server/sky');
+      await cleanupClient.flushDb();
+      const star = (id: string, word?: string) => ({
+        id,
+        x: 0.5,
+        y: 0.5,
+        ...(word ? { word } : {}),
+        createdAt: new Date(2026, 10, 1).toISOString(),
+        status: 'approved' as const,
+        ipFingerprint: 'flooder',
+      });
+
+      await appendStar(star('first', 'hey'));
+      expect(await updateStarStatus('first', 'rejected')).toBe(true);
+      await expect(appendStar(star('worded', 'hey again'))).resolves.toBe(
+        'held',
+      );
+      // Nothing to read on a quiet star, and the moderator is never held.
+      await expect(appendStar(star('quiet'))).resolves.toBe('ok');
+      await expect(
+        appendStar(star('own', 'goodnight'), { byModerator: true }),
+      ).resolves.toBe('ok');
+
+      const stored = Object.fromEntries(
+        (await readStars()).map((s) => [s.id, [s.status, s.held]]),
+      );
+      expect(stored).toEqual({
+        first: ['rejected', undefined],
+        worded: ['pending', 'visitor'],
+        quiet: ['approved', undefined],
+        own: ['approved', undefined],
+      });
+    });
+
     it('caps the sky, keeps approved stars and moderates words', async () => {
       const {
         appendStar,
@@ -234,7 +323,8 @@ describe.skipIf(!process.env.RUN_REDIS_INTEGRATION)(
       const own = await createStar(request, 0.4, 0.4, 'goodnight', {
         byModerator: true,
       });
-      const visitor = await createStar(request, 0.6, 0.6, 'hello');
+      // A visitor's flagged word waits; the moderator's never does.
+      const visitor = await createStar(request, 0.6, 0.6, 'casino.com');
       await appendStar(own);
       await appendStar(visitor);
 

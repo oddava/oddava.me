@@ -18,6 +18,7 @@ import {
   createGuestbookEntry,
   getPublicGuestbookEntries,
   readGuestbookEntries,
+  toPublicGuestbookEntries,
 } from '../../lib/server/guestbook';
 
 const GUESTBOOK_RATE_LIMIT = { limit: 3, windowMs: 10 * 60 * 1000 };
@@ -32,7 +33,6 @@ export const GET: APIRoute = async () => {
       {
         entries,
         writable: hasRedisConfig() && hasSigningSecret(),
-        reviewRequired: true,
       },
       { status: 200 },
     );
@@ -43,7 +43,6 @@ export const GET: APIRoute = async () => {
         {
           entries: [],
           writable: false,
-          reviewRequired: true,
         },
         { status: 200 },
       );
@@ -105,14 +104,29 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
+    // A clean entry publishes as it lands; one the screen or the store
+    // holds back waits for the moderator. The visitor is not told why.
     const nextEntry = await createGuestbookEntry(request, name, message);
-    await appendGuestbookEntry(nextEntry);
+    const stored = await appendGuestbookEntry(nextEntry);
+
+    if (nextEntry.status === 'approved' && stored !== 'held') {
+      const [entry] = toPublicGuestbookEntries([nextEntry]);
+      return json(
+        {
+          submitted: true,
+          status: 'approved',
+          entry,
+          message: 'Thanks. Your note is up.',
+        },
+        { status: 201 },
+      );
+    }
 
     return json(
       {
         submitted: true,
         status: 'pending',
-        message: 'Thanks. Your note will appear soon.',
+        message: 'Thanks. Your note will appear once it has been read.',
       },
       { status: 202 },
     );
