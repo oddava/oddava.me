@@ -1,8 +1,10 @@
 # Interactive note graph
 
-The Preact island renders a note's one-hop neighborhood under its sheet, in
-the "nearby" slip (only when the note has at least one neighbour), on the
-apex and the notes host alike. Expanding it uses a native modal
+The Preact island renders a note's one-hop neighborhood in the "nearby" slip
+(only when the note has at least one neighbour), on the apex and the notes
+host alike. From 78em the slip is a square at the top of the note's sticky
+sidebar, above the "on this page" outline, as in Obsidian Publish; on narrower
+screens it is a wide strip under the sheet. Expanding it uses a native modal
 without remounting the canvas or losing its camera; a second modal opens the
 whole garden. That modal is the only whole-garden view: the
 `/notes/graph` page and the island's `fullPage` mode were removed in the

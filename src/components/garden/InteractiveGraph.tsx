@@ -5,7 +5,8 @@ import { animatePresence } from '../../lib/garden/graph-presence';
 import '../../styles/components/_interactive-graph.css';
 
 /**
- * A note's corner of the graph, drawn under its sheet. It expands in place
+ * A note's corner of the graph, drawn in the note's sidebar (under its sheet
+ * on narrow screens). It expands in place
  * into a modal, and a second modal opens the whole garden.
  */
 type Props = {

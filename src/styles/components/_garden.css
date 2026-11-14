@@ -995,7 +995,10 @@ a.notes-sticker--tag:active {
   }
 }
 
-/* ---- Under the sheet: nearby, keep reading -------------------------------- */
+/* ---- Around the sheet: nearby, on this page, keep reading ------------------
+   On narrow screens everything off the sheet stacks under it: the graph,
+   then the cards. From 78em the graph and an outline of the note move into
+   a sidebar beside the sheet, sticky as you read (see below). */
 
 .note-nearby,
 .note-keep {
@@ -1044,6 +1047,201 @@ a.notes-sticker--tag:active {
 
 .note-keep .note-cards {
   margin-top: 6px;
+}
+
+/* The outline waits for the sidebar; until then the folded contents slip on
+   the sheet does its job. */
+.note-outline {
+  display: none;
+}
+
+/* ---- The sidebar ------------------------------------------------------------
+   The sheet keeps the page's centre, under the middle of the header, and the
+   sidebar sits in the gutter on its right. The grid bleeds past the frame by
+   the same amount on both sides (never into the last 24px of the window),
+   and an empty column on the left balances the sidebar, so the sheet stays
+   centred. The sheet narrows from its 52rem only as far as 39rem; below the
+   width that needs, the sidebar stacks under the sheet instead of pushing it
+   off centre. The sidebar holds a square graph and the outline, and stays in
+   view while the note scrolls; a long outline scrolls on its own, following
+   the section you are reading. */
+
+@media (min-width: 78em) {
+  .note-reading--aside {
+    --bleed: clamp(0px, (100vw - 64rem) / 2 - 24px, 12rem);
+    display: grid;
+    grid-template-columns: minmax(15rem, 1fr) minmax(0, 52rem) minmax(
+        15rem,
+        1fr
+      );
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      '. bar   .'
+      '. sheet aside'
+      '. keep  aside';
+    column-gap: 48px;
+    width: auto;
+    max-width: none;
+    margin-inline: calc(-1 * var(--bleed));
+  }
+
+  .note-reading--aside > .notes-bar {
+    grid-area: bar;
+  }
+
+  .note-reading--aside > .notes-sheet {
+    grid-area: sheet;
+  }
+
+  .note-reading--aside > .note-keep {
+    grid-area: keep;
+  }
+
+  /* The outline beside the sheet replaces the slip folded on it. */
+  .note-reading--aside .note-contents {
+    display: none;
+  }
+
+  .note-aside {
+    grid-area: aside;
+    position: sticky;
+    top: 28px;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    width: 15rem;
+    min-width: 0;
+    max-height: calc(100dvh - 56px);
+  }
+
+  .note-aside .notes-label {
+    margin-bottom: 12px;
+    font-size: 0.9375rem;
+  }
+
+  .note-aside .note-nearby {
+    flex: none;
+    margin-top: 0;
+  }
+
+  .note-aside .note-nearby__graph .interactive-graph__slot {
+    aspect-ratio: 1 / 1;
+  }
+
+  .note-outline {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+/* With room to spare, the sheet takes the page's centre, under the header's
+   middle, and the sidebar moves out into the gutter on its right. The grid
+   bleeds past the frame by the same amount on both sides (never into the
+   last 24px of the window), and an empty column on the left balances the
+   sidebar, so the sheet stays centred at every width from here up. */
+@media (min-width: 85em) {
+  .note-reading--aside {
+    --bleed: clamp(0px, (100vw - 68rem) / 2 - 24px, 12rem);
+    grid-template-columns: minmax(15rem, 1fr) minmax(0, 52rem) minmax(
+        15rem,
+        1fr
+      );
+    grid-template-areas:
+      '. bar   .'
+      '. sheet aside'
+      '. keep  aside';
+    column-gap: 48px;
+    width: auto;
+    margin-inline: calc(-1 * var(--bleed));
+  }
+
+  .note-aside {
+    width: 15rem;
+  }
+}
+
+/* The scroller pads its edges so a row's press fill and the focus ring are
+   not clipped by its overflow. */
+.note-outline__scroll {
+  min-height: 0;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--paper-line-2) transparent;
+}
+
+/* A dashed rail like the sheet's own rules; the section you are reading
+   lights its stretch of the rail in the ink and wears the site's wave. */
+.note-outline__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1.5px dashed var(--paper-line-2);
+}
+
+.note-outline__item {
+  position: relative;
+}
+
+.note-outline__item a {
+  display: block;
+  margin-left: 8px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  -webkit-tap-highlight-color: transparent;
+  transition: var(--t-lift);
+}
+
+.note-outline__item--depth-3 a {
+  margin-left: 22px;
+}
+
+.note-outline__item--depth-4 a {
+  margin-left: 36px;
+}
+
+.note-outline__item:has(> a[aria-current='location'])::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: -1.75px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.note-outline__item a[aria-current='location'] {
+  color: var(--ink);
+  text-decoration: underline wavy var(--accent) 1.5px;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 0.3em;
+}
+
+.note-outline__item a:active {
+  background: var(--press-fill);
+  scale: 0.98;
+  transition: var(--t-press);
+}
+
+.note-outline__item a:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-outline__item a:hover {
+    background: var(--hover-fill);
+    color: var(--ink);
+  }
 }
 
 /* ---- A removed note (410) ----------------------------------------------- */

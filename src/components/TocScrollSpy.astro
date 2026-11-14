@@ -4,8 +4,10 @@
  *
  * Include it once beside any index of `#fragment` links, and give that index a
  * `data-toc-spy` attribute; every matching link gets `aria-current="location"`
- * as its heading passes the top of the viewport. It stays separate from the
- * note table of contents so Astro can bundle the script independently.
+ * as its heading passes the top of the viewport. An index that scrolls on its
+ * own (the note sidebar's outline) also takes `data-toc-follow`, and keeps the
+ * marked link inside its visible part. It stays separate from the note table
+ * of contents so Astro can bundle the script independently.
  *
  * Astro bundles this script once no matter how many indexes are on the page.
  */
@@ -61,10 +63,27 @@
 
       for (const link of tocLinks) {
         if (current && decodeFragment(link) === current.id) {
+          if (link.getAttribute('aria-current') === 'location') continue;
           link.setAttribute('aria-current', 'location');
+          follow(link);
         } else {
           link.removeAttribute('aria-current');
         }
+      }
+    };
+
+    // Scrolls only the index itself, never the page (scrollIntoView would
+    // scroll every scrollable ancestor, the document included).
+    const follow = (link: HTMLAnchorElement) => {
+      const index = link.closest<HTMLElement>('[data-toc-follow]');
+      if (!index || index.scrollHeight <= index.clientHeight) return;
+      const box = index.getBoundingClientRect();
+      const item = link.getBoundingClientRect();
+      const margin = 24;
+      if (item.top < box.top + margin) {
+        index.scrollTop -= box.top + margin - item.top;
+      } else if (item.bottom > box.bottom - margin) {
+        index.scrollTop += item.bottom - (box.bottom - margin);
       }
     };
 

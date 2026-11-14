@@ -1,10 +1,13 @@
 ---
 /**
  * A note, as a sheet of paper on the desk: the same page Studio writes on,
- * taped down, centred, one measure wide. Above it, the trail of folders it
- * sits in and the search pill; on it, the note and (for a folder) an index of its pages; under
- * it, the note's neighbourhood in the graph and a few cards to keep reading.
- * Every part below the sheet appears only when it has something to show.
+ * taped down, one measure wide. Above it, the trail of folders it sits in and
+ * the search pill; on it, the note and (for a folder) an index of its pages;
+ * beside it on wide screens, a sidebar with the note's neighbourhood in the
+ * graph and an outline of its sections (under the sheet on narrow ones, where
+ * the folded contents slip stands in for the outline); under it, a few cards
+ * to keep reading. Every part off the sheet appears only when it has
+ * something to show.
  *
  * Shared by the public note route and the owner's draft preview.
  */
@@ -79,9 +82,14 @@ const related = getRelatedNotes(document, index, { limit: 4 });
 // a frame says nothing.
 const neighbourhood = deriveNoteGraph(index, document.id);
 const showGraph = neighbourhood.nodes.length > 1;
+
+// The sidebar's outline: two sections are already worth a map. On narrow
+// screens it hides and the folded contents slip on the sheet stands in.
+const showOutline = rendered.headings.length >= 2;
+const hasAside = showGraph || showOutline;
 ---
 
-<div class="note-reading">
+<div class:list={['note-reading', hasAside && 'note-reading--aside']}>
   <div class="notes-bar">
     {
       trail.length > 0 && (
@@ -185,20 +193,47 @@ const showGraph = neighbourhood.nodes.length > 1;
   </article>
 
   {
-    showGraph && (
-      <section class="note-nearby" aria-labelledby="note-nearby-heading">
-        <h2 class="notes-label" id="note-nearby-heading">
-          nearby
-        </h2>
-        <div class="notes-slip note-nearby__graph">
-          <InteractiveGraph
-            client:visible
-            data={neighbourhood}
-            globalData={deriveNoteGraph(index)}
-            currentId={document.id}
-          />
-        </div>
-      </section>
+    hasAside && (
+      <aside class="note-aside" aria-label="Around this note">
+        {showGraph && (
+          <section class="note-nearby" aria-labelledby="note-nearby-heading">
+            <h2 class="notes-label" id="note-nearby-heading">
+              nearby
+            </h2>
+            <div class="notes-slip note-nearby__graph">
+              <InteractiveGraph
+                client:visible
+                data={neighbourhood}
+                globalData={deriveNoteGraph(index)}
+                currentId={document.id}
+              />
+            </div>
+          </section>
+        )}
+        {showOutline && (
+          <section class="note-outline">
+            <h2 class="notes-label" id="note-outline-heading">
+              on this page
+            </h2>
+            <nav
+              class="note-outline__scroll"
+              aria-labelledby="note-outline-heading"
+              data-toc-spy
+              data-toc-follow
+            >
+              <ol class="note-outline__list" role="list">
+                {rendered.headings.map((heading) => (
+                  <li
+                    class={`note-outline__item note-outline__item--depth-${heading.depth}`}
+                  >
+                    <a href={`#${heading.id}`}>{heading.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </section>
+        )}
+      </aside>
     )
   }
 
