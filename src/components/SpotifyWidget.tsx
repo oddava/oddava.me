@@ -88,8 +88,9 @@ export default function SpotifyWidget() {
   const hasDuration = typeof durationMs === 'number' && durationMs > 0;
   const ratio = playbackRatio(currentProgress, durationMs);
   const cover = albumImageUrl && albumImageUrl !== failedAlbum;
-  // Re-keys the text and the orbit, so a new track rises in and its ring
-  // starts from the top instead of sweeping backwards from the old position.
+  // Re-keys the text, the snapshot and the wave, so a new track rises in,
+  // its sticker is stuck on again, and its wave starts from the left instead
+  // of sliding backwards from the old position.
   const trackKey = `${songUrl ?? ''}\n${title ?? ''}\n${artist ?? ''}`;
   // Changes only with the track, so the live region stays silent across
   // progress ticks and repeated polls of the same song.
@@ -134,19 +135,21 @@ export default function SpotifyWidget() {
         className={`listening is-${renderState}${isMinimized ? ' is-minimized' : ''}`}
       >
         <div className="listening__card">
-          <Moon
+          <Snapshot
             key={trackKey}
             cover={cover ? albumImageUrl : undefined}
             onCoverError={() => setFailedAlbum(albumImageUrl)}
-            ratio={hasDuration ? ratio : undefined}
           />
 
           <div className="listening__body" id={BODY_ID} inert={isMinimized}>
             <div className="listening__text" key={trackKey}>
-              <p
-                className={`listening__eyebrow${hasDuration ? ' is-timed' : ''}`}
-              >
-                <span className="listening__label">listening</span>
+              <p className="listening__eyebrow">
+                <span className="listening__label">now playing</span>
+                <span className="listening__bars" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
                 {hasDuration && (
                   <span className="listening__time" aria-hidden="true">
                     {elapsed}
@@ -175,6 +178,7 @@ export default function SpotifyWidget() {
                 <OutIcon />
               </a>
               {artist && <p className="listening__artist">{artist}</p>}
+              {hasDuration && <Wave ratio={ratio} />}
               {hasDuration && (
                 <progress
                   className="sr-only"
@@ -224,79 +228,100 @@ export default function SpotifyWidget() {
   );
 }
 
-interface MoonProps {
+interface SnapshotProps {
   cover?: string;
   onCoverError: () => void;
-  /** Elapsed share in [0, 1], or undefined when the duration is unknown. */
-  ratio?: number;
 }
 
-/** The cover as a small moon on its own orbit; the star on the ring is time. */
-function Moon({ cover, onCoverError, ratio }: MoonProps) {
-  const timed = ratio !== undefined;
+/**
+ * The cover as a little instant photo taped down at one corner. Folded up,
+ * it gains a note sticker: then the only thing saying "music" at all.
+ */
+function Snapshot({ cover, onCoverError }: SnapshotProps) {
+  return (
+    <span className="listening__art" aria-hidden="true">
+      <span className="listening__photo">
+        {cover ? (
+          <img
+            className="listening__cover"
+            src={cover}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            onLoad={(event) => event.currentTarget.classList.add('is-loaded')}
+            onError={onCoverError}
+          />
+        ) : (
+          // No art: a doodled record on a wash of the ink, so the photo is
+          // never an empty frame.
+          <svg className="listening__glyph" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8.5" />
+            <circle cx="12" cy="12" r="2.8" />
+            <path d="M6.9 9.6a5.7 5.7 0 0 1 2.7-2.7" />
+            <circle className="is-fill" cx="12" cy="12" r="0.6" />
+          </svg>
+        )}
+      </span>
+      <span className="listening__tape" />
+      <svg className="listening__note" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="9" />
+        <path d="M10.6 13.4V5.2c.4 1.9 3.5 2.3 2.9 5" />
+        <ellipse
+          cx="8.4"
+          cy="13.6"
+          rx="2.4"
+          ry="1.85"
+          transform="rotate(-22 8.4 13.6)"
+        />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * Progress as the homepage's tilde, drawn out to the length of the line:
+ * the whole wave in pencil, the part already played gone over in ink.
+ */
+function Wave({ ratio }: { ratio: number }) {
   // A seek back or a repeated track keeps the key, so the 1s glide would
-  // run the star the long way round; jump instead, then glide again.
-  const previousRatioRef = useRef(ratio ?? 0);
-  const rewinding = (ratio ?? 0) < previousRatioRef.current;
+  // run the ink backwards; jump instead, then glide again.
+  const previousRatioRef = useRef(ratio);
+  const rewinding = ratio < previousRatioRef.current;
   useEffect(() => {
-    previousRatioRef.current = ratio ?? 0;
+    previousRatioRef.current = ratio;
   }, [ratio]);
 
   return (
-    <span className="listening__moon" aria-hidden="true">
-      {cover ? (
-        <img
-          className="listening__cover"
-          src={cover}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          onLoad={(event) => event.currentTarget.classList.add('is-loaded')}
-          onError={onCoverError}
-        />
-      ) : (
-        <svg className="listening__glyph" viewBox="0 0 56 56">
-          <circle cx="28" cy="28" r="20" />
-          <path d="M31 17V35Q30 40 25 38.5Q21 37 23.5 34Q25.5 31.5 29 33V19.5L37 17.5" />
-        </svg>
-      )}
-      <svg
-        className={`listening__orbit${timed ? '' : ' is-untimed'}${rewinding ? ' is-rewinding' : ''}`}
-        viewBox="0 0 56 56"
-      >
-        <path className="listening__echo" d="M2.5 38A26 26 0 0 1 38 2.5" />
-        <circle
-          className="listening__track"
-          cx="28"
-          cy="28"
-          r="25.5"
-          pathLength="100"
-          transform="rotate(-90 28 28)"
-        />
-        {timed && (
-          <circle
-            className="listening__elapsed"
-            cx="28"
-            cy="28"
-            r="25.5"
-            pathLength="100"
-            stroke-dasharray={`${ratio * 100} 100`}
-            transform="rotate(-90 28 28)"
-          />
-        )}
-        {timed && (
-          <g
-            className="listening__star-orbit"
-            style={{ transform: `rotate(${ratio * 360}deg)` }}
-          >
-            <path
-              className="listening__star"
-              d="M28-2Q28.9 1.6 32.5 2.5Q28.9 3.4 28 7Q27.1 3.4 23.5 2.5Q27.1 1.6 28-2Z"
-            />
-          </g>
-        )}
-      </svg>
+    <span
+      className={`listening__wave${rewinding ? ' is-rewinding' : ''}`}
+      aria-hidden="true"
+      style={{ '--played': ratio } as CSSProperties}
+    >
+      <WaveLine id="listening-wave-pencil" className="listening__pencil" />
+      <WaveLine id="listening-wave-ink" className="listening__ink" />
+      <span className="listening__bead" />
     </span>
+  );
+}
+
+/**
+ * One long swing every 22px, the homepage tilde's proportions, whatever the
+ * line's width: a repeating pattern keeps the stroke's shape steady where a
+ * stretched path would smear it.
+ */
+function WaveLine({ id, className }: { id: string; className: string }) {
+  return (
+    <svg className={className} width="100%" height="100%">
+      <defs>
+        <pattern id={id} width="22" height="10" patternUnits="userSpaceOnUse">
+          {/* The tilde's swing; a flatter one for the phone strip, where a
+              full swing would stand as tall as the type above it. */}
+          <path className="is-full" d="M-11 5Q-5.5 10 0 5T11 5T22 5T33 5" />
+          <path className="is-flat" d="M-11 5Q-5.5 8.6 0 5T11 5T22 5T33 5" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill={`url(#${id})`} />
+    </svg>
   );
 }
 

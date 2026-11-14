@@ -1,42 +1,69 @@
-/* Enter rises in; exit settles out. Matches the delays in
-   useSpotifyRenderState (50ms in, 300ms out). */
+/* Enter: stuck on, dropping in a little tipped and settling flat. Exit:
+   lifted off. Matches the delays in useSpotifyRenderState (50ms in, 300ms
+   out). */
 .listening {
   transition:
-    opacity 420ms ease,
-    transform 520ms var(--listening-ease);
+    opacity 360ms ease,
+    translate 620ms var(--listening-settle),
+    rotate 620ms var(--listening-settle),
+    scale 620ms var(--listening-settle);
 }
 
 .listening.is-entering {
   opacity: 0;
-  transform: translateY(8px);
+  translate: 0 12px;
+  rotate: 3deg;
+  scale: 0.94;
   transition: none;
 }
 
 .listening.is-exiting {
   opacity: 0;
-  transform: translateY(4px);
+  translate: 0 6px;
+  rotate: -2deg;
+  scale: 0.97;
   transition:
     opacity 240ms ease-in,
-    transform 240ms ease-in;
+    translate 240ms ease-in,
+    rotate 240ms ease-in,
+    scale 240ms ease-in;
 }
 
-/* The text and the moon are keyed on the track, so these run on arrival and
-   again on every track change: new words rise, the orbit redraws, and the
-   star flares once, breathes twice, then rests (an even count ends where it
-   began). Flare and breaths together stay within five seconds, so nothing
+/* The text and the snapshot are keyed on the track, so these run on arrival
+   and again on every track change: the new photo is taped down, new words
+   rise, the wave draws in, the note sticker is slapped on and wiggles
+   twice, and the bars bop a few times, then everything rests (even counts
+   end where they began). All of it is over within five seconds, so nothing
    here moves on its own for longer than that. */
 .listening__text {
   animation: listening-rise 460ms var(--listening-ease) both;
 }
 
-.listening__orbit:not(.is-untimed) .listening__track {
-  animation: listening-draw 1100ms var(--listening-ease) 80ms both;
+/* The tape comes down from just above and is pressed flat. */
+.listening__tape {
+  animation: listening-press 560ms var(--listening-settle) 240ms both;
 }
 
-.listening__star {
+.listening__wave {
+  animation: listening-draw 900ms var(--listening-ease) 120ms both;
+}
+
+.listening__note {
   animation:
-    listening-flare 900ms var(--listening-ease) both,
-    listening-breathe 1.8s ease-in-out 900ms 2 alternate;
+    listening-slap 640ms var(--listening-settle) 200ms both,
+    listening-wiggle 260ms ease-in-out 1100ms 4 alternate;
+}
+
+.listening__bars i {
+  animation: listening-bop 420ms ease-in-out 6 alternate both;
+}
+
+.listening__bars i:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.listening__bars i:nth-child(3) {
+  animation-delay: 280ms;
 }
 
 @keyframes listening-rise {
@@ -46,39 +73,60 @@
   }
 }
 
-@keyframes listening-draw {
+@keyframes listening-press {
   from {
-    stroke-dashoffset: 100;
+    opacity: 0;
+    transform: translate(-4px, -5px) scale(1.25);
+  }
+
+  40% {
+    opacity: 1;
   }
 }
 
-@keyframes listening-flare {
-  0% {
-    opacity: 0;
-    transform: scale(0.2);
+@keyframes listening-draw {
+  from {
+    clip-path: inset(-8px 100% -8px -8px);
   }
 
-  55% {
+  to {
+    clip-path: inset(-8px);
+  }
+}
+
+@keyframes listening-slap {
+  0% {
+    opacity: 0;
+    transform: scale(1.8) rotate(-30deg);
+  }
+
+  60% {
     opacity: 1;
-    transform: scale(1.3);
   }
 
   100% {
-    transform: scale(1);
+    transform: none;
   }
 }
 
-@keyframes listening-breathe {
+@keyframes listening-wiggle {
   to {
-    opacity: 0.6;
-    transform: scale(0.82);
+    transform: rotate(-14deg);
+  }
+}
+
+@keyframes listening-bop {
+  to {
+    transform: scaleY(0.35);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .listening__text,
-  .listening__track,
-  .listening__star {
+  .listening__tape,
+  .listening__wave,
+  .listening__note,
+  .listening__bars i {
     animation: none !important;
   }
 

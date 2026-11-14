@@ -34,10 +34,10 @@ test('names the track and where its link goes', async ({ page }) => {
       name: 'Q by Siinamota — open on Spotify (new tab)',
     }),
   ).toHaveAttribute('href', track.songUrl);
-  await expect(page.locator('.listening__label')).toHaveText('listening');
+  await expect(page.locator('.listening__label')).toHaveText('now playing');
 });
 
-test('minimizing closes the pill into a circle and hands focus over', async ({
+test('minimizing folds the card into a round sticker and hands focus over', async ({
   page,
   isMobile,
 }) => {
@@ -85,28 +85,35 @@ test('a quick click expands the circle without leaving it in drag mode', async (
   expect(after.x).toBe(before.x);
 });
 
-// The star's longest-running animation, measured from the element itself.
-const starPulse = (page: Page) =>
-  page.locator('.listening__star').evaluate((star) =>
-    star.getAnimations().map((animation) => {
-      const timing = animation.effect!.getComputedTiming();
-      return {
-        end: Number(timing.endTime),
-        current: Number(animation.currentTime),
-      };
-    }),
+// Every flourish the widget runs on its own (the text rising, the wave
+// drawing in, the note sticker's slap and wiggle, the bars' bop), measured
+// from the elements themselves. Transitions are left out: they only answer
+// a change (a progress tick, a hover) and are not motion of its own.
+const flourishes = (page: Page) =>
+  page.locator('.listening').evaluate((widget) =>
+    widget
+      .getAnimations({ subtree: true })
+      .filter((animation) => animation instanceof CSSAnimation)
+      .map((animation) => {
+        const timing = animation.effect!.getComputedTiming();
+        return {
+          name: (animation as CSSAnimation).animationName,
+          end: Number(timing.endTime),
+          current: Number(animation.currentTime),
+        };
+      }),
   );
 
-test('the star pulses for five seconds at most, then rests', async ({
+test('the flourishes last five seconds at most, then rest', async ({
   page,
 }) => {
   await open(page, false);
-  const pulses = await starPulse(page);
-  expect(pulses.length).toBeGreaterThan(0);
-  for (const pulse of pulses) expect(pulse.end).toBeLessThanOrEqual(5000);
+  const runs = await flourishes(page);
+  expect(runs.length).toBeGreaterThan(0);
+  for (const run of runs) expect(run.end).toBeLessThanOrEqual(5000);
 });
 
-test('a new track pulses the star again within the same five seconds', async ({
+test('a new track plays them again within the same five seconds', async ({
   page,
 }) => {
   let polls = 0;
@@ -126,17 +133,17 @@ test('a new track pulses the star again within the same five seconds', async ({
   await expect(page.locator('.listening__card')).toContainText('Next', {
     timeout: 12_000,
   });
-  const pulses = await starPulse(page);
-  expect(pulses.length).toBeGreaterThan(0);
-  for (const pulse of pulses) {
-    expect(pulse.end).toBeLessThanOrEqual(5000);
-    // A fresh activation, not the first track's pulse carried over.
-    expect(pulse.current).toBeLessThan(5000);
+  const runs = await flourishes(page);
+  expect(runs.length).toBeGreaterThan(0);
+  for (const run of runs) {
+    expect(run.end).toBeLessThanOrEqual(5000);
+    // A fresh activation, not the first track's carried over.
+    expect(run.current).toBeLessThan(5000);
   }
 });
 
-test('reduced motion keeps the star still', async ({ page }) => {
+test('reduced motion keeps everything still', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, false);
-  expect(await starPulse(page)).toEqual([]);
+  expect(await flourishes(page)).toEqual([]);
 });
