@@ -7,10 +7,20 @@ and still uses its session cookie. Renames and deletes made here do not show
 up in Studio's file tree: a renamed note is just the note at its new path, and
 a deleted note is in the trash, not the garden.
 
-The API is off until `NOTES_API_TOKEN` is set. Every route then answers
-`503` with `{"code":"notes_api_disabled"}`. A placeholder such as
-`your_notes_api_token` counts as unset, same as the other secrets in
-`.env.example`.
+The API is off until `NOTES_API_TOKEN` or `NOTES_AGENT_TOKEN` is set. Until
+then every route answers `503` with `{"code":"notes_api_disabled"}`. A
+placeholder such as `your_notes_api_token` counts as unset, same as the other
+secrets in `.env.example`.
+
+There are two credentials, one per kind of client, so each can be rotated or
+revoked without touching the other:
+
+| Secret              | Client   | Can do                                                                                  |
+| ------------------- | -------- | --------------------------------------------------------------------------------------- |
+| `NOTES_API_TOKEN`   | `plugin` | Everything on this page.                                                                |
+| `NOTES_AGENT_TOKEN` | `agent`  | Read, create, update, upload images. Delete, move, restore only notes under `megumin/`. |
+
+See [The agent token](#the-agent-token).
 
 ## Set the token
 
@@ -31,6 +41,16 @@ Wrangler prompts for the value so it does not land in the shell history.
 Setting the secret redeploys the Worker. Do not commit the value, and do not
 reuse `ADMIN_PANEL_TOKEN`. A leaked plugin token should not also open Studio.
 
+The agent token is set the same way, with its own value:
+
+```bash
+pnpm exec wrangler secret put NOTES_AGENT_TOKEN
+```
+
+To revoke it, run `pnpm exec wrangler secret delete NOTES_AGENT_TOKEN`. The
+plugin keeps working. Do not give both secrets the same value: the server
+checks the plugin token first, so that value would have full access.
+
 The API also needs the usual note store (Redis) and `COMMUNITY_SIGNING_SECRET`.
 Rate limiting signs the client IP with that secret, so a missing or
 placeholder signing secret makes requests fail with `503` even when the
@@ -38,10 +58,10 @@ bearer token is right.
 
 ## Authentication
 
-Send the token on every request:
+Send a token on every request:
 
 ```
-Authorization: Bearer <NOTES_API_TOKEN>
+Authorization: Bearer <NOTES_API_TOKEN or NOTES_AGENT_TOKEN>
 ```
 
 There is no cookie and no same-origin check on these routes. Obsidian and a
@@ -54,11 +74,44 @@ those routes.
 
 A missing or wrong token is `401` with `{"code":"unauthorized"}`. The two
 cases use the same body. The comparison hashes both strings and then compares
-the digests in constant time, so the secret's length is not leaked by how
-fast the `401` comes back.
+the digests in constant time, against every configured token, so neither the
+secret's length nor which token a guess was checked against shows in how fast
+the `401` comes back.
 
-Requests are limited to 120 per minute per client. Over the limit the
-response is `429` with `Retry-After`.
+Requests are limited to 120 per minute per IP address. The limit is checked
+before the token, so the plugin and the agent share it when they run on the
+same machine. Over the limit the response is `429` with `Retry-After`.
+
+Every write (`POST`, `PUT`, `DELETE`) logs one line to the Worker logs with
+the client, method, path, and status, for example
+`[notes-api] agent PUT /api/notes/megumin/hello.md 200`. Bodies and headers
+are never logged. Read them with `pnpm exec wrangler tail` or in the
+Cloudflare dashboard under the Worker's logs.
+
+## The agent token
+
+`NOTES_AGENT_TOKEN` is for an AI assistant that writes on the owner's behalf.
+It uses the same endpoints, bodies, and revision rules as the plugin. The only
+difference is what it may remove:
+
+- It may `GET`, `POST` (create), and `PUT` (update) any note, and upload
+  images.
+- It may `DELETE` and `POST /api/notes/restore` only notes whose path starts
+  with `megumin/`. `megumin.md` itself (the folder page) is outside that.
+- It may `POST /api/notes/move` only when both `from` and `to` are under
+  `megumin/`. Otherwise it could move one of the owner's notes into the
+  folder and then delete it, or take one of its own notes out of the folder
+  it is allowed to clean up.
+
+Anything else is `403` with `code: "forbidden"`, and nothing is written.
+
+Updates use the same revisions as the plugin. When the agent edits a note,
+its revision changes, so the plugin's next sync sees the new revision in
+`GET /api/notes` and pulls the note. A plugin push that still carries the old
+revision gets `409 revision_conflict` instead of overwriting the agent's edit.
+The same holds the other way round. The agent should always send the
+`revision` it last read on `PUT`, so it cannot overwrite an edit it has not
+seen.
 
 ## Notes are still the Redis notes
 
@@ -120,15 +173,16 @@ actions do not record a public redirect or a trash entry.
 
 `GET /api/notes/search` is the public search endpoint. It is not part of this
 API and does not take the bearer token. A note file named `search.md` is
-fetched at `/api/notes/search.md`. The same is true of `move.md` and
-`restore.md`: `POST /api/notes/move` and `POST /api/notes/restore` are actions,
-so those two notes are fetched at `/api/notes/move.md` and
-`/api/notes/restore.md`.
+fetched at `/api/notes/search.md`. The same is true of `move.md`,
+`restore.md`, and `media.md`: `POST /api/notes/move`,
+`POST /api/notes/restore`, and `POST /api/notes/media` are actions, so those
+notes are fetched at `/api/notes/move.md`, `/api/notes/restore.md`, and
+`/api/notes/media.md`.
 
 ## Endpoints
 
-All bodies are JSON. The maximum body size is 1 MB. Responses are
-`Cache-Control: no-store`.
+All bodies are JSON except the image upload, which is multipart. The maximum
+JSON body size is 1 MB. Responses are `Cache-Control: no-store`.
 
 | Method   | Path                 | What it does                                                                |
 | -------- | -------------------- | --------------------------------------------------------------------------- |
@@ -139,6 +193,7 @@ All bodies are JSON. The maximum body size is 1 MB. Responses are
 | `DELETE` | `/api/notes/<path>`  | Soft-delete that note. The file leaves the garden and is kept in the trash. |
 | `POST`   | `/api/notes/move`    | Rename a note. The old public URL redirects to the new one.                 |
 | `POST`   | `/api/notes/restore` | Put a trashed note back at its path.                                        |
+| `POST`   | `/api/notes/media`   | Upload an image. Returns the URL to use in a note's Markdown.               |
 
 `revision` is the version. It changes on every successful write. Send it back
 on update when you have it. If the stored revision is different, nothing is
@@ -298,6 +353,43 @@ or the `revision` from the delete response) is the one to send. If that file
 name was taken by another note while this one was in the trash, restore
 returns `409` `slug_exists` and the trash entry stays.
 
+Upload an image:
+
+```bash
+curl -s https://oddava.me/api/notes/media \
+  -H "Authorization: Bearer $NOTES_AGENT_TOKEN" \
+  -F "file=@night-sky.png" \
+  --form-string "note=megumin/night-sky.md"
+```
+
+```json
+{
+  "media": {
+    "url": "/images/notes/night-sky/night-sky-6b1f2c3e-0d4a-4f7b-9a51-2c8e7d1f0a93.png",
+    "type": "image/png",
+    "bytes": 48213,
+    "markdown": "![](/images/notes/night-sky/night-sky-6b1f2c3e-0d4a-4f7b-9a51-2c8e7d1f0a93.png)"
+  }
+}
+```
+
+- `file` (required) is the image. Its type comes from its first bytes, not
+  its name or `Content-Type`: PNG, JPEG, WebP, and GIF are accepted. SVG is
+  refused, because an SVG can carry script. Images are limited to 5 MB.
+- `note` (optional) is the path of the note the image is for. Only its file
+  name is used, as the image's folder, the same way Studio files uploads
+  (`/images/notes/<note-file-name>/...`). The note does not have to exist yet.
+  Without it the image goes under `/images/notes/uploads/`.
+- The stored name is the upload's name, lowercased and kebab-cased, plus a
+  random UUID. A URL never changes what it points at, so it is cached for a
+  year.
+
+`201` returns the URL. Put it in the note as ordinary Markdown,
+`![a short description](/images/notes/...)`, and save the note. The upload is
+not attached to the note in any other way, and deleting the note does not
+delete the image. The URL is root-relative and works on both `oddava.me` and
+`notes.oddava.me`.
+
 A sync pass that will not clobber Studio:
 
 1. `GET /api/notes` and compare each `revision` with the one you stored last time. `deleted` is the trash, separate from `notes`.
@@ -307,6 +399,24 @@ A sync pass that will not clobber Studio:
 5. `POST` notes that do not exist on the server yet. On `409` `path_exists`, the server already has that path; fetch it instead of creating it again.
 6. A rename is `POST /api/notes/move`, not a create at the new path. Remember the new revision and the new path. `409` `moved` means follow `location`.
 7. A delete is `DELETE`, not something the next pull should recreate. `410` `gone` and `409` `deleted` both mean the note is in the trash. `POST /api/notes/restore` brings it back.
+
+## What Markdown renders
+
+Notes are rendered by `src/lib/garden/render.ts` (marked, GitHub-flavored,
+single newlines kept as line breaks). For images and diagrams:
+
+- `![alt](/images/notes/...)` is the way to show an image. Upload it first.
+- `![alt](https://...)` renders, loaded from the other site by each reader's
+  browser. It breaks if that site moves the file. Prefer uploading.
+- `![alt](data:image/png;base64,...)` renders, but the bytes live inside the
+  note, count toward the 1 MB body limit, and are sent on every page view.
+  Prefer uploading.
+- `![[file.png]]` (an Obsidian embed) is not supported. It renders as a `!`
+  followed by a broken wiki link. Upload the file and use `![]()` instead.
+- A ` ```mermaid ` block renders as a plain code block showing its source.
+  There is no diagram renderer. For a diagram, render it to PNG and upload it.
+- Raw HTML in the Markdown is passed through. The page's CSP blocks inline
+  scripts, inline event handlers, and inline styles, so stick to Markdown.
 
 ## Errors
 
@@ -318,7 +428,10 @@ A sync pass that will not clobber Studio:
 | `400`  | `invalid_request`           | The body is not a JSON object, or a move's destination is the source path.      |
 | `400`  | `root_entry`                | Move, delete, or restore of the Notes root (`index.md`).                        |
 | `400`  | `validation_failed`         | Frontmatter does not match the note schema. `issues` lists the fields.          |
+| `400`  | `missing_file`              | Image upload without a `file` field.                                            |
+| `400`  | `invalid_media`             | The upload is not a PNG, JPEG, WebP, or GIF (judged by its bytes).              |
 | `401`  | `unauthorized`              | Missing or wrong bearer token.                                                  |
+| `403`  | `forbidden`                 | Agent token deleting, moving, or restoring a note outside `megumin/`.           |
 | `404`  | `not_found`                 | No live note, no redirect, and nothing in the trash at that path.               |
 | `405`  | `method_not_allowed`        | A method this URL does not implement. `Allow` lists the ones it does.           |
 | `409`  | `path_exists`               | Create, move, or restore, but that path is already a live note.                 |
@@ -328,9 +441,9 @@ A sync pass that will not clobber Studio:
 | `409`  | `deleted`                   | A trashed note still holds that path. Restore it, or choose another path.       |
 | `409`  | `folder_not_empty`          | That folder page still has notes inside the folder.                             |
 | `410`  | `gone`                      | The note is in the trash. `note` includes `deletedAt` and, on `GET`, `content`. |
-| `413`  | `payload_too_large`         | Body is over 1 MB.                                                              |
+| `413`  | `payload_too_large`         | Body is over 1 MB, or an image is over 5 MB.                                    |
 | `429`  | `rate_limited`              | More than 120 requests in a minute.                                             |
-| `503`  | `notes_api_disabled`        | `NOTES_API_TOKEN` is not set.                                                   |
+| `503`  | `notes_api_disabled`        | Neither `NOTES_API_TOKEN` nor `NOTES_AGENT_TOKEN` is set.                       |
 | `503`  | `content_store_unavailable` | Redis is not configured or could not be reached.                                |
 | `503`  | `content_busy`              | Another save holds the content lock. `Retry-After: 1`.                          |
 | `503`  | `rate_limit_unavailable`    | Rate limiting could not run (usually the signing secret or Redis).              |

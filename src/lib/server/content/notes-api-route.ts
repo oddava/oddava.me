@@ -12,15 +12,18 @@ import {
   handleReadNote,
   handleRestoreNote,
   handleUpdateNote,
+  handleUploadNoteImage,
   MAX_NOTES_API_BYTES,
+  MAX_NOTES_MEDIA_REQUEST_BYTES,
   notesMethodNotAllowed,
   pathFromParams,
 } from './notes-api';
 import {
+  authenticateNotesApi,
   isNotesApiEnabled,
   notesApiDisabledResponse,
-  notesApiUnauthorized,
 } from './notes-api-auth';
+import type { NotesApiClient } from './notes-api-auth';
 import {
   ContentMutationBusyError,
   createRedisContentProvider,
@@ -47,7 +50,9 @@ const COLLECTION_METHODS = ['GET', 'POST'];
 const ENTRY_METHODS = ['GET', 'PUT', 'DELETE'];
 const ACTION_METHODS = ['POST'];
 
-async function rejectIfNotAllowed(request: Request): Promise<Response | null> {
+async function authenticate(
+  request: Request,
+): Promise<{ client: NotesApiClient } | Response> {
   // Checked before the bearer compare so a copied `.env.example` (or a
   // forgotten `wrangler secret put`) cannot be mistaken for a bad token.
   if (!isNotesApiEnabled()) return notesApiDisabledResponse();
@@ -60,7 +65,7 @@ async function rejectIfNotAllowed(request: Request): Promise<Response | null> {
   );
   if (rateLimitError) return rateLimitError;
 
-  return notesApiUnauthorized(request);
+  return authenticateNotesApi(request);
 }
 
 async function withStore(
@@ -94,22 +99,53 @@ async function withStore(
   });
 }
 
+/**
+ * One line per write, so the Worker logs say which client changed what. Only
+ * the method, the URL path, and the status: never a body or a header.
+ */
+function logWrite(
+  client: NotesApiClient,
+  request: Request,
+  response: Response,
+): void {
+  console.info(
+    `[notes-api] ${client} ${request.method} ${new URL(request.url).pathname} ${response.status}`,
+  );
+}
+
+interface DispatchOptions {
+  allowed: readonly string[];
+  mutation: boolean;
+  /** Body cap and its 413 message. JSON routes take 1 MB. */
+  maxBytes?: number;
+  tooLarge?: string;
+}
+
 async function dispatch(
   request: Request,
-  allowed: readonly string[],
-  mutation: boolean,
-  run: (provider: NotesStore, request: Request) => Promise<Response>,
+  options: DispatchOptions,
+  run: (
+    provider: NotesStore,
+    request: Request,
+    client: NotesApiClient,
+  ) => Promise<Response>,
 ): Promise<Response> {
-  const denied = await rejectIfNotAllowed(request);
-  if (denied) return denied;
-  if (!allowed.includes(request.method)) return notesMethodNotAllowed(allowed);
+  const auth = await authenticate(request);
+  if (auth instanceof Response) return auth;
+  const { client } = auth;
+  if (!options.allowed.includes(request.method)) {
+    return notesMethodNotAllowed(options.allowed);
+  }
 
+  const maxBytes = options.maxBytes ?? MAX_NOTES_API_BYTES;
   let bounded = request;
   try {
-    bounded = await boundedRequest(request, MAX_NOTES_API_BYTES);
-    return await withStore(bounded, mutation, (provider) =>
-      run(provider, bounded),
+    bounded = await boundedRequest(request, maxBytes);
+    const response = await withStore(bounded, options.mutation, (provider) =>
+      run(provider, bounded, client),
     );
+    if (options.mutation) logWrite(client, request, response);
+    return response;
   } catch (error) {
     if (
       error instanceof RequestBodyError &&
@@ -117,7 +153,7 @@ async function dispatch(
     ) {
       return json(
         {
-          error: 'Notes API requests are limited to 1 MB.',
+          error: options.tooLarge ?? 'Notes API requests are limited to 1 MB.',
           code: 'payload_too_large',
         },
         { status: 413 },
@@ -143,8 +179,7 @@ export function notesCollectionRoute(context: APIContext): Promise<Response> {
   const mutation = context.request.method === 'POST';
   return dispatch(
     context.request,
-    COLLECTION_METHODS,
-    mutation,
+    { allowed: COLLECTION_METHODS, mutation },
     (provider, request) =>
       request.method === 'GET'
         ? handleListNotes(provider)
@@ -163,12 +198,11 @@ export function notesEntryRoute(context: APIContext): Promise<Response> {
   const mutation = method === 'PUT' || method === 'DELETE';
   return dispatch(
     context.request,
-    ENTRY_METHODS,
-    mutation,
-    (provider, request) => {
+    { allowed: ENTRY_METHODS, mutation },
+    (provider, request, client) => {
       if (request.method === 'GET') return handleReadNote(provider, path);
       if (request.method === 'DELETE')
-        return handleDeleteNote(provider, path, request);
+        return handleDeleteNote(provider, path, request, client);
       return handleUpdateNote(provider, path, request);
     },
   );
@@ -176,14 +210,35 @@ export function notesEntryRoute(context: APIContext): Promise<Response> {
 
 /** `POST /api/notes/move` renames a note and records a public redirect. */
 export function notesMoveRoute(context: APIContext): Promise<Response> {
-  return dispatch(context.request, ACTION_METHODS, true, (provider, request) =>
-    handleMoveNote(provider, request),
+  return dispatch(
+    context.request,
+    { allowed: ACTION_METHODS, mutation: true },
+    (provider, request, client) => handleMoveNote(provider, request, client),
   );
 }
 
 /** `POST /api/notes/restore` puts a soft-deleted note back at its path. */
 export function notesRestoreRoute(context: APIContext): Promise<Response> {
-  return dispatch(context.request, ACTION_METHODS, true, (provider, request) =>
-    handleRestoreNote(provider, request),
+  return dispatch(
+    context.request,
+    { allowed: ACTION_METHODS, mutation: true },
+    (provider, request, client) => handleRestoreNote(provider, request, client),
+  );
+}
+
+/**
+ * `POST /api/notes/media` stores one image (multipart field `file`) the way
+ * Studio's upload does and answers with the URL to put in a note's Markdown.
+ */
+export function notesMediaRoute(context: APIContext): Promise<Response> {
+  return dispatch(
+    context.request,
+    {
+      allowed: ACTION_METHODS,
+      mutation: true,
+      maxBytes: MAX_NOTES_MEDIA_REQUEST_BYTES,
+      tooLarge: 'Images are limited to 5 MB.',
+    },
+    (provider, request) => handleUploadNoteImage(provider, request),
   );
 }

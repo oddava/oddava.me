@@ -7,9 +7,13 @@ import {
 import { isValidSlug, sanitizeFilename } from './paths';
 import { readRedisBinaryFile } from './redis-store';
 import { getContentCollection, NOTES_COLLECTION } from './registry';
-import type { ContentProvider } from './types';
+import type {
+  ContentCollectionDefinition,
+  ContentProvider,
+  ContentWriteResult,
+} from './types';
 
-const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+export const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
 
 const IMAGE_EXTENSIONS = {
   'image/gif': '.gif',
@@ -47,6 +51,85 @@ export function readNoteMedia(path: string): Promise<Uint8Array | null> {
   return readRedisBinaryFile(`${NOTES_COLLECTION.mediaDir}/${path}`);
 }
 
+export type NoteImageUpload =
+  | {
+      ok: true;
+      url: string;
+      path: string;
+      bytes: number;
+      type: SupportedImageType;
+      result: ContentWriteResult;
+    }
+  | {
+      ok: false;
+      status: 400 | 413;
+      code: 'missing_file' | 'payload_too_large' | 'invalid_media';
+      error: string;
+    };
+
+/**
+ * Validates and stores one uploaded image. Shared by Studio's upload route and
+ * the notes API so both write the same keys under the same rules: the type
+ * comes from the file's magic bytes (PNG, JPEG, WebP, GIF; never SVG, which
+ * can carry script), the size is capped at {@link MEDIA_MAX_BYTES}, and the
+ * stored name gets a random UUID suffix so the public URL is immutable.
+ *
+ * `folderHint` is the note the image belongs to (its slug); anything that is
+ * not a valid slug files the image under `uploads/`.
+ */
+export async function storeNoteImage(
+  store: ContentProvider,
+  collection: ContentCollectionDefinition,
+  file: FormDataEntryValue | null,
+  folderHint: string,
+): Promise<NoteImageUpload> {
+  if (!(file instanceof File)) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'missing_file',
+      error: 'Missing upload file.',
+    };
+  }
+  if (file.size > MEDIA_MAX_BYTES) {
+    return {
+      ok: false,
+      status: 413,
+      code: 'payload_too_large',
+      error: 'Image upload is too large.',
+    };
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const imageType = detectImageType(bytes);
+  if (!imageType) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'invalid_media',
+      error: 'Unsupported or invalid image.',
+    };
+  }
+
+  const folder = isValidSlug(folderHint) ? folderHint : 'uploads';
+  const filename = sanitizeFilename(file.name, IMAGE_EXTENSIONS[imageType]);
+  const path = `${collection.mediaDir}/${folder}/${filename}`;
+  const url = `${collection.mediaPublicPath}/${folder}/${filename}`;
+  const result = await store.writeBinaryFile(
+    path,
+    bytes,
+    `content: upload media ${url}`,
+  );
+  return {
+    ok: true,
+    url,
+    path,
+    bytes: bytes.byteLength,
+    type: imageType,
+    result,
+  };
+}
+
 // Upload only. Studio has no media browser or delete affordance, and the
 // public read path is `/images/notes/[...path]`, which reads Redis directly.
 //
@@ -80,42 +163,26 @@ export async function handleContentMedia(
   );
   if (!collection) return missingCollection();
 
-  const file = formData.get('file');
-  if (!(file instanceof File)) {
-    return adminJson(
-      { error: 'Missing upload file.', code: 'missing_file' },
-      { status: 400 },
-    );
-  }
-  if (file.size > MEDIA_MAX_BYTES) {
-    return adminJson(
-      { error: 'Image upload is too large.', code: 'payload_too_large' },
-      { status: 413 },
-    );
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const imageType = detectImageType(bytes);
-  if (!imageType) {
-    return adminJson(
-      { error: 'Unsupported or invalid image.', code: 'invalid_media' },
-      { status: 400 },
-    );
-  }
-
-  const entryId = String(formData.get('entryId') ?? '').trim();
-  const folder = isValidSlug(entryId) ? entryId : 'uploads';
-  const filename = sanitizeFilename(file.name, IMAGE_EXTENSIONS[imageType]);
-  const path = `${collection.mediaDir}/${folder}/${filename}`;
-  const url = `${collection.mediaPublicPath}/${folder}/${filename}`;
-
   try {
-    const result = await store.writeBinaryFile(
-      path,
-      bytes,
-      `content: upload media ${url}`,
+    const upload = await storeNoteImage(
+      store,
+      collection,
+      formData.get('file'),
+      String(formData.get('entryId') ?? '').trim(),
     );
-    return adminJson({ media: { url, path }, result }, { status: 201 });
+    if (!upload.ok) {
+      return adminJson(
+        { error: upload.error, code: upload.code },
+        { status: upload.status },
+      );
+    }
+    return adminJson(
+      {
+        media: { url: upload.url, path: upload.path },
+        result: upload.result,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     return contentConflictResponse(error);
   }

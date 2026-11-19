@@ -11,6 +11,7 @@ export {
 export {
   notesCollectionRoute,
   notesEntryRoute,
+  notesMediaRoute,
   notesMoveRoute,
   notesRestoreRoute,
 } from './content/notes-api-route';

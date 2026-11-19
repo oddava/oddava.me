@@ -32,6 +32,7 @@ import type {
 } from '../src/lib/server/content/types';
 
 const TOKEN = 'notes-sync-token';
+const AGENT_TOKEN = 'notes-agent-token';
 const ADMIN_TOKEN = 'admin-panel-token';
 const SIGNING_SECRET = 'test-signing-secret-with-enough-entropy';
 const ORIGIN = 'https://oddava.me';
@@ -195,6 +196,17 @@ class MemoryContentProvider {
     const file = this.nextFile(path, content);
     this.files.set(path, file);
     return { message, revision: file.revision };
+  }
+
+  readonly binaries = new Map<string, Uint8Array>();
+
+  async writeBinaryFile(
+    path: string,
+    content: Uint8Array,
+    message: string,
+  ): Promise<ContentWriteResult> {
+    this.binaries.set(path, content);
+    return { message };
   }
 
   asProvider(): NotesStore {
@@ -1534,6 +1546,448 @@ describe('notes API route', () => {
       code: 'notes_api_disabled',
     });
     expect(lock).not.toHaveBeenCalled();
+  });
+});
+
+describe('notes API agent token', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  function installStore() {
+    const provider = new MemoryContentProvider();
+    const lock = vi.fn(async (operation: () => Promise<unknown>) =>
+      operation(),
+    );
+    vi.doMock('../src/lib/server/core/rate-limit', () => ({
+      enforceRedisRateLimit: vi.fn(async () => null),
+    }));
+    vi.doMock('../src/lib/server/content/redis-store', () => ({
+      ContentMutationBusyError: class extends Error {
+        readonly code = 'content_busy';
+      },
+      createRedisContentProvider: () => provider,
+      hasContentStore: () => true,
+      readStableContentVersion: vi.fn(async () => '1'),
+      withRedisContentMutationLock: lock,
+    }));
+    return { provider, lock };
+  }
+
+  function seed(provider: MemoryContentProvider, relative: string) {
+    const path = `src/content/notes/${relative}`;
+    provider.files.set(path, {
+      path,
+      content: '# seeded\n',
+      encoding: 'utf8',
+      byteLength: 9,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      revision: `seed-${relative}`,
+    });
+    return path;
+  }
+
+  function useBothTokens() {
+    vi.stubEnv('NOTES_API_TOKEN', TOKEN);
+    vi.stubEnv('NOTES_AGENT_TOKEN', AGENT_TOKEN);
+  }
+
+  async function loadRoutes() {
+    return import('../src/lib/server/content/notes-api-route');
+  }
+
+  it('accepts the plugin token and the agent token, and nothing else', async () => {
+    useBothTokens();
+    vi.stubEnv('ADMIN_PANEL_TOKEN', ADMIN_TOKEN);
+    installStore();
+    const { notesCollectionRoute } = await loadRoutes();
+
+    for (const token of [null, 'not-the-token', ADMIN_TOKEN]) {
+      const response = await notesCollectionRoute(
+        mockContext('GET', '/api/notes', { token }),
+      );
+      expect(response.status).toBe(401);
+      expect(await bodyOf(response)).toMatchObject({ code: 'unauthorized' });
+    }
+    for (const token of [TOKEN, AGENT_TOKEN]) {
+      const response = await notesCollectionRoute(
+        mockContext('GET', '/api/notes', { token }),
+      );
+      expect(response.status).toBe(200);
+    }
+  });
+
+  it('turns the API on for the agent alone when only its token is set', async () => {
+    vi.stubEnv('NOTES_API_TOKEN', '');
+    vi.stubEnv('NOTES_AGENT_TOKEN', AGENT_TOKEN);
+    installStore();
+    const { notesCollectionRoute } = await loadRoutes();
+
+    const agent = await notesCollectionRoute(
+      mockContext('GET', '/api/notes', { token: AGENT_TOKEN }),
+    );
+    expect(agent.status).toBe(200);
+    const plugin = await notesCollectionRoute(
+      mockContext('GET', '/api/notes', { token: TOKEN }),
+    );
+    expect(plugin.status).toBe(401);
+  });
+
+  it('ignores an agent token that is still the example placeholder', async () => {
+    vi.stubEnv('NOTES_API_TOKEN', '');
+    vi.stubEnv('NOTES_AGENT_TOKEN', 'your_notes_agent_token');
+    installStore();
+    const { notesCollectionRoute } = await loadRoutes();
+    const response = await notesCollectionRoute(
+      mockContext('GET', '/api/notes', { token: 'your_notes_agent_token' }),
+    );
+    expect(response.status).toBe(503);
+    expect(await bodyOf(response)).toMatchObject({
+      code: 'notes_api_disabled',
+    });
+  });
+
+  it('lets the agent create and update any note, under the same revision rules', async () => {
+    useBothTokens();
+    const { provider } = installStore();
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { notesCollectionRoute, notesEntryRoute } = await loadRoutes();
+
+    const created = await notesCollectionRoute(
+      mockContext('POST', '/api/notes', {
+        token: AGENT_TOKEN,
+        body: { path: 'megumin/hello.md', content: '# hello\n' },
+      }),
+    );
+    expect(created.status).toBe(201);
+    const revision = ((await bodyOf(created)).note as { revision: string })
+      .revision;
+    expect(info).toHaveBeenCalledWith('[notes-api] agent POST /api/notes 201');
+
+    seed(provider, 'diary/mine.md');
+    const edited = await notesEntryRoute(
+      mockContext('PUT', '/api/notes/diary/mine.md', {
+        token: AGENT_TOKEN,
+        params: { path: 'diary/mine.md' },
+        body: {
+          content: '# mine\n\nagent edit',
+          revision: 'seed-diary/mine.md',
+        },
+      }),
+    );
+    expect(edited.status).toBe(200);
+
+    // The plugin still holds the seed revision; its next push must not
+    // silently overwrite the agent's edit.
+    const stale = await notesEntryRoute(
+      mockContext('PUT', '/api/notes/diary/mine.md', {
+        token: TOKEN,
+        params: { path: 'diary/mine.md' },
+        body: {
+          content: '# mine\n\nplugin edit',
+          revision: 'seed-diary/mine.md',
+        },
+      }),
+    );
+    expect(stale.status).toBe(409);
+    expect(await bodyOf(stale)).toMatchObject({ code: 'revision_conflict' });
+    expect(info).toHaveBeenCalledWith(
+      '[notes-api] plugin PUT /api/notes/diary/mine.md 409',
+    );
+
+    const updated = await notesEntryRoute(
+      mockContext('PUT', '/api/notes/megumin/hello.md', {
+        token: AGENT_TOKEN,
+        params: { path: 'megumin/hello.md' },
+        body: { content: '# hello\n\nagain', revision },
+      }),
+    );
+    expect(updated.status).toBe(200);
+  });
+
+  it('lets the agent delete only inside megumin/', async () => {
+    useBothTokens();
+    const { provider } = installStore();
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { notesEntryRoute } = await loadRoutes();
+    const mine = seed(provider, 'diary/mine.md');
+    seed(provider, 'megumin.md');
+    const scratch = seed(provider, 'megumin/scratch.md');
+
+    for (const path of ['diary/mine.md', 'megumin.md']) {
+      const refused = await notesEntryRoute(
+        mockContext('DELETE', `/api/notes/${path}`, {
+          token: AGENT_TOKEN,
+          params: { path },
+        }),
+      );
+      expect(refused.status).toBe(403);
+      expect(await bodyOf(refused)).toMatchObject({ code: 'forbidden' });
+    }
+    expect(provider.files.has(mine)).toBe(true);
+    expect(provider.tombstones.size).toBe(0);
+
+    const allowed = await notesEntryRoute(
+      mockContext('DELETE', '/api/notes/megumin/scratch.md', {
+        token: AGENT_TOKEN,
+        params: { path: 'megumin/scratch.md' },
+      }),
+    );
+    expect(allowed.status).toBe(200);
+    expect(provider.files.has(scratch)).toBe(false);
+
+    const owner = await notesEntryRoute(
+      mockContext('DELETE', '/api/notes/diary/mine.md', {
+        token: TOKEN,
+        params: { path: 'diary/mine.md' },
+      }),
+    );
+    expect(owner.status).toBe(200);
+  });
+
+  it('keeps the agent from moving notes across the megumin/ boundary or restoring outside it', async () => {
+    useBothTokens();
+    const { provider } = installStore();
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { notesMoveRoute, notesRestoreRoute } = await loadRoutes();
+    const mine = seed(provider, 'diary/mine.md');
+    seed(provider, 'megumin/draft-one.md');
+
+    for (const body of [
+      { from: 'diary/mine.md', to: 'megumin/mine.md' },
+      { from: 'megumin/draft-one.md', to: 'diary/draft-one.md' },
+    ]) {
+      const refused = await notesMoveRoute(
+        mockContext('POST', '/api/notes/move', { token: AGENT_TOKEN, body }),
+      );
+      expect(refused.status).toBe(403);
+    }
+    expect(provider.files.has(mine)).toBe(true);
+
+    const inside = await notesMoveRoute(
+      mockContext('POST', '/api/notes/move', {
+        token: AGENT_TOKEN,
+        body: { from: 'megumin/draft-one.md', to: 'megumin/sub/draft-one.md' },
+      }),
+    );
+    expect(inside.status).toBe(200);
+
+    provider.tombstones.set('diary/gone', {
+      content: '# gone\n',
+      enc: 'utf8',
+      rev: 'r-gone',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      deletedAt: '2026-10-30T00:00:00.000Z',
+      draft: false,
+    });
+    const restore = await notesRestoreRoute(
+      mockContext('POST', '/api/notes/restore', {
+        token: AGENT_TOKEN,
+        body: { path: 'diary/gone.md' },
+      }),
+    );
+    expect(restore.status).toBe(403);
+    expect(provider.tombstones.has('diary/gone')).toBe(true);
+  });
+});
+
+describe('notes API image upload', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  function image(bytes: number[] | Uint8Array, name: string, type: string) {
+    return new File([new Uint8Array(bytes)], name, { type });
+  }
+
+  function uploadContext(
+    form: FormData | string,
+    token: string | null,
+    method = 'POST',
+  ) {
+    const headers = new Headers();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    const url = `${ORIGIN}/api/notes/media`;
+    const init: RequestInit = { method, headers };
+    if (method !== 'GET') {
+      init.body = form;
+      if (typeof form === 'string') headers.set('Content-Type', 'text/plain');
+    }
+    return {
+      request: new Request(url, init),
+      cookies: { get: () => undefined, set: () => {}, delete: () => {} },
+      params: {},
+      url: new URL(url),
+    } as never;
+  }
+
+  function installStore() {
+    const provider = new MemoryContentProvider();
+    const lock = vi.fn(async (operation: () => Promise<unknown>) =>
+      operation(),
+    );
+    vi.doMock('../src/lib/server/core/rate-limit', () => ({
+      enforceRedisRateLimit: vi.fn(async () => null),
+    }));
+    vi.doMock('../src/lib/server/content/redis-store', () => ({
+      ContentMutationBusyError: class extends Error {
+        readonly code = 'content_busy';
+      },
+      createRedisContentProvider: () => provider,
+      hasContentStore: () => true,
+      readStableContentVersion: vi.fn(async () => '1'),
+      withRedisContentMutationLock: lock,
+    }));
+    vi.stubEnv('NOTES_API_TOKEN', TOKEN);
+    vi.stubEnv('NOTES_AGENT_TOKEN', AGENT_TOKEN);
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    return { provider, lock };
+  }
+
+  async function loadRoute() {
+    return (await import('../src/lib/server/content/notes-api-route'))
+      .notesMediaRoute;
+  }
+
+  it('is published at /api/notes/media', async () => {
+    const page = await import('../src/pages/api/notes/media');
+    const route = await import('../src/lib/server/content/notes-api-route');
+    expect(page.POST).toBe(route.notesMediaRoute);
+  });
+
+  it('requires a token', async () => {
+    const { provider, lock } = installStore();
+    const notesMediaRoute = await loadRoute();
+    for (const token of [null, 'wrong']) {
+      const form = new FormData();
+      form.set('file', image([...PNG, 0], 'a.png', 'image/png'));
+      const response = await notesMediaRoute(uploadContext(form, token));
+      expect(response.status).toBe(401);
+    }
+    expect(provider.binaries.size).toBe(0);
+    expect(lock).not.toHaveBeenCalled();
+  });
+
+  it('stores an image from either token where Studio stores its uploads', async () => {
+    const { provider, lock } = installStore();
+    const notesMediaRoute = await loadRoute();
+
+    for (const token of [AGENT_TOKEN, TOKEN]) {
+      const form = new FormData();
+      form.set('file', image([...PNG, 1, 2, 3], 'Sky Diagram.PNG', ''));
+      form.set('note', 'megumin/night-sky.md');
+      const response = await notesMediaRoute(uploadContext(form, token));
+      expect(response.status).toBe(201);
+      const media = (await bodyOf(response)).media as Record<string, unknown>;
+      expect(media.url).toMatch(
+        /^\/images\/notes\/night-sky\/sky-diagram-[0-9a-f-]{36}\.png$/,
+      );
+      expect(media).toMatchObject({
+        type: 'image/png',
+        bytes: 11,
+        markdown: `![](${media.url as string})`,
+      });
+      expect(provider.binaries.get(`public${media.url as string}`)).toEqual(
+        new Uint8Array([...PNG, 1, 2, 3]),
+      );
+    }
+    expect(lock).toHaveBeenCalledTimes(2);
+  });
+
+  it('files an image without a note under uploads/ and types it by its bytes, not its name', async () => {
+    installStore();
+    const notesMediaRoute = await loadRoute();
+    const form = new FormData();
+    form.set('file', image([0xff, 0xd8, 0xff, 0xe0], 'photo.png', 'image/png'));
+    const response = await notesMediaRoute(uploadContext(form, AGENT_TOKEN));
+    expect(response.status).toBe(201);
+    const media = (await bodyOf(response)).media as Record<string, unknown>;
+    expect(media.url).toMatch(/^\/images\/notes\/uploads\/photo-[\w-]+\.jpg$/);
+    expect(media.type).toBe('image/jpeg');
+  });
+
+  it('rejects SVG, text dressed as a PNG, a missing file, and a bad note path', async () => {
+    const { provider } = installStore();
+    const notesMediaRoute = await loadRoute();
+    const svg = new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+    );
+    const text = new TextEncoder().encode('just text');
+
+    for (const file of [
+      image(svg, 'logo.svg', 'image/svg+xml'),
+      image(text, 'fake.png', 'image/png'),
+    ]) {
+      const form = new FormData();
+      form.set('file', file);
+      const response = await notesMediaRoute(uploadContext(form, AGENT_TOKEN));
+      expect(response.status).toBe(400);
+      expect(await bodyOf(response)).toMatchObject({ code: 'invalid_media' });
+    }
+
+    const empty = new FormData();
+    empty.set('note', 'megumin/x.md');
+    const missing = await notesMediaRoute(uploadContext(empty, AGENT_TOKEN));
+    expect(missing.status).toBe(400);
+    expect(await bodyOf(missing)).toMatchObject({ code: 'missing_file' });
+
+    const notMultipart = await notesMediaRoute(
+      uploadContext('not a form', AGENT_TOKEN),
+    );
+    expect(notMultipart.status).toBe(400);
+    expect(await bodyOf(notMultipart)).toMatchObject({
+      code: 'invalid_request',
+    });
+
+    const badNote = new FormData();
+    badNote.set('file', image([...PNG], 'a.png', 'image/png'));
+    badNote.set('note', '../etc/passwd');
+    const invalid = await notesMediaRoute(uploadContext(badNote, AGENT_TOKEN));
+    expect(invalid.status).toBe(400);
+    expect(await bodyOf(invalid)).toMatchObject({ code: 'invalid_path' });
+
+    expect(provider.binaries.size).toBe(0);
+  });
+
+  it('caps an image at 5 MB, and the request a little above that', async () => {
+    const { provider } = installStore();
+    const notesMediaRoute = await loadRoute();
+
+    const justOver = new Uint8Array(5 * 1024 * 1024 + 1);
+    justOver.set(PNG);
+    const form = new FormData();
+    form.set('file', image(justOver, 'big.png', 'image/png'));
+    const tooLarge = await notesMediaRoute(uploadContext(form, AGENT_TOKEN));
+    expect(tooLarge.status).toBe(413);
+    expect(await bodyOf(tooLarge)).toMatchObject({
+      code: 'payload_too_large',
+    });
+
+    const huge = new FormData();
+    huge.set('file', image(new Uint8Array(6 * 1024 * 1024), 'h.png', ''));
+    const refused = await notesMediaRoute(uploadContext(huge, AGENT_TOKEN));
+    expect(refused.status).toBe(413);
+    expect(await bodyOf(refused)).toMatchObject({
+      code: 'payload_too_large',
+      error: 'Images are limited to 5 MB.',
+    });
+    expect(provider.binaries.size).toBe(0);
+  });
+
+  it('answers 405 to anything but POST', async () => {
+    installStore();
+    const notesMediaRoute = await loadRoute();
+    const response = await notesMediaRoute(
+      uploadContext(new FormData(), AGENT_TOKEN, 'GET'),
+    );
+    expect(response.status).toBe(405);
   });
 });
 

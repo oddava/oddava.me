@@ -64,9 +64,13 @@ up in git, and `pnpm notes:migrate` pushes it back if I ever need to restore.
 Studio is the browser editor. `/api/notes` is a separate token API for clients
 that are not a browser (an Obsidian plugin, a CLI). It is off until
 `NOTES_API_TOKEN` is set, and the admin panel token is not accepted there.
+An AI agent gets its own token, `NOTES_AGENT_TOKEN`: it can read, write, and
+upload images, but it can only delete, rename, or restore notes under
+`megumin/`.
 
 ```bash
 pnpm exec wrangler secret put NOTES_API_TOKEN
+pnpm exec wrangler secret put NOTES_AGENT_TOKEN
 ```
 
 Endpoints, curl examples, and how conflicts work are in

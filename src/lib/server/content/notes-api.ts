@@ -7,6 +7,7 @@ import {
   validateFields,
 } from './documents';
 import { methodNotAllowed, missingEntry, validationError } from './http';
+import { MEDIA_MAX_BYTES, storeNoteImage } from './media';
 import {
   followNoteRedirect,
   NoteArchiveError,
@@ -19,6 +20,8 @@ import {
   isValidSlug,
   sourcePath,
 } from './paths';
+import { notesApiMayRemove, outsideAgentScopeResponse } from './notes-api-auth';
+import type { NotesApiClient } from './notes-api-auth';
 import { claimsReservedNoteRoot, NOTES_COLLECTION } from './registry';
 import { parseContentDocument, serializeContentDocument } from './serializers';
 import { ContentConflictError, ContentNotFoundError } from './types';
@@ -30,6 +33,12 @@ import type { ContentSourceFile } from './types';
  * a megabyte is already a very long note.
  */
 export const MAX_NOTES_API_BYTES = 1024 * 1024;
+
+/**
+ * Body cap for `POST /api/notes/media`: the 5 MB image limit plus room for
+ * the multipart boundaries and the small text fields beside the file.
+ */
+export const MAX_NOTES_MEDIA_REQUEST_BYTES = MEDIA_MAX_BYTES + 64 * 1024;
 
 export interface NoteSummary {
   path: string;
@@ -613,6 +622,7 @@ function folderNotEmptyResponse(): Response {
 export async function handleMoveNote(
   provider: NotesStore,
   request: Request,
+  client: NotesApiClient = 'plugin',
 ): Promise<Response> {
   const body = await readWriteBody(request);
   if (isResponse(body)) return body;
@@ -625,6 +635,12 @@ export async function handleMoveNote(
   if (!source || !target) return invalidPath();
   if (isGardenRoot(source) || isGardenRoot(target)) return rootNoteResponse();
   if (source.storePath === target.storePath) return samePathResponse();
+  if (
+    !notesApiMayRemove(client, source.publicPath) ||
+    !notesApiMayRemove(client, target.publicPath)
+  ) {
+    return outsideAgentScopeResponse();
+  }
   if (claimsReservedNoteRoot(target, source)) return reservedPath();
 
   const existing = await provider.readFile(source.storePath);
@@ -710,10 +726,14 @@ export async function handleDeleteNote(
   provider: NotesStore,
   pathParam: string,
   request: Request,
+  client: NotesApiClient = 'plugin',
 ): Promise<Response> {
   const resolved = resolveNotePath(pathParam);
   if (!resolved) return invalidPath();
   if (isGardenRoot(resolved)) return rootNoteResponse();
+  if (!notesApiMayRemove(client, resolved.publicPath)) {
+    return outsideAgentScopeResponse();
+  }
 
   const body = await readOptionalObject(request);
   if (isResponse(body)) return body;
@@ -762,6 +782,7 @@ export async function handleDeleteNote(
 export async function handleRestoreNote(
   provider: NotesStore,
   request: Request,
+  client: NotesApiClient = 'plugin',
 ): Promise<Response> {
   const body = await readOptionalObject(request);
   if (isResponse(body)) return body;
@@ -770,6 +791,9 @@ export async function handleRestoreNote(
   const resolved = resolveNotePath(body.path);
   if (!resolved) return invalidPath();
   if (isGardenRoot(resolved)) return rootNoteResponse();
+  if (!notesApiMayRemove(client, resolved.publicPath)) {
+    return outsideAgentScopeResponse();
+  }
 
   const live = await provider.readFile(resolved.storePath);
   if (live && live.encoding === 'utf8') return conflict('path_exists', live);
@@ -839,6 +863,67 @@ export async function handleRestoreNote(
     }
     return writeError(provider, resolved.storePath, error);
   }
+}
+
+/**
+ * Stores one uploaded image under the same keys Studio uses and answers with
+ * its public URL. The optional `note` field names the note the image is for;
+ * its file name becomes the image's folder, as in Studio. The image is not
+ * tied to the note otherwise: reference the returned `url` in the Markdown.
+ */
+export async function handleUploadNoteImage(
+  provider: NotesStore,
+  request: Request,
+): Promise<Response> {
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json(
+      {
+        error:
+          'Send the image as multipart/form-data with the file in a field named "file".',
+        code: 'invalid_request',
+      },
+      { status: 400 },
+    );
+  }
+
+  const noteField = form.get('note');
+  let folder = '';
+  if (typeof noteField === 'string' && noteField.trim()) {
+    const resolved = resolveNotePath(noteField);
+    if (!resolved) return invalidPath();
+    folder = resolved.slug;
+  }
+
+  const upload = await storeNoteImage(
+    provider,
+    NOTES_COLLECTION,
+    form.get('file'),
+    folder,
+  );
+  if (!upload.ok) {
+    const error =
+      upload.code === 'payload_too_large'
+        ? `Images are limited to ${MEDIA_MAX_BYTES / (1024 * 1024)} MB.`
+        : upload.code === 'invalid_media'
+          ? 'Only PNG, JPEG, WebP, and GIF images are accepted, checked by their content rather than their name.'
+          : upload.error;
+    return json({ error, code: upload.code }, { status: upload.status });
+  }
+
+  return json(
+    {
+      media: {
+        url: upload.url,
+        type: upload.type,
+        bytes: upload.bytes,
+        markdown: `![](${upload.url})`,
+      },
+    },
+    { status: 201 },
+  );
 }
 
 export function pathFromParams(path: string | string[] | undefined): string {
