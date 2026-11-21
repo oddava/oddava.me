@@ -1,32 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  hereLabel,
-  parsePulse,
-  pulseSentence,
-  visitorsLabel,
-} from '../src/components/visitors/pulse';
+import { parsePulse, visitorsLabel } from '../src/components/visitors/pulse';
 
 describe('visitor pulse labels', () => {
-  it('says "just you" when nobody else is here', () => {
-    expect(hereLabel(0)).toBe('just you here');
-    expect(hereLabel(1)).toBe('just you here');
-    expect(hereLabel(3)).toBe('3 here now');
-    expect(hereLabel(1204)).toBe('1,204 here now');
-  });
-
   it('counts visitors with the right plural', () => {
     expect(visitorsLabel(1)).toBe('1 visitor');
     expect(visitorsLabel(2)).toBe('2 visitors');
     expect(visitorsLabel(12045)).toBe('12,045 visitors');
-  });
-
-  it('reads as a sentence for a screen reader', () => {
-    expect(pulseSentence({ here: 1, visitors: 40, today: 3 })).toBe(
-      'You are the only one here right now. 40 visitors so far, 3 today.',
-    );
-    expect(pulseSentence({ here: 2, visitors: 40, today: 3 })).toMatch(
-      /^2 people are here right now\./,
-    );
   });
 
   it('accepts only a complete, non-negative pulse', () => {

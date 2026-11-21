@@ -87,7 +87,7 @@
 }
 
 :root[data-notes][data-theme='dark'] {
-  --desk: color-mix(in srgb, var(--accent) 4%, #111418);
+  --desk: #151618;
   --paper: color-mix(in srgb, var(--accent) 3%, #1b1f26);
   --paper-lift: 0 1px 1px rgb(0 0 0 / 0.3), 0 16px 30px -20px rgb(0 0 0 / 0.75);
   --paper-lift-up:
@@ -99,7 +99,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root[data-notes][data-theme='system'] {
-    --desk: color-mix(in srgb, var(--accent) 4%, #111418);
+    --desk: #151618;
     --paper: color-mix(in srgb, var(--accent) 3%, #1b1f26);
     --paper-lift:
       0 1px 1px rgb(0 0 0 / 0.3), 0 16px 30px -20px rgb(0 0 0 / 0.75);
@@ -142,13 +142,9 @@
 
 /* ---- Header: notes is where you are ----------------------------------- */
 
-/* Inside the notes, the notes link wears the current page's wave on every
-   page, not only on the landing. Search is not in the header: it is on the
-   page (components/_garden.css, .notes-find). */
+/* Mark the notes link as current throughout the notes. */
 [data-notes] .pf-nav a[aria-current='true'] {
   color: var(--ink);
-  text-decoration: underline wavy var(--accent) 1.5px;
-  text-underline-offset: 0.3em;
 }
 
 /* ---- Page frame ---------------------------------------------------------- */

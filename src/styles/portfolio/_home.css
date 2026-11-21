@@ -3,21 +3,11 @@
    =================================================== */
 
 [data-site='portfolio'] .pf-person h1 {
+  text-align: center;
   font-size: var(--t-name);
   line-height: 1.05;
   font-weight: 650;
   letter-spacing: -0.03em;
-}
-
-/* A small hand-drawn tilde under the name, in the ink colour. It is the
-   name's only mark: the name is a link to about without an underline. */
-[data-site='portfolio'] .pf-tilde {
-  display: block;
-  margin-top: 10px;
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linecap: round;
 }
 
 [data-site='portfolio'] .pf-name-link {
@@ -32,137 +22,163 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  [data-site='portfolio'] .pf-tilde path {
-    stroke-dasharray: 60;
-    stroke-dashoffset: 0;
-    transition: stroke-dashoffset 600ms var(--ease-out);
-  }
-  [data-site='portfolio'] .pf-person:hover .pf-tilde path {
-    animation: pf-redraw 700ms var(--ease-out);
-  }
-}
-
-@keyframes pf-redraw {
-  from {
-    stroke-dashoffset: 60;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-[data-site='portfolio'] .pf-tagline {
-  margin-top: calc(14px * var(--d) + 4px);
-  max-width: 34ch;
-  color: var(--ink-2);
-  font-size: 1.125rem;
-  line-height: 1.6;
+[data-site='portfolio'] .pf-person,
+[data-site='portfolio'] .pf-work {
+  width: min(100%, 26rem);
 }
 
 [data-site='portfolio'] .pf-work {
   margin-top: calc(48px * var(--d));
 }
 
+[data-site='portfolio'] .pf-work,
 [data-site='portfolio'] .pf-entries {
-  margin: 0 -16px;
-}
-
-[data-site='portfolio'] .pf-entries li + li {
-  margin-top: calc(4px * var(--d));
+  display: grid;
+  gap: 6px;
 }
 
 [data-site='portfolio'] .pf-entry {
-  display: block;
-  padding: calc(12px * var(--d) + 2px) 16px calc(14px * var(--d) + 2px);
-  border-radius: 14px;
-  text-decoration: none;
-  /* Timing comes from .press (_shell.css): a colour fade and a spring on
-     release. Declaring a transition here would replace both. */
-}
-
-[data-site='portfolio'] .pf-entry-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  min-height: 48px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 
 [data-site='portfolio'] .pf-entry-name {
   min-width: 0;
-  font-size: var(--t-item);
-  line-height: 1.3;
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  transition: color 120ms ease;
+  overflow-wrap: anywhere;
 }
 
-[data-site='portfolio'] .pf-entry-year {
-  flex: none;
+[data-site='portfolio'] .pf-entry-meta {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   color: var(--ink-2);
   font-size: 0.9375rem;
-  font-variant-numeric: tabular-nums;
 }
 
-[data-site='portfolio'] .pf-entry-what {
-  display: block;
-  margin-top: 4px;
-  max-width: 46ch;
-  color: var(--ink-2);
+[data-site='portfolio'] .pf-entry-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   [data-site='portfolio'] a.pf-entry:hover {
-    background-color: var(--hover);
-  }
-  [data-site='portfolio'] a.pf-entry:hover .pf-entry-name {
-    color: var(--accent);
+    background: var(--hover);
+    border-color: var(--line-2);
   }
 }
 
-/* Touch screens have no hover, and the tap highlight is off: a press lights
-   the row the way hover does, so a tap is seen to land. */
-@media (hover: none) {
-  [data-site='portfolio'] a.pf-entry:active {
-    background-color: var(--hover);
+[data-site='portfolio'] .pf-angel {
+  display: block;
+  width: min(100%, 28rem);
+  height: auto;
+  margin: 24px auto 0;
+  opacity: 0.88;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  mask-image: linear-gradient(to bottom, black 78%, transparent);
+}
+
+:root[data-theme='dark'] .pf-angel {
+  filter: brightness(2.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] .pf-angel {
+    filter: brightness(2.7);
   }
-  [data-site='portfolio'] a.pf-entry:active .pf-entry-name {
-    color: var(--accent);
+}
+
+[data-site='portfolio'] .pf-main.pf-split {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 54.999em) {
+  [data-site='portfolio'] .pf-home-content {
+    width: min(100%, 26rem);
+    margin-inline: auto;
   }
-}
 
-[data-site='portfolio'] a.pf-entry:focus-visible {
-  outline-offset: 0;
-  border-radius: 14px;
-}
+  [data-site='portfolio'] .pf-work {
+    margin-top: 20px;
+  }
 
-[data-site='portfolio'] .pf-home-empty {
-  color: var(--ink-2);
-}
+  [data-site='portfolio'] .pf-angel {
+    width: auto;
+    max-width: 100%;
+    max-height: clamp(0px, calc(100dvh - 445px), 32vh);
+    object-fit: contain;
+    margin: 0 auto 12px;
+  }
 
-[data-site='portfolio'] .pf-more {
-  margin-top: calc(16px * var(--d) + 4px);
+  [data-site='portfolio'] .pf-main.pf-split + .pf-footer {
+    width: min(100%, 26rem);
+    margin-inline: auto;
+    padding-top: 16px;
+  }
 }
 
 @media (min-width: 55em) {
-  [data-site='portfolio'] .pf-work {
-    margin-top: 0;
+  [data-site='portfolio'] .pf-page:has(.pf-split) {
+    max-width: 100rem;
   }
-  [data-site='portfolio'] .pf-tagline {
-    max-width: 28ch;
-  }
-  /* Home is short: centre it between the header and the footer, a little
-     above the middle, instead of leaving the space all below. */
+
   [data-site='portfolio'] .pf-main.pf-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: clamp(32px, 4vw, 64px);
+    align-items: center;
     margin-block: auto;
-    padding-top: 48px;
-    padding-bottom: 7vh;
+    padding-block: 32px;
   }
+
+  [data-site='portfolio'] .pf-angel {
+    grid-column: 1;
+    align-self: center;
+    justify-self: center;
+    width: min(100%, 48rem);
+    max-height: max(20rem, calc(100dvh - 240px));
+    object-fit: contain;
+    margin: 0;
+    transform: translateY(-5%) scale(1.3);
+  }
+
+  [data-site='portfolio'] .pf-home-content {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    width: min(100%, 26rem);
+    transform: translateY(12px);
+  }
+
+  [data-site='portfolio'] .pf-work {
+    margin-top: 32px;
+  }
+
+  [data-site='portfolio'] .pf-main.pf-split + .pf-footer .pf-footer-inner {
+    justify-content: center;
+  }
+
   [data-site='portfolio'] .pf-main.pf-split + .pf-footer {
+    width: calc((100% - clamp(32px, 4vw, 64px)) / 2);
+    margin-left: auto;
     margin-top: 0;
-  }
-  /* Line the first project's name up with the name's cap height. */
-  [data-site='portfolio'] .pf-entries {
-    margin-top: -10px;
+    padding-top: 16px;
   }
 }

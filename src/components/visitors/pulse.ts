@@ -200,21 +200,7 @@ export function formatCount(value: number): string {
   return NUMBER.format(value);
 }
 
-/** "just you here", "2 here now". */
-export function hereLabel(here: number): string {
-  return here <= 1 ? 'just you here' : `${formatCount(here)} here now`;
-}
-
 /** "1 visitor", "1,204 visitors". */
 export function visitorsLabel(visitors: number): string {
   return `${formatCount(visitors)} ${visitors === 1 ? 'visitor' : 'visitors'}`;
-}
-
-/** The sentence a screen reader hears. */
-export function pulseSentence({ here, visitors, today }: VisitorPulse): string {
-  const people =
-    here <= 1
-      ? 'You are the only one here right now'
-      : `${formatCount(here)} people are here right now`;
-  return `${people}. ${visitorsLabel(visitors)} so far, ${formatCount(today)} today.`;
 }

@@ -74,16 +74,9 @@
   border-radius: 6px;
 }
 
-/* Underline means link: straight at rest, a small tilde wave in the ink
-   colour on hover. */
 [data-site='portfolio'] .link {
-  text-decoration-line: underline;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 0.22em;
-  text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
-  transition:
-    color 120ms ease,
-    text-decoration-color 120ms ease;
+  text-decoration: none;
+  transition: color 120ms ease;
 }
 
 [data-site='portfolio'] a.link {
@@ -96,7 +89,6 @@
   [data-site='portfolio'] .link:hover,
   [data-site='portfolio'] a:hover .link {
     color: var(--accent);
-    text-decoration-thickness: 2px;
   }
 }
 
@@ -270,18 +262,12 @@
   border-radius: 8px;
 }
 
-/* The page you are on: ink text with a small wave under it. */
+/* The page you are on. */
 [data-site='portfolio'] .pf-nav a[aria-current='page'] {
   color: var(--ink);
-  text-decoration: underline wavy var(--accent) 1.5px;
-  text-underline-offset: 0.3em;
 }
 
-/* Appearance: an icon drawn like the nav text beside it — same grey, same
-   line weight, no fill and never a box. The 44px button is only the hit
-   area: it overhangs the content edge so the glyph can end on it, so any
-   fill would stick out. Hover darkens the glyph; open adds a short ink
-   line under it, like the current page's wave. */
+/* Appearance control. */
 [data-site='portfolio'] .pf-tool {
   position: static;
 }
@@ -319,26 +305,13 @@
   fill: var(--bg);
 }
 
-[data-site='portfolio'] .pf-icon-btn::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  width: 18px;
-  height: 1.5px;
-  margin-left: -9px;
-  border-radius: 1px;
-  background: var(--accent);
-  transform: scaleX(0);
-  transition: transform 180ms var(--ease-out);
-}
-
 [data-site='portfolio'] .pf-icon-btn[aria-expanded='true'] {
   color: var(--ink);
+  background: var(--hover);
 }
 
-[data-site='portfolio'] .pf-icon-btn[aria-expanded='true']::after {
-  transform: none;
+[data-site='portfolio'] .pf-icon-btn[aria-expanded='true'] .knob {
+  fill: var(--hover);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -537,7 +510,6 @@
   justify-content: space-between;
   gap: 4px 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--line);
 }
 
 @media (min-width: 55em) {
@@ -575,13 +547,8 @@
   opacity: 0.85;
 }
 
-[data-site='portfolio'] .pf-glyph--github,
-[data-site='portfolio'] .pf-glyph--twitter {
+[data-site='portfolio'] .pf-glyph--github {
   fill: currentColor;
-}
-
-[data-site='portfolio'] .pf-glyph--twitter {
-  transform: scale(0.86);
 }
 
 [data-site='portfolio'] .pf-glyph--mail,
@@ -602,163 +569,6 @@
   [data-site='portfolio'] .pf-contacts a:hover {
     color: var(--ink);
     background-color: var(--hover);
-  }
-}
-
-/* ---- Visitor pulse ------------------------------------------------------
-   The footer's live line, at the right end of the contacts: a dot that
-   breathes like a far star, who is here, and how many have been. It holds
-   its place while invisible, so the footer never jumps when it arrives. */
-
-[data-site='portfolio'] .pf-pulse {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  margin-right: -10px;
-  padding: 0 10px;
-  border-radius: 8px;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  font-variant-numeric: tabular-nums;
-  text-decoration: none;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity 600ms var(--ease-out),
-    color 120ms ease,
-    background-color 150ms ease;
-}
-
-[data-site='portfolio'] .pf-pulse.is-live {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* The dot: a small light with a halo that swells and fades, slower when
-   you are alone, a little quicker with company. */
-[data-site='portfolio'] .pf-pulse-dot {
-  position: relative;
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-[data-site='portfolio'] .pf-pulse-dot::after {
-  content: '';
-  position: absolute;
-  inset: -5px;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  [data-site='portfolio'] .pf-pulse.is-live .pf-pulse-dot::after {
-    animation: pf-pulse-ring 3.2s var(--ease-out) infinite;
-  }
-  [data-site='portfolio'] .pf-pulse.is-crowded .pf-pulse-dot::after {
-    animation-duration: 2.2s;
-  }
-  [data-site='portfolio'] .pf-pulse .is-new {
-    animation: pf-pulse-settle 520ms var(--settle);
-  }
-}
-
-@keyframes pf-pulse-ring {
-  0% {
-    transform: scale(0.5);
-    opacity: 0.9;
-  }
-  70%,
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-}
-
-@keyframes pf-pulse-settle {
-  from {
-    opacity: 0.2;
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-[data-site='portfolio'] .pf-pulse-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-[data-site='portfolio'] .pf-pulse-here,
-[data-site='portfolio'] .pf-pulse-count {
-  display: inline-block;
-}
-
-/* Today's count and a small star, folded away until the line is hovered
-   or focused: the footer stays one quiet line, the link says where it goes. */
-[data-site='portfolio'] .pf-pulse-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition:
-    max-width 420ms var(--ease-out),
-    opacity 260ms ease;
-}
-
-[data-site='portfolio'] .pf-pulse-more svg {
-  flex: none;
-  fill: var(--accent);
-}
-
-[data-site='portfolio'] .pf-pulse:focus-visible .pf-pulse-more {
-  max-width: 12rem;
-  opacity: 1;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-site='portfolio'] .pf-pulse:hover .pf-pulse-more {
-    max-width: 12rem;
-    opacity: 1;
-  }
-}
-
-[data-site='portfolio'] .pf-pulse-here {
-  color: var(--ink);
-}
-
-[data-site='portfolio'] .pf-pulse-sep {
-  opacity: 0.6;
-}
-
-[data-site='portfolio'] .pf-pulse:focus-visible {
-  outline-offset: 0;
-  border-radius: 8px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-site='portfolio'] .pf-pulse:hover {
-    color: var(--ink);
-    background-color: var(--hover);
-  }
-}
-
-/* On a phone the contacts take the row; the pulse sits under them. */
-@media (max-width: 30em) {
-  [data-site='portfolio'] .pf-pulse {
-    margin-left: -10px;
-    margin-right: 0;
   }
 }
 

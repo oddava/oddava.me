@@ -228,16 +228,20 @@
 
 [data-site='portfolio'] .pf-reset {
   min-height: 36px;
-  margin-left: -10px;
-  padding: 0 10px;
-  border: 0;
+  padding: 0 12px;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: transparent;
+  background: var(--surface-2);
   color: var(--ink);
   font: inherit;
-  text-decoration: underline 1px var(--accent);
-  text-underline-offset: 0.22em;
   cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-reset:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
+  }
 }
 
 [data-site='portfolio'] .pf-status {

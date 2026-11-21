@@ -2,7 +2,7 @@
 /**
  * The notes pages' layout, on the apex (`/notes/…`) and on the notes host
  * alike: a portfolio page in everything but its content. The same frame,
- * DM Sans, theme and ink (read from the visitor's saved appearance), header,
+ * DM Sans, theme and ink (read from the visitor's saved appearance),
  * footer and page cross-fade as home, about and projects, so the notes read
  * as part of one site. See docs/notes-host.md and docs/portfolio.md.
  *
@@ -11,12 +11,6 @@
  * (portfolio/_notes.css: the dotted desk, the paper), so nothing here
  * reaches the portfolio pages. The notes' components are styled by
  * components/_garden.css, loaded here once for every notes page.
- *
- * Per host:
- * - apex: the header's links are this site's own, and the now-playing widget
- *   shows when enabled, as it always did on the apex notes;
- * - notes host: the wordmark, projects and about point back at the apex
- *   origin, and there is no music widget (its API is apex-only).
  *
  * The pre-paint is inline and hashed. Every page on this layout registers the
  * hashes from its own frontmatter, never from here (see lib/portfolio/csp.ts).
@@ -30,12 +24,10 @@ import SiteHead, {
   type Props as SiteHeadProps,
 } from '../components/SiteHead.astro';
 import Prepaint from '../components/portfolio/Prepaint.astro';
-import Header from '../components/portfolio/Header.astro';
 import Footer from '../components/portfolio/Footer.astro';
 import PagePreview from '../components/PagePreview.astro';
 import NoteSearch from '../components/garden/NoteSearch.tsx';
 import { APPEARANCE_DEFAULTS } from '../lib/portfolio/appearance';
-import { apexOriginFor } from '../lib/notes-host';
 import { isNotesHostRequest } from '../lib/server/core';
 import { loadSpotifyWidgetSlot } from '../lib/spotify-widget-slot';
 
@@ -44,7 +36,6 @@ export type Props = Omit<SiteHeadProps, 'documentTheme' | 'fontPreloads'>;
 const { title, description, image, imageAlt, type, modifiedTime } = Astro.props;
 
 const onNotesHost = isNotesHostRequest(Astro.url);
-const origin = onNotesHost ? apexOriginFor(Astro.url) : '';
 const defaults = APPEARANCE_DEFAULTS;
 const SpotifyWidgetLoader = onNotesHost ? null : await loadSpotifyWidgetSlot();
 ---
@@ -75,11 +66,10 @@ const SpotifyWidgetLoader = onNotesHost ? null : await loadSpotifyWidgetSlot();
   <body>
     <a href="#main" class="skip-link link">skip to content</a>
     <div class="pf-page">
-      <Header {origin} section="notes" />
       <main id="main" class="pf-main notes-main">
         <slot />
       </main>
-      <Footer pulse={false} />
+      <Footer />
     </div>
     {
       /* The search dialog. Its ways in are on the pages themselves

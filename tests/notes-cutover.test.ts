@@ -157,7 +157,6 @@ describe('with PUBLIC_NOTES_BASE set', () => {
       'https://oddava.me/',
       'https://oddava.me/about',
       'https://oddava.me/projects',
-      'https://oddava.me/sky',
     ]);
     expect(
       await sitemapLocs('http://notes.localhost:4321/sitemap.xml', true),

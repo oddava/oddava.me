@@ -71,7 +71,11 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
   <body>
     <a href="#main" class="skip-link link">skip to content</a>
     <div class="pf-page">
-      <Header />
+      {
+        !['/', '/about', '/about/', '/projects', '/projects/'].includes(
+          Astro.url.pathname,
+        ) && <Header />
+      }
       <main id="main" class:list={['pf-main', split && 'pf-split']}>
         <slot />
       </main>

@@ -1,8 +1,4 @@
 ---
-// Rendered per request, with the project rows in the same response. They
-// were a server island once: the page arrived first and the rows a second
-// round trip later, popping in under it. Reading the list costs about as
-// much as serving the static page did, so it comes with the page now.
 import Portfolio from '@layouts/Portfolio.astro';
 import ProjectList from '../components/portfolio/ProjectList.astro';
 import { getPublicNavigationRoutes } from '../lib/site-routes';
@@ -17,33 +13,24 @@ const pageHref = (label: string) =>
 ---
 
 <Portfolio split>
-  <section class="pf-person" aria-labelledby="name">
-    <h1 id="name">
-      <a class="pf-name-link" href={pageHref('about')}>oddava</a>
-    </h1>
-    <svg
-      class="pf-tilde"
-      viewBox="0 0 44 10"
-      width="56"
-      height="13"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M2 6 C 7 1.5, 12 1.5, 17 6 S 27 10.5, 32 6 S 40 2, 42 4"></path>
-    </svg>
-    <p class="pf-tagline prose">
-      i write software, interrogate SI (silly intellect), and make tools for
-      small&nbsp;annoyances.
-    </p>
-  </section>
+  <img
+    class="pf-angel"
+    draggable="false"
+    src="/angel-illustration.png"
+    alt=""
+    aria-hidden="true"
+  />
+  <div class="pf-home-content">
+    <section class="pf-person" aria-labelledby="name">
+      <h1 id="name">
+        <a class="pf-name-link" href={pageHref('about')}>oddava</a>
+      </h1>
+    </section>
 
-  <section class="pf-work" aria-labelledby="home-projects">
-    <h2 class="sr-only" id="home-projects">projects</h2>
-    <ProjectList />
-    <p class="pf-more">
-      <a class="link" href={pageHref('projects')}
-        >all projects<span class="pf-arrow" aria-hidden="true">→</span></a
-      >
-    </p>
-  </section>
+    <nav class="pf-work" aria-label="explore">
+      <a class="pf-entry" href={pageHref('notes')}>notes</a>
+      <ProjectList />
+      <a class="pf-entry" href={pageHref('projects')}>all projects</a>
+    </nav>
+  </div>
 </Portfolio>

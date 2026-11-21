@@ -1,7 +1,7 @@
 ---
 /**
  * Home's projects: the first three of the presented list, as plain rows
- * (name and year, then the one-line description), read from the live list
+ * (name and year), read from the live list
  * as home renders, so a save in the admin shows without a deploy. The self entry
  * is dropped before the three are picked (presentProjects, then
  * pickHomeProjects), so it never takes a slot.
@@ -35,20 +35,27 @@ const shown = all ? pickHomeProjects(presentProjects(all)) : [];
         const body = (
           <>
             <span class="pf-entry-head">
-              <span class="pf-entry-name">
-                {project.name}
-                {href && (
-                  <span class="pf-arrow" aria-hidden="true">
-                    {isExternalHref(href) ? '↗' : '→'}
-                  </span>
+              <span class="pf-entry-name">{project.name}</span>
+              <span class="pf-entry-meta">
+                <span class="pf-entry-year">{String(project.year)}</span>
+                {isExternalHref(href) && (
+                  <>
+                    <span class="sr-only"> (opens in new tab)</span>
+                    <svg
+                      viewBox="0 0 16 16"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      aria-hidden="true"
+                    >
+                      <path d="M4 12 12 4M5 4h7v7" />
+                    </svg>
+                  </>
                 )}
               </span>
-              {isExternalHref(href) && (
-                <span class="sr-only"> (opens in new tab)</span>
-              )}
-              <span class="pf-entry-year">{String(project.year)}</span>
             </span>
-            <span class="pf-entry-what prose">{project.description}</span>
           </>
         );
         return (
