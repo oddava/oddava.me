@@ -81,25 +81,80 @@
   }
 }
 
+[data-site='portfolio'] .pf-home-content,
+[data-site='portfolio'] .pf-main.pf-split + .pf-footer {
+  position: relative;
+  z-index: 2;
+}
+
+/* --- Angel illustration: stationary base + reactive glitch-glow canvas ---
+
+   The base illustration never moves on hover; it stays completely still at its
+   exact 3:4 aspect ratio so the canvas overlay aligns pixel-for-pixel with the
+   lineart. scripts/angel-hover.ts synthesizes the glitching yellow-gold halo
+   and reactive glowing linework slices on `.pf-angel-fx` (with slight top/side
+   bleed so horizontal glitch tears never clip against an invisible box edge). */
 [data-site='portfolio'] .pf-angel {
+  position: relative;
+  z-index: 1;
   display: block;
   width: min(100%, 28rem);
-  height: auto;
+  aspect-ratio: 3 / 4;
   margin: 24px auto 0;
-  opacity: 0.88;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-angel {
+    pointer-events: auto;
+    cursor: default;
+  }
+}
+
+[data-site='portfolio'] .pf-angel-base {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.88;
   -webkit-user-drag: none;
+  -webkit-mask-image: linear-gradient(to bottom, black 78%, transparent);
   mask-image: linear-gradient(to bottom, black 78%, transparent);
 }
 
-:root[data-theme='dark'] .pf-angel {
+/* While the glitch canvas owns the illustration pixels, hide the static base
+   image instantaneously (no transition) so displaced/dropped-out lines never
+   leave an untouched duplicate sitting underneath. */
+[data-site='portfolio'] .pf-angel[data-fx='live'] .pf-angel-base {
+  opacity: 0;
+}
+
+[data-site='portfolio'] .pf-angel-fx {
+  position: absolute;
+  top: -4%;
+  left: -8%;
+  width: 116%;
+  height: 104%;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, black 78.85%, transparent);
+  mask-image: linear-gradient(to bottom, black 78.85%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) {
+  [data-site='portfolio'] .pf-angel:hover .pf-angel-base {
+    opacity: 0.96;
+  }
+}
+
+:root[data-theme='dark'] .pf-angel-base {
   filter: brightness(2.7);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='system'] .pf-angel {
+  :root[data-theme='system'] .pf-angel-base {
     filter: brightness(2.7);
   }
 }
@@ -120,10 +175,8 @@
   }
 
   [data-site='portfolio'] .pf-angel {
-    width: auto;
-    max-width: 100%;
-    max-height: clamp(0px, calc(100dvh - 445px), 32vh);
-    object-fit: contain;
+    width: min(100%, calc(clamp(0px, calc(100dvh - 445px), 32vh) * 0.75));
+    aspect-ratio: 3 / 4;
     margin: 0 auto 12px;
     transform: scale(1.15);
     transform-origin: bottom center;
@@ -163,9 +216,8 @@
     grid-column: 1;
     align-self: center;
     justify-self: center;
-    width: min(100%, 48rem);
-    max-height: max(20rem, calc(100dvh - 240px));
-    object-fit: contain;
+    width: min(100%, 48rem, calc(max(20rem, calc(100dvh - 240px)) * 0.75));
+    aspect-ratio: 3 / 4;
     margin: 0;
     transform: translateY(-5%) scale(1.3);
   }

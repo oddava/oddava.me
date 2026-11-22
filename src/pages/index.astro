@@ -13,13 +13,17 @@ const pageHref = (label: string) =>
 ---
 
 <Portfolio split>
-  <img
-    class="pf-angel"
-    draggable="false"
-    src="/angel-illustration.png"
-    alt=""
-    aria-hidden="true"
-  />
+  <div class="pf-angel" aria-hidden="true">
+    <img
+      class="pf-angel-base"
+      draggable="false"
+      src="/angel-illustration.png"
+      width="1086"
+      height="1448"
+      alt=""
+    />
+    <canvas class="pf-angel-fx" aria-hidden="true"></canvas>
+  </div>
   <div class="pf-home-content">
     <section class="pf-person" aria-labelledby="name">
       <h1 id="name">
@@ -34,3 +38,8 @@ const pageHref = (label: string) =>
     </nav>
   </div>
 </Portfolio>
+
+<script>
+  import { trackAngel } from '../scripts/angel-hover';
+  trackAngel();
+</script>
