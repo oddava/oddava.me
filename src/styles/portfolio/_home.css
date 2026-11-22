@@ -125,6 +125,17 @@
     max-height: clamp(0px, calc(100dvh - 445px), 32vh);
     object-fit: contain;
     margin: 0 auto 12px;
+    transform: scale(1.15);
+    transform-origin: bottom center;
+  }
+
+  [data-site='portfolio'] .pf-main.pf-split + .pf-footer .pf-footer-inner {
+    justify-content: center;
+  }
+
+  [data-site='portfolio'] .pf-main.pf-split + .pf-footer .pf-contacts {
+    justify-content: center;
+    margin-left: 0;
   }
 
   [data-site='portfolio'] .pf-main.pf-split + .pf-footer {
