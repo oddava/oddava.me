@@ -1,86 +1,352 @@
 /* ===================================================
-   Admin dashboard — laid out like the site's home.
+   Admin workspace — unified minimal shell
 
-   The title, a line on what is waiting, and the section links sit in a
-   narrow column on the left and stay put; the guestbook, projects and
-   integrations run down one column beside them. Rows you act on read like
-   the about page's guestbook (hairlines between them); rows you open read
-   like home's project list (a soft tint under the pointer). The ink colour
-   only where something is chosen or asks for action.
+   Mirrors the notes reading shell and homepage:
+   - Desktop (>= 64em): sticky 14rem left rail (home link, appearance,
+     focused view switcher, studio link, sign out), centered 44rem active
+     workspace, and a balancing right gutter on wide screens (>= 72em) so
+     the workspace sits dead-center.
+   - Mobile / tablet (< 64em): slim top bar opening the rail as a slide-over
+     drawer, centered workspace below.
    =================================================== */
 
-.cab {
-  --cab-sticky: 0px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  row-gap: 32px;
+body.cab-nav-open {
+  overflow: hidden;
 }
 
-@media (min-width: 55em) {
-  .cab {
-    grid-template-columns: 13.5rem minmax(0, 1fr);
-    column-gap: clamp(48px, 7vw, 104px);
-    align-items: start;
-  }
+.cab-shell {
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
 }
 
-/* ---- Rail -------------------------------------------------------------- */
-
-@media (min-width: 55em) {
-  .cab-rail {
-    position: sticky;
-    top: 32px;
-  }
+.cab-center {
+  min-width: 0;
 }
 
-.cab-rail__summary {
-  min-height: calc(2 * 1.55em);
-  margin-top: 12px;
-  color: var(--ink-2);
-  font-size: 1rem;
-  line-height: 1.55;
+/* ---- Mobile / tablet slide-over drawer --------------------------------- */
+
+.cab-nav-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
-.cab-sections ul {
-  margin: 0;
+.cab-nav-scrim[hidden] {
+  display: none;
+}
+
+.cab-nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: min(18rem, 84vw);
+  padding: 18px 18px max(24px, env(safe-area-inset-bottom));
+  border-right: 1px solid var(--line);
+  background: var(--bg);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 220ms var(--ease-out),
+    visibility 0s linear 220ms;
+}
+
+.cab-nav[data-open] {
+  transform: translateX(0);
+  visibility: visible;
+  transition:
+    transform 220ms var(--ease-out),
+    visibility 0s linear 0s;
+}
+
+.cab-menu-btn,
+.cab-nav__close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  list-style: none;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
 }
 
-.cab-sections a {
+.cab-menu-btn {
+  margin-left: -6px;
+}
+
+.cab-menu-btn svg,
+.cab-nav__close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cab-menu-btn:hover,
+  .cab-nav__close:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+
+/* ---- Mobile top bar ---------------------------------------------------- */
+
+.cab-mobile-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cab-mobile-bar__title {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cab-mobile-bar__pill {
+  margin-left: auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
   color: var(--ink-2);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cab-mobile-bar__pill:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
+    color: var(--ink);
+  }
+}
+
+/* ---- Desktop shell (>= 64em) ------------------------------------------- */
+
+@media (min-width: 64em) {
+  .cab-shell {
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 44rem);
+    column-gap: clamp(36px, 5vw, 64px);
+    justify-content: center;
+    align-items: start;
+    width: auto;
+    max-width: none;
+  }
+
+  .cab-nav-scrim,
+  .cab-mobile-bar,
+  .cab-nav__close {
+    display: none;
+  }
+
+  .cab-nav {
+    position: sticky;
+    top: 24px;
+    inset: auto;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 14rem;
+    min-width: 0;
+    min-height: calc(100dvh - 64px);
+    max-height: calc(100dvh - 48px);
+    padding: 0;
+    border-right: 0;
+    background: transparent;
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+}
+
+/* Wide desktop (>= 72em): symmetric 3-track layout like the notes shell so
+   the 44rem workspace sits dead-center on the viewport. */
+@media (min-width: 72em) {
+  .cab-shell {
+    --bleed: clamp(0px, (100vw - 68rem) / 2 - 24px, 12rem);
+    grid-template-columns: minmax(14rem, 1fr) minmax(0, 44rem) minmax(
+        14rem,
+        1fr
+      );
+    column-gap: clamp(32px, 4vw, 56px);
+    margin-inline: calc(-1 * var(--bleed));
+  }
+
+  .cab-nav {
+    justify-self: end;
+  }
+}
+
+/* ---- Left rail internals ----------------------------------------------- */
+
+.cab-nav__top {
+  position: relative;
+  flex: none;
+}
+
+.cab-nav__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.cab-nav__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -6px;
+}
+
+.cab-nav__bar .pf-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.cab-nav__bar .pf-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cab-nav__bar .pf-panel {
+  left: 0;
+  right: 0;
+  width: auto;
+  transform-origin: 0 0;
+}
+
+@media (min-width: 64em) {
+  .cab-nav__bar .pf-panel {
+    right: auto;
+    width: min(18rem, calc(100vw - 36px));
+  }
+}
+
+.cab-nav__home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
   text-decoration: none;
   transition:
     color 120ms ease,
     background-color 150ms ease;
 }
 
-.cab-sections a:focus-visible {
+@media (hover: hover) and (pointer: fine) {
+  .cab-nav__home:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+
+.cab-nav__label {
+  margin-bottom: 6px;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.cab-sections ul {
+  margin: 0;
+  padding: 0 0 0 10px;
+  list-style: none;
+  border-left: 1px solid var(--line);
+}
+
+.cab-sections li {
+  position: relative;
+}
+
+.cab-sections li + li {
+  margin-top: 2px;
+}
+
+.cab-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.cab-nav__item:focus-visible {
   outline-offset: 0;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
-/* The section in view: ink text with the site's small wave under it, as
-   the header marks the page you are on. */
-.cab-sections a[aria-current] {
+.cab-nav__item[aria-current='page'] {
+  background: var(--accent-soft);
   color: var(--ink);
+  font-weight: 550;
 }
 
-.cab-sections a[aria-current] .cab-sections__label {
-  text-decoration: underline wavy var(--accent) 1.5px;
-  text-underline-offset: 0.3em;
+.cab-sections li:has(> .cab-nav__item[aria-current='page'])::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -11px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .cab-sections a:hover {
+  .cab-nav__item:hover:not([aria-current='page']) {
+    background: var(--hover);
     color: var(--ink);
-    background-color: var(--hover);
   }
 }
 
@@ -90,152 +356,191 @@
 
 .cab-sections__count {
   color: var(--ink-2);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 
 .cab-sections__count.is-waiting {
   display: inline-grid;
   place-items: center;
-  min-width: 1.375rem;
-  height: 1.375rem;
-  padding: 0 7px;
-  border-radius: 999px;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 5px;
+  border-radius: 5px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
 }
 
 .cab-sections__dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--warn);
   box-shadow: 0 0 0 3px var(--warn-soft);
 }
 
-@media (min-width: 55em) {
-  .cab-sections {
-    margin: 24px -12px 0;
-  }
-  .cab-sections li + li {
-    margin-top: 2px;
-  }
+/* Rail footer: Studio link + quiet sign out */
+.cab-nav__foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
 }
 
-/* Stacked: the links become one row that sticks under the header while
-   the work scrolls, over a frosted copy of the page colour. */
-@media (max-width: 54.99em) {
-  /* The rail's pieces join the page's own grid, so the sticky row is held
-     by the whole page rather than by a rail that scrolls away. */
-  .cab {
-    row-gap: 0;
-  }
+.cab-nav__link,
+.cab-nav__signout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
 
-  .cab-rail {
-    display: contents;
-  }
+.cab-nav__arrow {
+  opacity: 0.55;
+  transition:
+    transform 160ms var(--ease-out),
+    opacity 120ms ease;
+}
 
-  .cab-rail__summary {
-    min-height: 1.55em;
-  }
-
-  .cab-work {
-    margin-top: 28px;
-  }
-
-  .cab-sections {
-    position: sticky;
-    top: var(--cab-sticky);
-    z-index: 6;
-    margin: 16px -20px 0;
-    padding: 8px 20px;
-    border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--bg) 90%, transparent);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    backdrop-filter: blur(14px) saturate(1.4);
-  }
-
-  .cab-sections ul {
-    display: flex;
-    gap: 4px;
-    margin: 0 -12px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .cab-sections ul::-webkit-scrollbar {
-    display: none;
-  }
-
-  .cab-sections .cab-sections__desk {
-    display: none;
-  }
-
-  .cab-sections a {
-    flex: none;
-    gap: 8px;
-    min-height: 40px;
-    padding: 0 10px;
-    font-size: 0.9375rem;
-    white-space: nowrap;
-  }
-
-  .cab-sections a[aria-current] {
+@media (hover: hover) and (pointer: fine) {
+  .cab-nav__link:hover,
+  .cab-nav__signout:hover {
     background: var(--hover);
+    color: var(--ink);
+  }
+  .cab-nav__link:hover .cab-nav__arrow {
+    opacity: 1;
+    transform: translateX(2px);
   }
 }
 
-/* The smallest phones: a little less room around each link, so the row's
-   last link and its dot still fit at 320px. */
-@media (max-width: 22.5em) {
-  .cab-sections ul {
-    gap: 2px;
-  }
-  .cab-sections a {
-    gap: 6px;
-    padding: 0 7px;
-    font-size: 0.875rem;
-  }
+.cab-signout {
+  display: contents;
 }
 
-/* Under 40em the portfolio's own header sticks too: 56px tall, until
-   AdminPanel measures it (a large text size can make it taller). The row
-   under it carries the one rule, so the header's own scroll rule stays
-   off rather than drawing a second line a row above it. */
-@media (max-width: 40em) {
-  .cab {
-    --cab-sticky: 56px;
-  }
-  [data-cabinet] .pf-page > .pf-header {
-    animation: none;
-  }
-}
-
-/* ---- Work column ------------------------------------------------------- */
+/* ---- Focused workspace ------------------------------------------------- */
 
 .cab-work {
   min-width: 0;
 }
 
+.cab-view[hidden] {
+  display: none;
+}
+
+/* ---- Overview view ----------------------------------------------------- */
+
+.cab-overview-head {
+  margin-bottom: 32px;
+}
+
+.cab-overview-head__lede {
+  min-height: 1.5em;
+  margin-top: 8px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+.cab-overview-group {
+  margin-bottom: 40px;
+}
+
+.cab-label {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Homepage `.pf-entry` style status rows */
+.cab-overview-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.cab-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 46px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.cab-entry__name {
+  font-weight: 500;
+}
+
+.cab-entry__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cab-entry__accent {
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.cab-entry__warn {
+  color: var(--warn);
+  font-weight: 550;
+}
+
+.cab-entry__arrow {
+  opacity: 0.45;
+  transition:
+    transform 160ms var(--ease-out),
+    opacity 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cab-entry:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
+  }
+  .cab-entry:hover .cab-entry__arrow {
+    opacity: 1;
+    transform: translateX(2px);
+  }
+}
+
+/* ---- Section headers inside focused views ------------------------------ */
+
 .adm-section {
   min-width: 0;
-  /* A jump lands a section just under whatever is stuck above it. */
-  scroll-margin-top: 32px;
-}
-
-.adm-section + .adm-section {
-  margin-top: 72px;
-}
-
-@media (max-width: 54.99em) {
-  .adm-section {
-    scroll-margin-top: calc(var(--cab-sticky) + 76px);
-  }
-  .adm-section + .adm-section {
-    margin-top: 56px;
-  }
 }
 
 .adm-head {
@@ -244,14 +549,30 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px 16px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .adm-head__title {
-  font-size: var(--t-item);
+  font-size: var(--t-title);
   font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.012em;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+}
+
+/* Inside overview, apps uses a quiet label instead of a page-size title. */
+.cab-view #apps .adm-head {
+  margin-bottom: 10px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.cab-view #apps .adm-head__title {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .adm-head__title:focus {
@@ -265,22 +586,17 @@
   gap: 6px;
 }
 
-/* A bare button at the end of a row ends its words, not its padding, on
-   the content edge — as the header's icon does. */
 :is(.adm-head__tools, .adm-foot, .adm-entry__actions)
   > .adm-button--quiet:last-child {
-  margin-right: -12px;
+  margin-right: -11px;
 }
 
-/* ---- Apps ---------------------------------------------------------------
-   A launcher: one small card per app, two to a row. Each reads like a row
-   on home — a tint under the pointer, the name taking the ink, the arrow
-   sliding in — so it is plainly a way out, not a status. */
+/* ---- Apps --------------------------------------------------------------- */
 
 .adm-apps {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -290,38 +606,43 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 14px;
+  gap: 12px;
   height: 100%;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 8px;
+  background: var(--surface-2);
   color: inherit;
   text-decoration: none;
   transition:
-    background-color 160ms ease,
-    border-color 160ms ease;
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 
 .adm-app:focus-visible {
   outline-offset: 2px;
-  border-radius: 16px;
+  border-radius: 8px;
 }
 
 .adm-app__glyph {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--surface-2);
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
   color: var(--ink-2);
   transition:
     color 150ms ease,
+    border-color 150ms ease,
     background-color 150ms ease;
 }
 
 .adm-app__glyph svg {
   display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .adm-app__text {
@@ -331,55 +652,57 @@
 
 .adm-app__name {
   overflow-wrap: anywhere;
-  font-weight: 600;
-  letter-spacing: -0.006em;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  letter-spacing: -0.008em;
   line-height: 1.35;
   transition: color 120ms ease;
 }
 
 .adm-app__what {
   color: var(--ink-2);
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
 .adm-app__host {
-  margin-top: 4px;
+  margin-top: 3px;
   overflow: hidden;
   color: var(--ink-2);
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   line-height: 1.4;
+  opacity: 0.75;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .adm-app:focus-visible .adm-app__glyph {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   background: var(--accent-soft);
   color: var(--accent-ink);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .adm-app:hover {
-    border-color: transparent;
+    border-color: var(--line-2);
     background-color: var(--hover);
   }
   .adm-app:hover .adm-app__name {
     color: var(--accent);
   }
   .adm-app:hover .adm-app__glyph {
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
     background: var(--accent-soft);
     color: var(--accent-ink);
   }
 }
 
 @media (max-width: 40em) {
-  /* Four cards stacked would push the inbox off the first screen: on a
-     phone they are two-up tiles, the glyph and the name. */
   .adm-app {
     align-items: center;
     gap: 10px;
-    padding: 8px 12px 8px 8px;
+    padding: 10px 12px;
   }
   .adm-app__what,
   .adm-app__host {
@@ -387,8 +710,6 @@
   }
 }
 
-/* No pointer to hover with: the arrow stays, so a card that leaves the
-   site says so, as the header's site link does. */
 @media (hover: none) {
   [data-cabinet] .adm-app .pf-arrow {
     opacity: 1;
@@ -426,10 +747,8 @@
 
 .adm-skeletons {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   padding-top: 8px;
-  /* A load that answers quickly never shows its skeleton: it holds its
-     place unseen, and fades in only once the wait is long enough to notice. */
   animation: adm-appear 200ms ease 300ms both;
 }
 
@@ -440,21 +759,19 @@
 }
 
 .adm-skeletons .skeleton-row {
-  height: 72px;
-  border-radius: 14px;
+  height: 64px;
+  border-radius: 8px;
 }
 
-/* A refresh failed over a list still on screen: one quiet line above it,
-   the rows kept, a way to try again. */
 .adm-stale {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 4px 12px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   padding: 6px 6px 6px 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--warn-soft);
   color: var(--ink);
   font-size: 0.875rem;
@@ -476,43 +793,25 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
-/* Nothing waiting: the projects page's picture-less slot — a faint dot
-   grid fading out to the edges, the words in the middle. */
 .adm-quiet {
-  position: relative;
   display: grid;
   place-items: center;
-  min-height: 9.5rem;
-  margin-top: 8px;
+  min-height: 6rem;
+  margin-top: 4px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background-color: color-mix(in srgb, var(--ink) 3%, var(--surface-2));
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--ink-2);
-  overflow: hidden;
-}
-
-.adm-quiet::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    color-mix(in srgb, var(--ink-2) 16%, transparent) 1px,
-    transparent 1.2px
-  );
-  background-size: 18px 18px;
-  background-position: 8px 8px;
-  -webkit-mask-image: radial-gradient(closest-side, #000 20%, transparent 100%);
-  mask-image: radial-gradient(closest-side, #000 20%, transparent 100%);
 }
 
 .adm-quiet p {
-  position: relative;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
 }
 
 .adm-quiet span {
@@ -520,14 +819,14 @@
   font-family: system-ui, sans-serif;
 }
 
-/* ---- Guestbook --------------------------------------------------------- */
+/* ---- Guestbook & Sky moderation ---------------------------------------- */
 
 .adm-entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  column-gap: 20px;
-  padding: 18px 0;
+  column-gap: 18px;
+  padding: 14px 0;
 }
 
 .adm-entry__by {
@@ -545,29 +844,24 @@
 
 .adm-entry__when {
   color: var(--ink-2);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
   transition: color 120ms ease;
 }
 
-/* The entry in hand lights its time, so the keyboard's place reads at a
-   glance without a box round the row. */
 .adm-entry:focus-within .adm-entry__when {
   color: var(--accent);
 }
 
-/* The visitor's words are the loudest thing in the row. */
 .adm-entry__message {
   max-width: 60ch;
   margin-top: 4px;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* A star's row: a little night with the star where it sits, then what
-   approving or rejecting will do to it. */
 .adm-star {
   display: flex;
   align-items: center;
@@ -582,7 +876,7 @@
   width: 72px;
   height: 44px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: linear-gradient(180deg, #080b1f, #2b2559);
 }
 
@@ -602,7 +896,7 @@
 }
 
 .adm-entry__meta {
-  margin-top: 8px;
+  margin-top: 6px;
   overflow: hidden;
   color: var(--ink-2);
   font-family: var(--mono);
@@ -619,7 +913,6 @@
   gap: 6px;
 }
 
-/* Decided: the entry folds shut, then leaves. */
 .adm-entry.is-leaving {
   overflow: hidden;
   pointer-events: none;
@@ -643,8 +936,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  column-gap: 20px;
-  padding: 18px 0;
+  column-gap: 18px;
+  padding: 14px 0;
 }
 
 .adm-int__heading {
@@ -656,17 +949,17 @@
 }
 
 .adm-int__heading strong {
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 
-/* The state, as a small pill led by its dot. */
 .adm-int__state {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 1px 9px 1px 8px;
-  border-radius: 999px;
-  font-size: 0.8125rem;
+  padding: 1px 8px 1px 7px;
+  border-radius: 6px;
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.5;
 }
@@ -702,7 +995,7 @@
 .adm-int__detail {
   margin-top: 6px;
   color: var(--ink-2);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -710,7 +1003,7 @@
 .adm-int__checked {
   margin-top: 2px;
   color: var(--ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   opacity: 0.85;
 }
 
@@ -722,8 +1015,6 @@
 
 /* ---- Toasts ------------------------------------------------------------ */
 
-/* Bottom right, on the work column's edge: the appearance panel's surface,
-   so a message reads as something laid over the page, not another row. */
 .adm-toasts {
   position: fixed;
   right: max(20px, calc((100vw - 68rem) / 2 + 40px));
@@ -739,10 +1030,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 48px;
-  padding: 6px 6px 6px 16px;
+  min-height: 44px;
+  padding: 6px 6px 6px 14px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--panel-shadow);
   pointer-events: auto;
@@ -767,20 +1058,20 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: 4px 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
 .adm-toast__undo {
   flex: none;
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: none;
   color: var(--accent);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 150ms ease;
@@ -795,18 +1086,18 @@
 .adm-toast__undo:focus-visible,
 .adm-toast__close:focus-visible {
   outline-offset: 0;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .adm-toast__close {
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: none;
   color: var(--ink-2);
   cursor: pointer;
@@ -818,7 +1109,7 @@
 @media (hover: hover) and (pointer: fine) {
   .adm-toast__close:hover {
     color: var(--ink);
-    background: var(--tint);
+    background: var(--hover);
   }
 }
 
@@ -837,17 +1128,16 @@
 /* ---- Phone ------------------------------------------------------------- */
 
 @media (max-width: 40em) {
-  /* The actions move under the message, at a finger's size. */
   .adm-entry {
     grid-template-columns: minmax(0, 1fr);
-    padding: 16px 0;
+    padding: 14px 0;
   }
   .adm-entry__actions {
     margin-top: 12px;
   }
   [data-cabinet] .adm-entry__actions .adm-button {
-    min-height: 40px;
-    padding: 0 16px;
+    min-height: 38px;
+    padding: 0 14px;
   }
 
   .adm-int {
@@ -861,7 +1151,7 @@
   }
 
   .adm-toast__close {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
   }
 }

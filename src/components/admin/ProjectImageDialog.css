@@ -5,10 +5,10 @@
 .pid {
   width: min(42rem, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
-  padding: 22px;
+  padding: 20px;
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 12px;
   background: var(--panel);
   box-shadow: var(--panel-shadow);
   color: var(--ink);
@@ -61,7 +61,7 @@
   overflow: hidden;
   aspect-ratio: 16 / 10;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 8px;
   background: var(--surface-2);
   touch-action: none;
   user-select: none;

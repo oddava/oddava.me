@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { fetchAdminOverview } from './api';
 import { AppsPanel } from './AppsPanel';
@@ -9,70 +10,111 @@ import { ToastProvider } from './toast';
 import type { OverviewResponse } from '../../lib/contracts';
 import './AdminPanel.css';
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  children?: ComponentChildren;
+}
+
+export default function AdminPanel({ children }: AdminPanelProps) {
   return (
     <ToastProvider>
-      <Dashboard />
+      <Dashboard appearance={children} />
     </ToastProvider>
   );
 }
 
-const SECTION_IDS = [
-  'apps',
+const VIEWS = [
+  'overview',
   'guestbook',
   'sky',
   'projects',
   'integrations',
 ] as const;
-type SectionId = (typeof SECTION_IDS)[number];
+type ViewId = (typeof VIEWS)[number];
 
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
-/**
- * What needs doing, in the site's voice, under the page title. Nothing is
- * said until the numbers are in, so the line never claims "nothing waiting"
- * while it is still loading.
- */
+function readHashView(): ViewId {
+  if (typeof window === 'undefined') return 'overview';
+  const raw = window.location.hash.replace(/^#/, '');
+  return (VIEWS as readonly string[]).includes(raw)
+    ? (raw as ViewId)
+    : 'overview';
+}
+
 function summaryOf(
   pending: number | undefined,
   pendingStars: number | undefined,
   attention: boolean,
 ): string | null {
   if (pending === undefined) return null;
-  const inbox =
-    pending > 0
-      ? `${plural(pending, 'entry', 'entries')} waiting in the guestbook.`
-      : 'nothing waiting in the guestbook.';
-  const sky = pendingStars
-    ? ` ${plural(pendingStars, 'word', 'words')} waiting in the sky.`
-    : '';
-  return attention
-    ? `${inbox}${sky} an integration needs a look.`
-    : `${inbox}${sky}`;
+  const parts: string[] = [];
+  if (pending > 0)
+    parts.push(`${plural(pending, 'entry', 'entries')} in guestbook`);
+  if (pendingStars && pendingStars > 0) {
+    parts.push(`${plural(pendingStars, 'word', 'words')} in sky`);
+  }
+  if (attention) parts.push('an integration needs a look');
+  return parts.length > 0 ? `${parts.join(' · ')}.` : 'all quiet.';
 }
 
 /**
- * The dashboard is laid out like the site's home: the title in a narrow
- * column on the left, which stays put while the work beside it scrolls, and
- * the sections in one column on the right — the apps first, then the
- * guestbook, projects and integrations. The left column also holds
- * the section links, each with what is waiting there. On a phone the two
- * stack, and the links become a row that sticks under the header.
+ * Unified 3-column admin workspace modeled after the notes shell:
+ * sticky left navigation rail (back to site, appearance, focused views,
+ * studio link, sign out), centered 44rem active workspace, and a balancing
+ * right gutter on wide screens so the canvas stays centered.
+ * On narrow screens, a slim top bar opens the rail as a slide-over drawer.
  */
-function Dashboard() {
+function Dashboard({ appearance }: { appearance?: ComponentChildren }) {
+  const [view, setView] = useState<ViewId>(readHashView);
+  const [navOpen, setNavOpen] = useState(false);
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [attention, setAttention] = useState(false);
   const [projectCount, setProjectCount] = useState<number>();
   const overviewRequest = useRef(0);
-  const frame = useRef<HTMLDivElement>(null);
-  const active = useActiveSection(SECTION_IDS);
-  useStickyOffset(frame);
+  const openBtnRef = useRef<HTMLButtonElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
-  /**
-   * The counts are garnish on the navigation: a failed load leaves them out
-   * rather than raising an error nobody can act on.
-   */
+  const selectView = useCallback((next: ViewId) => {
+    setView(next);
+    setNavOpen(false);
+    if (typeof window !== 'undefined') {
+      const targetHash = next === 'overview' ? '' : `#${next}`;
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(
+          null,
+          '',
+          targetHash || `${window.location.pathname}${window.location.search}`,
+        );
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, []);
+
+  useEffect(() => {
+    const onHash = () => setView(readHashView());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle('cab-nav-open', navOpen);
+    if (navOpen) {
+      closeBtnRef.current?.focus();
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && navOpen) {
+        setNavOpen(false);
+        openBtnRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.classList.remove('cab-nav-open');
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [navOpen]);
+
   const refreshOverview = useCallback(() => {
     const requestId = ++overviewRequest.current;
     fetchAdminOverview()
@@ -84,7 +126,6 @@ function Dashboard() {
 
   useEffect(() => {
     refreshOverview();
-    // Bumping the id retires an in-flight response after unmount.
     return () => {
       overviewRequest.current += 1;
     };
@@ -93,160 +134,263 @@ function Dashboard() {
   const pending = overview?.metrics.pendingGuestbook;
   const pendingStars = overview?.metrics.pendingStars;
   const summary = summaryOf(pending, pendingStars, attention);
-  const sections: {
-    id: SectionId;
+  const totalWaiting = (pending ?? 0) + (pendingStars ?? 0);
+
+  const navItems: {
+    id: ViewId;
     label: string;
     count?: number;
+    waiting?: boolean;
     attention?: boolean;
   }[] = [
-    // Rail only: on a phone the apps sit right under the row, and a fourth
-    // link would push integrations (and its dot) off the row's end. The
-    // sky is rail-only for the same reason; the summary above still says
-    // what waits there.
-    { id: 'apps', label: 'apps' },
-    { id: 'guestbook', label: 'guestbook', count: pending || undefined },
-    { id: 'sky', label: 'sky', count: pendingStars || undefined },
+    { id: 'overview', label: 'overview' },
+    {
+      id: 'guestbook',
+      label: 'guestbook',
+      count: pending || undefined,
+      waiting: true,
+    },
+    {
+      id: 'sky',
+      label: 'sky',
+      count: pendingStars || undefined,
+      waiting: true,
+    },
     { id: 'projects', label: 'projects', count: projectCount },
     { id: 'integrations', label: 'integrations', attention },
   ];
 
+  const closeDrawer = () => {
+    setNavOpen(false);
+    openBtnRef.current?.focus();
+  };
+
   return (
-    <div className="cab" ref={frame}>
-      <aside className="cab-rail">
-        <h1 className="pf-title">dashboard</h1>
-        <p className="cab-rail__summary">{summary ?? ' '}</p>
-        <nav className="cab-sections" aria-label="sections">
-          <ul>
-            {sections.map((section) => (
-              <li
-                key={section.id}
-                className={
-                  section.id === 'apps' || section.id === 'sky'
-                    ? 'cab-sections__desk'
-                    : undefined
-                }
+    <div className="cab-shell">
+      <div className="cab-nav-scrim" hidden={!navOpen} onClick={closeDrawer} />
+
+      <aside
+        className="cab-nav"
+        data-open={navOpen ? '' : undefined}
+        aria-label="Admin navigation"
+      >
+        <div className="cab-nav__top">
+          <div className="cab-nav__bar">
+            <a className="cab-nav__home" href="/">
+              ← oddava
+            </a>
+            <div className="cab-nav__actions">
+              {appearance}
+              <button
+                ref={closeBtnRef}
+                className="cab-nav__close"
+                type="button"
+                aria-label="Close admin menu"
+                onClick={closeDrawer}
               >
-                <a
-                  href={`#${section.id}`}
-                  aria-current={active === section.id ? 'location' : undefined}
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <nav className="cab-sections" aria-label="sections">
+          <p className="cab-nav__label">admin</p>
+          <ul role="list">
+            {navItems.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className="cab-nav__item"
+                  aria-current={view === item.id ? 'page' : undefined}
+                  onClick={() => selectView(item.id)}
                 >
-                  <span className="cab-sections__label">{section.label}</span>
-                  {section.count !== undefined && (
+                  <span className="cab-sections__label">{item.label}</span>
+                  {item.count !== undefined && (
                     <span
                       className={`cab-sections__count ${
-                        section.id === 'guestbook' || section.id === 'sky'
-                          ? 'is-waiting'
-                          : ''
+                        item.waiting ? 'is-waiting' : ''
                       }`}
                     >
-                      {section.count}
-                      {(section.id === 'guestbook' || section.id === 'sky') && (
+                      {item.count}
+                      {item.waiting && (
                         <span className="sr-only"> waiting</span>
                       )}
                     </span>
                   )}
-                  {section.attention && (
+                  {item.attention && (
                     <span
                       className="cab-sections__dot"
                       role="img"
                       aria-label="needs a look"
                     />
                   )}
-                </a>
+                </button>
               </li>
             ))}
           </ul>
         </nav>
+
+        <div className="cab-nav__foot">
+          <a className="cab-nav__link" href="/admin/files">
+            <span>notes studio</span>
+            <span className="cab-nav__arrow" aria-hidden="true">
+              →
+            </span>
+          </a>
+          <form
+            className="cab-signout"
+            method="post"
+            action="/api/admin/logout"
+          >
+            <button className="cab-nav__signout" type="submit">
+              sign out
+            </button>
+          </form>
+        </div>
       </aside>
 
-      <div className="cab-work">
-        <AppsPanel />
-        <GuestbookModeration pending={pending} onChanged={refreshOverview} />
-        <SkyModeration pending={pendingStars} onChanged={refreshOverview} />
-        <ProjectsPanel onCount={setProjectCount} />
-        {/* Owns its own data: health checks reach upstream APIs and must
-            not slow down or fail the rest of the dashboard. */}
-        <IntegrationsPanel onAttention={setAttention} />
+      <div className="cab-center">
+        <header className="cab-mobile-bar">
+          <button
+            ref={openBtnRef}
+            className="cab-menu-btn"
+            type="button"
+            aria-expanded={navOpen}
+            aria-label="Open admin menu"
+            onClick={() => setNavOpen(true)}
+          >
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M3 5h12M3 9h12M3 13h12" />
+            </svg>
+          </button>
+          <span className="cab-mobile-bar__title">{view}</span>
+          {(totalWaiting > 0 || attention) && view !== 'overview' && (
+            <button
+              type="button"
+              className="cab-mobile-bar__pill"
+              onClick={() => selectView('overview')}
+            >
+              overview
+            </button>
+          )}
+        </header>
+
+        <div className="cab-work">
+          <div className="cab-view" hidden={view !== 'overview'}>
+            <header className="cab-overview-head">
+              <h1 className="pf-title">admin</h1>
+              <p className="cab-overview-head__lede">{summary ?? ' '}</p>
+            </header>
+
+            <section className="cab-overview-group" aria-label="Status">
+              <h2 className="cab-label">workspace</h2>
+              <div className="cab-overview-rows">
+                <button
+                  type="button"
+                  className="cab-entry"
+                  onClick={() => selectView('guestbook')}
+                >
+                  <span className="cab-entry__name">guestbook</span>
+                  <span className="cab-entry__meta">
+                    {pending === undefined ? (
+                      '—'
+                    ) : pending > 0 ? (
+                      <span className="cab-entry__accent">
+                        {pending} waiting
+                      </span>
+                    ) : (
+                      'all clear'
+                    )}
+                    <span className="cab-entry__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cab-entry"
+                  onClick={() => selectView('sky')}
+                >
+                  <span className="cab-entry__name">sky</span>
+                  <span className="cab-entry__meta">
+                    {pendingStars === undefined ? (
+                      '—'
+                    ) : pendingStars > 0 ? (
+                      <span className="cab-entry__accent">
+                        {pendingStars} waiting
+                      </span>
+                    ) : (
+                      'all clear'
+                    )}
+                    <span className="cab-entry__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cab-entry"
+                  onClick={() => selectView('projects')}
+                >
+                  <span className="cab-entry__name">projects</span>
+                  <span className="cab-entry__meta">
+                    {projectCount !== undefined
+                      ? plural(projectCount, 'project', 'projects')
+                      : '—'}
+                    <span className="cab-entry__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cab-entry"
+                  onClick={() => selectView('integrations')}
+                >
+                  <span className="cab-entry__name">integrations</span>
+                  <span className="cab-entry__meta">
+                    {attention ? (
+                      <span className="cab-entry__warn">needs a look</span>
+                    ) : (
+                      'healthy'
+                    )}
+                    <span className="cab-entry__arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            <AppsPanel />
+          </div>
+
+          <div className="cab-view" hidden={view !== 'guestbook'}>
+            <GuestbookModeration
+              pending={pending}
+              onChanged={refreshOverview}
+            />
+          </div>
+
+          <div className="cab-view" hidden={view !== 'sky'}>
+            <SkyModeration pending={pendingStars} onChanged={refreshOverview} />
+          </div>
+
+          <div className="cab-view" hidden={view !== 'projects'}>
+            <ProjectsPanel onCount={setProjectCount} />
+          </div>
+
+          <div className="cab-view" hidden={view !== 'integrations'}>
+            <IntegrationsPanel onAttention={setAttention} />
+          </div>
+        </div>
       </div>
     </div>
   );
-}
-
-/**
- * Where the phone's sticky section row sits: right under the site header
- * while that header is stuck, at its real height — it grows when a large
- * text setting wraps its links, which a fixed 56px would slide under. The
- * CSS keeps 56px as the value before this runs.
- */
-function useStickyOffset(frame: { current: HTMLDivElement | null }) {
-  useEffect(() => {
-    const header = document.querySelector<HTMLElement>('.pf-page > .pf-header');
-    const element = frame.current;
-    if (!header || !element) return;
-    const measure = () => {
-      const stuck = getComputedStyle(header).position === 'sticky';
-      if (stuck) {
-        element.style.setProperty('--cab-sticky', `${header.offsetHeight}px`);
-      } else {
-        element.style.removeProperty('--cab-sticky');
-      }
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(header);
-    window.addEventListener('resize', measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [frame]);
-}
-
-/**
- * The section whose top has passed the reading line. At the very bottom the
- * last section wins, even when it is too short to reach that line —
- * otherwise it could never be marked. On a phone the line sits under the
- * stuck section row; on a wide screen nothing is stuck above the work, so it
- * is a fixed distance from the top.
- */
-function useActiveSection(ids: readonly SectionId[]): SectionId {
-  const [active, setActive] = useState<SectionId>(ids[0]);
-
-  useEffect(() => {
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const row = document.querySelector('.cab-sections');
-      const stuck = row !== null && getComputedStyle(row).position === 'sticky';
-      const line = (stuck ? row.getBoundingClientRect().bottom : 64) + 32;
-      const scrolled = window.scrollY > 0;
-      const atBottom =
-        scrolled &&
-        window.innerHeight + window.scrollY >=
-          document.documentElement.scrollHeight - 2;
-      let current = ids[0];
-      for (const id of ids) {
-        const top = document.getElementById(id)?.getBoundingClientRect().top;
-        if (top !== undefined && top <= line) current = id;
-      }
-      setActive(!scrolled ? ids[0] : atBottom ? ids[ids.length - 1] : current);
-    };
-    const schedule = () => {
-      if (!frame) frame = window.requestAnimationFrame(measure);
-    };
-    // Sections grow as their data arrives, which moves the others without a
-    // scroll; watching the page's size catches that too.
-    const observer = new ResizeObserver(schedule);
-    observer.observe(document.body);
-    window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', schedule);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', schedule);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [ids]);
-
-  return active;
 }

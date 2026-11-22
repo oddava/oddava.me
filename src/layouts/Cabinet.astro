@@ -13,15 +13,16 @@ import '../styles/_variables.css';
 import '../styles/portfolio/portfolio.css';
 import '../styles/admin/cabinet.css';
 import Prepaint from '../components/portfolio/Prepaint.astro';
-import CabinetHeader from '../components/admin/CabinetHeader.astro';
+import AppearanceControl from '../components/portfolio/AppearanceControl.astro';
 import { APPEARANCE_DEFAULTS } from '../lib/portfolio/appearance';
+import { SITE_NAME } from '../lib/site';
 
 export interface Props {
   title: string;
   description?: string;
-  /** Signed in: the header offers notes, the site and sign out. */
+  /** Signed in: AdminPanel renders the unified sidebar + mobile bar itself. */
   signedIn?: boolean;
-  /** A narrow centred column (sign-in, admin off) instead of the desk. */
+  /** A narrow centred column (sign-in, admin off) instead of the workspace. */
   narrow?: boolean;
 }
 
@@ -60,7 +61,16 @@ const viewport =
   <body>
     <a href="#main" class="skip-link link">skip to content</a>
     <div class="pf-page">
-      <CabinetHeader signedIn={signedIn} />
+      {
+        !signedIn && (
+          <header class="cab-minimal-bar">
+            <a class="cab-back" href="/">
+              ← {SITE_NAME}
+            </a>
+            <AppearanceControl />
+          </header>
+        )
+      }
       <main
         id="main"
         class:list={['pf-main', 'cab-main', narrow && 'cab-main--narrow']}

@@ -79,120 +79,80 @@
   fill: none;
 }
 
-/* ---- Header ------------------------------------------------------------ */
+/* ---- Minimal top bar (sign-in / admin-off only) ----------------------- */
 
-/* "admin" beside the wordmark: a small quiet tag, so the two read as one
-   name and the site's own wordmark stays the loud part. */
-[data-cabinet] .cab-mark__tag {
-  margin-left: 8px;
-  padding: 1px 8px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--ink-2);
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.5;
-  letter-spacing: 0.02em;
+[data-cabinet] .cab-minimal-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
 }
 
-[data-cabinet] .cab-out {
-  margin-left: 0.2em;
-  font-size: 0.875em;
-}
-
-[data-cabinet] .cab-signout {
-  display: contents;
-}
-
-/* Sign out is a form button drawn exactly like the nav links beside it. */
-[data-cabinet] .cab-signout button {
+[data-cabinet] .cab-back {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0 7px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border-radius: 6px;
   color: var(--ink-2);
-  white-space: nowrap;
-  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
   transition:
     color 120ms ease,
     background-color 150ms ease;
 }
 
-[data-cabinet] .cab-signout button:focus-visible {
-  outline-offset: 0;
-}
-
-@media (min-width: 30em) {
-  [data-cabinet] .cab-signout button {
-    padding: 0 10px;
-  }
-}
-
 @media (hover: hover) and (pointer: fine) {
-  [data-cabinet] .cab-signout button:hover {
+  [data-cabinet] .cab-back:hover {
+    background: var(--hover);
     color: var(--ink);
-    background-color: var(--hover);
   }
 }
 
-@media (max-width: 40em) {
-  [data-cabinet] .cab-signout button {
-    padding: 0 9px;
-    font-size: 0.96875rem;
-  }
-  /* The bar has one row on a phone; signed in, the tag gives way first. */
-  [data-cabinet] .pf-header:has(.cab-signout) .cab-mark__tag {
-    display: none;
-  }
+[data-cabinet] .cab-minimal-bar .pf-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
 }
 
-/* The portfolio's phone bar keeps one row. Signed in, the admin's has a
-   third link, and with a large text size one row would run off the
-   screen: here it may wrap, and the sticky row under it follows its real
-   height (AdminPanel measures it). */
-@media (max-width: 40em) {
-  [data-cabinet] .pf-page > .pf-header,
-  [data-cabinet] .pf-nav {
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 22.5em) {
-  [data-cabinet] .cab-signout button {
-    padding: 0 6px;
-  }
+[data-cabinet] .cab-minimal-bar .pf-icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ---- Frame ------------------------------------------------------------- */
 
-/* The viewport runs under the notch (viewport-fit=cover), so the gutters
-   never shrink below the safe area in landscape. */
 [data-cabinet] .pf-page {
+  padding-top: 20px;
   padding-left: max(20px, env(safe-area-inset-left));
   padding-right: max(20px, env(safe-area-inset-right));
   padding-bottom: max(28px, env(safe-area-inset-bottom));
 }
 
+[data-cabinet] .cab-main {
+  margin-top: 0;
+}
+
+[data-cabinet] .cab-main--narrow {
+  margin-block: auto;
+  padding-block: 32px 64px;
+}
+
 @media (min-width: 55em) {
   [data-cabinet] .pf-page {
+    padding-top: 24px;
     padding-left: max(40px, env(safe-area-inset-left));
     padding-right: max(40px, env(safe-area-inset-right));
   }
-}
-
-/* ---- Main -------------------------------------------------------------- */
-
-/* A work page, not a landing page: the dashboard starts closer to the
-   header than the portfolio's pages do. */
-@media (min-width: 55em) {
   [data-cabinet] .cab-main {
-    margin-top: 56px;
+    margin-top: 8px;
   }
   [data-cabinet] .cab-main--narrow {
-    margin-top: 112px;
+    margin-top: auto;
   }
 }
 
@@ -200,22 +160,23 @@
 
 [data-cabinet] .cab-gate {
   width: 100%;
-  max-width: 25rem;
+  max-width: 22rem;
   margin-inline: auto;
 }
 
 [data-cabinet] .cab-gate__lede {
-  margin-top: 10px;
+  margin-top: 8px;
   color: var(--ink-2);
+  font-size: 0.9375rem;
 }
 
 [data-cabinet] .cab-gate__note {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 16px;
   color: var(--ink-2);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
 }
 
 [data-cabinet] .cab-gate__note::before {
@@ -229,47 +190,36 @@
 
 [data-cabinet] .cab-gate__form {
   display: grid;
-  gap: 16px;
-  margin-top: 28px;
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface-2);
+  gap: 12px;
+  margin-top: 24px;
 }
 
 [data-cabinet] .cab-gate__form .adm-button {
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
 }
 
 [data-cabinet] .cab-gate__form .adm-error {
-  margin-top: -6px;
-}
-
-@media (max-width: 40em) {
-  [data-cabinet] .cab-gate__form {
-    padding: 18px;
-  }
+  margin-top: -4px;
 }
 
 /* ---- Buttons ----------------------------------------------------------- */
 
-/* One family: an outline at rest, the ink filled for the step that commits,
-   a tint for the row action you take most, and a bare one for everything
-   quieter. `.admin-button` is the shared confirm dialog's name for the same
-   buttons. */
+/* One family: flat surface-2 resting fill with a hairline (matching home rows
+   and notes search), accent fill for the step that commits, tonal for the
+   primary row action, and bare for quieter controls. */
 [data-cabinet] :is(.adm-button, .admin-button) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--line-2);
-  border-radius: 10px;
-  background: transparent;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--ink);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -278,13 +228,13 @@
   transition:
     background-color 150ms ease,
     border-color 150ms ease,
-    color 150ms ease;
+    color 120ms ease;
 }
 
 [data-cabinet] :is(.adm-button, .admin-button):focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -293,7 +243,7 @@
       :disabled,
       [aria-disabled='true']
     ) {
-    border-color: color-mix(in srgb, var(--ink-2) 55%, var(--line-2));
+    border-color: var(--line-2);
     background-color: var(--hover);
   }
 }
@@ -303,7 +253,7 @@
     transition:
       background-color 150ms ease,
       border-color 150ms ease,
-      color 150ms ease,
+      color 120ms ease,
       transform 220ms var(--settle);
   }
   [data-cabinet]
@@ -312,15 +262,15 @@
       [aria-disabled='true']
     ) {
     transform: translateY(1px);
-    transition-duration: 150ms, 150ms, 150ms, 60ms;
+    transition-duration: 150ms, 150ms, 120ms, 60ms;
   }
 }
 
 [data-cabinet] .adm-button--small {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 9px;
-  font-size: 0.875rem;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
 }
 
 [data-cabinet] :is(.adm-button--solid, .admin-button.primary) {
@@ -357,6 +307,7 @@
 
 [data-cabinet] .adm-button--quiet {
   border-color: transparent;
+  background: transparent;
   color: var(--ink-2);
 }
 
@@ -364,6 +315,7 @@
   [data-cabinet]
     .adm-button--quiet:hover:not(:disabled, [aria-disabled='true']) {
     border-color: transparent;
+    background-color: var(--hover);
     color: var(--ink);
   }
 }
@@ -433,11 +385,11 @@
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: 6px;
   background: none;
   color: var(--ink-2);
   cursor: pointer;
@@ -449,13 +401,13 @@
 @media (hover: hover) and (pointer: fine) {
   [data-cabinet] .adm-icon-button:hover:not(:disabled, [aria-disabled='true']) {
     color: var(--ink);
-    background: var(--tint);
+    background: var(--hover);
   }
 }
 
 [data-cabinet] .adm-icon-button:focus-visible {
   outline-offset: 0;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 [data-cabinet] .adm-icon-button:disabled {
@@ -465,20 +417,20 @@
 
 /* ---- Segments ---------------------------------------------------------- */
 
-/* The appearance panel's control, with buttons: a recessed track, the
-   chosen option raised on it. */
+/* Hairline-framed segmented track matching the notes controls. */
 [data-cabinet] :is(.adm-seg, .pid__segments) {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
-  padding: 3px;
-  border-radius: 11px;
-  background: var(--seg-track);
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
 }
 
 [data-cabinet] :is(.adm-seg, .pid__segments) button[aria-pressed='true'] {
   --seg-shadow:
-    0 1px 2px rgb(0 0 0 / 0.1),
+    0 1px 2px rgb(0 0 0 / 0.08),
     0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);
 }
 
@@ -486,7 +438,7 @@
   :is(.adm-seg, .pid__segments)
   button[aria-pressed='true'] {
   --seg-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.4);
+    inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -494,7 +446,7 @@
     :is(.adm-seg, .pid__segments)
     button[aria-pressed='true'] {
     --seg-shadow:
-      inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.4);
+      inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.35);
   }
 }
 
@@ -503,13 +455,13 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--ink-2);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -542,7 +494,7 @@
 
 [data-cabinet] :is(.adm-seg, .pid__segments) button:focus-visible {
   outline-offset: 1px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 [data-cabinet] :is(.adm-seg, .pid__segments) button:disabled {
@@ -553,13 +505,13 @@
 [data-cabinet] .adm-seg__count {
   display: inline-grid;
   place-items: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 6px;
-  border-radius: 999px;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 5px;
+  border-radius: 5px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -569,28 +521,27 @@
 
 [data-cabinet] .adm-field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 [data-cabinet] .adm-field__label {
   color: var(--ink-2);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
 }
 
-/* The about page's boxed field: focus turns the border the ink colour. */
 [data-cabinet] .adm-input {
   width: 100%;
-  min-height: 44px;
-  padding: 10px 13px;
+  min-height: 40px;
+  padding: 8px 12px;
   border: 1px solid var(--field-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--bg);
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   line-height: 1.45;
   transition:
     border-color 150ms ease,
@@ -738,17 +689,19 @@
   display: inline-flex;
   flex: none;
   align-items: center;
-  padding: 1px 8px;
-  border-radius: 999px;
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: 6px;
   background: var(--accent-soft);
   color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 [data-cabinet] .adm-badge--muted {
-  background: var(--tint);
+  border-color: var(--line);
+  background: var(--surface-2);
   color: var(--ink-2);
 }
 
@@ -763,13 +716,13 @@
 /* A large text size can make it taller than a small screen: it stops at
    the screen and scrolls, so the actions stay reachable. */
 [data-cabinet] .confirm-dialog {
-  width: min(26rem, 100%);
+  width: min(25rem, 100%);
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 22px;
+  padding: 20px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--panel);
   box-shadow: var(--panel-shadow);
   color: var(--ink);

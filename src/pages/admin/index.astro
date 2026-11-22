@@ -2,6 +2,7 @@
 import Cabinet from '../../layouts/Cabinet.astro';
 import AdminPanel from '../../components/admin/AdminPanel';
 import CabinetOff from '../../components/admin/CabinetOff.astro';
+import AppearanceControl from '../../components/portfolio/AppearanceControl.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
 import { registerPortfolioCsp } from '../../lib/portfolio/csp';
 
@@ -22,5 +23,13 @@ registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
   signedIn={configured}
   narrow={!configured}
 >
-  {configured ? <AdminPanel client:load /> : <CabinetOff />}
+  {
+    configured ? (
+      <AdminPanel client:load>
+        <AppearanceControl />
+      </AdminPanel>
+    ) : (
+      <CabinetOff />
+    )
+  }
 </Cabinet>

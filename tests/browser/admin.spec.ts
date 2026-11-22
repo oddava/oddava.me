@@ -5,9 +5,14 @@ test.beforeEach(async ({ page }) => {
   await page.goto('about:blank');
 });
 
-async function open(page: import('@playwright/test').Page) {
+async function open(
+  page: import('@playwright/test').Page,
+  view:
+    'overview' | 'guestbook' | 'sky' | 'projects' | 'integrations' = 'overview',
+) {
   const state = await mockAdmin(page);
-  await page.goto('/tests/browser/admin.html');
+  const hash = view === 'overview' ? '' : `#${view}`;
+  await page.goto(`/tests/browser/admin.html${hash}`);
   await expect(page.locator('.adm-project')).toHaveCount(4);
   return state;
 }
@@ -15,7 +20,7 @@ async function open(page: import('@playwright/test').Page) {
 test('approving takes the entry off the inbox, and undo puts it back', async ({
   page,
 }) => {
-  const state = await open(page);
+  const state = await open(page, 'guestbook');
   const pendingTab = page
     .locator('#guestbook')
     .getByRole('button', { name: /^pending/ });
@@ -43,7 +48,7 @@ test('approving takes the entry off the inbox, and undo puts it back', async ({
 test('a project moves with the arrow keys and saves once per move', async ({
   page,
 }) => {
-  const state = await open(page);
+  const state = await open(page, 'projects');
   const grip = page.getByRole('button', { name: /^Reorder Ishbay/ });
   await grip.focus();
   await page.keyboard.press('ArrowUp');
@@ -57,7 +62,7 @@ test('a project moves with the arrow keys and saves once per move', async ({
 });
 
 test('hiding a project is immediate and undoable', async ({ page }) => {
-  const state = await open(page);
+  const state = await open(page, 'projects');
   const eye = page.getByRole('button', { name: 'Hide Ishbay from the page' });
   await eye.click();
   await expect(eye).toHaveAttribute('aria-pressed', 'true');
@@ -73,7 +78,7 @@ test('hiding a project is immediate and undoable', async ({ page }) => {
 });
 
 test('focus moves on to the next entry after a decision', async ({ page }) => {
-  await open(page);
+  await open(page, 'guestbook');
   await page.getByRole('button', { name: 'Reject mira' }).focus();
   await page.keyboard.press('Enter');
   await expect(
@@ -82,7 +87,7 @@ test('focus moves on to the next entry after a decision', async ({ page }) => {
 });
 
 test('held arrow keys reorder without dropping presses', async ({ page }) => {
-  const state = await open(page);
+  const state = await open(page, 'projects');
   await page.getByRole('button', { name: /^Reorder AniShows/ }).focus();
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -98,7 +103,7 @@ test('held arrow keys reorder without dropping presses', async ({ page }) => {
 test('the editor asks before discarding edits, and saves through the sheet', async ({
   page,
 }) => {
-  const state = await open(page);
+  const state = await open(page, 'projects');
   await page.getByRole('button', { name: 'Edit oddava.me' }).click();
   const sheet = page.getByRole('dialog');
   await expect(sheet).toBeVisible();
@@ -118,7 +123,7 @@ test('the editor asks before discarding edits, and saves through the sheet', asy
 test('an integration switch acts at once, without a dialog', async ({
   page,
 }) => {
-  const state = await open(page);
+  const state = await open(page, 'integrations');
   const spotify = page.getByRole('switch', { name: 'Spotify' });
   await expect(spotify).toBeChecked();
   await spotify.click();
@@ -132,7 +137,7 @@ test('an integration switch acts at once, without a dialog', async ({
 test('switching guestbook tabs shows that tab at once, with no loading flash', async ({
   page,
 }) => {
-  await open(page);
+  await open(page, 'guestbook');
   const guestbook = page.locator('#guestbook');
   // Every switch below must land without a skeleton ever appearing.
   await page.evaluate(() => {
@@ -214,7 +219,7 @@ async function holdNextRead(
 test('a slow refresh does not bring back an entry decided meanwhile', async ({
   page,
 }) => {
-  const state = await open(page);
+  const state = await open(page, 'guestbook');
   const { held, release } = await holdNextRead(page, state, 'pending');
 
   // Coming back to the tab starts a refresh, which the server sits on.
@@ -246,7 +251,7 @@ test('a slow refresh does not bring back an entry decided meanwhile', async ({
 test('a slow refresh does not bring back entries just cleared', async ({
   page,
 }) => {
-  const state = await open(page);
+  const state = await open(page, 'guestbook');
   const { held, release } = await holdNextRead(page, state, 'pending');
 
   await page
@@ -290,7 +295,7 @@ test('a failed prefetch does not flash an error when the tab is opened', async (
       return route.fallback();
     },
   );
-  await page.goto('/tests/browser/admin.html');
+  await page.goto('/tests/browser/admin.html#guestbook');
   await expect(page.locator('.adm-project')).toHaveCount(4);
   await expect.poll(() => reads).toBe(1);
 
@@ -323,7 +328,7 @@ test('a failed prefetch does not flash an error when the tab is opened', async (
 });
 
 test('an approved entry is on the approved tab at once', async ({ page }) => {
-  const state = await open(page);
+  const state = await open(page, 'guestbook');
   await page.getByRole('button', { name: 'Approve mira' }).click();
   await expect(page.getByRole('button', { name: 'Approve mira' })).toHaveCount(
     0,
@@ -368,41 +373,23 @@ test('the apps open where they live', async ({ page }) => {
   }
 });
 
-test('on a phone the stuck section row takes taps under the header', async ({
+test('on a phone the slide-over drawer switches views and closes cleanly', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await open(page);
-  // Integrations and its dot stay on the row; apps is rail-only.
-  const row = page.locator('.cab-sections');
-  const integrations = row.getByRole('link', { name: /^integrations/ });
-  await expect(row.getByRole('link', { name: 'apps' })).toBeHidden();
-  const rowBox = (await row.boundingBox())!;
-  const linkBox = (await integrations.boundingBox())!;
-  expect(linkBox.x + linkBox.width).toBeLessThanOrEqual(
-    rowBox.x + rowBox.width,
-  );
-
-  await page.mouse.wheel(0, 900);
-  // Fully stuck: the row sits right on the header's bottom edge.
-  const headerBottom = await page
-    .locator('.pf-page > .pf-header')
-    .evaluate((header) => header.getBoundingClientRect().bottom);
-  await expect
-    .poll(async () => (await row.boundingBox())!.y)
-    .toBeLessThanOrEqual(headerBottom + 1);
-  // At the link's own point nothing laid over the row takes the tap.
-  const hit = await integrations.evaluate((link) => {
-    const box = link.getBoundingClientRect();
-    const top = document.elementFromPoint(
-      box.left + box.width / 2,
-      box.top + box.height / 2,
-    );
-    return link.contains(top);
-  });
-  expect(hit).toBe(true);
+  await page.getByRole('button', { name: 'Open admin menu' }).click();
+  const integrations = page
+    .locator('.cab-sections')
+    .getByRole('button', { name: /^integrations/ });
+  await expect(integrations).toBeVisible();
+  await expect(page.locator('.cab-sections__dot')).toBeVisible();
   await integrations.click();
-  await expect(integrations).toHaveAttribute('aria-current', 'location');
+  await expect(integrations).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#integrations')).toBeVisible();
+  await expect(page.locator('.cab-mobile-bar__title')).toHaveText(
+    'integrations',
+  );
 });
 
 test('on a touch screen the external apps show their arrow', async ({
@@ -419,31 +406,19 @@ test('on a touch screen the external apps show their arrow', async ({
     .toBe('1');
 });
 
-test('at the smallest width the row still holds integrations and its dot', async ({
-  page,
-}, info) => {
-  // A phone: its scrollbars overlay. A 320px desktop window gives 15px of
-  // its width to a classic scrollbar, which no phone does.
-  test.skip(info.project.name !== 'mobile', 'phone only');
-  await page.setViewportSize({ width: 320, height: 640 });
-  await open(page);
-  // The list is what clips: it must not need to scroll at all.
-  const list = page.locator('.cab-sections ul');
-  await expect(page.locator('.cab-sections__dot')).toBeVisible();
-  const fits = await list.evaluate((ul) => ul.scrollWidth <= ul.clientWidth);
-  expect(fits).toBe(true);
-});
-
-test('a failed projects load leaves the count out', async ({ page }) => {
+test('a failed projects load leaves the count out', async ({ page }, info) => {
   await mockAdmin(page);
   await page.route(
     (url) => url.pathname === '/api/admin/projects',
     (route) => route.fulfill({ status: 500, json: { error: 'down' } }),
   );
-  await page.goto('/tests/browser/admin.html');
+  await page.goto('/tests/browser/admin.html#projects');
   await expect(page.locator('#projects').getByRole('alert')).toBeVisible();
+  if (info.project.name === 'mobile') {
+    await page.getByRole('button', { name: 'Open admin menu' }).click();
+  }
   await expect(
-    page.locator('.cab-sections').getByRole('link', { name: /^projects/ }),
+    page.locator('.cab-sections').getByRole('button', { name: /^projects/ }),
   ).toHaveText('projects');
 });
 
@@ -451,7 +426,7 @@ test('at 200% text on a small screen the confirm actions stay reachable', async 
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await open(page);
+  await open(page, 'guestbook');
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });

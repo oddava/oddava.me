@@ -19,12 +19,16 @@
   align-items: center;
   gap: 2px;
   padding: 6px 4px 6px 0;
-  border-radius: 14px;
-  transition: background-color 160ms ease;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .adm-project:hover {
+    border-color: var(--line);
     background-color: var(--hover);
   }
 }
@@ -87,7 +91,7 @@
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--surface-2);
 }
 
@@ -359,7 +363,7 @@
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 8px;
   background: var(--surface-2);
 }
 
@@ -418,7 +422,8 @@
 .adm-switches {
   display: grid;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
   overflow: hidden;
 }
 
