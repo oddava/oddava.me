@@ -551,18 +551,12 @@
   fill: currentColor;
 }
 
-[data-site='portfolio'] .pf-glyph--mail,
-[data-site='portfolio'] .pf-glyph--rss {
+[data-site='portfolio'] .pf-glyph--mail {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-[data-site='portfolio'] .pf-glyph--rss circle {
-  fill: currentColor;
-  stroke: none;
 }
 
 @media (hover: hover) and (pointer: fine) {

@@ -228,10 +228,15 @@ export function deriveSummary(body: string): string {
       !line ||
       line.startsWith('#') ||
       line.startsWith('![') ||
-      /^<(?:figure|picture|img|video|audio)\b/i.test(line)
+      /^(?:[-*_]\s*){3,}$/.test(line) ||
+      /^<(?:figure|picture|img|video|audio|hr)\b/i.test(line)
     )
       continue;
-    const text = stripInlineMarkdown(line.replace(/^>\s?/gm, ''));
+    const cleaned = line
+      .replace(/^>\s?/gm, '')
+      .replace(/^\[![a-zA-Z0-9_-]+\][+-]?\s*/m, '')
+      .replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm, '');
+    const text = stripInlineMarkdown(cleaned);
     if (text) return text;
   }
   return '';

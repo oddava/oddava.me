@@ -119,6 +119,16 @@ describe('notes helpers', () => {
     expect(deriveSummary('<p>Plain <strong>HTML</strong> text.</p>')).toBe(
       'Plain HTML text.',
     );
+    expect(
+      deriveSummary('> [!NOTE] what this is\n> A quick callout intro.'),
+    ).toBe('what this is A quick callout intro.');
+    expect(deriveSummary('---\n\nAfter a horizontal rule.')).toBe(
+      'After a horizontal rule.',
+    );
+    expect(deriveSummary('---')).toBe('');
+    expect(deriveSummary('- first item\n- second item')).toBe(
+      'first item second item',
+    );
   });
 
   it('uses the first public note image for social previews', () => {

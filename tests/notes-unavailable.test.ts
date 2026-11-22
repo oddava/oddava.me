@@ -150,9 +150,8 @@ describe('garden index guard', () => {
       }
     }
 
-    // Five /notes pages, three legacy slug redirects, rss, sitemap, overview.
-    expect(guarded.length).toBeGreaterThanOrEqual(11);
-    expect(guarded).toContain('src/pages/rss.xml.ts');
+    // Five /notes pages, three legacy slug redirects, sitemap, overview.
+    expect(guarded.length).toBeGreaterThanOrEqual(10);
     expect(guarded).toContain('src/pages/sitemap.xml.ts');
   });
 });

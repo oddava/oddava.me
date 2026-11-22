@@ -1,24 +1,20 @@
 ---
 /**
- * Portfolio footer: off-site contacts and the feed.
+ * Portfolio footer: off-site contacts.
  */
 import linksData from '../../data/links.json';
 import { externalLinkAttrs, isExternalHref } from '../../lib/portfolio/links';
 
-type Glyph = 'github' | 'twitter' | 'mail' | 'rss';
+type Glyph = 'github' | 'twitter' | 'mail';
 
-const contacts = linksData.links.flatMap(({ url, title, icon }) =>
+const links = linksData.links.flatMap(({ url, title, icon }) =>
   url && !url.startsWith('/') ? [{ url, title, icon: icon as Glyph }] : [],
 );
-const links = [
-  ...contacts,
-  { url: '/rss.xml', title: 'rss', icon: 'rss' as Glyph },
-];
 ---
 
 <footer class="pf-footer">
   <div class="pf-footer-inner">
-    <nav class="pf-contacts" aria-label="contact and feeds">
+    <nav class="pf-contacts" aria-label="contacts">
       {
         links.map((link) => {
           return (
@@ -39,12 +35,6 @@ const links = [
                     <>
                       <rect x="3" y="5" width="18" height="14" rx="2.5" />
                       <path d="m4 7 8 6 8-6" />
-                    </>
-                  )}
-                  {link.icon === 'rss' && (
-                    <>
-                      <path d="M5 11a8 8 0 0 1 8 8M5 5a14 14 0 0 1 14 14" />
-                      <circle cx="6" cy="18" r="1.4" />
                     </>
                   )}
                 </svg>

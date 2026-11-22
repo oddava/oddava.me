@@ -109,7 +109,7 @@ describe('notes base per host', () => {
 
 describe('per-host feeds', () => {
   async function call(
-    route: 'rss.xml' | 'sitemap.xml' | 'robots.txt',
+    route: 'sitemap.xml' | 'robots.txt',
     url: URL,
     onNotesHost: boolean,
   ): Promise<string> {
@@ -122,21 +122,6 @@ describe('per-host feeds', () => {
     expect(response.status).toBe(200);
     return response.text();
   }
-
-  it('keeps the apex RSS feed on oddava.me/notes', async () => {
-    const xml = await call('rss.xml', apexUrl('/rss.xml'), false);
-    expect(xml).toContain('<link>https://oddava.me</link>');
-    expect(xml).toContain('<link>https://oddava.me/notes/reading</link>');
-    expect(xml).toContain('href="https://oddava.me/rss.xml"');
-  });
-
-  it('gives the notes host a feed of its own origin', async () => {
-    const xml = await call('rss.xml', notesUrl('/rss.xml'), true);
-    expect(xml).toContain('<link>http://notes.localhost:4321</link>');
-    expect(xml).toContain('<link>http://notes.localhost:4321/reading</link>');
-    expect(xml).toContain('href="http://notes.localhost:4321/rss.xml"');
-    expect(xml).not.toContain('oddava.me');
-  });
 
   it('keeps the apex sitemap and lists only the garden on the notes host', async () => {
     const apex = await call('sitemap.xml', apexUrl('/sitemap.xml'), false);

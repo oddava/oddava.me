@@ -165,17 +165,4 @@ describe('with PUBLIC_NOTES_BASE set', () => {
       'http://notes.localhost:4321/reading',
     ]);
   });
-
-  it('keeps the apex feed alive, with items on the notes host', async () => {
-    const { GET } = await import('../src/pages/rss.xml.ts');
-    const url = new URL('https://oddava.me/rss.xml');
-    const response: Response = await GET({
-      url,
-      request: new Request(url),
-    } as never);
-    const xml = await response.text();
-    expect(response.status).toBe(200);
-    expect(xml).toContain(`<link>${NOTES_BASE}/reading</link>`);
-    expect(xml).not.toContain('https://oddava.me/notes');
-  });
 });

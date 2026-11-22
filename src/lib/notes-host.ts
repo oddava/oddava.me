@@ -21,7 +21,6 @@ const SHARED_PATHS = new Set([
   '/api/notes/search',
   // Host-aware endpoints: each answers for the host it is asked on.
   '/robots.txt',
-  '/rss.xml',
   '/sitemap.xml',
   '/apple-touch-icon.png',
   '/favicon.ico',
