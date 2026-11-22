@@ -1,0 +1,65 @@
+---
+/**
+ * Recursive branch for the garden tree: folders render as collapsible
+ * `<details>` with their own nested rail; leaf notes render as plain links.
+ * Folders along the active note's ancestry open automatically.
+ */
+import type { GardenIndex } from '@lib/garden';
+
+interface Props {
+  ids: string[];
+  index: GardenIndex;
+  currentId?: string;
+  openIds: Set<string>;
+}
+
+const { ids, index, currentId, openIds } = Astro.props;
+const items = ids.flatMap((id) => {
+  const note = index.byId.get(id);
+  return note ? [note] : [];
+});
+---
+
+{
+  items.length > 0 && (
+    <ul class="note-tree__branch" role="list">
+      {items.map((note) => {
+        const hasChildren = note.childIds.length > 0;
+        const isCurrent = currentId === note.id;
+        return (
+          <li class="note-tree__item">
+            {hasChildren ? (
+              <details class="note-tree__folder" open={openIds.has(note.id)}>
+                <summary class="note-tree__summary">
+                  <span class="note-tree__chevron" aria-hidden="true">
+                    <svg viewBox="0 0 12 12">
+                      <path d="M4.25 2.75 7.75 6l-3.5 3.25" />
+                    </svg>
+                  </span>
+                  <a
+                    class="note-tree__link note-tree__link--folder"
+                    href={note.href}
+                    aria-current={isCurrent ? 'page' : undefined}
+                    data-page-preview-ignore
+                  >
+                    {note.title}
+                  </a>
+                </summary>
+                <Astro.self ids={note.childIds} {index} {currentId} {openIds} />
+              </details>
+            ) : (
+              <a
+                class="note-tree__link"
+                href={note.href}
+                aria-current={isCurrent ? 'page' : undefined}
+                data-page-preview-ignore
+              >
+                {note.title}
+              </a>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  )
+}

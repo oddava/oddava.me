@@ -1,38 +1,437 @@
 /* ===================================================
-   Notes — the landing, a note, tags and the 410
+   Notes — unified 3-column reading shell
 
-   Studio's room, opened to visitors: a dotted desk, and on it sheets of
-   paper held down by a strip of tape. A note is one sheet, centred, one
-   measure wide; lists of notes are index cards lying a touch askew; folders
-   are folders; tags and counts are stickers; a date is a stamp. Everything
-   else is the portfolio's: DM Sans, the ink, the small wave under "here".
-
-   Touch follows one rule everywhere (tokens in portfolio/_notes.css): a
-   press dips at once, a release springs back and settles, a hover glides.
-   Objects on the desk (cards, folders, stickers, the search) lift; rows in
-   a list (the trail, an index, the contents) light up with a soft fill.
-
-   The desk, the paper, the tape and the motion are tokens in
-   portfolio/_notes.css, worked out from the theme and the ink, so every rule
-   here follows light, dark and the ink choice without a second copy. The
-   rendered body's own styles live in `_note-prose.css`, shared with Studio;
-   the published page's type over them is at the end, scoped so Studio is
-   untouched.
+   Desktop (>= 72em): sticky left rail (home link, appearance control,
+   search, collapsible garden tree), focused 44rem reading column in the
+   centre, contextual utilities (on this page, nearby graph, backlinks) on
+   the right.
+   Mobile / tablet (< 72em): slim top bar (menu button opening the tree
+   drawer, breadcrumb, search), centred reading column, quiet utilities
+   underneath.
    =================================================== */
 
-/* ---- Frame ----------------------------------------------------------------- */
+/* ---- Shell & 3-column grid ------------------------------------------------ */
 
-/* Wide enough that a sheet's text runs the portfolio's 44rem measure inside
-   its margins. */
 .notes-column,
-.note-reading {
+.notes-shell {
   width: 100%;
-  max-width: 52rem;
+  max-width: 44rem;
   margin-inline: auto;
 }
 
+.notes-center {
+  min-width: 0;
+}
+
+body.note-nav-open {
+  overflow: hidden;
+}
+
+.note-nav-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.note-nav-scrim[hidden] {
+  display: none;
+}
+
+/* Mobile / tablet slide-over drawer. */
+.note-nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(19rem, 86vw);
+  padding: 18px 18px 24px;
+  border-right: 1px solid var(--line);
+  background: var(--bg);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 220ms var(--ease-out),
+    visibility 0s linear 220ms;
+}
+
+.note-nav[data-open] {
+  transform: translateX(0);
+  visibility: visible;
+  transition:
+    transform 220ms var(--ease-out),
+    visibility 0s linear 0s;
+}
+
+.notes-menu-btn,
+.note-nav__close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.notes-menu-btn {
+  margin-left: -6px;
+}
+
+.notes-menu-btn svg,
+.note-nav__close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .notes-menu-btn:hover,
+  .note-nav__close:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+
+@media (min-width: 72em) {
+  .notes-shell {
+    --bleed: clamp(0px, (100vw - 68rem) / 2 - 24px, 12rem);
+    display: grid;
+    grid-template-columns: minmax(14rem, 1fr) minmax(0, 44rem) minmax(
+        14rem,
+        1fr
+      );
+    grid-template-areas: 'nav center aside';
+    column-gap: clamp(32px, 4vw, 56px);
+    align-items: start;
+    width: auto;
+    max-width: none;
+    margin-inline: calc(-1 * var(--bleed));
+  }
+
+  .note-nav-scrim,
+  .notes-menu-btn,
+  .note-nav__close {
+    display: none;
+  }
+
+  .notes-shell > .note-nav {
+    grid-area: nav;
+    position: sticky;
+    top: 24px;
+    inset: auto;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    justify-self: end;
+    width: 14rem;
+    min-width: 0;
+    max-height: calc(100dvh - 48px);
+    padding: 0;
+    border-right: 0;
+    background: transparent;
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+
+  .notes-shell > .notes-center {
+    grid-area: center;
+  }
+
+  .notes-shell > .note-aside {
+    grid-area: aside;
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    width: 14rem;
+    min-width: 0;
+    max-height: calc(100dvh - 48px);
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* Lock all 3 columns onto one clean horizontal top baseline. */
+  .notes-shell .notes-bar {
+    min-height: 32px;
+    margin-bottom: 12px;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .notes-shell .notes-bar.notes-bar--mobile-only {
+    display: none;
+  }
+
+  .notes-shell .notes-bar > .notes-find {
+    display: none;
+  }
+
+  .notes-shell > .note-aside > section:first-child > .notes-label {
+    min-height: 32px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .notes-shell .note-contents {
+    display: none;
+  }
+}
+
+/* ---- Left rail: home, appearance, search & collapsible tree --------------- */
+
+.note-nav__top {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-nav__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.note-nav__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -6px;
+}
+
+.note-nav__bar .pf-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.note-nav__bar .pf-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.note-nav__bar .pf-panel {
+  left: 0;
+  right: 0;
+  width: auto;
+  transform-origin: 0 0;
+}
+
+@media (min-width: 72em) {
+  .note-nav__bar .pf-panel {
+    right: auto;
+    width: min(18rem, calc(100vw - 36px));
+  }
+}
+
+.note-nav__home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-nav__home:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+
+.note-nav__top .notes-find--pill {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px 0 10px;
+  font-size: 0.8125rem;
+}
+
+.note-nav__top .notes-find--pill .notes-find__key {
+  margin-left: auto;
+}
+
+.note-tree {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -8px;
+  padding: 2px 8px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+.note-tree__root {
+  display: block;
+  margin-left: -8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.note-tree__root[aria-current='page'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--ink);
+}
+
+/* Each level owns its own hairline rail, so active indicators sit right
+   beside the active item instead of stranded on the outer edge. */
+.note-tree__branch {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-tree__folder > .note-tree__branch {
+  margin: 2px 0 4px 7px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+.note-tree__item {
+  position: relative;
+}
+
+.note-tree__summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.note-tree__chevron {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 24px;
+  margin-left: -4px;
+  border-radius: 4px;
+  color: var(--ink-2);
+  opacity: 0.7;
+  transition:
+    color 120ms ease,
+    opacity 120ms ease;
+}
+
+.note-tree__chevron svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 150ms var(--ease-out);
+}
+
+.note-tree__folder[open] > .note-tree__summary .note-tree__chevron svg {
+  transform: rotate(90deg);
+}
+
+.note-tree__link {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-decoration: none;
+  overflow-wrap: break-word;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
+}
+
+.note-tree__link--folder {
+  padding-left: 4px;
+  font-weight: 500;
+}
+
+/* Active accent bar right on the current branch's rail. */
+.note-tree__folder
+  > .note-tree__branch
+  > .note-tree__item:has(> .note-tree__link[aria-current='page'])::before,
+.note-tree__folder
+  > .note-tree__branch
+  > .note-tree__item
+  > .note-tree__folder
+  > .note-tree__summary:has(> .note-tree__link[aria-current='page'])::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -11px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.note-tree__link[aria-current='page'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--ink);
+  font-weight: 550;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-tree__root:hover,
+  .note-tree__link:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+  .note-tree__summary:hover .note-tree__chevron {
+    color: var(--ink);
+    opacity: 1;
+  }
+}
+
+/* ---- Headings & labels ---------------------------------------------------- */
+
 .notes-head {
-  margin-bottom: 36px;
+  margin-bottom: 24px;
 }
 
 .notes-title,
@@ -42,262 +441,172 @@
   color: var(--ink);
   font-family: var(--sans);
   font-size: var(--t-title);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.024em;
+  letter-spacing: -0.022em;
   text-wrap: balance;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .notes-lede {
-  margin-top: 12px;
+  margin-top: 8px;
   color: var(--ink-2);
+  font-size: 0.9375rem;
 }
 
-/* A small heading over a group, with its count stuck on beside it. */
 .notes-label {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 18px;
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-/* The row over a page: where you are on the left, search on the right. */
+/* ---- Top bar (breadcrumb + mobile menu/search) ---------------------------- */
+
 .notes-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  margin-bottom: 22px;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .notes-bar > .notes-find {
   margin-left: auto;
 }
 
-/* ---- Rows that light up ---------------------------------------------------
-   Links in a list or a line — the trail, "← notes", a folder's index, the
-   contents — answer like an iOS row: a soft rounded fill fades in under
-   the pointer and deepens under a press, and the row dips a hair. */
-
 .note-trail a,
 .notes-back,
-.note-index__row,
 .note-contents__toggle,
 .note-contents__list a {
-  border-radius: 10px;
-  transition: var(--t-lift);
-}
-
-.note-trail a:active,
-.notes-back:active,
-.note-index__row:active,
-.note-contents__toggle:active,
-.note-contents__list a:active {
-  background: var(--press-fill);
-  scale: 0.98;
-  transition: var(--t-press);
+  border-radius: 6px;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .note-trail a:hover,
   .notes-back:hover,
-  .note-index__row:hover,
   .note-contents__toggle:hover,
   .note-contents__list a:hover {
-    background: var(--hover-fill);
-  }
-}
-
-/* "← notes": the way back from a tag page. */
-.notes-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  margin-left: -10px;
-  padding: 0 10px;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .notes-back:hover {
+    background: var(--hover);
     color: var(--ink);
   }
 }
 
-/* ---- The three motifs: paper, tape, stickers ------------------------------ */
+.notes-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 8px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
 
-/* A sheet of paper: a flat fill, a hairline, the faintest lift. */
+/* ---- Content surface & quiet metadata ------------------------------------- */
+
 .notes-sheet {
   position: relative;
-  padding: clamp(36px, 6vw, 60px) clamp(22px, 7vw, 68px) clamp(36px, 6vw, 64px);
-  border: 1px solid var(--paper-line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: var(--paper-lift);
 }
 
-/* The tape that holds it: striped, with pinked ends, a little off true. The
-   same strip Studio's sheet and the callouts wear. */
-.notes-sheet::before {
-  content: '';
-  position: absolute;
-  top: -11px;
-  left: calc(50% - 48px);
-  width: 96px;
-  height: 22px;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      var(--tape-stripe) 0 5px,
-      transparent 5px 10px
-    ),
-    var(--tape);
-  clip-path: polygon(
-    0 0,
-    3px 25%,
-    0 50%,
-    3px 75%,
-    0 100%,
-    100% 100%,
-    calc(100% - 3px) 75%,
-    100% 50%,
-    calc(100% - 3px) 25%,
-    100% 0
-  );
-  rotate: -2deg;
-  pointer-events: none;
-}
-
-/* A draft's tape is amber, like its sticker. */
-.notes-sheet.is-draft {
-  --tape: color-mix(in srgb, var(--draft) 30%, transparent);
-  --tape-stripe: color-mix(in srgb, var(--draft) 14%, transparent);
-}
-
-/* A sticker: a small label stuck on a touch askew. Counts, tags, draft. */
 .notes-sticker {
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 5px;
-  padding: 0 8px;
-  border-radius: 7px;
-  background: var(--sticker);
   color: var(--ink-2);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  line-height: 22px;
+  line-height: 1.4;
   white-space: nowrap;
   text-decoration: none;
-  rotate: -2deg;
 }
 
 .notes-sticker--tag {
-  background: var(--sticker-ink);
-  color: var(--focus);
-}
-
-/* No two tags in a row sit at the same angle. */
-.note-tags li:nth-child(even) .notes-sticker--tag,
-.note-sheet__meta .notes-sticker--tag:nth-of-type(even) {
-  rotate: 1.5deg;
-}
-
-/* A tag you can follow: peeled up and pressed back down. It straightens and
-   swells a little under the pointer, and dips under a press. */
-a.notes-sticker--tag {
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 28px;
-  transition: var(--t-lift);
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 120ms ease;
 }
 
 a.notes-sticker--tag:focus-visible {
   outline-offset: 2px;
 }
 
-a.notes-sticker--tag:active {
-  scale: 0.94;
-  transition: var(--t-press);
-}
-
 @media (hover: hover) and (pointer: fine) {
   a.notes-sticker--tag:hover {
-    rotate: 0deg;
-    scale: 1.06;
-    background: color-mix(in srgb, var(--accent) 24%, transparent);
-  }
-  a.notes-sticker--tag:hover:active {
-    scale: 0.97;
+    background: var(--hover);
+    border-color: var(--line-2);
+    color: var(--ink);
   }
 }
 
 .notes-sticker__count {
-  opacity: 0.7;
-  font-weight: 500;
+  opacity: 0.65;
+  font-weight: 400;
 }
 
 .notes-sticker--draft {
-  background: color-mix(in srgb, var(--draft) 16%, transparent);
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--draft) 35%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--draft) 10%, transparent);
   color: var(--draft);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.notes-sticker--big {
-  padding: 0.12em 0.45em;
-  border-radius: 14px;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: 1.15;
-  letter-spacing: inherit;
-  white-space: normal;
-}
-
-/* A date, rubber-stamped: a dashed box, a degree off. */
 .notes-stamp {
   display: inline-flex;
   align-items: center;
-  padding: 1px 9px;
-  border: 1.5px dashed color-mix(in srgb, var(--ink-2) 55%, transparent);
-  border-radius: 7px;
   color: var(--ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
-  line-height: 22px;
   white-space: nowrap;
-  rotate: -1.5deg;
 }
 
-/* ---- Search ----------------------------------------------------------------
-   On the page, not hidden in the header: a field under the landing's words,
-   a labelled pill at the top of every other page. */
+/* ---- Search trigger ------------------------------------------------------- */
 
 .notes-find {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  border: 1px solid var(--paper-line);
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--ink-2);
   font: inherit;
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: var(--t-lift);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 120ms ease;
 }
 
 .notes-find svg {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
@@ -309,14 +618,13 @@ a.notes-sticker--tag:active {
   display: inline-grid;
   flex: none;
   place-items: center;
-  min-width: 22px;
-  height: 22px;
+  min-width: 20px;
+  height: 20px;
   margin-left: auto;
-  padding: 0 6px;
-  border: 1px solid var(--paper-line-2);
-  border-bottom-width: 2px;
-  border-radius: 6px;
-  background: var(--paper);
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg);
   color: var(--ink-2);
   font-family: inherit;
   font-size: 0.75rem;
@@ -324,379 +632,85 @@ a.notes-sticker--tag:active {
 }
 
 .notes-find:focus-visible {
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-.notes-find:active {
-  scale: 0.975;
-  transition: var(--t-press);
-}
-
-/* The field: a recess in the paper, the width of the words above it. */
-.notes-find--field {
-  width: 100%;
-  min-height: 52px;
-  margin-top: 30px;
-  padding: 0 12px 0 16px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--desk) 65%, var(--paper));
-  font-size: 1rem;
-}
-
-/* The pill: a small object on the desk, lifted like a card. */
 .notes-find--pill {
   flex: none;
-  min-height: 38px;
-  padding: 0 7px 0 13px;
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow: var(--paper-lift);
-  color: var(--ink);
-  font-size: 0.9375rem;
+  min-height: 34px;
+  padding: 0 8px 0 11px;
+  font-size: 0.875rem;
 }
 
 .notes-find--pill .notes-find__key {
   margin-left: 2px;
-  border-radius: 999px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .notes-find--field:hover {
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--paper-line));
-    background: color-mix(in srgb, var(--accent) 5%, var(--paper));
+  .notes-find:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
     color: var(--ink);
-  }
-  .notes-find--pill:hover {
-    translate: 0 -2px;
-    border-color: color-mix(in srgb, var(--accent) 40%, var(--paper-line));
-    box-shadow: var(--paper-lift-up);
-  }
-  .notes-find:hover svg {
-    color: var(--accent);
-  }
-  .notes-find--pill:hover:active {
-    translate: 0 0;
   }
 }
 
-/* A touch screen has no "/" to press. */
 @media (pointer: coarse) {
   .notes-find__key {
     display: none;
   }
   .notes-find--pill {
-    min-height: 44px;
-    padding-right: 16px;
+    min-height: 38px;
+    padding-right: 12px;
   }
 }
 
-/* ---- The landing ----------------------------------------------------------- */
+/* ---- Notes landing -------------------------------------------------------- */
+
+.notes-home__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
 .notes-home__sheet .note-page-icon {
-  width: 3rem;
-  height: 3rem;
-  margin: 0 0 18px;
-  font-size: 3rem;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1;
 }
 
 .notes-home__intro {
   margin-top: 18px;
 }
 
-.notes-shelf {
-  margin-top: 64px;
-}
-
-/* ---- Index cards ------------------------------------------------------------
-   A list of notes is a scatter of cards: two across from 40em, each a
-   degree or so askew. Under the pointer a card straightens, rises and
-   catches more light; pressed, it dips into the desk; let go, it springs
-   back. */
-
-.note-cards {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 40em) {
-  .note-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px 20px;
-  }
-}
-
-.note-card {
-  --tilt: -0.6deg;
-  display: flex;
-}
-
-.note-card:nth-child(3n + 2) {
-  --tilt: 0.5deg;
-}
-
-.note-card:nth-child(3n) {
-  --tilt: -0.25deg;
-}
-
-.note-card__link {
-  position: relative;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  padding: 18px 20px 14px;
-  border: 1px solid var(--paper-line);
-  border-radius: 14px;
-  background: var(--paper);
-  box-shadow: var(--paper-lift);
+.notes-home__intro.prose {
   color: var(--ink);
-  text-decoration: none;
-  rotate: var(--tilt);
-  -webkit-tap-highlight-color: transparent;
-  transition: var(--t-lift);
-}
-
-.note-card__link:focus-visible {
-  outline-offset: 3px;
-}
-
-.note-card__link:active {
-  scale: 0.975;
-  box-shadow: var(--paper-lift);
-  transition: var(--t-press);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .note-card__link:hover {
-    rotate: 0deg;
-    translate: 0 -4px;
-    border-color: color-mix(in srgb, var(--accent) 30%, var(--paper-line));
-    box-shadow: var(--paper-lift-up);
-  }
-  .note-card__link:hover:active {
-    translate: 0 -1px;
-    box-shadow: var(--paper-lift);
-  }
-  .note-card__link:hover .note-card__title {
-    color: var(--focus);
-  }
-}
-
-.note-card__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.note-card__title {
-  min-width: 0;
+  font-family: var(--sans);
   font-size: 1.0625rem;
-  font-weight: 650;
-  line-height: 1.35;
-  letter-spacing: -0.012em;
-  overflow-wrap: anywhere;
-  transition: color 200ms ease;
+  line-height: 1.7;
 }
 
-.note-card__excerpt {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+.notes-home__intro.prose p:last-child,
+.notes-home__intro.prose ul:last-child,
+.notes-home__intro.prose ol:last-child {
+  margin-bottom: 0;
 }
-
-.note-card__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  margin-top: auto;
-  padding-top: 10px;
-  color: var(--ink-2);
-  font-size: 0.8125rem;
-}
-
-.note-card__foot time {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Why the card is here ("links here", "similar"), stuck on its corner. */
-.note-card__kicker {
-  position: absolute;
-  top: -11px;
-  right: 16px;
-  background: color-mix(in srgb, var(--accent) 16%, var(--paper));
-  color: var(--focus);
-  rotate: 3deg;
-}
-
-/* A note's icon at list size: its own image or emoji, else a line glyph. */
-.note-list-icon {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-top: 0.1em;
-  color: var(--ink-2);
-}
-
-.note-list-icon :is(img, span) {
-  display: block;
-  width: 1.25rem;
-  height: 1.25rem;
-  object-fit: contain;
-  font-size: 1.125rem;
-  line-height: 1;
-}
-
-.note-list-icon__glyph {
-  width: 1.125rem;
-  height: 1.125rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* ---- Folders, drawn as folders --------------------------------------------
-   Under the pointer a folder rises and a sheet of paper slides up out of
-   it. The sheet is the list item's, behind the folder, so the folder's
-   front hides all but what peeks over its top edge. */
-
-.note-folders {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-  gap: 26px 18px;
-  margin: 0;
-  padding: 12px 0 0;
-  list-style: none;
-}
-
-.note-folders > li {
-  position: relative;
-  isolation: isolate;
-}
-
-.note-folders > li::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  top: 8px;
-  right: 12%;
-  left: 30%;
-  height: 44px;
-  border: 1px solid var(--paper-line);
-  border-radius: 6px;
-  background:
-    repeating-linear-gradient(
-        transparent 0 9px,
-        color-mix(in srgb, var(--ink) 8%, transparent) 9px 10px
-      )
-      0 12px / 100% 100% no-repeat,
-    var(--paper);
-  rotate: 2deg;
-  transition: var(--t-lift);
-  pointer-events: none;
-}
-
-.note-folder {
-  --folder: color-mix(in srgb, var(--accent) 10%, var(--paper));
-  --folder-line: color-mix(in srgb, var(--accent) 26%, var(--paper-line));
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 84px;
-  padding: 18px 16px 14px;
-  border: 1px solid var(--folder-line);
-  border-radius: 4px 14px 14px 14px;
-  background: var(--folder);
-  box-shadow: var(--paper-lift);
-  color: var(--ink);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: var(--t-lift);
-}
-
-/* The tab. It overlaps the body by a pixel, so the two read as one. */
-.note-folder::before {
-  content: '';
-  position: absolute;
-  top: -13px;
-  left: -1px;
-  width: 46%;
-  height: 14px;
-  border: 1px solid var(--folder-line);
-  border-bottom: 0;
-  border-radius: 9px 12px 0 0;
-  background: var(--folder);
-}
-
-.note-folder:focus-visible {
-  outline-offset: 3px;
-}
-
-.note-folder:active {
-  scale: 0.97;
-  transition: var(--t-press);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .note-folders > li:hover::before {
-    translate: 0 -26px;
-    rotate: -3deg;
-  }
-  .note-folder:hover {
-    translate: 0 -3px;
-    box-shadow: var(--paper-lift-up);
-  }
-  .note-folder:hover:active {
-    translate: 0 0;
-  }
-  .note-folder:hover .note-folder__title {
-    color: var(--focus);
-  }
-}
-
-.note-folder__title {
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-  transition: color 200ms ease;
-}
-
-.note-folder__count {
-  margin-top: auto;
-  color: var(--ink-2);
-  font-size: 0.8125rem;
-}
-
-/* ---- Tags ------------------------------------------------------------------ */
 
 .note-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 8px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* ---- A note ---------------------------------------------------------------- */
+/* ---- Breadcrumb trail ----------------------------------------------------- */
 
-/* Where it lives: the folders above it, over the sheet's tape. */
 .note-trail {
   min-width: 0;
 }
@@ -709,7 +723,7 @@ a.notes-sticker--tag:active {
   padding: 0;
   list-style: none;
   color: var(--ink-2);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .note-trail li {
@@ -721,18 +735,17 @@ a.notes-sticker--tag:active {
 .note-trail li + li::before {
   content: '/';
   margin: 0 2px;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
-/* The current note is text, not a padded link: its slash keeps the gap. */
 .note-trail [aria-current='page']::before {
-  margin-right: 8px;
+  margin-right: 6px;
 }
 
 .note-trail a {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 8px;
   color: var(--ink-2);
   text-decoration: none;
@@ -747,15 +760,10 @@ a.notes-sticker--tag:active {
   white-space: nowrap;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .note-trail a:hover {
-    color: var(--ink);
-  }
-}
-
-/* On a phone the trail is a back button, the way iOS does it: "‹" and the
-   folder the note sits in, so the row never wraps beside the search. */
 @media (max-width: 40em) {
+  .note-trail ol {
+    margin-left: 0;
+  }
   .note-trail li:not(:nth-last-child(2)) {
     display: none;
   }
@@ -764,8 +772,8 @@ a.notes-sticker--tag:active {
   }
   .note-trail li:nth-last-child(2) a {
     gap: 6px;
-    min-height: 44px;
-    font-size: 0.9375rem;
+    min-height: 36px;
+    font-size: 0.875rem;
   }
   .note-trail li:nth-last-child(2) a::before {
     content: '‹';
@@ -775,11 +783,33 @@ a.notes-sticker--tag:active {
   }
 }
 
-.note-sheet .note-page-icon {
-  width: 3.25rem;
-  height: 3.25rem;
-  margin: 0 0 18px;
-  font-size: 3.25rem;
+/* ---- Note header & body --------------------------------------------------- */
+
+.note-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.note-sheet__head .note-page-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.note-sheet__title,
+.note-sheet__authored-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.note-sheet__authored-title h1 {
+  margin: 0;
 }
 
 .note-sheet .prose h1:not(:first-child) {
@@ -791,32 +821,50 @@ a.notes-sticker--tag:active {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
-  margin: 0 0 28px;
-  padding-bottom: 18px;
-  border-bottom: 1.5px dashed color-mix(in srgb, var(--draft) 40%, transparent);
+  gap: 8px 10px;
+  margin: 0 0 20px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--ink-2);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
-/* When it was last tended, and what it is tagged. */
 .note-sheet__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 10px;
-  margin-top: 18px;
+  margin-top: 10px;
 }
 
-/* Contents: a slip folded under the title, closed until asked for. Opening
-   it unfolds the list on the sheet curve where the browser can animate a
-   height to `auto`; elsewhere it simply opens. */
+.note-sheet__body {
+  margin-top: 22px;
+}
+
+.note-sheet__stub {
+  margin-top: 20px;
+  color: var(--ink-2);
+}
+
+.note-sheet__body--continuation > :is(h2, h3):first-child {
+  margin-top: 1.6em;
+}
+
+.note-sheet__body--continuation > h4:first-child {
+  margin-top: 1.75em;
+}
+
+/* ---- Folded contents (narrow screens only) -------------------------------- */
+
 .note-contents {
-  margin-top: 26px;
+  margin-top: 20px;
   padding: 4px;
-  border: 1.5px dashed var(--paper-line-2);
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
   interpolate-size: allow-keywords;
 }
 
@@ -824,8 +872,8 @@ a.notes-sticker--tag:active {
   block-size: 0;
   overflow: clip;
   transition:
-    block-size var(--glide) var(--ease-lift),
-    content-visibility var(--glide) allow-discrete;
+    block-size 260ms var(--ease-out),
+    content-visibility 260ms allow-discrete;
 }
 
 .note-contents[open]::details-content {
@@ -836,10 +884,10 @@ a.notes-sticker--tag:active {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 10px;
   color: var(--ink-2);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   user-select: none;
@@ -847,8 +895,8 @@ a.notes-sticker--tag:active {
 }
 
 .note-contents__toggle svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
@@ -860,16 +908,15 @@ a.notes-sticker--tag:active {
   stroke: none;
 }
 
-/* A chevron, drawn by its two strokes, that turns down when open. */
 .note-contents__toggle::after {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   margin: 0 4px 0 auto;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   rotate: -45deg;
-  transition: rotate var(--glide) var(--ease-lift);
+  transition: rotate 220ms var(--ease-out);
 }
 
 .note-contents[open] > .note-contents__toggle::after {
@@ -880,15 +927,9 @@ a.notes-sticker--tag:active {
   outline-offset: 0;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .note-contents__toggle:hover {
-    color: var(--ink);
-  }
-}
-
 .note-contents__list {
   margin: 0;
-  padding: 2px 0 6px 25px;
+  padding: 2px 0 6px 24px;
   list-style: none;
 }
 
@@ -902,131 +943,183 @@ a.notes-sticker--tag:active {
 
 .note-contents__list a {
   display: block;
-  padding: 6px 10px;
+  padding: 5px 10px;
   color: var(--ink-2);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   text-decoration: none;
 }
 
-/* The section you are reading wears the site's wave. */
 .note-contents__list a[aria-current='location'] {
-  color: var(--ink);
-  text-decoration: underline wavy var(--accent) 1.5px;
-  text-decoration-skip-ink: none;
-  text-underline-offset: 0.3em;
+  color: var(--accent);
+  font-weight: 500;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .note-contents__list a:hover {
-    color: var(--ink);
-  }
+/* ---- Child pages & tag lists (clean borderless typographic rows) ---------- */
+
+.note-children {
+  margin-top: 28px;
 }
 
-.note-sheet__body {
-  margin-top: 36px;
-}
-
-.note-sheet__stub {
-  margin-top: 32px;
-  color: var(--ink-2);
-}
-
-/* The authored h1 is rendered apart from the rest of the body, which makes
-   the body's first heading a :first-child — and `.prose > :first-child`
-   would zero its margin. Give back the spacing it has in one unbroken
-   prose flow, so the split is invisible. */
-.note-sheet__body--continuation > :is(h2, h3):first-child {
-  margin-top: 1.6em;
-}
-
-.note-sheet__body--continuation > h4:first-child {
-  margin-top: 1.75em;
-}
-
-/* A folder's index: its pages with dotted leaders to the date, like the
-   contents page of a notebook. */
-.note-index {
-  margin-top: 52px;
-  padding-top: 28px;
-  border-top: 1.5px dashed var(--paper-line-2);
-}
-
-.note-index__list {
-  margin: 0 -10px;
+.note-children__list {
+  margin: 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--line);
 }
 
-.note-index__row {
+.note-children__list > li {
+  border-bottom: 1px solid var(--line);
+}
+
+.note-children__row {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  padding: 8px 10px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-inline: -10px;
+  padding: 11px 10px;
+  border-radius: 8px;
   color: var(--ink);
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 150ms ease,
+    color 120ms ease;
 }
 
-.note-index__title {
+@media (hover: hover) and (pointer: fine) {
+  .note-children__row:hover {
+    background: var(--hover);
+  }
+}
+
+.note-children__title {
   min-width: 0;
+  font-size: 1rem;
   font-weight: 500;
+  line-height: 1.4;
   overflow-wrap: anywhere;
-  transition: color 200ms ease;
 }
 
-.note-index__leader {
-  flex: 1 1 2rem;
-  min-width: 2rem;
-  border-bottom: 2px dotted var(--paper-line-2);
-  translate: 0 -0.3em;
-}
-
-.note-index__row time {
+.note-children__meta {
   flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
   color: var(--ink-2);
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 
+.note-children__count,
+.note-children__folder {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  opacity: 0.8;
+}
+
+.note-children__count::after,
+.note-children__folder::after {
+  content: '·';
+  opacity: 0.55;
+}
+
+/* ---- Subtle previous / next sibling navigation ---------------------------- */
+
+.note-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.note-pager__link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 150ms ease;
+}
+
+.note-pager__link--prev {
+  margin-left: -10px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.note-pager__link--next {
+  margin-right: -10px;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.note-pager__dir {
+  color: var(--ink-2);
+  font-size: 0.75rem;
+}
+
+.note-pager__title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .note-index__row:hover .note-index__title {
-    color: var(--focus);
+  .note-pager__link:hover {
+    background: var(--hover);
   }
 }
 
-/* ---- Around the sheet: nearby, on this page, keep reading ------------------
-   On narrow screens everything off the sheet stacks under it: the graph,
-   then the cards. From 78em the graph and an outline of the note move into
-   a sidebar beside the sheet, sticky as you read (see below). */
+/* ---- Right rail: outline, nearby graph & backlinks ------------------------ */
 
-.note-nearby,
-.note-keep {
-  margin-top: 56px;
+.note-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
 
-/* The graph's piece of paper. The island paints its ground from
-   --color-surface, so here that is the paper. */
+@media (max-width: 71.99em) {
+  .notes-shell:has(.note-pager) > .note-aside {
+    margin-top: 24px;
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
 .notes-slip {
-  border: 1px solid var(--paper-line);
-  border-radius: 16px;
-  background: var(--paper);
-  box-shadow: var(--paper-lift);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  overflow: hidden;
 }
 
 .notes-slip .interactive-graph {
-  --color-surface: var(--paper);
+  --color-surface: var(--surface-2);
 }
 
 .note-nearby__graph .interactive-graph__slot {
   width: 100%;
-  aspect-ratio: 5 / 2;
+  aspect-ratio: 16 / 7;
+  max-height: 210px;
 }
 
 .note-nearby__graph .interactive-graph__panel:not(:modal),
 .note-nearby__graph .interactive-graph__snapshot {
   border: 0;
-  border-radius: 16px;
+  border-radius: 10px;
 }
 
 .note-nearby__graph
@@ -1036,97 +1129,24 @@ a.notes-sticker--tag:active {
   height: 100%;
   aspect-ratio: auto;
   border: 0;
-  border-radius: 16px;
+  border-radius: 10px;
 }
 
 @media (max-width: 40em) {
   .note-nearby__graph .interactive-graph__slot {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 10;
+    max-height: 220px;
   }
 }
 
-.note-keep .note-cards {
-  margin-top: 6px;
-}
-
-/* The outline waits for the sidebar; until then the folded contents slip on
-   the sheet does its job. */
 .note-outline {
   display: none;
 }
 
-/* ---- The sidebar ------------------------------------------------------------
-   The sheet keeps the page's centre, under the middle of the header, and the
-   sidebar sits in the gutter on its right. The grid bleeds past the frame by
-   the same amount on both sides (never into the last 24px of the window),
-   and an empty column on the left balances the sidebar, so the sheet stays
-   centred. The sheet narrows from its 52rem only as far as 39rem; below the
-   width that needs, the sidebar stacks under the sheet instead of pushing it
-   off centre. The sidebar holds a square graph and the outline, and stays in
-   view while the note scrolls; a long outline scrolls on its own, following
-   the section you are reading. */
-
-@media (min-width: 78em) {
-  .note-reading--aside {
-    --bleed: clamp(0px, (100vw - 64rem) / 2 - 24px, 12rem);
-    display: grid;
-    grid-template-columns: minmax(15rem, 1fr) minmax(0, 52rem) minmax(
-        15rem,
-        1fr
-      );
-    grid-template-rows: auto auto 1fr;
-    grid-template-areas:
-      '. bar   .'
-      '. sheet aside'
-      '. keep  aside';
-    column-gap: 48px;
-    width: auto;
-    max-width: none;
-    margin-inline: calc(-1 * var(--bleed));
-  }
-
-  .note-reading--aside > .notes-bar {
-    grid-area: bar;
-  }
-
-  .note-reading--aside > .notes-sheet {
-    grid-area: sheet;
-  }
-
-  .note-reading--aside > .note-keep {
-    grid-area: keep;
-  }
-
-  /* The outline beside the sheet replaces the slip folded on it. */
-  .note-reading--aside .note-contents {
-    display: none;
-  }
-
-  .note-aside {
-    grid-area: aside;
-    position: sticky;
-    top: 28px;
-    align-self: start;
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-    width: 15rem;
-    min-width: 0;
-    max-height: calc(100dvh - 56px);
-  }
-
-  .note-aside .notes-label {
-    margin-bottom: 12px;
-    font-size: 0.9375rem;
-  }
-
-  .note-aside .note-nearby {
-    flex: none;
-    margin-top: 0;
-  }
-
+@media (min-width: 72em) {
   .note-aside .note-nearby__graph .interactive-graph__slot {
     aspect-ratio: 1 / 1;
+    max-height: none;
   }
 
   .note-outline {
@@ -1136,34 +1156,6 @@ a.notes-sticker--tag:active {
   }
 }
 
-/* With room to spare, the sheet takes the page's centre, under the header's
-   middle, and the sidebar moves out into the gutter on its right. The grid
-   bleeds past the frame by the same amount on both sides (never into the
-   last 24px of the window), and an empty column on the left balances the
-   sidebar, so the sheet stays centred at every width from here up. */
-@media (min-width: 85em) {
-  .note-reading--aside {
-    --bleed: clamp(0px, (100vw - 68rem) / 2 - 24px, 12rem);
-    grid-template-columns: minmax(15rem, 1fr) minmax(0, 52rem) minmax(
-        15rem,
-        1fr
-      );
-    grid-template-areas:
-      '. bar   .'
-      '. sheet aside'
-      '. keep  aside';
-    column-gap: 48px;
-    width: auto;
-    margin-inline: calc(-1 * var(--bleed));
-  }
-
-  .note-aside {
-    width: 15rem;
-  }
-}
-
-/* The scroller pads its edges so a row's press fill and the focus ring are
-   not clipped by its overflow. */
 .note-outline__scroll {
   min-height: 0;
   margin: -4px -6px;
@@ -1171,16 +1163,14 @@ a.notes-sticker--tag:active {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--paper-line-2) transparent;
+  scrollbar-color: var(--line-2) transparent;
 }
 
-/* A dashed rail like the sheet's own rules; the section you are reading
-   lights its stretch of the rail in the ink and wears the site's wave. */
 .note-outline__list {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-left: 1.5px dashed var(--paper-line-2);
+  border-left: 1px solid var(--line);
 }
 
 .note-outline__item {
@@ -1190,31 +1180,33 @@ a.notes-sticker--tag:active {
 .note-outline__item a {
   display: block;
   margin-left: 8px;
-  padding: 5px 10px;
-  border-radius: 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
   color: var(--ink-2);
-  font-size: 0.875rem;
-  line-height: 1.4;
+  font-size: 0.8125rem;
+  line-height: 1.45;
   text-decoration: none;
   overflow-wrap: anywhere;
   -webkit-tap-highlight-color: transparent;
-  transition: var(--t-lift);
+  transition:
+    color 120ms ease,
+    background-color 150ms ease;
 }
 
 .note-outline__item--depth-3 a {
-  margin-left: 22px;
+  margin-left: 20px;
 }
 
 .note-outline__item--depth-4 a {
-  margin-left: 36px;
+  margin-left: 32px;
 }
 
 .note-outline__item:has(> a[aria-current='location'])::before {
   content: '';
   position: absolute;
-  top: 5px;
-  bottom: 5px;
-  left: -1.75px;
+  top: 4px;
+  bottom: 4px;
+  left: -1.5px;
   width: 2px;
   border-radius: 2px;
   background: var(--accent);
@@ -1222,15 +1214,7 @@ a.notes-sticker--tag:active {
 
 .note-outline__item a[aria-current='location'] {
   color: var(--ink);
-  text-decoration: underline wavy var(--accent) 1.5px;
-  text-decoration-skip-ink: none;
-  text-underline-offset: 0.3em;
-}
-
-.note-outline__item a:active {
-  background: var(--press-fill);
-  scale: 0.98;
-  transition: var(--t-press);
+  font-weight: 500;
 }
 
 .note-outline__item a:focus-visible {
@@ -1239,8 +1223,62 @@ a.notes-sticker--tag:active {
 
 @media (hover: hover) and (pointer: fine) {
   .note-outline__item a:hover {
-    background: var(--hover-fill);
+    background: var(--hover);
     color: var(--ink);
+  }
+}
+
+/* Compact backlinks list in the right rail (inline pills on narrow screens). */
+.note-backlinks__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-backlinks__list a {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition:
+    color 120ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-backlinks__list a:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
+    color: var(--ink);
+  }
+}
+
+@media (min-width: 72em) {
+  .note-backlinks__list {
+    flex-direction: column;
+    gap: 2px;
+    margin-left: -8px;
+  }
+
+  .note-backlinks__list a {
+    display: block;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+  }
+
+  .note-backlinks__list a:hover {
+    border-color: transparent;
   }
 }
 
@@ -1249,108 +1287,95 @@ a.notes-sticker--tag:active {
 .notes-gone {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
 }
 
 .notes-gone .notes-title {
-  margin-top: 22px;
+  margin-top: 12px;
 }
 
 .notes-way {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  margin-top: 28px;
-  padding: 0 18px;
-  border: 1px solid var(--paper-line-2);
-  border-radius: 999px;
-  background: var(--paper);
+  margin-top: 24px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--ink);
+  font-size: 0.9375rem;
   text-decoration: none;
-  transition: var(--t-lift);
-}
-
-.notes-way:active {
-  scale: 0.96;
-  transition: var(--t-press);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .notes-way:hover {
-    translate: 0 -2px;
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    box-shadow: var(--paper-lift-up);
-    color: var(--focus);
+    background: var(--hover);
+    border-color: var(--line-2);
   }
 }
 
-/* ---- The published body: the portfolio's reading type over the shared
-        prose. Studio loads _note-prose.css without this file, so these stay
-        on the page. ---------------------------------------------------------- */
+/* ---- Published prose (overrides shared _note-prose.css for public notes) -- */
 
-.note-sheet .prose,
-.notes-home__intro.prose {
+.note-sheet .prose {
   font-family: var(--sans);
-  font-size: 1.125rem;
-  line-height: 1.7;
-}
-
-.notes-home__intro.prose {
   font-size: 1.0625rem;
-  line-height: var(--lh, 1.6);
+  line-height: 1.7;
 }
 
 @media (max-width: 40em) {
   .note-sheet .prose {
-    font-size: 1.0625rem;
+    font-size: 1rem;
     line-height: 1.65;
   }
 }
 
 .note-sheet .prose :is(h2, h3, h4, h5, h6) {
   font-family: var(--sans);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .note-sheet .prose h2 {
   margin-top: 2em;
   margin-bottom: 0.6em;
-  font-size: 1.5rem;
-  letter-spacing: -0.018em;
+  font-size: 1.375rem;
+  letter-spacing: -0.016em;
 }
 
 .note-sheet .prose h3 {
   margin-top: 1.75em;
   margin-bottom: 0.45em;
-  font-size: 1.1875rem;
-  letter-spacing: -0.012em;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
 }
 
-/* Links read as the portfolio's: ink words, an underline in the ink colour
-   that thickens and takes the colour on hover. */
+/* Calm links: subtle muted underline at rest, accent on hover. */
 :is(.note-sheet .prose, .notes-home__intro.prose) a {
   color: var(--ink);
   text-decoration-line: underline;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 0.22em;
-  text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.24em;
+  text-decoration-color: color-mix(in srgb, var(--ink-2) 55%, transparent);
   transition:
-    color 200ms ease,
-    text-decoration-color 200ms ease,
-    text-decoration-thickness 200ms ease;
+    color 120ms ease,
+    text-decoration-color 120ms ease;
+}
+
+:is(.note-sheet .prose, .notes-home__intro.prose) .external-link::after {
+  margin-left: 0.25em;
+  opacity: 0.65;
 }
 
 @media (hover: hover) and (pointer: fine) {
   :is(.note-sheet .prose, .notes-home__intro.prose) a:hover {
     color: var(--accent);
     text-decoration-color: currentColor;
-    text-decoration-thickness: 2px;
   }
 }
 
-/* The portfolio shell clears list markers for its own lists; running text
-   keeps them. */
 :is(.note-sheet .prose, .notes-home__intro.prose) ul {
   list-style: disc;
 }
@@ -1363,7 +1388,6 @@ a.notes-sticker--tag:active {
   color: var(--ink-2);
 }
 
-/* A wished-for note stays a dashed grey promise, not a link. */
 .note-sheet .prose .wiki-link--broken {
   color: var(--ink-2);
   text-decoration-style: dashed;
@@ -1371,21 +1395,26 @@ a.notes-sticker--tag:active {
   text-decoration-color: currentColor;
 }
 
-/* Inline #tags: little stickers in the line. */
 .note-sheet .prose .note-tag {
   padding: 0.05em 0.4em;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--sticker-ink);
-  color: var(--focus);
+  background: var(--surface-2);
+  color: var(--ink-2);
   font-family: inherit;
   font-size: 0.85em;
   text-decoration: none;
-  transition: background-color 200ms ease;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 120ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .note-sheet .prose .note-tag:hover {
-    background: color-mix(in srgb, var(--accent) 24%, transparent);
+    background: var(--hover);
+    border-color: var(--line-2);
+    color: var(--ink);
   }
 }
 
@@ -1399,29 +1428,42 @@ a.notes-sticker--tag:active {
 }
 
 .note-sheet .prose blockquote:not(.callout) {
-  border-left-color: var(--paper-line-2);
+  border-left-color: var(--line-2);
   color: var(--ink-2);
 }
 
-/* Code sits on the desk's tone, inset into the paper. */
+/* Flat callouts on published notes (Studio keeps its own in _note-prose.css). */
+.note-sheet .prose .callout {
+  margin: 1.5em 0;
+  padding: 0.9rem 1.1rem 0.35rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--callout-tone);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.note-sheet .prose .callout::before {
+  display: none;
+}
+
 .note-sheet .prose :is(code, pre) {
-  background: color-mix(in srgb, var(--desk) 70%, var(--paper));
+  background: var(--surface-2);
 }
 
 .note-sheet .prose pre {
-  margin: 1.75em 0;
-  padding: 1.1rem 1.15rem;
-  border: 1px solid var(--paper-line);
-  border-radius: 12px;
+  margin: 1.5em 0;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
 .note-sheet .prose pre[data-language] {
-  padding-top: 2.4rem;
+  padding-top: 2.25rem;
 }
 
 .note-sheet .prose pre[data-language]::before {
-  top: 0.8rem;
-  left: 1.15rem;
+  top: 0.75rem;
+  left: 1.125rem;
 }
 
 .note-sheet .prose pre code {
@@ -1429,24 +1471,9 @@ a.notes-sticker--tag:active {
 }
 
 .note-sheet .prose img {
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .note-sheet .prose .footnotes {
   margin-top: 3rem;
-}
-
-/* ---- Narrow screens ------------------------------------------------------- */
-
-@media (max-width: 40em) {
-  /* The sheet takes a little of the page's gutter back. */
-  .note-reading .notes-sheet,
-  .notes-home__sheet {
-    margin-inline: -6px;
-  }
-  .notes-shelf,
-  .note-nearby,
-  .note-keep {
-    margin-top: 48px;
-  }
 }

@@ -1,9 +1,10 @@
 ---
 import NotesLayout from '../../../layouts/NotesLayout.astro';
-import NoteCard from '../../../components/garden/NoteCard.astro';
 import NotesSearchButton from '../../../components/garden/NotesSearchButton.astro';
+import NoteTree from '../../../components/garden/NoteTree.astro';
 import { registerPortfolioCsp } from '@lib/portfolio/csp';
 import { getGardenIndexOrUnavailable } from '@lib/garden';
+import { formatNoteDate } from '@lib/garden/utils';
 import { notesIndexUrl } from '@lib/notes-url';
 
 registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
@@ -25,25 +26,67 @@ if (notes.length === 0) return Astro.rewrite('/404');
   title={`Notes tagged #${tag}`}
   description={`Every note by oddava tagged #${tag}.`}
 >
-  <div class="notes-column">
-    <header class="notes-head">
-      <div class="notes-bar">
+  <div class="notes-shell">
+    <NoteTree {index} />
+
+    <div class="notes-center">
+      <div class="notes-bar notes-bar--mobile-only">
+        <button
+          class="notes-menu-btn"
+          type="button"
+          data-note-nav-open
+          aria-expanded="false"
+          aria-label="Open notes menu"
+        >
+          <svg viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M3 5h12M3 9h12M3 13h12"></path>
+          </svg>
+        </button>
         <a class="notes-back" href={notesIndexUrl()}>← notes</a>
         <NotesSearchButton variant="pill" />
       </div>
-      <h1 class="notes-title">
-        <span class="notes-sticker notes-sticker--tag notes-sticker--big">
-          #{tag}
-        </span>
-      </h1>
-      <p class="notes-lede">
-        {notes.length}
-        {notes.length === 1 ? 'note' : 'notes'} kept under this word.
-      </p>
-    </header>
 
-    <ol class="note-cards" role="list" aria-label={`Notes tagged ${tag}`}>
-      {notes.map((note) => <NoteCard {note} {index} />)}
-    </ol>
+      <header class="notes-head">
+        <h1 class="notes-title">#{tag}</h1>
+        <p class="notes-lede">
+          {notes.length}
+          {notes.length === 1 ? 'note' : 'notes'}
+        </p>
+      </header>
+
+      <ol
+        class="note-children__list"
+        role="list"
+        aria-label={`Notes tagged ${tag}`}
+      >
+        {
+          notes.map((note) => {
+            const parent = note.parentId
+              ? index.byId.get(note.parentId)
+              : undefined;
+            const folder = parent && parent.id !== index.root.id && parent;
+            return (
+              <li>
+                <a
+                  class="note-children__row"
+                  href={note.href}
+                  data-page-preview-ignore
+                >
+                  <span class="note-children__title">{note.title}</span>
+                  <span class="note-children__meta">
+                    {folder && (
+                      <span class="note-children__folder">{folder.title}</span>
+                    )}
+                    <time datetime={note.updated}>
+                      {formatNoteDate(note.updated, 'short')}
+                    </time>
+                  </span>
+                </a>
+              </li>
+            );
+          })
+        }
+      </ol>
+    </div>
   </div>
 </NotesLayout>

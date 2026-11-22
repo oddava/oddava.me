@@ -1,18 +1,13 @@
 ---
 /**
- * A note, as a sheet of paper on the desk: the same page Studio writes on,
- * taped down, one measure wide. Above it, the trail of folders it sits in and
- * the search pill; on it, the note and (for a folder) an index of its pages;
- * beside it on wide screens, a sidebar with the note's neighbourhood in the
- * graph and an outline of its sections (under the sheet on narrow ones, where
- * the folded contents slip stands in for the outline); under it, a few cards
- * to keep reading. Every part off the sheet appears only when it has
- * something to show.
+ * A note reading view: quiet garden tree in the left rail on desktop, clean
+ * distraction-free prose in the centre, and contextual utilities (outline,
+ * nearby graph, backlinks) in the right rail. Folder notes list their child
+ * pages as a crisp, borderless typographic index right below their intro.
  *
  * Shared by the public note route and the owner's draft preview.
  */
 import type { GardenDocument, GardenIndex } from '@lib/garden';
-import { getRelatedNotes } from '@lib/garden';
 import { deriveNoteGraph } from '@lib/garden/graph';
 import { renderNote } from '@lib/garden/render';
 import {
@@ -24,9 +19,9 @@ import { folderAncestors } from '@lib/garden/wayfinder';
 import { notesTagUrl } from '@lib/notes-url';
 import NotePageIcon from '../NotePageIcon';
 import InteractiveGraph from './InteractiveGraph';
-import NoteCard from './NoteCard.astro';
 import NotesSearchButton from './NotesSearchButton.astro';
 import NoteTableOfContents from './NoteTableOfContents.astro';
+import NoteTree from './NoteTree.astro';
 import '../../styles/components/_note-prose.css';
 
 interface Props {
@@ -59,8 +54,7 @@ const isStub = !rendered.html && document.childIds.length === 0;
 
 const trail = folderAncestors(document, index);
 
-// A folder's note is its folder page: an index of what is inside follows its
-// own words. The root's pages are the landing's business.
+// Child pages of a folder note, rendered as a clean inline list below the intro.
 const pages = isRoot
   ? []
   : document.childIds.flatMap((id) => {
@@ -68,148 +62,199 @@ const pages = isRoot
       return child ? [child] : [];
     });
 
-// Keep reading: notes that link here, newest first, then notes that share
-// its tags. Both read the public index, so a draft never shows.
+// Explicit backlinks only (skip self and the root index, which links to every
+// top-level folder and adds noise without signal).
 const backlinks = document.backlinks
   .flatMap((id) => {
     const source = index.byId.get(id);
-    return source && source.id !== document.id ? [source] : [];
+    return source && source.id !== document.id && source.id !== index.root.id
+      ? [source]
+      : [];
   })
   .toSorted((left, right) => right.updated.localeCompare(left.updated));
-const related = getRelatedNotes(document, index, { limit: 4 });
 
-// The note's corner of the graph, only when it has neighbours: a lone dot in
-// a frame says nothing.
+// Sibling navigation for leaf notes within the same folder.
+const parentDoc =
+  !isRoot && document.parentId ? index.byId.get(document.parentId) : undefined;
+const siblings =
+  parentDoc && pages.length === 0
+    ? parentDoc.childIds.flatMap((id) => {
+        const sibling = index.byId.get(id);
+        return sibling ? [sibling] : [];
+      })
+    : [];
+const siblingIndex = siblings.findIndex((item) => item.id === document.id);
+const prevNote = siblingIndex > 0 ? siblings[siblingIndex - 1] : undefined;
+const nextNote =
+  siblingIndex >= 0 && siblingIndex < siblings.length - 1
+    ? siblings[siblingIndex + 1]
+    : undefined;
+
+// The note's corner of the graph, only when it has neighbours.
 const neighbourhood = deriveNoteGraph(index, document.id);
 const showGraph = neighbourhood.nodes.length > 1;
-
-// The sidebar's outline: two sections are already worth a map. On narrow
-// screens it hides and the folded contents slip on the sheet stands in.
 const showOutline = rendered.headings.length >= 2;
-const hasAside = showGraph || showOutline;
+const showBacklinks = backlinks.length > 0;
+const hasAside = showGraph || showOutline || showBacklinks;
 ---
 
-<div class:list={['note-reading', hasAside && 'note-reading--aside']}>
-  <div class="notes-bar">
-    {
-      trail.length > 0 && (
-        <nav class="note-trail" aria-label="Where this note lives">
-          <ol role="list">
-            {trail.map((folder) => (
-              <li>
-                <a href={folder.href} data-page-preview-ignore>
-                  {folder.title}
-                </a>
-              </li>
-            ))}
-            <li aria-current="page">{document.title}</li>
-          </ol>
-        </nav>
-      )
-    }
-    <NotesSearchButton variant="pill" />
-  </div>
+<div class="notes-shell">
+  <NoteTree {index} currentId={document.id} />
 
-  <article class:list={['notes-sheet', 'note-sheet', draft && 'is-draft']}>
-    {
-      draft && (
-        <p class="note-sheet__draft" role="status">
-          <span class="notes-sticker notes-sticker--draft">draft</span>
-          only you can see this page. publish it from Studio to share it.
-        </p>
-      )
-    }
-    <NotePageIcon icon={document.data.icon} />
-    {showShellTitle && <h1 class="note-sheet__title">{document.title}</h1>}
-    {
-      authoredTitleHtml && (
-        <div
-          class="prose note-sheet__authored-title"
-          set:html={authoredTitleHtml}
-        />
-      )
-    }
-    {
-      !isRoot && (
-        <p class="note-sheet__meta">
-          <time class="notes-stamp" datetime={document.updated}>
-            {formatNoteDate(document.updated)}
-          </time>
-          {document.tags.map((tag) => (
-            <a class="notes-sticker notes-sticker--tag" href={notesTagUrl(tag)}>
-              #{tag}
-            </a>
-          ))}
-        </p>
-      )
-    }
-    <NoteTableOfContents headings={rendered.headings} />
-    {
-      bodyHtml && (
-        <div
-          class:list={[
-            'prose',
-            'note-sheet__body',
-            authoredTitleHtml && 'note-sheet__body--continuation',
-          ]}
-          set:html={bodyHtml}
-        />
-      )
-    }
-    {
-      isStub && (
-        <p class="note-sheet__stub">
-          nothing written here yet — this page is still blank.
-        </p>
-      )
-    }
-    {
-      pages.length > 0 && (
-        <section class="note-index" aria-labelledby="note-index-heading">
-          <h2 class="notes-label" id="note-index-heading">
-            in this folder
-            <span class="notes-sticker">{pages.length}</span>
-          </h2>
-          <ol class="note-index__list" role="list">
-            {pages.map((page) => (
-              <li>
-                <a
-                  class="note-index__row"
-                  href={page.href}
-                  data-page-preview-ignore
-                >
-                  <span class="note-index__title">{page.title}</span>
-                  <span class="note-index__leader" aria-hidden="true" />
-                  <time datetime={page.updated}>
-                    {formatNoteDate(page.updated, 'short')}
-                  </time>
-                </a>
-              </li>
+  <div class="notes-center">
+    <div class="notes-bar">
+      <button
+        class="notes-menu-btn"
+        type="button"
+        data-note-nav-open
+        aria-expanded="false"
+        aria-label="Open notes menu"
+      >
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <path d="M3 5h12M3 9h12M3 13h12"></path>
+        </svg>
+      </button>
+      {
+        trail.length > 0 && (
+          <nav class="note-trail" aria-label="Where this note lives">
+            <ol role="list">
+              {trail.map((folder) => (
+                <li>
+                  <a href={folder.href} data-page-preview-ignore>
+                    {folder.title}
+                  </a>
+                </li>
+              ))}
+              <li aria-current="page">{document.title}</li>
+            </ol>
+          </nav>
+        )
+      }
+      <NotesSearchButton variant="pill" />
+    </div>
+
+    <article class:list={['notes-sheet', 'note-sheet', draft && 'is-draft']}>
+      {
+        draft && (
+          <p class="note-sheet__draft" role="status">
+            <span class="notes-sticker notes-sticker--draft">draft</span>
+            only you can see this page. publish it from Studio to share it.
+          </p>
+        )
+      }
+      <div class="note-sheet__head">
+        <NotePageIcon icon={document.data.icon} />
+        {showShellTitle && <h1 class="note-sheet__title">{document.title}</h1>}
+        {
+          authoredTitleHtml && (
+            <div
+              class="prose note-sheet__authored-title"
+              set:html={authoredTitleHtml}
+            />
+          )
+        }
+      </div>
+      {
+        !isRoot && (
+          <p class="note-sheet__meta">
+            <time class="notes-stamp" datetime={document.updated}>
+              {formatNoteDate(document.updated)}
+            </time>
+            {document.tags.map((tag) => (
+              <a
+                class="notes-sticker notes-sticker--tag"
+                href={notesTagUrl(tag)}
+              >
+                #{tag}
+              </a>
             ))}
-          </ol>
-        </section>
-      )
-    }
-  </article>
+          </p>
+        )
+      }
+      <NoteTableOfContents headings={rendered.headings} />
+      {
+        bodyHtml && (
+          <div
+            class:list={[
+              'prose',
+              'note-sheet__body',
+              authoredTitleHtml && 'note-sheet__body--continuation',
+            ]}
+            set:html={bodyHtml}
+          />
+        )
+      }
+      {
+        isStub && (
+          <p class="note-sheet__stub">
+            nothing written here yet — this page is still blank.
+          </p>
+        )
+      }
+      {
+        pages.length > 0 && (
+          <nav class="note-children" aria-label={`Pages in ${document.title}`}>
+            <ol class="note-children__list" role="list">
+              {pages.map((page) => (
+                <li>
+                  <a
+                    class="note-children__row"
+                    href={page.href}
+                    data-page-preview-ignore
+                  >
+                    <span class="note-children__title">{page.title}</span>
+                    <span class="note-children__meta">
+                      {page.childIds.length > 0 && (
+                        <span class="note-children__count">
+                          {page.childIds.length}{' '}
+                          {page.childIds.length === 1 ? 'note' : 'notes'}
+                        </span>
+                      )}
+                      <time datetime={page.updated}>
+                        {formatNoteDate(page.updated, 'short')}
+                      </time>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )
+      }
+      {
+        (prevNote || nextNote) && (
+          <nav class="note-pager" aria-label="Adjacent notes">
+            {prevNote ? (
+              <a
+                class="note-pager__link note-pager__link--prev"
+                href={prevNote.href}
+                data-page-preview-ignore
+              >
+                <span class="note-pager__dir">← previous</span>
+                <span class="note-pager__title">{prevNote.title}</span>
+              </a>
+            ) : (
+              <span />
+            )}
+            {nextNote && (
+              <a
+                class="note-pager__link note-pager__link--next"
+                href={nextNote.href}
+                data-page-preview-ignore
+              >
+                <span class="note-pager__dir">next →</span>
+                <span class="note-pager__title">{nextNote.title}</span>
+              </a>
+            )}
+          </nav>
+        )
+      }
+    </article>
+  </div>
 
   {
     hasAside && (
       <aside class="note-aside" aria-label="Around this note">
-        {showGraph && (
-          <section class="note-nearby" aria-labelledby="note-nearby-heading">
-            <h2 class="notes-label" id="note-nearby-heading">
-              nearby
-            </h2>
-            <div class="notes-slip note-nearby__graph">
-              <InteractiveGraph
-                client:visible
-                data={neighbourhood}
-                globalData={deriveNoteGraph(index)}
-                currentId={document.id}
-              />
-            </div>
-          </section>
-        )}
         {showOutline && (
           <section class="note-outline">
             <h2 class="notes-label" id="note-outline-heading">
@@ -233,25 +278,41 @@ const hasAside = showGraph || showOutline;
             </nav>
           </section>
         )}
+        {showGraph && (
+          <section class="note-nearby" aria-labelledby="note-nearby-heading">
+            <h2 class="notes-label" id="note-nearby-heading">
+              nearby
+            </h2>
+            <div class="notes-slip note-nearby__graph">
+              <InteractiveGraph
+                client:visible
+                data={neighbourhood}
+                globalData={deriveNoteGraph(index)}
+                currentId={document.id}
+              />
+            </div>
+          </section>
+        )}
+        {showBacklinks && (
+          <section
+            class="note-backlinks"
+            aria-labelledby="note-backlinks-heading"
+          >
+            <h2 class="notes-label" id="note-backlinks-heading">
+              backlinks
+            </h2>
+            <ul class="note-backlinks__list" role="list">
+              {backlinks.map((source) => (
+                <li>
+                  <a href={source.href} data-page-preview-ignore>
+                    {source.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </aside>
-    )
-  }
-
-  {
-    backlinks.length + related.length > 0 && (
-      <section class="note-keep" aria-labelledby="note-keep-heading">
-        <h2 class="notes-label" id="note-keep-heading">
-          keep reading
-        </h2>
-        <ol class="note-cards" role="list">
-          {backlinks.map((note) => (
-            <NoteCard {note} {index} kicker="links here" />
-          ))}
-          {related.map((note) => (
-            <NoteCard {note} {index} kicker="similar" />
-          ))}
-        </ol>
-      </section>
     )
   }
 </div>

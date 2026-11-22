@@ -1,12 +1,11 @@
 ---
 /**
- * One note as an index card: its icon and title, a line or two of its
- * opening text, and a foot with where it lives and when it was last tended.
- * The whole card is the link. Cards lie on the desk a touch askew
- * (`.note-cards`) and straighten under the pointer.
+ * One note as a clean row matching home's `.pf-entry`: icon and title on the
+ * left, quiet context and date on the right, and an optional short excerpt
+ * underneath. The whole row is the link.
  *
  * Used by the landing (recently tended), tag pages, and under a note (keep
- * reading), where `kicker` says why the card is there.
+ * reading), where `kicker` says why the note is listed.
  */
 import type { GardenDocument, GardenIndex } from '@lib/garden';
 import { formatNoteDate } from '@lib/garden/utils';
@@ -15,9 +14,9 @@ import NoteListIcon from './NoteListIcon.astro';
 interface Props {
   note: GardenDocument;
   index: GardenIndex;
-  /** Leave out the folder where every card shares it. */
+  /** Leave out the folder where every row shares it. */
   showFolder?: boolean;
-  /** A word on the card's corner: why it is here. */
+  /** Quiet label for why this note is listed ("links here", "similar"). */
   kicker?: string;
 }
 
@@ -35,19 +34,27 @@ const pages = note.childIds.length;
 ---
 
 <li class="note-card">
-  <a class="note-card__link" href={note.href} data-page-preview-ignore>
-    {kicker && <span class="notes-sticker note-card__kicker">{kicker}</span>}
+  <a class="note-card__link press" href={note.href} data-page-preview-ignore>
     <span class="note-card__head">
-      <NoteListIcon icon={note.data.icon} folder={pages > 0} />
-      <span class="note-card__title">{note.title}</span>
+      <span class="note-card__lead">
+        <NoteListIcon icon={note.data.icon} folder={pages > 0} />
+        <span class="note-card__title">{note.title}</span>
+      </span>
+      <span class="note-card__meta">
+        {kicker && <span class="note-card__kicker">{kicker}</span>}
+        {
+          (folder || pages > 0) && (
+            <span class="note-card__context">
+              {folder && <span>{folder.title}</span>}
+              {pages > 0 && <span>{pages} inside</span>}
+            </span>
+          )
+        }
+        <time datetime={note.updated}>
+          {formatNoteDate(note.updated, 'short')}
+        </time>
+      </span>
     </span>
     {excerpt && <span class="note-card__excerpt">{excerpt}</span>}
-    <span class="note-card__foot">
-      {folder && <span>in {folder.title}</span>}
-      {pages > 0 && <span>{pages} inside</span>}
-      <time datetime={note.updated}>
-        {formatNoteDate(note.updated, 'short')}
-      </time>
-    </span>
   </a>
 </li>

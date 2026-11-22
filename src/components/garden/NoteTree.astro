@@ -1,0 +1,109 @@
+---
+/**
+ * Quiet garden navigator: sticky left rail on desktop, slide-over drawer on
+ * mobile/tablet. Holds the home link, appearance control, search trigger, and
+ * collapsible folder hierarchy.
+ */
+import type { GardenIndex } from '@lib/garden';
+import { isNotesHostRequest } from '@lib/server/core';
+import { SITE_NAME, SITE_URL } from '@lib/site';
+import AppearanceControl from '../portfolio/AppearanceControl.astro';
+import NotesSearchButton from './NotesSearchButton.astro';
+import NoteTreeBranch from './NoteTreeBranch.astro';
+
+interface Props {
+  index: GardenIndex;
+  currentId?: string;
+}
+
+const { index, currentId } = Astro.props;
+const homeHref = isNotesHostRequest(Astro.url) ? SITE_URL : '/';
+
+// Open every folder on the active note's path (including itself if it is a
+// folder). On the notes landing or tag pages, open top-level folders so the
+// garden's shape is visible at a glance.
+const openIds = new Set<string>();
+if (currentId && currentId !== index.root.id) {
+  let cursor = index.byId.get(currentId);
+  while (cursor && cursor.id !== index.root.id) {
+    if (cursor.childIds.length > 0) openIds.add(cursor.id);
+    cursor = cursor.parentId ? index.byId.get(cursor.parentId) : undefined;
+  }
+} else {
+  for (const id of index.root.childIds) {
+    const child = index.byId.get(id);
+    if (child && child.childIds.length > 0) openIds.add(child.id);
+  }
+}
+---
+
+<div class="note-nav-scrim" data-note-nav-scrim hidden></div>
+<aside class="note-nav" data-note-nav aria-label="Notes navigation">
+  <div class="note-nav__top">
+    <div class="note-nav__bar">
+      <a class="note-nav__home" href={homeHref} data-page-preview-ignore>
+        ← {SITE_NAME}
+      </a>
+      <div class="note-nav__actions">
+        <AppearanceControl />
+        <button
+          class="note-nav__close"
+          type="button"
+          data-note-nav-close
+          aria-label="Close notes menu"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <NotesSearchButton variant="pill" />
+  </div>
+
+  <nav class="note-tree" aria-label="All notes">
+    <a
+      class="note-tree__root"
+      href={index.root.href}
+      aria-current={currentId === index.root.id ? 'page' : undefined}
+      data-page-preview-ignore
+    >
+      {index.root.title}
+    </a>
+    <NoteTreeBranch ids={index.root.childIds} {index} {currentId} {openIds} />
+  </nav>
+</aside>
+
+<script>
+  const nav = document.querySelector<HTMLElement>('[data-note-nav]');
+  const scrim = document.querySelector<HTMLElement>('[data-note-nav-scrim]');
+  const openBtn = document.querySelector<HTMLButtonElement>(
+    '[data-note-nav-open]',
+  );
+  const closeBtn = document.querySelector<HTMLButtonElement>(
+    '[data-note-nav-close]',
+  );
+
+  if (nav && scrim && openBtn) {
+    const setOpen = (open: boolean) => {
+      nav.toggleAttribute('data-open', open);
+      scrim.hidden = !open;
+      openBtn.setAttribute('aria-expanded', String(open));
+      document.body.classList.toggle('note-nav-open', open);
+      if (open) {
+        closeBtn?.focus();
+      } else {
+        openBtn.focus();
+      }
+    };
+
+    openBtn.addEventListener('click', () => setOpen(true));
+    closeBtn?.addEventListener('click', () => setOpen(false));
+    scrim.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && nav.hasAttribute('data-open')) {
+        setOpen(false);
+      }
+    });
+  }
+</script>
