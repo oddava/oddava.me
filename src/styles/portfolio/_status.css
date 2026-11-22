@@ -1,0 +1,87 @@
+/* ===================================================
+   PORTFOLIO — minimal status page (404)
+
+   Matches the homepage and notes shell: vertically centered on the flat
+   canvas, crisp numeral, quiet copy, and `.pf-entry`-style navigation rows.
+   =================================================== */
+
+[data-site='portfolio'] .pf-main:has(.pf-status) {
+  margin-block: auto;
+  padding-block: 48px 32px;
+}
+
+[data-site='portfolio'] .pf-main:has(.pf-status) + .pf-footer {
+  margin-top: 0;
+  padding-top: 24px;
+}
+
+[data-site='portfolio'] .pf-main:has(.pf-status) + .pf-footer .pf-footer-inner,
+[data-site='portfolio'] .pf-main:has(.pf-status) + .pf-footer .pf-contacts {
+  justify-content: center;
+  margin-left: 0;
+}
+
+[data-site='portfolio'] .pf-status {
+  width: min(100%, 24rem);
+  margin-inline: auto;
+}
+
+[data-site='portfolio'] .pf-status__code {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(3.25rem, 9vw, 4.75rem);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-site='portfolio'] .pf-status__copy {
+  margin-top: 14px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+[data-site='portfolio'] .pf-status__links {
+  display: grid;
+  gap: 6px;
+  margin-top: 28px;
+}
+
+[data-site='portfolio'] .pf-status__entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+[data-site='portfolio'] .pf-status__arrow {
+  color: var(--ink-2);
+  opacity: 0.6;
+  transition:
+    transform 160ms var(--ease-out),
+    opacity 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-site='portfolio'] .pf-status__entry:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
+  }
+  [data-site='portfolio'] .pf-status__entry:hover .pf-status__arrow {
+    opacity: 1;
+    transform: translateX(2px);
+  }
+}

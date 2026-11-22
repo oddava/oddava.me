@@ -30,6 +30,8 @@ export interface Props extends Omit<
 > {
   /** Lay the main content out as a narrow left column and the rest. */
   split?: boolean;
+  /** Override whether the portfolio header renders. */
+  header?: boolean;
 }
 
 const {
@@ -40,6 +42,9 @@ const {
   type,
   modifiedTime,
   split = false,
+  header = !['/', '/about', '/about/', '/projects', '/projects/'].includes(
+    Astro.url.pathname,
+  ),
 } = Astro.props;
 
 const defaults: Appearance = APPEARANCE_DEFAULTS;
@@ -71,11 +76,7 @@ const SpotifyWidgetLoader = await loadSpotifyWidgetSlot();
   <body>
     <a href="#main" class="skip-link link">skip to content</a>
     <div class="pf-page">
-      {
-        !['/', '/about', '/about/', '/projects', '/projects/'].includes(
-          Astro.url.pathname,
-        ) && <Header />
-      }
+      {header && <Header />}
       <main id="main" class:list={['pf-main', split && 'pf-split']}>
         <slot />
       </main>
