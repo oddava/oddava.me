@@ -212,7 +212,7 @@
 /* The look is the shared tabs' (_primitives.css). Pulled left so the first
    word, not its padding, lines up with the text below. */
 .admin-page .studio-history__modes {
-  margin-left: -10px;
+  margin-left: 0;
 }
 
 .admin-page .studio-history__summary {

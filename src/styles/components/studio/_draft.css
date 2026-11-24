@@ -3,8 +3,7 @@
 
    The Draft / Published switch, and the small "draft" sticker that follows
    an unlisted note wherever it is listed. The switch is two plain words; the
-   chosen one is stamped like a sticker: amber on Draft, the ink on
-   Published.
+   chosen one takes a tint: amber on Draft, the ink on Published.
 --------------------------------------------------------------------------- */
 
 /* --- The switch --- */
@@ -38,24 +37,20 @@
   cursor: pointer;
   transition:
     color var(--st-fast) var(--st-ease),
-    background-color var(--st-base) var(--st-ease),
-    rotate var(--st-slow) var(--st-spring);
+    background-color var(--st-base) var(--st-ease);
 }
 
-/* The chosen word is stamped on: a sticker's fill and its tilt, landing on
-   the spring. Amber for a draft; the ink, the other way, for published. */
+/* The chosen word takes a tint: amber for a draft, the ink for published. */
 .admin-page .studio-draft-toggle__option[aria-pressed='true'] {
   background: var(--st-draft-tint);
   color: var(--st-draft);
-  font-weight: 600;
-  rotate: -1.5deg;
+  font-weight: 500;
 }
 
 .admin-page
   .studio-draft-toggle__option[data-option='published'][aria-pressed='true'] {
   background: var(--st-picked);
   color: var(--st-accent-text);
-  rotate: 1.5deg;
 }
 
 /* A dot leads the chosen word, and takes no room beside the other. */

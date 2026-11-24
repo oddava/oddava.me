@@ -8,9 +8,9 @@
    its two sides the way every comparison in Studio does (_primitives.css).
 --------------------------------------------------------------------------- */
 
-/* A slip of paper taped above the sheet: the page's own fill, a hairline, and
-   a strip of tape at its corner. No badge, no tinted slab. It is a little
-   narrower than the sheet, so the two never look like they meant to align. */
+/* A quiet panel above the page, the notes pages' own: the recessed fill and
+   a hairline, as wide as the column it speaks for. No badge, no tinted
+   slab. */
 .admin-page .studio-conflict {
   position: relative;
   display: flex;
@@ -19,35 +19,16 @@
   align-items: center;
   gap: 10px 16px;
   box-sizing: border-box;
-  width: min(
-    calc(100% - 80px),
-    calc(var(--studio-measure, var(--max-width)) + 64px)
-  );
+  width: min(calc(100% - 48px), var(--studio-measure, var(--st-column)));
   margin: 14px auto 6px;
-  padding: 14px 16px 14px 20px;
-  border: 1px solid var(--st-line-strong);
-  border-radius: var(--st-radius-float);
-  background: var(--st-sheet);
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--st-line);
+  border-radius: 8px;
+  background: var(--st-well);
   color: var(--st-text);
   font-size: var(--st-size-sm);
   line-height: 1.45;
   animation: studio-arrive var(--st-slow) var(--st-spring);
-}
-
-.admin-page .studio-conflict::before {
-  position: absolute;
-  top: -10px;
-  left: 18px;
-  width: 64px;
-  content: '';
-  rotate: -3deg;
-}
-
-/* Moved or set aside: something to know about, not something to hurry. */
-.admin-page
-  .studio-conflict:is([data-state='gone'], [data-state='set-aside'])::before {
-  --studio-tape: var(--st-press);
-  --studio-tape-stripe: var(--st-hover);
 }
 
 .admin-page .studio-conflict__text {

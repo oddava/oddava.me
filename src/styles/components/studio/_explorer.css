@@ -1,5 +1,7 @@
 /* ---------------------------------------------------------------------------
-   Explorer: the sidebar's heading, its one create action, and the tree.
+   Explorer: the sidebar, drawn as the notes rail is — a quiet heading with
+   its two actions, the search field, and the tree, the current note marked
+   by its fill alone.
 --------------------------------------------------------------------------- */
 
 .admin-page .studio-explorer__heading {
@@ -8,13 +10,15 @@
   justify-content: space-between;
   flex: none;
   gap: 8px;
-  min-height: 48px;
-  padding: 0 8px 0 16px;
+  min-height: 52px;
+  padding: 0 10px 0 18px;
 }
 
 .admin-page .studio-explorer__heading strong {
   color: var(--st-text);
   font-size: var(--st-size-md);
+  font-weight: 600;
+  text-transform: lowercase;
 }
 
 .admin-page .studio-explorer__actions {
@@ -25,39 +29,63 @@
 
 .admin-page .studio-library-actions {
   flex: none;
-  padding: 0 8px 8px;
+  padding: 0 12px 14px;
 }
 
-.admin-page .studio-library-actions button {
+/* The notes rail's search pill: a field in look, a button in fact. */
+.admin-page .studio-search-pill {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: var(--st-row);
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--st-radius);
-  background: transparent;
-  color: var(--st-text-2);
+  min-height: 34px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--st-line);
+  border-radius: 8px;
+  background: var(--st-well);
+  color: var(--st-text-3);
   font: inherit;
   font-size: var(--st-size-sm);
   text-align: left;
   cursor: pointer;
   transition:
     background-color var(--st-fast) var(--st-ease),
+    border-color var(--st-fast) var(--st-ease),
     color var(--st-fast) var(--st-ease);
 }
 
-.admin-page .studio-library-actions button:hover {
+.admin-page .studio-search-pill:hover {
+  border-color: var(--st-line-strong);
   background: var(--st-hover);
-  color: var(--st-text);
+  color: var(--st-text-2);
 }
 
-.admin-page .studio-library-actions .studio-glyph {
-  width: var(--st-glyph-sm);
-  height: var(--st-glyph-sm);
-  margin: 0 1px;
+.admin-page .studio-search-pill .studio-glyph {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-page .studio-search-pill__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-page .studio-search-pill kbd {
+  margin: 0;
+  padding: 0 6px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius-sm);
+  background: var(--st-canvas);
   color: var(--st-text-3);
+  font-family: var(--st-font);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+@media (pointer: coarse) {
+  .admin-page .studio-search-pill {
+    min-height: var(--st-touch);
+  }
 }
 
 .admin-page .studio-library-clear {
@@ -90,7 +118,9 @@
 
 .admin-page .studio-folder-tree {
   display: block;
-  padding: 0 8px 24px;
+  padding: 0 10px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--st-line-strong) transparent;
 }
 
 /* The sidebar's small print: a leaf and a count, where a notebook has its
@@ -129,9 +159,9 @@
   min-height: var(--st-row);
   padding-right: 4px;
   border-radius: var(--st-radius);
-  /* Names at near-full strength: on a dark desk the second grey reads as faint.
-     The icons beside them carry the quieter tone. */
-  color: color-mix(in srgb, var(--st-text) 88%, var(--st-text-2));
+  /* The notes rail's tone: names in the secondary ink, the current one and
+     whatever the pointer is on in the full ink. */
+  color: var(--st-text-2);
   font-size: var(--st-size-sm);
   cursor: default;
   user-select: none;
@@ -154,7 +184,7 @@
 .admin-page .studio-tree-row.is-active {
   background: var(--st-current);
   color: var(--st-text);
-  font-weight: 500;
+  font-weight: 550;
 }
 
 .admin-page .studio-tree-row.is-selected {
@@ -227,8 +257,8 @@
 }
 
 .admin-page .studio-tree-row__chevron .studio-glyph {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .admin-page .studio-tree-row__chevron.is-open {
@@ -331,7 +361,13 @@
   color: var(--st-text);
 }
 
-/* The home row: the top of the tree, and the notes landing page. */
+/* The home row: the top of the tree, and the notes landing page. Set like
+   the notes rail's "notes" root: the one bold row. */
+.admin-page .studio-tree-row--root {
+  padding-left: 4px;
+  font-weight: 600;
+}
+
 .admin-page .studio-tree-row--root .studio-tree-row__icon {
   color: var(--st-text-3);
 }

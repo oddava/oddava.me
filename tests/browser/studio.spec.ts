@@ -604,8 +604,16 @@ test('the unified editor uses published prose typography', async ({
       'style, link[rel="stylesheet"]',
     ))
       doc.head.append(sheet.cloneNode(true));
+    // The published page: the portfolio tokens on the root (theme and
+    // ink), and the note's body inside `.note-sheet`.
+    for (const name of ['data-site', 'data-theme', 'data-ink']) {
+      const value = document.documentElement.getAttribute(name);
+      if (value !== null) doc.documentElement.setAttribute(name, value);
+    }
     doc.body.innerHTML =
-      '<article class="prose">' + node.innerHTML + '</article>';
+      '<article class="note-sheet"><div class="prose">' +
+      node.innerHTML +
+      '</div></article>';
     const actual = doc.querySelector('.prose')!;
     // Same viewport-dependent font values without needing a live note route.
     frame.style.cssText = `position:fixed;border:0;width:${innerWidth}px;height:1000px;visibility:hidden`;
@@ -625,11 +633,16 @@ test('the unified editor uses published prose typography', async ({
       const b = frame.contentWindow!.getComputedStyle(
         actual.querySelector(selector)!,
       );
-      for (const property of properties)
+      for (const property of properties) {
+        // The published page lifts the opening title into its own header
+        // and spaces the body from it there; the editor keeps the title in
+        // the body, so it gives the same room as the title's margin.
+        if (selector === 'h1' && property === 'margin-bottom') continue;
         if (a.getPropertyValue(property) !== b.getPropertyValue(property))
           results.push(
             `${selector} ${property}: ${a.getPropertyValue(property)} != ${b.getPropertyValue(property)}`,
           );
+      }
     }
     frame.remove();
     return results;

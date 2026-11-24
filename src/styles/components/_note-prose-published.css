@@ -1,0 +1,186 @@
+/* ===================================================
+   Published prose
+
+   What a note looks like to a visitor: the overrides the notes pages lay
+   over the shared _note-prose.css. Loaded by the notes pages (through
+   _garden.css) and by Studio (Studio.css), whose page carries the same
+   `.note-sheet` class, so the editor is the published page and not an
+   approximation of it. Reads the portfolio tokens (--ink, --sans, --line…),
+   which both load.
+   =================================================== */
+
+.note-sheet .prose h1 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t-title);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+.note-sheet .prose h1:not(:first-child) {
+  margin-top: 1.6em;
+  font-size: 1.75rem;
+}
+
+.note-sheet .prose {
+  font-family: var(--sans);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+
+@media (max-width: 40em) {
+  .note-sheet .prose {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+}
+
+.note-sheet .prose :is(h2, h3, h4, h5, h6) {
+  font-family: var(--sans);
+  font-weight: 600;
+}
+
+.note-sheet .prose h2 {
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  font-size: 1.375rem;
+  letter-spacing: -0.016em;
+}
+
+.note-sheet .prose h3 {
+  margin-top: 1.75em;
+  margin-bottom: 0.45em;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+/* Links in the ink (accent), underlined in a softer tint of it; the
+   underline firms up on hover. */
+:is(.note-sheet .prose, .notes-home__intro.prose) a {
+  color: var(--accent);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.24em;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  transition:
+    color 120ms ease,
+    text-decoration-color 120ms ease;
+}
+
+:is(.note-sheet .prose, .notes-home__intro.prose) .external-link::after {
+  margin-left: 0.25em;
+  opacity: 0.65;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.note-sheet .prose, .notes-home__intro.prose) a:hover {
+    color: var(--focus);
+    text-decoration-color: currentColor;
+  }
+}
+
+:is(.note-sheet .prose, .notes-home__intro.prose) ul {
+  list-style: disc;
+}
+
+:is(.note-sheet .prose, .notes-home__intro.prose) ol {
+  list-style: decimal;
+}
+
+:is(.note-sheet .prose, .notes-home__intro.prose) li::marker {
+  color: var(--ink-2);
+}
+
+.note-sheet .prose .wiki-link--broken {
+  color: var(--ink-2);
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
+}
+
+.note-sheet .prose .note-tag {
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 0.85em;
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-sheet .prose .note-tag:hover {
+    background: var(--hover);
+    border-color: var(--line-2);
+    color: var(--ink);
+  }
+}
+
+.note-sheet .prose .footnote-ref a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.note-sheet .prose .footnote-backref {
+  text-decoration: none;
+}
+
+.note-sheet .prose blockquote:not(.callout) {
+  border-left-color: var(--line-2);
+  color: var(--ink-2);
+}
+
+/* Flat callouts: a quiet panel, and the kind told by the title's tone and
+   icon alone — no accent strip down the side, no tape. */
+.note-sheet .prose .callout {
+  margin: 1.5em 0;
+  padding: 0.9rem 1.1rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.note-sheet .prose .callout::before {
+  display: none;
+}
+
+.note-sheet .prose :is(code, pre) {
+  background: var(--surface-2);
+}
+
+.note-sheet .prose pre {
+  margin: 1.5em 0;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.note-sheet .prose pre[data-language] {
+  padding-top: 2.25rem;
+}
+
+.note-sheet .prose pre[data-language]::before {
+  top: 0.75rem;
+  left: 1.125rem;
+}
+
+.note-sheet .prose pre code {
+  background: none;
+}
+
+.note-sheet .prose img {
+  border-radius: 8px;
+}
+
+.note-sheet .prose .footnotes {
+  margin-top: 3rem;
+}

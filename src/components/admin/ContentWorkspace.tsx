@@ -66,8 +66,10 @@ import {
   type StudioSession,
 } from './studioSession';
 import './Studio.css';
-// The editor uses the site's published note typography.
+// The editor uses the site's published note typography: the shared prose,
+// then the notes pages' own layer over it (the page carries `.note-sheet`).
 import '../../styles/components/_note-prose.css';
+import '../../styles/components/_note-prose-published.css';
 
 interface ContentWorkspaceProps {
   fullWidth?: boolean;

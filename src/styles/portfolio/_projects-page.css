@@ -275,3 +275,25 @@
   font-size: 0.8125rem;
   letter-spacing: 0.01em;
 }
+
+/* The footer sits centred under the 44rem column, as on the notes pages,
+   rather than on the page's left edge. */
+[data-site='portfolio'] .pf-main:has(.pf-cards, .pf-empty) + .pf-footer {
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+[data-site='portfolio']
+  .pf-main:has(.pf-cards, .pf-empty)
+  + .pf-footer
+  :is(.pf-footer-inner, .pf-contacts) {
+  justify-content: center;
+}
+
+[data-site='portfolio']
+  .pf-main:has(.pf-cards, .pf-empty)
+  + .pf-footer
+  .pf-contacts {
+  margin-left: 0;
+}

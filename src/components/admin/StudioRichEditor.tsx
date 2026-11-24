@@ -697,10 +697,10 @@ export default function StudioRichEditor(props: Props) {
         onDragOver={(event) => blocks.paneDragOver(event, editor)}
         onDrop={(event) => blocks.paneDrop(event, editor)}
       >
-        {/* The sheet of paper the note is written on. It is only a painted
-            box: negative margins and matching padding leave every block where
-            the pane's own padding put it. */}
-        <div className="studio-paper">
+        {/* The page the note is written on: the published note's own
+            `.note-sheet`, so the notes pages' prose layer styles it exactly
+            as visitors will read it. */}
+        <div className="studio-paper note-sheet">
           <div className="studio-rich-page">
             <NotePageIcon icon={props.icon} />
             <div ref={host} />

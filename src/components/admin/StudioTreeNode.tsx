@@ -25,6 +25,12 @@ import type { StudioTreeFocus } from './useStudioTreeFocus';
 import type { StudioTreeInlineEdit } from './useStudioTreeInlineEdit';
 import type { StudioTreeSelection } from './useStudioTreeSelection';
 
+/** A row's left inset at `depth` (the root is 1): 12px a level, capped at
+ * four so a deep tree never squeezes the names out of the sidebar. */
+function treeIndent(depth: number): number {
+  return 4 + Math.min(depth - 1, 4) * 12;
+}
+
 /**
  * One render's worth of the Notes tree, handed down to every row. Rows are
  * drawn fresh on each render of StudioFolderTree, so nothing here goes stale.
@@ -142,7 +148,7 @@ function StudioTreeNode({
           .filter(Boolean)
           .join(' ')}
         role="treeitem"
-        style={{ paddingLeft: `${4 + Math.min(depth - 1, 4) * 12}px` }}
+        style={{ paddingLeft: `${treeIndent(depth)}px` }}
         title={nodePath(node)}
         data-tree-key={key}
         tabIndex={focus.tabbableKey === key ? 0 : -1}
@@ -374,7 +380,7 @@ function StudioTreeCreateRow({
       <form
         className="studio-tree-row studio-tree-row--inline"
         style={{
-          paddingLeft: `${4 + Math.min(parent.split('/').filter(Boolean).length + 1, 4) * 12}px`,
+          paddingLeft: `${treeIndent(parent.split('/').filter(Boolean).length + 2)}px`,
         }}
         onSubmit={(event) => {
           event.preventDefault();
