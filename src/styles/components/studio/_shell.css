@@ -376,9 +376,7 @@
   justify-content: center;
   gap: 8px;
   padding: 32px 24px;
-  background:
-    var(--st-dots) 0 0 / 20px 20px,
-    var(--st-canvas);
+  background: var(--st-canvas);
   text-align: center;
 }
 

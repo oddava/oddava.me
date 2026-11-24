@@ -71,8 +71,10 @@
 
 .admin-page .studio-outline__head strong {
   flex: 1 1 auto;
+  color: var(--st-text-3);
   font-size: var(--st-size-sm);
-  font-weight: 600;
+  font-weight: 500;
+  text-transform: lowercase;
 }
 
 /* A phone's word count: beside the panel's name rather than over the page. */
@@ -153,9 +155,9 @@
   color: var(--st-text);
 }
 
-/* Where you are: full ink, and the squiggle under the words (_primitives.css,
-   Decoration). No fill: the list stays a list. */
+/* Where you are: the tree's current-row fill, in the full ink. */
 .admin-page .studio-outline__item[aria-current='location'] {
+  background: var(--st-current);
   color: var(--st-text);
   font-weight: 500;
 }
@@ -267,19 +269,16 @@
   transition: opacity var(--st-slow) var(--st-ease);
 }
 
-/* A sticker in the corner of the desk (_primitives.css, Decoration), with an
-   opaque fill of its own: on a narrow window it sits over the page. */
+/* A small label in the corner of the page, with an opaque fill of its own:
+   on a narrow window it sits over the text. */
 .admin-page .studio-wordcount span {
   position: absolute;
   right: 20px;
   bottom: 12px;
   padding: 2px 8px;
   border-radius: var(--st-radius-sm);
-  background: color-mix(
-    in srgb,
-    var(--color-text-primary) 7%,
-    var(--st-canvas)
-  );
+  border: 1px solid var(--st-line);
+  background: var(--st-well);
   color: var(--st-text-3);
   font-family: var(--st-font);
   font-size: 11px;
@@ -288,7 +287,6 @@
   letter-spacing: 0.01em;
   line-height: 18px;
   white-space: nowrap;
-  rotate: -2deg;
 }
 
 @media (max-width: 720px) {

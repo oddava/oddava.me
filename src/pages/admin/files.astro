@@ -3,6 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ContentWorkspace } from '../../components/admin/ContentWorkspace';
 import AdminUnavailable from '../../components/admin/AdminUnavailable.astro';
 import { isAdminConfigured, isAdminRequest } from '../../lib/server/admin';
+import { registerPortfolioCsp } from '../../lib/portfolio/csp';
 
 const configured = isAdminConfigured();
 
@@ -11,6 +12,8 @@ if (configured && !(await isAdminRequest(Astro.cookies))) {
     `/admin/login?next=${encodeURIComponent(Astro.url.pathname)}`,
   );
 }
+
+registerPortfolioCsp(Astro.csp, import.meta.env.PROD);
 ---
 
 <AdminLayout

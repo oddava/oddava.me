@@ -10,6 +10,10 @@
    underneath.
    =================================================== */
 
+/* The published note's prose, shared with Studio's editor so the page you
+   write on is the page visitors read. */
+@import './_note-prose-published.css';
+
 /* ---- Shell & 3-column grid ------------------------------------------------ */
 
 .notes-column,
@@ -312,8 +316,8 @@ body.note-nav-open {
   color: var(--ink);
 }
 
-/* Each level owns its own hairline rail, so active indicators sit right
-   beside the active item instead of stranded on the outer edge. */
+/* Each level steps in; the current item is marked by its fill alone, with
+   no rail or strip beside it. */
 .note-tree__branch {
   margin: 2px 0 0;
   padding: 0;
@@ -323,7 +327,6 @@ body.note-nav-open {
 .note-tree__folder > .note-tree__branch {
   margin: 2px 0 4px 7px;
   padding-left: 10px;
-  border-left: 1px solid var(--line);
 }
 
 .note-tree__item {
@@ -391,25 +394,6 @@ body.note-nav-open {
   font-weight: 500;
 }
 
-/* Active accent bar right on the current branch's rail. */
-.note-tree__folder
-  > .note-tree__branch
-  > .note-tree__item:has(> .note-tree__link[aria-current='page'])::before,
-.note-tree__folder
-  > .note-tree__branch
-  > .note-tree__item
-  > .note-tree__folder
-  > .note-tree__summary:has(> .note-tree__link[aria-current='page'])::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: -11px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-}
-
 .note-tree__link[aria-current='page'] {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--ink);
@@ -435,8 +419,7 @@ body.note-nav-open {
 }
 
 .notes-title,
-.note-sheet__title,
-.note-sheet .prose h1 {
+.note-sheet__title {
   margin: 0;
   color: var(--ink);
   font-family: var(--sans);
@@ -812,11 +795,6 @@ a.notes-sticker--tag:focus-visible {
   margin: 0;
 }
 
-.note-sheet .prose h1:not(:first-child) {
-  margin-top: 1.6em;
-  font-size: 1.75rem;
-}
-
 .note-sheet__draft {
   display: flex;
   flex-wrap: wrap;
@@ -1028,58 +1006,6 @@ a.notes-sticker--tag:focus-visible {
   opacity: 0.55;
 }
 
-/* ---- Subtle previous / next sibling navigation ---------------------------- */
-
-.note-pager {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
-
-.note-pager__link {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--ink);
-  text-decoration: none;
-  transition: background-color 150ms ease;
-}
-
-.note-pager__link--prev {
-  margin-left: -10px;
-  align-items: flex-start;
-  text-align: left;
-}
-
-.note-pager__link--next {
-  margin-right: -10px;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.note-pager__dir {
-  color: var(--ink-2);
-  font-size: 0.75rem;
-}
-
-.note-pager__title {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  line-height: 1.35;
-  overflow-wrap: break-word;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .note-pager__link:hover {
-    background: var(--hover);
-  }
-}
-
 /* ---- Right rail: outline, nearby graph & backlinks ------------------------ */
 
 .note-aside {
@@ -1089,14 +1015,6 @@ a.notes-sticker--tag:focus-visible {
   margin-top: 32px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
-}
-
-@media (max-width: 71.99em) {
-  .notes-shell:has(.note-pager) > .note-aside {
-    margin-top: 24px;
-    padding-top: 0;
-    border-top: 0;
-  }
 }
 
 .notes-slip {
@@ -1170,7 +1088,6 @@ a.notes-sticker--tag:focus-visible {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-left: 1px solid var(--line);
 }
 
 .note-outline__item {
@@ -1179,7 +1096,7 @@ a.notes-sticker--tag:focus-visible {
 
 .note-outline__item a {
   display: block;
-  margin-left: 8px;
+  margin-left: -8px;
   padding: 4px 8px;
   border-radius: 6px;
   color: var(--ink-2);
@@ -1201,18 +1118,9 @@ a.notes-sticker--tag:focus-visible {
   margin-left: 32px;
 }
 
-.note-outline__item:has(> a[aria-current='location'])::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: -1.5px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-}
-
+/* Where you are: the tree's current-item fill, no rail or strip. */
 .note-outline__item a[aria-current='location'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--ink);
   font-weight: 500;
 }
@@ -1316,164 +1224,4 @@ a.notes-sticker--tag:focus-visible {
     background: var(--hover);
     border-color: var(--line-2);
   }
-}
-
-/* ---- Published prose (overrides shared _note-prose.css for public notes) -- */
-
-.note-sheet .prose {
-  font-family: var(--sans);
-  font-size: 1.0625rem;
-  line-height: 1.7;
-}
-
-@media (max-width: 40em) {
-  .note-sheet .prose {
-    font-size: 1rem;
-    line-height: 1.65;
-  }
-}
-
-.note-sheet .prose :is(h2, h3, h4, h5, h6) {
-  font-family: var(--sans);
-  font-weight: 600;
-}
-
-.note-sheet .prose h2 {
-  margin-top: 2em;
-  margin-bottom: 0.6em;
-  font-size: 1.375rem;
-  letter-spacing: -0.016em;
-}
-
-.note-sheet .prose h3 {
-  margin-top: 1.75em;
-  margin-bottom: 0.45em;
-  font-size: 1.125rem;
-  letter-spacing: -0.01em;
-}
-
-/* Calm links: subtle muted underline at rest, accent on hover. */
-:is(.note-sheet .prose, .notes-home__intro.prose) a {
-  color: var(--ink);
-  text-decoration-line: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.24em;
-  text-decoration-color: color-mix(in srgb, var(--ink-2) 55%, transparent);
-  transition:
-    color 120ms ease,
-    text-decoration-color 120ms ease;
-}
-
-:is(.note-sheet .prose, .notes-home__intro.prose) .external-link::after {
-  margin-left: 0.25em;
-  opacity: 0.65;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  :is(.note-sheet .prose, .notes-home__intro.prose) a:hover {
-    color: var(--accent);
-    text-decoration-color: currentColor;
-  }
-}
-
-:is(.note-sheet .prose, .notes-home__intro.prose) ul {
-  list-style: disc;
-}
-
-:is(.note-sheet .prose, .notes-home__intro.prose) ol {
-  list-style: decimal;
-}
-
-:is(.note-sheet .prose, .notes-home__intro.prose) li::marker {
-  color: var(--ink-2);
-}
-
-.note-sheet .prose .wiki-link--broken {
-  color: var(--ink-2);
-  text-decoration-style: dashed;
-  text-decoration-thickness: 1px;
-  text-decoration-color: currentColor;
-}
-
-.note-sheet .prose .note-tag {
-  padding: 0.05em 0.4em;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font-family: inherit;
-  font-size: 0.85em;
-  text-decoration: none;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 120ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .note-sheet .prose .note-tag:hover {
-    background: var(--hover);
-    border-color: var(--line-2);
-    color: var(--ink);
-  }
-}
-
-.note-sheet .prose .footnote-ref a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.note-sheet .prose .footnote-backref {
-  text-decoration: none;
-}
-
-.note-sheet .prose blockquote:not(.callout) {
-  border-left-color: var(--line-2);
-  color: var(--ink-2);
-}
-
-/* Flat callouts on published notes (Studio keeps its own in _note-prose.css). */
-.note-sheet .prose .callout {
-  margin: 1.5em 0;
-  padding: 0.9rem 1.1rem 0.35rem;
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--callout-tone);
-  border-radius: 8px;
-  background: var(--surface-2);
-}
-
-.note-sheet .prose .callout::before {
-  display: none;
-}
-
-.note-sheet .prose :is(code, pre) {
-  background: var(--surface-2);
-}
-
-.note-sheet .prose pre {
-  margin: 1.5em 0;
-  padding: 1rem 1.125rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.note-sheet .prose pre[data-language] {
-  padding-top: 2.25rem;
-}
-
-.note-sheet .prose pre[data-language]::before {
-  top: 0.75rem;
-  left: 1.125rem;
-}
-
-.note-sheet .prose pre code {
-  background: none;
-}
-
-.note-sheet .prose img {
-  border-radius: 8px;
-}
-
-.note-sheet .prose .footnotes {
-  margin-top: 3rem;
 }

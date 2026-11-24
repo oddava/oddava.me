@@ -2,8 +2,9 @@
 /**
  * A note reading view: quiet garden tree in the left rail on desktop, clean
  * distraction-free prose in the centre, and contextual utilities (outline,
- * nearby graph, backlinks) in the right rail. Folder notes list their child
- * pages as a crisp, borderless typographic index right below their intro.
+ * nearby graph, backlinks) in the right rail. A folder note is its intro
+ * alone: its pages are reached from the tree in the left rail, which already
+ * lists them, so the page does not list them a second time.
  *
  * Shared by the public note route and the owner's draft preview.
  */
@@ -54,14 +55,6 @@ const isStub = !rendered.html && document.childIds.length === 0;
 
 const trail = folderAncestors(document, index);
 
-// Child pages of a folder note, rendered as a clean inline list below the intro.
-const pages = isRoot
-  ? []
-  : document.childIds.flatMap((id) => {
-      const child = index.byId.get(id);
-      return child ? [child] : [];
-    });
-
 // Explicit backlinks only (skip self and the root index, which links to every
 // top-level folder and adds noise without signal).
 const backlinks = document.backlinks
@@ -72,23 +65,6 @@ const backlinks = document.backlinks
       : [];
   })
   .toSorted((left, right) => right.updated.localeCompare(left.updated));
-
-// Sibling navigation for leaf notes within the same folder.
-const parentDoc =
-  !isRoot && document.parentId ? index.byId.get(document.parentId) : undefined;
-const siblings =
-  parentDoc && pages.length === 0
-    ? parentDoc.childIds.flatMap((id) => {
-        const sibling = index.byId.get(id);
-        return sibling ? [sibling] : [];
-      })
-    : [];
-const siblingIndex = siblings.findIndex((item) => item.id === document.id);
-const prevNote = siblingIndex > 0 ? siblings[siblingIndex - 1] : undefined;
-const nextNote =
-  siblingIndex >= 0 && siblingIndex < siblings.length - 1
-    ? siblings[siblingIndex + 1]
-    : undefined;
 
 // The note's corner of the graph, only when it has neighbours.
 const neighbourhood = deriveNoteGraph(index, document.id);
@@ -189,64 +165,6 @@ const hasAside = showGraph || showOutline || showBacklinks;
           <p class="note-sheet__stub">
             nothing written here yet — this page is still blank.
           </p>
-        )
-      }
-      {
-        pages.length > 0 && (
-          <nav class="note-children" aria-label={`Pages in ${document.title}`}>
-            <ol class="note-children__list" role="list">
-              {pages.map((page) => (
-                <li>
-                  <a
-                    class="note-children__row"
-                    href={page.href}
-                    data-page-preview-ignore
-                  >
-                    <span class="note-children__title">{page.title}</span>
-                    <span class="note-children__meta">
-                      {page.childIds.length > 0 && (
-                        <span class="note-children__count">
-                          {page.childIds.length}{' '}
-                          {page.childIds.length === 1 ? 'note' : 'notes'}
-                        </span>
-                      )}
-                      <time datetime={page.updated}>
-                        {formatNoteDate(page.updated, 'short')}
-                      </time>
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        )
-      }
-      {
-        (prevNote || nextNote) && (
-          <nav class="note-pager" aria-label="Adjacent notes">
-            {prevNote ? (
-              <a
-                class="note-pager__link note-pager__link--prev"
-                href={prevNote.href}
-                data-page-preview-ignore
-              >
-                <span class="note-pager__dir">← previous</span>
-                <span class="note-pager__title">{prevNote.title}</span>
-              </a>
-            ) : (
-              <span />
-            )}
-            {nextNote && (
-              <a
-                class="note-pager__link note-pager__link--next"
-                href={nextNote.href}
-                data-page-preview-ignore
-              >
-                <span class="note-pager__dir">next →</span>
-                <span class="note-pager__title">{nextNote.title}</span>
-              </a>
-            )}
-          </nav>
         )
       }
     </article>

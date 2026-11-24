@@ -229,9 +229,10 @@
 }
 
 /* --- Reading comfort ---
-   The page's type is the published note's (`.prose`). Size scales the body
-   and the two headings that carry their own fixed sizes, from the same
-   numbers `_note-prose.css` uses, so the editor is still the page. */
+   The page's type is the published note's (`.note-sheet .prose`, in
+   _note-prose-published.css). Size scales the body and the headings that
+   carry their own fixed sizes, from the same numbers, so the editor is still
+   the page. */
 
 .admin-page[data-studio-text='sm'] {
   --studio-text-scale: 0.9;
@@ -242,38 +243,41 @@
 }
 
 .admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .note-sheet
   .studio-rich-content.prose {
-  font-size: calc(clamp(1.125rem, 1.7vw, 1.1875rem) * var(--studio-text-scale));
+  font-size: calc(1.0625rem * var(--studio-text-scale));
 }
 
 .admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .note-sheet
   .studio-rich-content.prose
   h1 {
-  font-size: calc(clamp(2rem, 4vw, 2.625rem) * var(--studio-text-scale));
+  font-size: calc(var(--t-title) * var(--studio-text-scale));
 }
 
 .admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .note-sheet
   .studio-rich-content.prose
   h2 {
-  font-size: calc(clamp(1.5rem, 3vw, 1.875rem) * var(--studio-text-scale));
+  font-size: calc(1.375rem * var(--studio-text-scale));
 }
 
-@media (max-width: 420px) {
-  .admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
-    .studio-rich-content.prose
-    h1 {
-    font-size: calc(clamp(1.65rem, 8vw, 2.2rem) * var(--studio-text-scale));
-  }
+.admin-page:is([data-studio-text='sm'], [data-studio-text='lg'])
+  .note-sheet
+  .studio-rich-content.prose
+  h3 {
+  font-size: calc(1.125rem * var(--studio-text-scale));
 }
 
-/* Width is the column's, not the window's. The 72px floor keeps the block
+/* Width is the column's, not the window's: the published 44rem by default
+   (--st-column), a step either side. The 72px floor keeps the block
    handle's gutter. A phone's even margins are its own. */
 .admin-page[data-studio-measure='narrow'] {
-  --studio-measure: 30rem;
+  --studio-measure: 36rem;
 }
 
 .admin-page[data-studio-measure='wide'] {
-  --studio-measure: 50rem;
+  --studio-measure: 56rem;
 }
 
 @media (min-width: 721px) {
@@ -292,12 +296,6 @@
   .studio.is-keyboard-open
   .studio-rich-scroll {
   padding-bottom: calc(var(--studio-vh, 100dvh) * 0.45);
-}
-
-/* The paper runs on through that space, so the last line is still written
-   on the sheet rather than on the desk under it. */
-.admin-page[data-studio-typewriter='on'] .studio-paper {
-  --studio-paper-bottom: calc(var(--studio-vh, 100dvh) * 0.45 - 32px);
 }
 
 /* --- Focus mode --- */
@@ -427,24 +425,4 @@
       opacity var(--st-slow) var(--st-ease),
       padding-left 0s;
   }
-}
-
-/* Focus mode takes the room down to the paper: the desk's dots, the sheet's
-   edge and every strip of tape step out with the rest of the chrome. */
-.admin-page :is(.studio-workbench, .studio-editor, .studio-bar) {
-  transition: background-color var(--st-slow) var(--st-ease);
-}
-
-.admin-page[data-studio-focus='on']
-  :is(.studio-workbench, .studio-editor, .studio-bar, .studio-rich-scroll) {
-  background: var(--st-sheet);
-}
-
-.admin-page[data-studio-focus='on'] .studio-paper {
-  border-color: transparent;
-}
-
-.admin-page[data-studio-focus='on']
-  :is(.studio-paper, .studio-rich-content .callout)::before {
-  opacity: 0;
 }

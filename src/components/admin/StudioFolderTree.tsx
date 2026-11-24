@@ -342,11 +342,11 @@ export default function StudioFolderTree({
           <button
             type="button"
             className="studio-icon-button"
-            aria-label="Quick open note"
-            title={`Search notes (${shortcut('P')})`}
-            onClick={onQuickOpen}
+            aria-label="New note"
+            title="New note"
+            onClick={() => beginCreate()}
           >
-            <Icon name="search" />
+            <Icon name="plus" />
           </button>
           <button
             type="button"
@@ -359,10 +359,21 @@ export default function StudioFolderTree({
           </button>
         </div>
       </div>
+      {/* The notes rail's search field, as a button: it opens the palette,
+          which is where searching happens. */}
       <div className="studio-library-actions">
-        <button type="button" onClick={() => beginCreate()}>
-          <Icon name="plus" />
-          New note
+        <button
+          type="button"
+          className="studio-search-pill"
+          aria-label="Quick open note"
+          title={`Search notes (${shortcut('P')})`}
+          onClick={onQuickOpen}
+        >
+          <Icon name="search" />
+          <span className="studio-search-pill__label" aria-hidden="true">
+            search
+          </span>
+          <kbd aria-hidden="true">{shortcut('P')}</kbd>
         </button>
       </div>
       {query && (

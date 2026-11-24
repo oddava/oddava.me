@@ -24,70 +24,43 @@
   min-height: 0;
 }
 
-/* The page column is the published note's width, centred, with a gutter on
-   the left wide enough for the block handle. The pane itself is the desk: a
-   flat fill with a dot every 20px, which stays put while the paper slides
-   over it. */
+/* The page column is the published note's width (44rem), centred on the
+   same flat canvas the notes page reads on, with a gutter on the left wide
+   enough for the block handle. No sheet, no desk: what you write sits where
+   a visitor will read it. */
 .admin-page .studio-rich-scroll {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  padding: 72px max(72px, calc((100% - var(--max-width)) / 2)) 120px;
+  padding: 40px max(72px, calc((100% - var(--st-column)) / 2)) 160px;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  background:
-    var(--st-dots) 0 0 / 20px 20px,
-    var(--st-canvas);
+  scrollbar-width: thin;
+  scrollbar-color: var(--st-line-strong) transparent;
+  background: var(--st-canvas);
 }
 
-/* The sheet of paper. It reaches a gutter past the column on each side and
-   gives the same back as padding, so nothing inside it moves: the pane's own
-   padding still places every block. The one thing in Studio drawn as an
-   object, and still flat: a fill and a hairline. */
+/* The page itself. Kept as a box (focus mode and the typewriter both reach
+   for it) but painted as nothing: the canvas is the page. */
 .admin-page .studio-paper {
-  --studio-paper-gutter: 56px;
-  --studio-paper-top: 48px;
-  --studio-paper-bottom: 88px;
+  --studio-paper-bottom: 0px;
 
   box-sizing: border-box;
-  /* A short note is still a whole sheet. */
-  min-height: calc(100% + var(--studio-paper-top) + var(--studio-paper-bottom));
-  margin: calc(var(--studio-paper-top) * -1)
-    calc(var(--studio-paper-gutter) * -1) calc(var(--studio-paper-bottom) * -1);
-  padding: calc(var(--studio-paper-top) - 1px)
-    calc(var(--studio-paper-gutter) - 1px)
-    calc(var(--studio-paper-bottom) - 1px);
-  border: 1px solid var(--st-line);
-  border-radius: var(--st-radius-sheet);
-  background: var(--st-sheet);
-  transition:
-    border-color var(--st-slow) var(--st-ease),
-    background-color var(--st-slow) var(--st-ease);
-}
-
-/* A strip of tape holds the sheet to the desk. Placed from the pane (the
-   paper is not a positioned box, so the handles keep measuring from the
-   pane), and it scrolls away with the top of the page. */
-.admin-page .studio-paper::before {
-  position: absolute;
-  top: 13px;
-  left: calc(50% - 46px);
-  width: 92px;
-  content: '';
-  transition: opacity var(--st-slow) var(--st-ease);
-}
-
-/* A draft's tape is amber, like its sticker. */
-.admin-page
-  .studio-editor:has(.studio-draft-toggle[data-state='draft'])
-  .studio-paper::before {
-  --studio-tape: var(--st-draft-tape);
-  --studio-tape-stripe: var(--st-draft-tint);
+  min-height: 100%;
+  padding-bottom: var(--studio-paper-bottom);
 }
 
 .admin-page .studio-rich-page {
   min-height: 320px;
+}
+
+/* The published page sets the note's opening title apart from its body
+   (note-sheet__head, then the body 22px under the date). The editor has the
+   title in the body, so it gives the same room under it — as a margin, so
+   the gap belongs to no block and a marquee started in it catches none. */
+.admin-page .note-sheet .studio-rich-content > h1:first-child {
+  margin-bottom: 0.6em;
 }
 
 /* --- ProseMirror infrastructure ---
@@ -163,12 +136,11 @@
   background: var(--color-selection);
 }
 
-/* Placeholder for an empty block. Its ellipsis takes the Latin form, like
-   the rest of the chrome's (see _tokens.css). */
+/* Placeholder for an empty block. */
 .studio-rich-content .is-empty::before {
   float: left;
   height: 0;
-  font-family: 'Studio Ellipsis', var(--font-prose);
+  font-family: var(--font-prose);
   color: var(--st-text-4);
   content: attr(data-placeholder);
   pointer-events: none;

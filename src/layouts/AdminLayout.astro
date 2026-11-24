@@ -1,7 +1,20 @@
 ---
-import DocumentTheme from '../components/DocumentTheme.astro';
+/**
+ * Studio's frame (/admin/files). It reads like the notes it edits: the same
+ * portfolio tokens, theme and ink (the visitor's saved appearance, applied
+ * before first paint by Prepaint), so the page you write on and the page
+ * visitors read share one canvas, one face and one accent. Only the tokens
+ * are loaded, not the portfolio shell: Studio is an app frame with its own
+ * layout (studio/_tokens.css builds its scale from these).
+ *
+ * The pre-paint is inline and hashed; the page registers the hashes from its
+ * own frontmatter (see lib/portfolio/csp.ts).
+ */
+import Prepaint from '../components/portfolio/Prepaint.astro';
+import { APPEARANCE_DEFAULTS } from '../lib/portfolio/appearance';
 import '../styles/_fonts.css';
 import '../styles/_variables.css';
+import '../styles/portfolio/_tokens.css';
 import '../styles/admin.css';
 
 export interface Props {
@@ -17,6 +30,7 @@ const {
 } = Astro.props;
 const pageTitle = `${title} | oddava admin`;
 const shellClass = fullWidth ? 'admin-shell admin-shell--full' : 'admin-shell';
+const defaults = APPEARANCE_DEFAULTS;
 
 // `viewport-fit=cover` hands the notch and home-indicator insets to CSS
 // (`env(safe-area-inset-*)`); `interactive-widget=resizes-content` makes the
@@ -27,40 +41,21 @@ const viewport =
 ---
 
 <!doctype html>
-<html lang="en" data-theme="dark" class="admin-page">
+<html
+  lang="en"
+  class="admin-page"
+  data-site="portfolio"
+  data-theme={defaults.theme}
+  data-ink={defaults.ink}
+>
   <head>
     <meta charset="utf-8" />
-    <DocumentTheme />
+    <Prepaint />
     <meta name="viewport" content={viewport} />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
 
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/m-plus-rounded-1c-latin-400-normal.woff2"
-      crossorigin
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/m-plus-rounded-1c-latin-700-normal.woff2"
-      crossorigin
-      fetchpriority="high"
-    />
-    {/* Studio's chrome is set in DM Sans (see studio/_tokens.css). */}
-    <link
-      rel="preload"
-      as="font"
-      type="font/woff2"
-      href="/fonts/dm-sans-latin-variable.woff2"
-      crossorigin
-      fetchpriority="high"
-    />
     <link
       rel="preload"
       as="font"
